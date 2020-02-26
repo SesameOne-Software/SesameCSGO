@@ -1,7 +1,7 @@
 #include <cctype>
-#include "netvar.h"
-#include "sdk.h"
-#include "../utils/utils.h"
+#include "netvar.hpp"
+#include "sdk.hpp"
+#include "../utils/utils.hpp"
 
 std::unordered_map< std::string, int > netvars::m_client_ids;
 std::unordered_map< std::string, std::unordered_map< std::string, netvars::netvar_data_t > > netvars::m_offsets;

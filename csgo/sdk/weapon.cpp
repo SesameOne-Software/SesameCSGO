@@ -1,5 +1,5 @@
-#include "weapon.h"
-#include "../utils/utils.h"
+#include "weapon.hpp"
+#include "../utils/utils.hpp"
 
 weapon_info_t* weapon_t::data( ) {
 	static auto weapon_system = pattern::search( "client_panorama.dll", "8B 35 ? ? ? ? FF 10 0F B7 C0" ).add( 2 ).deref( ).get< void* >( );
@@ -9,12 +9,12 @@ weapon_info_t* weapon_t::data( ) {
 
 float weapon_t::inaccuracy( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 479 )( this );
+	return vfunc< fn >( this, 481 )( this );
 }
 
 float weapon_t::spread( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 449 )( this );
+	return vfunc< fn >( this, 451 )( this );
 }
 
 float weapon_t::max_speed( ) {

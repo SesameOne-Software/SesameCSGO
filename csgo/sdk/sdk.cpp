@@ -1,5 +1,5 @@
-#include "sdk.h"
-#include "netvar.h"
+#include "sdk.hpp"
+#include "netvar.hpp"
 
 c_entlist* csgo::i::ent_list = nullptr;
 c_matsys* csgo::i::mat_sys = nullptr;
@@ -31,16 +31,16 @@ c_mdl_cache_critical_section::~c_mdl_cache_critical_section( ) {
 	csgo::i::mdl_cache->end_lock( );
 }
 
-bool csgo::render::screen_transform( vec3_t &screen, vec3_t &origin ) {
+bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	static auto view_matrix = pattern::search( "client_panorama.dll", "0F 10 05 ? ? ? ? 8D 85 ? ? ? ? B9" ).add( 3 ).deref( ).add( 176 ).get< std::uintptr_t >( );
 
 	const auto& world_matrix = *( matrix3x4_t* ) view_matrix;
 
-	screen.x = world_matrix[ 0 ][ 0 ] * origin.x + world_matrix[ 0 ][ 1 ] * origin.y + world_matrix[ 0 ][ 2 ] * origin.z + world_matrix[ 0 ][ 3 ];
-	screen.y = world_matrix[ 1 ][ 0 ] * origin.x + world_matrix[ 1 ][ 1 ] * origin.y + world_matrix[ 1 ][ 2 ] * origin.z + world_matrix[ 1 ][ 3 ];
+	screen.x = world_matrix [ 0 ][ 0 ] * origin.x + world_matrix [ 0 ][ 1 ] * origin.y + world_matrix [ 0 ][ 2 ] * origin.z + world_matrix [ 0 ][ 3 ];
+	screen.y = world_matrix [ 1 ][ 0 ] * origin.x + world_matrix [ 1 ][ 1 ] * origin.y + world_matrix [ 1 ][ 2 ] * origin.z + world_matrix [ 1 ][ 3 ];
 	screen.z = 0.0f;
 
-	const auto w = world_matrix[ 3 ][ 0 ] * origin.x + world_matrix[ 3 ][ 1 ] * origin.y + world_matrix[ 3 ][ 2 ] * origin.z + world_matrix[ 3 ][ 3 ];
+	const auto w = world_matrix [ 3 ][ 0 ] * origin.x + world_matrix [ 3 ][ 1 ] * origin.y + world_matrix [ 3 ][ 2 ] * origin.z + world_matrix [ 3 ][ 3 ];
 
 	if ( w < 0.001f ) {
 		screen.x *= 100000.0f;
@@ -48,14 +48,14 @@ bool csgo::render::screen_transform( vec3_t &screen, vec3_t &origin ) {
 
 		return true;
 	}
-	
+
 	screen.x *= 1.0f / w;
 	screen.y *= 1.0f / w;
 
 	return false;
 }
 
-bool csgo::render::world_to_screen( vec3_t &screen, vec3_t &origin ) {
+bool csgo::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
 	if ( !screen_transform( screen, origin ) ) {
 		int width, height;
 		csgo::i::engine->get_screen_size( width, height ); // TODO: use the one we calculate in sceneend instead
@@ -86,7 +86,7 @@ void csgo::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32
 
 void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace_ptr ) {
 	static auto util_cliptracetoplayers = pattern::search( "client_panorama.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get< std::uint32_t >( );
-	
+
 	if ( !util_cliptracetoplayers )
 		return;
 
@@ -122,22 +122,30 @@ void csgo::for_each_player( std::function< void( player_t* ) > fn ) {
 }
 
 float csgo::normalize( float ang ) {
-	return std::isfinite( ang ) ? std::remainder( ang, 360.0f ) : 0.0f;
+	return std::remainderf( ang, 360.0f );
 }
 
 void csgo::clamp( vec3_t& ang ) {
-	ang.x = std::max< float >( -89.0f, std::min< float > ( 89.0f, normalize( ang.x ) ) );
-	ang.y = normalize( ang.y );
+	auto flt_valid = [ ] ( float val ) {
+		return std::isfinite( val ) && !std::isnan( val );
+	};
+
+	for ( auto i = 0; i < 3; i++ )
+		if ( !flt_valid( ang [ i ] ) )
+			return;
+
+	ang.x = std::clamp( normalize( ang.x ), -89.0f, 89.0f );
+	ang.y = std::clamp( normalize( ang.y ), -180.0f, 180.0f );
 	ang.z = 0.0f;
 }
 
 float csgo::rad2deg( float rad ) {
-	float result = rad * (180.0f / pi);
+	float result = rad * ( 180.0f / pi );
 	return result;
 }
 
 float csgo::deg2rad( float deg ) {
-	float result = deg * (pi / 180.0f);
+	float result = deg * ( pi / 180.0f );
 	return result;
 }
 
@@ -146,8 +154,8 @@ void csgo::sin_cos( float radians, float* sine, float* cosine ) {
 	*cosine = std::cosf( radians );
 }
 
-vec3_t csgo::calc_angle( const vec3_t& from, const vec3_t& to ){
-	return csgo::vec_angle( from - to );
+vec3_t csgo::calc_angle( const vec3_t& from, const vec3_t& to ) {
+	return csgo::vec_angle( to - from );
 }
 
 vec3_t csgo::vec_angle( vec3_t vec ) {
@@ -156,16 +164,16 @@ vec3_t csgo::vec_angle( vec3_t vec ) {
 	if ( vec.x == 0.0f && vec.y == 0.0f ) {
 		ret.x = ( vec.z > 0.0f ) ? 270.0f : 90.0f;
 		ret.y = 0.0f;
-	} else {
-		ret.x = std::atan2f( -vec.z, vec.length_2d( ) ) * -180.0f / pi;
-		ret.y = std::atan2f( vec.y, vec.x ) * 180.0f / pi;
+	}
+	else {
+		ret.x = rad2deg( std::atan2f( -vec.z, vec.length_2d( ) ) );
+		ret.y = rad2deg( std::atan2f( vec.y, vec.x ) );
 
-		if ( ret.y > 90.0f )
-			ret.y -= 180.0f;
-		else if ( ret.y < 90.0f )
-			ret.y += 180.0f;
-		else if ( ret.y == 90.0f )
-			ret.y = 0.0f;
+		if ( ret.y < 0.0f )
+			ret.y += 360.0f;
+
+		if ( ret.x < 0.0f )
+			ret.x += 360.0f;
 	}
 
 	ret.z = 0.0f;
@@ -175,7 +183,7 @@ vec3_t csgo::vec_angle( vec3_t vec ) {
 
 vec3_t csgo::angle_vec( vec3_t angle ) {
 	vec3_t ret;
-	
+
 	float sp, sy, cp, cy;
 
 	sin_cos( deg2rad( angle.y ), &sy, &cy );
@@ -202,11 +210,24 @@ void csgo::util_tracehull( const vec3_t& start, const vec3_t& end, const vec3_t&
 
 template < typename t >
 t csgo::create_interface( const char* module, const char* iname ) {
-	using createinterface_fn = void*( __cdecl* )( const char*, int );
+	using createinterface_fn = void* ( __cdecl* )( const char*, int );
 	const auto createinterface_export = GetProcAddress( GetModuleHandleA( module ), "CreateInterface" );
 	const auto fn = ( createinterface_fn ) createinterface_export;
-	
+
 	return reinterpret_cast< t >( fn( iname, 0 ) );
+}
+
+void csgo::rotate_movement( ucmd_t* ucmd ) {
+	vec3_t ang;
+	csgo::i::engine->get_viewangles( ang );
+	
+	const auto vec_move = vec3_t( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
+	const auto ang_move = csgo::vec_angle( vec_move );
+	const auto speed = vec_move.length_2d( );
+	const auto rotation = deg2rad( ucmd->m_angs.y - ang.y + ang_move.y );
+
+	ucmd->m_fmove = std::cosf( rotation ) * speed;
+	ucmd->m_smove = std::sinf( rotation ) * speed;
 }
 
 bool csgo::init( ) {
@@ -231,6 +252,6 @@ bool csgo::init( ) {
 	i::client_state = **reinterpret_cast< c_clientstate*** >( reinterpret_cast< std::uintptr_t >( vfunc< void* >( i::engine, 12 ) ) + 16 );
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( "tier0.dll" ), "g_pMemAlloc" );
 	i::dev = pattern::search( "shaderapidx9.dll", "A1 ? ? ? ? 50 8B 08 FF 51 0C" ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
-	
+
 	return true;
 }

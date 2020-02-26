@@ -1,14 +1,10 @@
-#include "player.h"
-#include "sdk.h"
+#include <array>
+#include "player.hpp"
+#include "sdk.hpp"
 
 void animstate_pose_param_cache_t::set_value( player_t* e, float val ) {
-	auto v5 = *reinterpret_cast< std::uint32_t* >( std::uintptr_t( e ) + 0x294C );
-
-	if ( !v5 || *reinterpret_cast< std::uint32_t* >( v5 ) )
-		v5 = 0;
-
-	if ( v5 && m_idx >= 0 )
-		e->poseparam( ) [ m_idx ] = val;
+	if ( m_idx >= 0 )
+		e->poses( ) [ m_idx ] = val;
 }
 
 void animstate_t::reset( ) {
@@ -38,10 +34,10 @@ void player_t::create_animstate( animstate_t* state ) {
 }
 
 void player_t::inval_bone_cache( ) {
-	static auto invalidate_bone_bache = pattern::search( "client_panorama.dll", "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ).add( 10 ).get< std::uintptr_t >( );
+	static auto invalidate_bone_cache = pattern::search( "client_panorama.dll", "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ).add( 10 ).get< std::uintptr_t >( );
 
 	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2924 ) = 0xFF7FFFFF;
-	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2690 ) = **( std::uintptr_t** ) invalidate_bone_bache - 1;
+	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2690 ) = **( std::uintptr_t** ) invalidate_bone_cache - 1;
 }
 
 void player_t::set_abs_angles( const vec3_t& ang ) {
@@ -83,7 +79,7 @@ animstate_t* player_t::animstate( ) {
 }
 
 vec3_t player_t::eyes( ) {
-	using weapon_shootpos_fn = float*( __thiscall* )( void*, vec3_t* );
+	using weapon_shootpos_fn = float* ( __thiscall* )( void*, vec3_t* );
 	static auto fn = pattern::search( "client_panorama.dll", "55 8B EC 56 8B 75 08 57 8B F9 56 8B 07 FF 90" ).get< weapon_shootpos_fn >( );
 
 	vec3_t ret;
@@ -97,9 +93,9 @@ std::uint32_t& player_t::bone_count( ) {
 	return *( uint32_t* ) ( std::uintptr_t( renderable( ) ) + offset );
 }
 
-matrix3x4_t* player_t::bone_cache( ) {
+std::array< matrix3x4_t, 128 >& player_t::bone_cache( ) {
 	static auto offset = pattern::search( "client_panorama.dll", "FF B7 ? ? ? ? 52" ).add( 2 ).deref( ).get< std::uint32_t >( );
-	return *( matrix3x4_t** ) ( std::uintptr_t( renderable( ) ) + offset );
+	return *( std::array< matrix3x4_t, 128 >* ) ( std::uintptr_t( renderable( ) ) + offset );
 }
 
 weapon_t* player_t::weapon( ) {

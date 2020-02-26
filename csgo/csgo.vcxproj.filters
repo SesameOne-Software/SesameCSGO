@@ -9,187 +9,264 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Header Files\features">
-      <UniqueIdentifier>{03a9a619-474f-4d74-887b-36b556a42740}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\features">
-      <UniqueIdentifier>{364fa405-e0df-4880-b32e-e5b3a27778c8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\menu">
-      <UniqueIdentifier>{4bed7c80-364e-4953-97dd-832acb9efd83}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\menu">
-      <UniqueIdentifier>{0ddfef03-b4a4-48e5-8b90-5422f0e32d91}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\minhook">
-      <UniqueIdentifier>{b507edeb-8912-47c1-8d79-19dcf168d911}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\sdk">
-      <UniqueIdentifier>{25ed1c35-41f8-4fe7-86bd-a6dcbda90613}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\sdk">
-      <UniqueIdentifier>{2945f712-fe89-4992-a67a-b684b6d28baf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\utils">
-      <UniqueIdentifier>{60152058-cbb6-4e87-ae97-03214d5aa58b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\utils">
-      <UniqueIdentifier>{4c36f64e-d2a2-4cda-ba65-c53a96cdb7fa}</UniqueIdentifier>
+      <UniqueIdentifier>{0d6644dd-3b4c-40af-87b8-199cd646e7b4}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\oxui">
-      <UniqueIdentifier>{9296d5d0-3e2f-4166-89cf-b325aa9aa35e}</UniqueIdentifier>
+      <UniqueIdentifier>{8a6a2be0-6609-4f20-ad13-48dde2584085}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\oxui">
-      <UniqueIdentifier>{67483a28-c5ff-4cb1-9244-3ed95ee34036}</UniqueIdentifier>
+      <UniqueIdentifier>{09f3661f-ff89-4697-b30b-aa37813209a3}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\oxui\d3d9">
-      <UniqueIdentifier>{d046b11f-9e72-4174-b22d-d2bb2f560e8d}</UniqueIdentifier>
+    <Filter Include="Header Files\renderer">
+      <UniqueIdentifier>{de401a3e-4f80-42fb-bc99-41dec950dfca}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\oxui\d3d9">
-      <UniqueIdentifier>{e98506c8-986e-4369-bedc-1f4d9025c3a9}</UniqueIdentifier>
+    <Filter Include="Source Files\renderer">
+      <UniqueIdentifier>{899073af-c3a7-4ef0-8350-a124ac1b4c88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\sdk">
+      <UniqueIdentifier>{4da6aed3-0f5f-495b-8403-4935625b1209}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sdk">
+      <UniqueIdentifier>{56a8a329-ea55-4033-a732-0b288b5a22d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{9f9528c7-4c48-451f-9725-52c82855cfd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\utils">
+      <UniqueIdentifier>{b480e07c-750e-4d76-8d4c-4b68ba8e5280}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\oxui\panels">
+      <UniqueIdentifier>{463caa84-769f-4943-90a6-cb75aacbc5b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\oxui\panels">
+      <UniqueIdentifier>{1dc8880e-b0be-4c75-b1e6-d1088a50d6de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\oxui\types">
+      <UniqueIdentifier>{2f28b4c1-ee0b-45a5-8ac6-66d0b7d26738}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\oxui\bindings">
+      <UniqueIdentifier>{6883afc9-714e-4ce4-860c-9d7288af5629}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\oxui\objects">
+      <UniqueIdentifier>{9c5168ca-67e6-4828-a120-468c9bb13c38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\oxui\objects">
+      <UniqueIdentifier>{401dc9aa-aafe-4464-9ab8-82de87567f78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\oxui\themes">
+      <UniqueIdentifier>{0a2ac983-7752-47b2-941d-f1da6fd8ac55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\menu">
+      <UniqueIdentifier>{510ac30a-0090-4e42-9906-b22127407870}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\menu">
+      <UniqueIdentifier>{d6156e33-9c5e-4c99-90d8-35beafa22f3d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\features">
+      <UniqueIdentifier>{fa2f7eee-a92b-4f44-8e72-66ded3e04362}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\features">
+      <UniqueIdentifier>{49604362-fffe-4e4c-81e5-b2abb186239b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\animations">
+      <UniqueIdentifier>{cd3e4c9b-6b1a-4b34-bab6-976d06a3a2ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\animations">
+      <UniqueIdentifier>{af59fed1-4440-4f5d-97ed-a66396903510}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="globals.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="renderer\d3d9.hpp">
+      <Filter>Header Files\renderer</Filter>
     </ClInclude>
-    <ClInclude Include="hooks.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cheat.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="minhook\minhook.h">
-      <Filter>Header Files\minhook</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\mem_alloc.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\netvar.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\physics.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\player.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\prediction.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\render_view.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\sdk.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\surface.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\trace.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\ucmd.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\vec3.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\weapon.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\client.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\engine.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\entity.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\entlist.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\events.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\globals.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\input.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\mat_system.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\matrix3x4.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\mdl_cache.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\mdl_info.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="sdk\mdl_render.h">
-      <Filter>Header Files\sdk</Filter>
-    </ClInclude>
-    <ClInclude Include="utils\padding.h">
+    <ClInclude Include="utils\base64.hpp">
       <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="utils\patternscanner.h">
-      <Filter>Header Files\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="utils\utils.h">
-      <Filter>Header Files\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="utils\vfunc.h">
-      <Filter>Header Files\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="utils\base64.h">
-      <Filter>Header Files\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="utils\detours.h">
+    <ClInclude Include="utils\detours.hpp">
       <Filter>Header Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\miniz.h">
       <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="menu\menu.h">
-      <Filter>Source Files\menu</Filter>
+    <ClInclude Include="utils\padding.hpp">
+      <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="menu\tahoma.h">
-      <Filter>Source Files\menu</Filter>
+    <ClInclude Include="utils\patternscanner.hpp">
+      <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="menu\weapons.h">
-      <Filter>Source Files\menu</Filter>
+    <ClInclude Include="utils\registers.hpp">
+      <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="menu\tabs.h">
-      <Filter>Source Files\menu</Filter>
+    <ClInclude Include="utils\utils.hpp">
+      <Filter>Header Files\utils</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\json.h">
+    <ClInclude Include="utils\vfunc.hpp">
+      <Filter>Header Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\weapon.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\vec3.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\ucmd.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\trace.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\surface.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\sdk.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\render_view.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\prediction.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\player.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\physics.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\netvar.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\mem_alloc.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\mdl_render.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\mdl_info.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\mdl_cache.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\matrix3x4.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\mat_system.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\input.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\globals.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\events.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\entlist.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\entity.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\engine.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\client.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="globals.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\oxui.hpp">
       <Filter>Header Files\oxui</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\oxui.h">
-      <Filter>Header Files\oxui</Filter>
+    <ClInclude Include="oxui\panels\panel.hpp">
+      <Filter>Header Files\oxui\panels</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\d3d9\impl.h">
-      <Filter>Header Files\oxui\d3d9</Filter>
+    <ClInclude Include="oxui\types\types.hpp">
+      <Filter>Header Files\oxui\types</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\bindings\bindings.hpp">
+      <Filter>Header Files\oxui\bindings</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\object.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\window.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\shapes.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\themes\pink.hpp">
+      <Filter>Header Files\oxui\themes</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\tab.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\themes\purple.hpp">
+      <Filter>Header Files\oxui\themes</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\groupbox.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\checkbox.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\slider.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\menu.hpp">
+      <Filter>Header Files\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\button.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="minhook\minhook.h">
+      <Filter>Header Files\minhook</Filter>
+    </ClInclude>
+    <ClInclude Include="features\chams.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="features\esp.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="features\movement.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="features\ragebot.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="features\autowall.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="animations\animations.hpp">
+      <Filter>Header Files\animations</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\dropdown.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="features\antiaim.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="features\prediction.hpp">
+      <Filter>Header Files\features</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="renderer\d3d9.cpp">
+      <Filter>Source Files\renderer</Filter>
     </ClCompile>
-    <ClCompile Include="hooks.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="utils\miniz.c">
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
-    <ClCompile Include="globals.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="utils\utils.cpp">
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
     <ClCompile Include="sdk\netvar.cpp">
       <Filter>Source Files\sdk</Filter>
@@ -203,20 +280,71 @@
     <ClCompile Include="sdk\weapon.cpp">
       <Filter>Source Files\sdk</Filter>
     </ClCompile>
-    <ClCompile Include="utils\miniz.c">
-      <Filter>Source Files\utils</Filter>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="utils\utils.cpp">
-      <Filter>Source Files\utils</Filter>
+    <ClCompile Include="globals.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\panels\panel.cpp">
+      <Filter>Source Files\oxui\panels</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\object.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\window.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\shapes.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\tab.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\groupbox.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\checkbox.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\slider.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
     <ClCompile Include="menu\menu.cpp">
-      <Filter>Header Files\menu</Filter>
+      <Filter>Source Files\menu</Filter>
     </ClCompile>
-    <ClCompile Include="oxui\oxui.cpp">
-      <Filter>Source Files\oxui</Filter>
+    <ClCompile Include="oxui\objects\button.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
-    <ClCompile Include="oxui\d3d9\impl.cpp">
-      <Filter>Source Files\oxui\d3d9</Filter>
+    <ClCompile Include="features\chams.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\esp.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\movement.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\ragebot.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\autowall.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\animations.cpp">
+      <Filter>Source Files\animations</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\dropdown.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="features\antiaim.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\prediction.cpp">
+      <Filter>Source Files\features</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

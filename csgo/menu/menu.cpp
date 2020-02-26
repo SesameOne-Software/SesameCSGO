@@ -1,297 +1,277 @@
-﻿#include <oxui.h>
-#include <json.h>
-#include <fstream>
-#include <ShlObj.h>
-#include "menu.h"
-#include "../globals.h"
-#include "../sdk/sdk.h"
+#include <time.h>
+#include "menu.hpp"
+#include "../sdk/sdk.hpp"
 
-IDirect3DTexture9* menu::desync_none = nullptr;
-IDirect3DTexture9* menu::desync_add = nullptr;
-IDirect3DTexture9* menu::desync_sub = nullptr;
+std::shared_ptr< oxui::panel > panel;
+std::shared_ptr< oxui::window > window;
 
-void menu::draw_desync_model( desync_types desync_type, float real, float x, float y ) {
-	ID3DXSprite* sprite = nullptr;
-	D3DXCreateSprite( csgo::i::dev, &sprite );
-	sprite->Begin( D3DXSPRITE_ALPHABLEND );
-
-	D3DXMATRIX transform_mat;
-	D3DXVECTOR2 scaling_center( 256.0f / 2.0f, 256.0f / 2.0f );
-	D3DXVECTOR2 scaling( 0.42f, 0.42f );
-	D3DXVECTOR2 transform_center( 256.0f / 2.0f, 256.0f / 2.0f );
-	D3DXVECTOR2 transform_pos( x - 256.0f / 4.0f, y - 256.0f / 4.0f );
-
-	D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-	sprite->SetTransform( &transform_mat );
-
-	static auto counter = 0;
-	static auto side = false;
-
-	if ( counter > 3 ) {
-		side = !side;
-		counter = 0;
-	}
-
-	counter++;
-
-	switch ( desync_type ) {
-	case desync_types::none:
-		/* real */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-		sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-		break;
-	case desync_types::additive:
-		/* fake */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, ( real - 60.0f ) * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-		sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-
-		/* real */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-		sprite->Draw( desync_add, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-		break;
-	case desync_types::subtractive:
-		/* fake */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, ( real + 60.0f ) * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-		sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-
-		/* real */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-		sprite->Draw( desync_sub, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-		break;
-	case desync_types::outward:
-		/* fake */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, ( real + ( side ? 60.0f : -60.0f ) ) * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-
-		if ( side )
-			sprite->Draw( desync_sub, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-		else
-			sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-
-		/* real */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-
-		if ( side )
-			sprite->Draw( desync_sub, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-		else
-			sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-
-		break;
-	case desync_types::inward:
-		/* fake */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, real * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-
-		if ( side )
-			sprite->Draw( desync_sub, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-		else
-			sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 50, 255, 255 ) );
-
-		/* real */
-		D3DXMatrixTransformation2D( &transform_mat, &scaling_center, 0.0f, &scaling, &transform_center, ( real + ( side ? 60.0f : -60.0f ) ) * ( csgo::pi / 180.0f ), &transform_pos );
-		sprite->SetTransform( &transform_mat );
-
-		if ( side )
-			sprite->Draw( desync_sub, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-		else
-			sprite->Draw( desync_none, nullptr, nullptr, nullptr, D3DCOLOR_RGBA( 255, 255, 255, 255 ) );
-
-		break;
-	}
-
-	sprite->End( );
-	sprite->Release( );
+bool menu::open( ){
+	return window->open;
 }
 
-
-void menu::save( const std::string& file ) {
-	char docs [ MAX_PATH ];
-	SHGetFolderPathA( nullptr, CSIDL_PERSONAL, nullptr, SHGFP_TYPE_CURRENT, docs );
-
-	std::ofstream f( docs + std::string( "\\o2\\cfg\\" ) + file );
-
-	if ( f.is_open( ) ) {
-		nlohmann::json json;
-
-		for ( const auto& option : oxui::vars::items ) {
-			switch ( option.second.type ) {
-			case oxui::option_type::boolean:
-				json [ "o2" ][ option.first.data( ) ] = option.second.val.b;
-				break;
-			case oxui::option_type::integer:
-				json [ "o2" ][ option.first.data( ) ] = option.second.val.i;
-				break;
-			case oxui::option_type::floating:
-				json [ "o2" ][ option.first.data( ) ] = option.second.val.f;
-				break;
-			case oxui::option_type::string: {
-				std::string str( option.second.val.s );
-				json [ "o2" ][ option.first.data( ) ] = str;
-			} break;
-			case oxui::option_type::color:
-				json [ "o2" ][ option.first.data( ) ][ "r" ] = option.second.val.c.r;
-				json [ "o2" ][ option.first.data( ) ][ "g" ] = option.second.val.c.g;
-				json [ "o2" ][ option.first.data( ) ][ "b" ] = option.second.val.c.b;
-				json [ "o2" ][ option.first.data( ) ][ "a" ] = option.second.val.c.a;
-				break;
-			default:
-				break;
-			}
-		}
-
-		const auto dump = json.dump( );
-
-		f.write( dump.c_str( ), dump.length( ) );
-	}
+void* menu::find_obj( const oxui::str& tab_name, const oxui::str& group_name, const oxui::str& object_name, oxui::object_type otype ) {
+	return window->find_obj( tab_name, group_name, object_name, otype );
 }
 
-void menu::load( const std::string& file ) {
-	char docs [ MAX_PATH ];
-	SHGetFolderPathA( nullptr, CSIDL_PERSONAL, nullptr, SHGFP_TYPE_CURRENT, docs );
+long __stdcall menu::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
+	return window->wndproc( hwnd, msg, wparam, lparam );
+}
 
-	std::ifstream f( docs + std::string( "\\o2\\cfg\\" ) + file );
+void menu::load_default( ) {
+	window->load_state( OSTR("blaster_default.json") );
+}
 
-	if ( f.is_open( ) ) {
-		f.seekg( 0, f.end );
-		size_t length = f.tellg( );
-		f.seekg( 0, f.beg );
+void menu::destroy( ) {
+	panel->destroy( );
+}
 
-		const auto buf = new char [ length ];
+void menu::reset( ) {
+	panel->reset( );
+}
 
-		f.read( buf, length );
+const wchar_t* cur_date( ) {
+	time_t rawtime = 0;
+	tm* timeinfo = nullptr;
 
-		const auto json = nlohmann::json::parse( buf );
+	time( &rawtime );
+	timeinfo = localtime( &rawtime );
 
-		for ( auto& option : oxui::vars::items ) {
-			/* failed to find o2 object */
-			if ( json.find( "o2" ) == json.end( ) )
-				continue;
+	static const wchar_t* wday_name[ ] = {
+		L"sun", L"mon", L"tue", L"wed", L"thu", L"fri", L"sat"
+	};
 
-			const auto base_obj = json [ "o2" ];
+	static const wchar_t* mon_name[ ] = {
+		L"jan", L"feb",  L"mar",  L"apr",  L"may",  L"jun",
+		L"jul", L"aug",  L"sep",  L"oct",  L"nov",  L"dec"
+	};
 
-			/* if key is not found */
-			if ( base_obj.find( option.first ) == base_obj.end( ) )
-				continue;
+	static wchar_t result [ 26 ] { '\0' };
 
-			switch ( option.second.type ) {
-			case oxui::option_type::boolean:
-				option.second.val.b = base_obj [ option.first.data( ) ];
-				break;
-			case oxui::option_type::integer:
-				option.second.val.i = base_obj [ option.first.data( ) ];
-				break;
-			case oxui::option_type::floating:
-				option.second.val.f = base_obj [ option.first.data( ) ];
-				break;
-			case oxui::option_type::string: {
-				char c_str [ 256 ];
-				auto str = base_obj [ option.first.data( ) ].get<std::string>( );
-				std::copy( str.begin( ), str.end( ), c_str );
-				strcpy_s( option.second.val.s, c_str );
-			} break;
-			case oxui::option_type::color:
-				option.second.val.c.r = base_obj[ option.first.data( ) ][ "r" ];
-				option.second.val.c.g = base_obj[ option.first.data( ) ][ "g" ];
-				option.second.val.c.b = base_obj[ option.first.data( ) ][ "b" ];
-				option.second.val.c.a = base_obj[ option.first.data( ) ][ "a" ];
-				break;
-			default:
-				break;
-			}
-		}
+	wsprintfW( result, L"%s %d, %d\n", mon_name [ timeinfo->tm_mon ], timeinfo->tm_mday, 1900 + timeinfo->tm_year );
 
-		delete [ ] buf;
-	}
+	return result;
 }
 
 void menu::init( ) {
-	/* rage_aim */
-	oxui::vars::items [ "checkbox" ].val.b = false; oxui::vars::items [ "checkbox" ].type = oxui::option_type::boolean;
-	oxui::vars::items [ "dropdown" ].val.b = false; oxui::vars::items [ "dropdown" ].type = oxui::option_type::integer;
-	oxui::vars::items [ "slider" ].val.b = false; oxui::vars::items [ "slider" ].type = oxui::option_type::integer;
-	oxui::vars::items [ "listbox" ].val.b = false; oxui::vars::items [ "listbox" ].type = oxui::option_type::integer;
+	panel = std::make_shared< oxui::panel >( ); {
+		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 550, 425 ), OSTR("oxy's hack | ") + oxui::str( cur_date( ) ) ); {
+			window->bind_key( VK_INSERT );
+
+			auto rage = std::make_shared< oxui::tab >( OSTR( "rage") ); {
+				auto aimbot = std::make_shared< oxui::group >( OSTR( "aimbot") ); {
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "ragebot") ) );
+					aimbot->add_element( std::make_shared< oxui::slider >( OSTR( "min dmg" ), 0.0, 0.0, 100.0 ) );
+					aimbot->add_element( std::make_shared< oxui::slider >( OSTR( "hit chance" ), 0.0, 0.0, 100.0 ) );
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "auto-shoot" ) ) );
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "silent" ) ) );
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "auto-scope" ) ) );
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "lagcomp") ) );
+
+					rage->add_group( aimbot );
+					rage->add_columns( 1 );
+				}
+
+				{
+					auto target_selection = std::make_shared< oxui::group >( OSTR( "target selection" )); {
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("head" )) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("neck" )) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("chest") ) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("pelvis" )) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("arms" )) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("legs") ) );
+						target_selection->add_element( std::make_shared< oxui::checkbox >( OSTR("feet") ) );
+
+						rage->add_group( target_selection );
+						rage->add_columns( 1 );
+					}
+				}
+
+				window->add_tab( rage );
+			}
+
+			auto antiaim = std::make_shared< oxui::tab >( OSTR( "antiaim") ); {
+				auto air = std::make_shared< oxui::group >( OSTR( "air") ); {
+					air->add_element( std::make_shared< oxui::checkbox >( OSTR( "aa on air" ) ) );
+					air->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync" ) ) );
+					air->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync side" ) ) );
+					air->add_element( std::make_shared< oxui::checkbox >( OSTR( "jitter desync" ) ) );
+					air->add_element( std::make_shared< oxui::slider >( OSTR( "lag" ), 0.0, 0.0, 16.0 ) );
+					air->add_element( std::make_shared< oxui::slider >( OSTR( "pitch" ), 0.0, -89.0, 89.0 ) );
+					air->add_element( std::make_shared< oxui::slider >( OSTR( "base yaw" ), 0.0, 0.0, 360.0 ) );
+					air->add_element( std::make_shared< oxui::slider >( OSTR( "jitter amount" ), 0.0, 0.0, 180.0 ) );
+
+					antiaim->add_group( air );
+					antiaim->add_columns( 1 );
+				}
+
+				auto moving = std::make_shared< oxui::group >( OSTR( "moving" )); {
+					moving->add_element( std::make_shared< oxui::checkbox >( OSTR( "aa on move") ) );
+					moving->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync" ) ) );
+					moving->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync side" ) ) );
+					moving->add_element( std::make_shared< oxui::checkbox >( OSTR( "jitter desync" ) ) );
+					moving->add_element( std::make_shared< oxui::slider >( OSTR( "slow walk speed" ), 0.0, 0.0, 100.0 ) );
+					moving->add_element( std::make_shared< oxui::slider >( OSTR( "lag" ), 0.0, 0.0, 16.0 ) );
+					moving->add_element( std::make_shared< oxui::slider >( OSTR( "pitch" ), 0.0, -89.0, 89.0 ) );
+					moving->add_element( std::make_shared< oxui::slider >( OSTR( "base yaw" ), 0.0, 0.0, 360.0 ) );
+					moving->add_element( std::make_shared< oxui::slider >( OSTR( "jitter amount" ), 0.0, 0.0, 180.0 ) );
+
+					antiaim->add_group( moving );
+					antiaim->add_columns( 1 );
+				}
+
+				auto standing = std::make_shared< oxui::group >( OSTR( "standing") ); {
+					standing->add_element( std::make_shared< oxui::checkbox >( OSTR( "aa on stand") ) );
+					standing->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync" ) ) );
+					standing->add_element( std::make_shared< oxui::checkbox >( OSTR( "desync side" ) ) );
+					standing->add_element( std::make_shared< oxui::checkbox >( OSTR( "jitter desync" ) ) );
+					standing->add_element( std::make_shared< oxui::slider >( OSTR( "lag" ), 0.0, 0.0, 16.0 ) );
+					standing->add_element( std::make_shared< oxui::slider >( OSTR( "pitch" ), 0.0, -89.0, 89.0 ) );
+					standing->add_element( std::make_shared< oxui::slider >( OSTR( "base yaw" ), 0.0, 0.0, 360.0 ) );
+					standing->add_element( std::make_shared< oxui::slider >( OSTR( "jitter amount" ), 0.0, 0.0, 180.0 ) );
+
+					antiaim->add_group( standing );
+					antiaim->add_columns( 1 );
+				}
+
+				window->add_tab( antiaim );
+			}
+
+			auto legit = std::make_shared< oxui::tab >( OSTR( "legit") ); {
+				auto aimbot = std::make_shared< oxui::group >( OSTR( "aimbot") ); {
+					aimbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "legitbot") ) );
+
+					legit->add_group( aimbot );
+					legit->add_columns( 1 );
+				}
+
+				auto triggerbot = std::make_shared< oxui::group >( OSTR( "triggerbot") ); {
+					triggerbot->add_element( std::make_shared< oxui::checkbox >( OSTR( "triggerbot") ) );
+
+					legit->add_group( triggerbot );
+					legit->add_columns( 1 );
+				}
+
+				window->add_tab( legit );
+			}
+
+			auto visuals = std::make_shared< oxui::tab >( OSTR( "visuals") ); {
+				{
+					auto targets = std::make_shared< oxui::group >( OSTR( "targets") ); {
+						targets->add_element( std::make_shared< oxui::checkbox >( OSTR("team") ) );
+						targets->add_element( std::make_shared< oxui::checkbox >( OSTR("enemy") ) );
+						targets->add_element( std::make_shared< oxui::checkbox >( OSTR("local") ) );
+						targets->add_element( std::make_shared< oxui::checkbox >( OSTR("weapon") ) );
+
+						visuals->add_group( targets );
+					}
+
+					auto glow = std::make_shared< oxui::group >( OSTR( "glow" )); {
+						glow->add_element( std::make_shared< oxui::checkbox >( OSTR("glow" )) );
+						glow->add_element( std::make_shared< oxui::checkbox >( OSTR("rim" )) );
+
+						visuals->add_group( glow );
+					}
+
+					visuals->add_columns( 2 );
+				}
+
+				auto esp = std::make_shared< oxui::group >( OSTR( "esp") ); {
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("esp" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("box" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("health" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("name" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("weapon" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("desync" )) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR( "979" ) ) );
+					esp->add_element( std::make_shared< oxui::checkbox >( OSTR("lagcomp") ) );
+
+					visuals->add_group( esp );
+					visuals->add_columns( 1 );
+				}
+
+				{
+					auto chams = std::make_shared< oxui::group >( OSTR( "chams") ); {
+						chams->add_element( std::make_shared< oxui::checkbox >( OSTR( "chams" ) ) );
+						chams->add_element( std::make_shared< oxui::checkbox >( OSTR( "flat" ) ) );
+						chams->add_element( std::make_shared< oxui::checkbox >(OSTR("xqz") ) );
+						chams->add_element( std::make_shared< oxui::checkbox >( OSTR( "lagcomp" ) ) );
+						chams->add_element( std::make_shared< oxui::slider >( OSTR( "reflectivity" ), 0.0, 0.0, 1.0 ) );
+						chams->add_element( std::make_shared< oxui::slider >( OSTR( "luminance" ), 0.0, 0.0, 1.0 ) );
+
+						visuals->add_group( chams );
+					}
+
+					/*
+					auto world = std::make_shared< oxui::group >( OSTR( "world" )); {
+						world->add_element( std::make_shared< oxui::checkbox >( OSTR( "night") ) );
+
+						visuals->add_group( world );
+					}
+					*/
+
+					visuals->add_columns( 1 );
+				}
+
+				window->add_tab( visuals );
+			}
+
+			auto misc = std::make_shared< oxui::tab >( OSTR( "misc") ); {
+				auto movement = std::make_shared< oxui::group >( OSTR( "movement" )); {
+					movement->add_element( std::make_shared< oxui::checkbox >( OSTR("bhop" )) );
+					movement->add_element( std::make_shared< oxui::checkbox >( OSTR("strafer" )) );
+					movement->add_element( std::make_shared< oxui::checkbox >( OSTR("directional") ) );
+
+					misc->add_group( movement );
+					misc->add_columns( 1 );
+				}
+
+				auto effects = std::make_shared< oxui::group >( OSTR( "effects") ); {
+					effects->add_element( std::make_shared< oxui::checkbox >( OSTR( "third-person" ) ) );
+
+					misc->add_group( effects );
+					misc->add_columns( 1 );
+				}
+
+				window->add_tab( misc );
+			}
+
+			auto configs = std::make_shared< oxui::tab >( OSTR( "config") ); {
+				auto configs_list = std::make_shared< oxui::group >( OSTR( "configs list") ); {
+					configs->add_group( configs_list );
+					configs->add_columns( 1 );
+				}
+
+				auto config_controls = std::make_shared< oxui::group >( OSTR( "config controls") ); {
+					config_controls->add_element( std::make_shared< oxui::checkbox >( OSTR( "auto-save" )) );
+					config_controls->add_element( std::make_shared< oxui::button >( OSTR("save"), [ & ] ( ) { window->save_state( OSTR("blaster_default.json") ); } ) );
+					config_controls->add_element( std::make_shared< oxui::button >( OSTR("load"), [ & ] ( ) { window->load_state( OSTR("blaster_default.json") ); } ) );
+
+					configs->add_group( config_controls );
+					configs->add_columns( 1 );
+				}
+
+				window->add_tab( configs );
+			}
+
+			auto scripts = std::make_shared< oxui::tab >( OSTR( "scripts" )); {
+				auto scripts_list = std::make_shared< oxui::group >( OSTR( "scripts list" )); {
+					scripts->add_group( scripts_list );
+					scripts->add_columns( 1 );
+				}
+
+				auto script_controls = std::make_shared< oxui::group >( OSTR( "script controls" )); {
+					scripts->add_group( script_controls );
+					scripts->add_columns( 1 );
+				}
+
+				window->add_tab( scripts );
+			}
+
+			panel->add_window( window );
+		}
+	}
 }
 
-void menu::render( ) {
-	/* menu */
-	oxui::update_anims( csgo::i::globals->m_curtime );
-
-	const auto menu_w = 450;
-	const auto menu_h = 500;
-
-	/* create a new window */
-	if ( oxui::begin( oxui::dimension( menu_w, menu_h ), "blaster", oxui::window_flags::none ) ) {
-		/* tabs */
-		if ( oxui::begin_tabs( 6 ) ) {
-			oxui::tab( "rage", false, oxui::color { 102, 204, 255, 255 } );
-			oxui::tab( "legit", false, oxui::color { 102, 181, 255, 255 } );
-			oxui::tab( "visuals", false, oxui::color { 102, 148, 255, 255 } );
-			oxui::tab( "skins", false, oxui::color { 102, 125, 255, 255 } );
-			oxui::tab( "misc", false, oxui::color { 102, 125, 255, 255 } );
-			oxui::tab( "scripts", false, oxui::color { 102, 105, 255, 255 } );
-
-			/* end tabs */
-			oxui::end_tabs( );
-		}
-		
-		const auto category_w = menu_w / 2 - 12 * 2 - 12 / 2;
-		const auto category_h = menu_h - 30 - 12 * 3;
-		const auto category_2col_h = menu_h / 2 - 30 - 12 - 12 / 2;
-		const auto category_internal_w = category_w - 12 * 3 - 12 / 2;
-		const auto category_internal_h = category_h - 12 * 5;
-
-		/* menu items */
-		if ( oxui::vars::cur_tab_num ) {
-			switch ( oxui::vars::cur_tab_num ) {
-			case 1: {
-				if ( oxui::begin_category( "aimbot", oxui::dimension( category_w, category_h ) ) ) {
-					oxui::checkbox( "checkbox", "checkbox" );
-					oxui::dropdown( "dropdown", "dropdown", { "one", "two", "three" } );
-					oxui::slider( "slider", "slider", 0, 100, true );
-					oxui::button( "button" );
-					oxui::listbox( "listbox", "listbox", { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twlve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty" } );
-
-					oxui::end_category( );
-				}
-
-				oxui::set_cursor_pos( oxui::point( oxui::vars::pos.x + menu_w / 2 + 12 / 2, oxui::vars::pos.y + 30 + 12 ) );
-
-				if ( oxui::begin_category( "anti-aim", oxui::dimension( category_w, category_h ) ) ) {
-					oxui::checkbox( "checkbox", "checkbox" );
-					oxui::dropdown( "dropdown", "dropdown", { "1", "2", "3" } );
-					oxui::slider( "slider", "slider", 0, 100, true );
-					oxui::button( "button" );
-					oxui::listbox( "listbox", "listbox", { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twlve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty" } );
-
-					oxui::end_category( );
-				}
-				break;
-			}
-			case 2: {
-				break;
-			}
-			case 3: {
-				break;
-			}
-			case 4: {
-				break;
-			}
-			case 5: {
-				break;
-			}
-			case 6: {
-				break;
-			}
-			}
-		}
-
-		/* end window */
-		oxui::end( );
-	}
+void menu::draw( ) {
+	panel->render( csgo::i::globals->m_curtime );
 }
