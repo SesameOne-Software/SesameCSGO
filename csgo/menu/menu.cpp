@@ -1,4 +1,4 @@
-#include <time.h>
+﻿#include <time.h>
 #include "menu.hpp"
 #include "../sdk/sdk.hpp"
 
@@ -18,7 +18,7 @@ long __stdcall menu::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wpara
 }
 
 void menu::load_default( ) {
-	window->load_state( OSTR("blaster_default.json") );
+	window->load_state( OSTR("wcdef.json") );
 }
 
 void menu::destroy( ) {
@@ -54,7 +54,7 @@ const wchar_t* cur_date( ) {
 
 void menu::init( ) {
 	panel = std::make_shared< oxui::panel >( ); {
-		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 550, 425 ), OSTR("oxy's hack | ") + oxui::str( cur_date( ) ) ); {
+		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 550, 425 ), OSTR("WeCheat | ") + oxui::str( cur_date( ) ) ); {
 			window->bind_key( VK_INSERT );
 
 			auto rage = std::make_shared< oxui::tab >( OSTR( "rage") ); {
@@ -235,19 +235,29 @@ void menu::init( ) {
 				window->add_tab( misc );
 			}
 
-			auto configs = std::make_shared< oxui::tab >( OSTR( "config") ); {
-				auto configs_list = std::make_shared< oxui::group >( OSTR( "configs list") ); {
+			auto configs = std::make_shared< oxui::tab >( OSTR( "settings") ); {
+				auto configs_list = std::make_shared< oxui::group >( OSTR( "config list") ); {
 					configs->add_group( configs_list );
 					configs->add_columns( 1 );
 				}
 
-				auto config_controls = std::make_shared< oxui::group >( OSTR( "config controls") ); {
-					config_controls->add_element( std::make_shared< oxui::checkbox >( OSTR( "auto-save" )) );
-					config_controls->add_element( std::make_shared< oxui::button >( OSTR("save"), [ & ] ( ) { window->save_state( OSTR("blaster_default.json") ); } ) );
-					config_controls->add_element( std::make_shared< oxui::button >( OSTR("load"), [ & ] ( ) { window->load_state( OSTR("blaster_default.json") ); } ) );
+				{
+					auto config_controls = std::make_shared< oxui::group >( OSTR( "config actions" ) ); {
+						config_controls->add_element( std::make_shared< oxui::checkbox >( OSTR( "auto-save" ) ) );
+						config_controls->add_element( std::make_shared< oxui::button >( OSTR( "save" ), [ & ] ( ) { window->save_state( OSTR( "wcdef.json" ) ); } ) );
+						config_controls->add_element( std::make_shared< oxui::button >( OSTR( "load" ), [ & ] ( ) { window->load_state( OSTR( "wcdef.json" ) ); } ) );
 
-					configs->add_group( config_controls );
-					configs->add_columns( 1 );
+						configs->add_group( config_controls );
+					}
+
+					auto language_settings = std::make_shared< oxui::group >( OSTR( "language settings" ) ); {
+						language_settings->add_element( std::make_shared< oxui::checkbox >( OSTR( "简体中文" ) ) );
+						language_settings->add_element( std::make_shared< oxui::checkbox >( OSTR( "日本語" ) ) );
+
+						configs->add_group( language_settings );
+					}
+
+					configs->add_columns( 2 );
 				}
 
 				window->add_tab( configs );

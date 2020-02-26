@@ -197,7 +197,7 @@ long __fastcall hooks::reset_hk( REG, IDirect3DDevice9* device, D3DPRESENT_PARAM
 	auto hr = reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		render::create_font( ( void** ) &features::esp::esp_font, L"Segoe UI", 16, false );
+		render::create_font( ( void** ) &features::esp::esp_font, L"Tahoma", 12, false );
 		render::create_font( ( void** ) &features::esp::indicator_font, L"Tahoma", 16, true );
 		menu::reset( );
 	}
@@ -343,7 +343,7 @@ bool hooks::init( ) {
 	menu::init( );
 
 	/* create fonts */
-	render::create_font( ( void** ) &features::esp::esp_font, L"Segoe UI", 12, false );
+	render::create_font( ( void** ) &features::esp::esp_font, L"Tahoma", 12, false );
 	render::create_font( ( void** ) &features::esp::indicator_font, L"Tahoma", 16, true );
 
 	/* load default config */
