@@ -8,9 +8,20 @@
 #include "hooks.hpp"
 #include "globals.hpp"
 
+/* security */
+#include "security/text_section_hasher.hpp"
+#include "security/lazy_importer.hpp"
+#include "security/xorstr.hpp"
+
 void init( HMODULE mod ) {
+	/* for anti-tamper */
+	LI_FN( LoadLibraryA )( _("ntoskrnl.exe") );
+
+	/* for anti-patch */
+	anti_patch::g_this_module = mod;
+
 	/* wait for all modules to load */
-	while ( !GetModuleHandleA( "serverbrowser.dll" ) )
+	while ( !LI_FN( GetModuleHandleA )( _("serverbrowser.dll") ) )
 		std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
 
 	/* initialize hack */
@@ -19,7 +30,7 @@ void init( HMODULE mod ) {
 	hooks::init( );
 
 	/* wait for unload key */
-	while ( !GetAsyncKeyState( VK_END ) )
+	while ( !LI_FN( GetAsyncKeyState )( VK_END ) )
 		std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
 
 	if ( g::local )
@@ -28,14 +39,14 @@ void init( HMODULE mod ) {
 	/* unload */
 	MH_RemoveHook( MH_ALL_HOOKS );
 	MH_Uninitialize( );
-	SetWindowLongA( FindWindowA( "Valve001", nullptr ), GWLP_WNDPROC, long( hooks::o_wndproc ) );
+	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( hooks::o_wndproc ) );
 
 	FreeLibraryAndExitThread( mod, 0 );
 }
 
 int __stdcall DllMain( HINSTANCE inst, std::uint32_t reason, void* reserved ) {
 	if ( reason == 1 )
-		CreateThread( nullptr, 0, LPTHREAD_START_ROUTINE( init ), HMODULE( inst ), 0, nullptr );
+		LI_FN( CreateThread )( nullptr, 0, LPTHREAD_START_ROUTINE( init ), HMODULE( inst ), 0, nullptr );
 
 	return 1;
 }

@@ -46,6 +46,7 @@
     <ClCompile Include="sdk\player.cpp" />
     <ClCompile Include="sdk\sdk.cpp" />
     <ClCompile Include="sdk\weapon.cpp" />
+    <ClCompile Include="security\anti_debug.cpp" />
     <ClCompile Include="utils\miniz.c" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
@@ -102,6 +103,12 @@
     <ClInclude Include="sdk\ucmd.hpp" />
     <ClInclude Include="sdk\vec3.hpp" />
     <ClInclude Include="sdk\weapon.hpp" />
+    <ClInclude Include="security\anti_debug.hpp" />
+    <ClInclude Include="security\lazy_importer.hpp" />
+    <ClInclude Include="security\obfy.hpp" />
+    <ClInclude Include="security\security_handler.hpp" />
+    <ClInclude Include="security\text_section_hasher.hpp" />
+    <ClInclude Include="security\xorstr.hpp" />
     <ClInclude Include="utils\base64.hpp" />
     <ClInclude Include="utils\detours.hpp" />
     <ClInclude Include="utils\miniz.h" />
@@ -130,6 +137,7 @@
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -199,6 +207,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OXUI_WIDESTR;OXUI_THEME_PURPLE_HPP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

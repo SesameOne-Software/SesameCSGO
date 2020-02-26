@@ -75,6 +75,12 @@
     <Filter Include="Source Files\animations">
       <UniqueIdentifier>{af59fed1-4440-4f5d-97ed-a66396903510}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\security">
+      <UniqueIdentifier>{bfbb7c62-8f74-4aa2-b127-184fefc8212b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\security">
+      <UniqueIdentifier>{1f4cc87e-e3ff-4633-bab9-74a7c6e6dba8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\d3d9.hpp">
@@ -257,6 +263,24 @@
     <ClInclude Include="features\prediction.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
+    <ClInclude Include="security\anti_debug.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="security\obfy.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="security\text_section_hasher.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="security\xorstr.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="security\security_handler.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="security\lazy_importer.hpp">
+      <Filter>Header Files\security</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -345,6 +369,9 @@
     </ClCompile>
     <ClCompile Include="features\prediction.cpp">
       <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="security\anti_debug.cpp">
+      <Filter>Source Files\security</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
