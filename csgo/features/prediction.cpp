@@ -12,8 +12,8 @@ namespace prediction_util {
 	uintptr_t prediction_seed;
 
 	void post_think( player_t* local ) {
-		static auto post_think_vphysics = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 8B D9 56 57 83 BB ? ? ? ? ? 75 50" ).get< bool( __thiscall* )( entity_t* ) >( );
-		static auto simulate_player_simulated_entities = pattern::search( "client_panorama.dll", "56 8B F1 57 8B BE ? ? ? ? 83 EF 01 78 72 90 8B 86" ).get< void( __thiscall* )( entity_t* ) >( );
+		static auto post_think_vphysics = pattern::search( _( "client_panorama.dll"),_( "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 8B D9 56 57 83 BB ? ? ? ? ? 75 50") ).get< bool( __thiscall* )( entity_t* ) >( );
+		static auto simulate_player_simulated_entities = pattern::search( _( "client_panorama.dll"), _( "56 8B F1 57 8B BE ? ? ? ? 83 EF 01 78 72 90 8B 86") ).get< void( __thiscall* )( entity_t* ) >( );
 
 		MDLCACHE_CRITICAL_SECTION( );
 
@@ -54,8 +54,8 @@ namespace prediction_util {
 			movedata = std::malloc( 182 );
 
 		if ( !prediction_player || !prediction_seed ) {
-			prediction_seed = pattern::search( "client_panorama.dll", "8B 47 40 A3" ).add( 4 ).deref( ).get< std::uintptr_t >( );
-			prediction_player = pattern::search( "client_panorama.dll", "0F 5B C0 89 35" ).add( 5 ).deref( ).get< std::uintptr_t >( );
+			prediction_seed = pattern::search( _( "client_panorama.dll"), _( "8B 47 40 A3") ).add( 4 ).deref( ).get< std::uintptr_t >( );
+			prediction_player = pattern::search( _( "client_panorama.dll"), _( "0F 5B C0 89 35") ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;

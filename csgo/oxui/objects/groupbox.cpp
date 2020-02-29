@@ -21,9 +21,10 @@ void oxui::group::draw( ) {
 	auto& cursor_pos = parent_window.cursor_pos;
 
 	shapes::box( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), fade_timer, true, true, true, true, true );
-	shapes::box( rect( cursor_pos.x, cursor_pos.y, area.w, 26 ), fade_timer, true, true, false, true, true );
+	binds::fill_rect( rect( cursor_pos.x, cursor_pos.y, area.w, 26 ), theme.title_bar );
+	shapes::box( rect( cursor_pos.x, cursor_pos.y, area.w, 26 ), fade_timer, true, true, false, true, true, false );
 	shapes::box( rect( cursor_pos.x, cursor_pos.y, area.w, 26 ), 0.0, false, false, true, false, false, false );
-	binds::text( pos( cursor_pos.x + 6, cursor_pos.y + 4 ), tfont, title, theme.text, true );
+	binds::text( pos( cursor_pos.x + 6, cursor_pos.y + 4 ), tfont, title, theme.title_text, false );
 
 	/* move all objects inside group */
 	cursor_pos.x += theme.spacing;

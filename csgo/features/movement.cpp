@@ -3,9 +3,9 @@
 #include "../globals.hpp"
 
 void features::movement::run( ucmd_t* ucmd ) {
-	FIND( bool, bhop, "misc", "movement", "bhop", oxui::object_checkbox );
-	FIND( bool, strafer, "misc", "movement", "strafer", oxui::object_checkbox );
-	FIND( bool, directional, "misc", "movement", "directional", oxui::object_checkbox );
+	FIND( bool, bhop, "Misc.", "Movement", "Bhop", oxui::object_checkbox );
+	FIND( bool, strafer, "Misc.", "Movement", "Strafer", oxui::object_checkbox );
+	FIND( bool, directional, "Misc.", "Movement", "Directional", oxui::object_checkbox );
 
 	if ( !g::local->valid( )
 		|| g::local->movetype( ) == movetypes::movetype_noclip

@@ -29,7 +29,7 @@ void oxui::checkbox::draw( ) {
 	auto check_dimensions = rect( 0, 0, 10, 6 );
 
 	/* centered text */
-	binds::text( pos( cursor_pos.x + 6, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, true );
+	binds::text( pos( cursor_pos.x + 6, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, false );
 	
 	/* check box */
 	binds::rect( rect( cursor_pos.x + area.w - check_dimensions.w - 6, area_center_y - check_dimensions.h / 2, check_dimensions.w, check_dimensions.h ), theme.main );

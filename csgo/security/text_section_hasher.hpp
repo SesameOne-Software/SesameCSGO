@@ -1,3 +1,4 @@
+#pragma once
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <DbgHelp.h>
@@ -9,7 +10,7 @@
 
 namespace anti_patch {
 	static uint64_t g_text_section_hash;
-	static void* g_this_module;
+	static uintptr_t g_this_module;
 
 	typedef struct {
 		LPVOID lpVirtualAddress;
@@ -21,31 +22,8 @@ namespace anti_patch {
 		SECTIONINFO SectionInfo;
 	} HASHSET, * PHASHSET;
 
-	static int GetAllModule( std::vector<LPVOID>& modules ) {
-		MODULEENTRY32W mEntry;
-		memset( &mEntry, 0, sizeof( mEntry ) );
-		mEntry.dwSize = sizeof( MODULEENTRY32 );
-
-		DWORD curPid = GetCurrentProcessId( );
-
-		HANDLE hSnapshot = CreateToolhelp32Snapshot( TH32CS_SNAPMODULE, NULL );
-		if ( Module32FirstW( hSnapshot, &mEntry ) ) {
-			do {
-				modules.emplace_back( mEntry.modBaseAddr );
-			} while ( Module32NextW( hSnapshot, &mEntry ) );
-		}
-
-		CloseHandle( hSnapshot );
-
-		if ( modules.empty( ) ) {
-			return -1;
-		}
-
-		return 0;
-	}
-
-	static int GetTextSectionInfo( LPVOID lpModBaseAddr, PSECTIONINFO info ) {
-		PIMAGE_NT_HEADERS pNtHdr = ImageNtHeader( lpModBaseAddr );
+	static __forceinline int GetTextSectionInfo( uintptr_t lpModBaseAddr, PSECTIONINFO info ) {
+		PIMAGE_NT_HEADERS pNtHdr = LI_FN( ImageNtHeader )( (void*)lpModBaseAddr );
 		PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER ) ( pNtHdr + 1 );
 
 		LPVOID lpTextAddr = NULL;
@@ -54,7 +32,7 @@ namespace anti_patch {
 		for ( int i = 0; i < pNtHdr->FileHeader.NumberOfSections; ++i ) {
 			char* name = ( char* ) pSectionHeader->Name;
 
-			if ( !strcmp( name, ".text" ) ) {
+			if ( !strcmp( name, _( ".text" ) ) ) {
 				info->lpVirtualAddress = ( LPVOID ) ( ( DWORD64 ) lpModBaseAddr + pSectionHeader->VirtualAddress );
 				info->dwSizeOfRawData = pSectionHeader->SizeOfRawData;
 				break;
@@ -70,7 +48,7 @@ namespace anti_patch {
 		return 0;
 	}
 
-	static DWORD64 HashSection( LPVOID lpSectionAddress, DWORD dwSizeOfRawData ) {
+	static __forceinline DWORD64 HashSection( LPVOID lpSectionAddress, DWORD dwSizeOfRawData ) {
 		DWORD64 hash = 0;
 		BYTE* str = ( BYTE* ) lpSectionAddress;
 		for ( int i = 0; i < dwSizeOfRawData; ++i, ++str ) {
@@ -80,14 +58,5 @@ namespace anti_patch {
 		}
 
 		return hash;
-	}
-
-	static __forceinline void verify_text_section( ) {
-		SECTIONINFO info;
-		GetTextSectionInfo( g_this_module, &info );
-
-		/* text section was patched */
-		if ( g_text_section_hash != HashSection( info.lpVirtualAddress, info.dwSizeOfRawData ) )
-			security_handler::handle_tampering( );
 	}
 }

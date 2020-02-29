@@ -9,44 +9,69 @@
 #include "globals.hpp"
 
 /* security */
-#include "security/text_section_hasher.hpp"
-#include "security/lazy_importer.hpp"
-#include "security/xorstr.hpp"
+#include "security/security_handler.hpp"
 
-void init( HMODULE mod ) {
+FILE* g_fp;
+
+int __stdcall init( uintptr_t mod ) {
+	OBF_BEGIN
+
+	/* open console debug window */
+#ifdef DEV_BUILD
+	// LI_FN( AllocConsole )( );
+	// freopen_s( &g_fp, _( "CONOUT$" ), _( "w" ), stdout );
+#endif // DEV_BUILD
+
 	/* for anti-tamper */
 	LI_FN( LoadLibraryA )( _("ntoskrnl.exe") );
 
-	/* for anti-patch */
-	anti_patch::g_this_module = mod;
-
 	/* wait for all modules to load */
-	while ( !LI_FN( GetModuleHandleA )( _("serverbrowser.dll") ) )
-		std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+	WHILE( !LI_FN( GetModuleHandleA )( _("serverbrowser.dll") ) )
+		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
+	ENDWHILE
 
 	/* initialize hack */
 	csgo::init( );
 	netvars::init( );
 	hooks::init( );
 
-	/* wait for unload key */
-	while ( !LI_FN( GetAsyncKeyState )( VK_END ) )
-		std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+	std::this_thread::sleep_for( std::chrono::seconds( N( 1 ) ) );
 
-	if ( g::local )
-		g::local->animate( ) = true;
+	static const auto hash_once = security_handler::store_text_section_hash( V( mod ) );
+
+	/* wait for quick unload key (only if dev build) */
+#ifdef DEV_BUILD
+	WHILE ( !LI_FN( GetAsyncKeyState )( N( VK_END ) ) )
+#elif
+	WHILE ( true )
+#endif // DEV_BUILD
+		/* run anti-debug */
+		security_handler::update( );
+		std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
+	ENDWHILE
 
 	/* unload */
 	MH_RemoveHook( MH_ALL_HOOKS );
 	MH_Uninitialize( );
+
+	IF ( g::local )
+		g::local->animate( ) = true;
+	ENDIF
+
+#ifdef DEV_BUILD
+	// LI_FN( FreeConsole )( );
+#endif // DEV_BUILD
+
 	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( hooks::o_wndproc ) );
 
-	FreeLibraryAndExitThread( mod, 0 );
+	OBF_END
+
+	LI_FN( FreeLibraryAndExitThread )( HMODULE( mod ), N( 0 ) );
 }
 
 int __stdcall DllMain( HINSTANCE inst, std::uint32_t reason, void* reserved ) {
-	if ( reason == 1 )
-		LI_FN( CreateThread )( nullptr, 0, LPTHREAD_START_ROUTINE( init ), HMODULE( inst ), 0, nullptr );
+	if ( reason == N( 1 ) )
+		LI_FN( CreateThread )( nullptr, N( 0 ), LPTHREAD_START_ROUTINE( init ), HMODULE( inst ), N( 0 ), nullptr );
 
-	return 1;
+	return N( 1 );
 }

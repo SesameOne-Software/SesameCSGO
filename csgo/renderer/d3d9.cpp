@@ -1,5 +1,6 @@
 #include "d3d9.hpp"
 #include "../sdk/sdk.hpp"
+#include "../security/security_handler.hpp"
 
 struct vtx_t {
 	float x, y, z, rhw;
@@ -14,7 +15,7 @@ struct custom_vtx_t {
 
 void render::create_font( void** font, const std::wstring_view& family, int size, bool bold ) {
 	ID3DXFont* d3d_font = nullptr;
-	D3DXCreateFontW( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 1, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, 0, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
+	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_NORMAL : FW_ULTRALIGHT, 0, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
 	*font = d3d_font;
 }
 
@@ -30,10 +31,10 @@ void render::text_size( void* font, const std::wstring_view& text, dim& dimentio
 
 void render::rectangle( int x, int y, int width, int height, std::uint32_t color ) {
 	vtx_t vert [ 4 ] = {
-		{ x - 0.5f, y - 0.5f, 0.0f, 1.0f, color },
-		{ x + width - 0.5f, y - 0.5f, 0.0f, 1.0f, color },
-		{ x - 0.5f, y + height - 0.5f, 0.0f, 1.0f, color },
-		{ x + width - 0.5f, y + height - 0.5f, 0.0f, 1.0f, color }
+		{ x, y, 0.0f, 1.0f, color },
+		{ x + width, y, 0.0f, 1.0f, color },
+		{ x, y + height, 0.0f, 1.0f, color },
+		{ x + width, y + height, 0.0f, 1.0f, color }
 	};
 
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
@@ -63,12 +64,11 @@ void render::gradient( int x, int y, int width, int height, std::uint32_t color1
 		c4 = d3d_clr2;
 	}
 
-
 	vtx_t vert [ 4 ] = {
-		{ x - 0.5f, y - 0.5f, 0.0f, 1.0f, c1 },
-		{ x + width - 0.5f, y - 0.5f, 0.0f, 1.0f, c2 },
-		{ x - 0.5f, y + height - 0.5f, 0.0f, 1.0f, c3 },
-		{ x + width - 0.5f, y + height - 0.5f, 0.0f, 1.0f, c4 }
+		{ x, y, 0.0f, 1.0f, c1 },
+		{ x + width, y, 0.0f, 1.0f, c2 },
+		{ x, y + height, 0.0f, 1.0f, c3 },
+		{ x + width, y + height, 0.0f, 1.0f, c4 }
 	};
 
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
@@ -89,8 +89,8 @@ void render::outline( int x, int y, int width, int height, std::uint32_t color )
 
 void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 	vtx_t vert [ 2 ] = {
-		{ x - 0.5f, y - 0.5f, 0.0f, 1.0f, color },
-		{ x2 - 0.5f, y2 - 0.5f, 0.0f, 1.0f, color }
+		{ x, y, 0.0f, 1.0f, color },
+		{ x2, y2, 0.0f, 1.0f, color }
 	};
 
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
@@ -104,8 +104,10 @@ void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 
 void render::text( int x, int y, std::uint32_t color, void* font, const std::wstring_view& text ) {
 	RECT rect;
-	SetRect( &rect, x, y, x, y );
+	LI_FN( SetRect )( &rect, x, y, x, y );
+	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, true );
 	reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, color );
+	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
 }
 
 void render::circle( int x, int y, int radius, int segments, std::uint32_t color ) {
@@ -113,15 +115,15 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 
 	const auto angle = 360.0f * D3DX_PI / 180.0f;
 
-	circle [ 0 ].x = x - 0.5f;
-	circle [ 0 ].y = y - 0.5f;
+	circle [ 0 ].x = x;
+	circle [ 0 ].y = y;
 	circle [ 0 ].z = 0;
 	circle [ 0 ].rhw = 1;
 	circle [ 0 ].color = color;
 
 	for ( auto i = 1; i < segments + 2; i++ ) {
-		circle [ i ].x = ( float ) ( x - radius * std::cosf( D3DX_PI * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
-		circle [ i ].y = ( float ) ( y - radius * std::sinf( D3DX_PI * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
+		circle [ i ].x = ( float ) ( x - radius * std::cosf( D3DX_PI * ( ( i - 1 ) / ( segments / 2.0f ) ) ) );
+		circle [ i ].y = ( float ) ( y - radius * std::sinf( D3DX_PI * ( ( i - 1 ) / ( segments / 2.0f ) ) ) );
 		circle [ i ].z = 0;
 		circle [ i ].rhw = 1;
 		circle [ i ].color = color;
@@ -130,8 +132,8 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 	const auto _res = segments + 2;
 
 	for ( auto i = 0; i < _res; i++ ) {
-		circle [ i ].x = x + std::cosf( angle ) * ( circle [ i ].x - x ) - std::sinf( angle ) * ( circle [ i ].y - y ) - 0.5f;
-		circle [ i ].y = y + std::sinf( angle ) * ( circle [ i ].x - x ) + std::cosf( angle ) * ( circle [ i ].y - y ) - 0.5f;
+		circle [ i ].x = x + std::cosf( angle ) * ( circle [ i ].x - x ) - std::sinf( angle ) * ( circle [ i ].y - y );
+		circle [ i ].y = y + std::sinf( angle ) * ( circle [ i ].x - x ) + std::cosf( angle ) * ( circle [ i ].y - y );
 	}
 
 	IDirect3DVertexBuffer9* vb = nullptr;
@@ -162,13 +164,13 @@ void render::texture( unsigned char* data, int x, int y, int width, int height, 
 	D3DXMATRIX mat;
 	D3DXVECTOR2 scaling( scale, scale );
 
-	D3DXMatrixTransformation2D( &mat, nullptr, 0.0f, &scaling, &center, 0.0f, &trans );
+	LI_FN( D3DXMatrixTransformation2D )( &mat, nullptr, 0.0f, &scaling, &center, 0.0f, &trans );
 
 	ID3DXSprite* sprite = nullptr;
-	D3DXCreateSprite( csgo::i::dev, &sprite );
+	LI_FN( D3DXCreateSprite )( csgo::i::dev, &sprite );
 
 	IDirect3DTexture9* tex = nullptr;
-	D3DXCreateTextureFromFileInMemory( csgo::i::dev, data, 4 * width * height, &tex );
+	LI_FN( D3DXCreateTextureFromFileInMemory )( csgo::i::dev, data, 4 * width * height, &tex );
 
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
 	csgo::i::dev->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
@@ -187,12 +189,12 @@ void render::texture( unsigned char* data, int x, int y, int width, int height, 
 }
 
 void render::clip_rect( int x, int y, int width, int height ) {
-	RECT rect { x - 0.5f, y - 0.5f, x + width - 0.5f, y + height - 0.5f };
+	RECT rect { x, y, x + width, y + height };
 	csgo::i::dev->SetScissorRect( &rect );
 }
 
 bool render::key_pressed( const std::uint32_t key ) {
-	return GetAsyncKeyState( key );
+	return LI_FN( GetAsyncKeyState )( key );
 }
 
 void render::mouse_pos( pos& position ) {

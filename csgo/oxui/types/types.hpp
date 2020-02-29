@@ -4,14 +4,17 @@
 #include <memory>
 #include <string_view>
 #include <algorithm>
+#include "../../security/xorstr.hpp"
 
 namespace oxui {
+#define	ENC_OSTR( x ) _( x )
+
 #ifdef OXUI_WIDESTR
 	using str = std::basic_string< wchar_t >;
-#define OSTR( str ) L##str
+#define OSTR( str ) ENC_OSTR( L##str )
 #else
 	using str = std::basic_string< char >;
-#define OSTR
+#define OSTR( str ) ENC_OSTR( str )
 #endif // OXUI_WIDESTR
 
 	class pos {

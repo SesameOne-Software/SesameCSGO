@@ -12,20 +12,13 @@ namespace animations {
 
 	namespace fake {
 		std::array< matrix3x4_t, 128 >& matrix( );
-		void simulate( );
+		int simulate( );
 	}
 
-	struct bone_setup_args {
-		struct animating* m_anim;
-		matrix3x4_t* m_mat;
-		int m_bone_count, m_mask;
-		float m_seed;
-	};
-
-	void force_animation_skip( struct animating* a, bool skip_anim_frame );
-	void fix_matrix_construction( struct animating* a );
+	int force_animation_skip( uintptr_t a, bool skip_anim_frame );
+	int fix_matrix_construction( uintptr_t a );
 	bool build_matrix( player_t* pl );
-	void fix_local( );
-	void fix_pl( player_t* pl );
-	void run( int stage );
+	int fix_local( );
+	int fix_pl( player_t* pl );
+	int run( int stage );
 }

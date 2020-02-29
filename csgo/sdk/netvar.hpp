@@ -2,27 +2,29 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include "../security/xorstr.hpp"
+#include "../security/security_handler.hpp"
 
 #define NETVAR_ADDITIVE( t, func, name, off ) \
 t& func( ) { \
-	static auto offset = netvars::get_offset( name ); \
-	return *( t* ) ( std::uintptr_t( this ) + offset + off ); \
+	static auto offset = netvars::get_offset( _( name ) ); \
+	return *( t* ) ( std::uintptr_t( this ) + offset + N( off ) ); \
 }
 
 #define NETVAR( t, func, name ) \
 t& func( ) { \
-	static auto offset = netvars::get_offset( name ); \
+	static auto offset = netvars::get_offset( _( name ) ); \
 	return *( t* ) ( std::uintptr_t( this ) + offset ); \
 }
 
 #define OFFSET( t, func, offset ) \
 t& func( ) { \
-	return *( t* ) ( std::uintptr_t( this ) + offset ); \
+	return *( t* ) ( std::uintptr_t( this ) + N( offset ) ); \
 }
 
 #define POFFSET( t, func, offset ) \
 t func( ) { \
-	return ( t ) ( std::uintptr_t( this ) + offset ); \
+	return ( t ) ( std::uintptr_t( this ) + N( offset ) ); \
 }
 
 struct recv_table_t;

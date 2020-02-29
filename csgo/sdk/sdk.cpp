@@ -32,7 +32,7 @@ c_mdl_cache_critical_section::~c_mdl_cache_critical_section( ) {
 }
 
 bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
-	static auto view_matrix = pattern::search( "client_panorama.dll", "0F 10 05 ? ? ? ? 8D 85 ? ? ? ? B9" ).add( 3 ).deref( ).add( 176 ).get< std::uintptr_t >( );
+	static auto view_matrix = pattern::search( _( "client_panorama.dll"), _( "0F 10 05 ? ? ? ? 8D 85 ? ? ? ? B9") ).add( 3 ).deref( ).add( 176 ).get< std::uintptr_t >( );
 
 	const auto& world_matrix = *( matrix3x4_t* ) view_matrix;
 
@@ -85,12 +85,11 @@ void csgo::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32
 }
 
 void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace_ptr ) {
-	static auto util_cliptracetoplayers = pattern::search( "client_panorama.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get< std::uint32_t >( );
+	static auto util_cliptracetoplayers = pattern::search( _( "client_panorama.dll"), _( "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" )).get< std::uint32_t >( );
 
 	if ( !util_cliptracetoplayers )
 		return;
 
-	/* changed from ptr to trace_ptr cuz assmebly */
 	__asm {
 		mov	eax, filter
 		lea ecx, trace_ptr
@@ -102,12 +101,6 @@ void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, 
 		call util_cliptracetoplayers
 		add esp, 0xC
 	}
-
-	/*
-	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, std::uint32_t, trace_filter_t*, trace_t* );
-	static auto util_cliptracetoplayers = pattern::search( STR( "client_panorama.dll" ), STR( "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ) ).get< fn >( );
-	util_cliptracetoplayers( start, end, mask, filter, ptr );
-	*/
 }
 
 void csgo::for_each_player( std::function< void( player_t* ) > fn ) {
@@ -198,20 +191,20 @@ vec3_t csgo::angle_vec( vec3_t angle ) {
 
 void csgo::util_traceline( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr ) {
 	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, std::uint32_t, const void*, std::uint32_t, trace_t* );
-	static auto utl = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F0 83 EC 7C 56 52" ).get< fn >( );
+	static auto utl = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F0 83 EC 7C 56 52" )).get< fn >( );
 	utl( start, end, mask, ignore, 0, tr );
 }
 
 void csgo::util_tracehull( const vec3_t& start, const vec3_t& end, const vec3_t& mins, const vec3_t& maxs, unsigned int mask, const void* ignore, trace_t* tr ) {
 	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, const vec3_t&, const vec3_t&, unsigned int, const void*, std::uint32_t, trace_t* );
-	static auto utl = pattern::search( "client_panorama.dll", "E8 ? ? ? ? 8B 07 83 C4 20" ).resolve_rip( ).get< fn >( );
+	static auto utl = pattern::search( _( "client_panorama.dll"), _( "E8 ? ? ? ? 8B 07 83 C4 20" )).resolve_rip( ).get< fn >( );
 	utl( start, end, mins, maxs, mask, ignore, 0, tr );
 }
 
 template < typename t >
 t csgo::create_interface( const char* module, const char* iname ) {
 	using createinterface_fn = void* ( __cdecl* )( const char*, int );
-	const auto createinterface_export = GetProcAddress( GetModuleHandleA( module ), "CreateInterface" );
+	const auto createinterface_export = GetProcAddress( GetModuleHandleA( module ), _( "CreateInterface") );
 	const auto fn = ( createinterface_fn ) createinterface_export;
 
 	return reinterpret_cast< t >( fn( iname, 0 ) );
@@ -231,27 +224,27 @@ void csgo::rotate_movement( ucmd_t* ucmd ) {
 }
 
 bool csgo::init( ) {
-	i::globals = pattern::search( "client_panorama.dll", "A1 ? ? ? ? F3 0F 10 8F ? ? ? ? F3 0F 10 05 ? ? ? ? ? ? ? ? ? 0F 2F C1 0F 86" ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
-	i::ent_list = create_interface< c_entlist* >( "client_panorama.dll", "VClientEntityList003" );
-	i::mat_sys = create_interface< c_matsys* >( "materialsystem.dll", "VMaterialSystem080" );
-	i::mdl_info = create_interface< c_mdlinfo* >( "engine.dll", "VModelInfoClient004" );
-	i::mdl_render = create_interface< c_mdlrender* >( "engine.dll", "VEngineModel016" );
-	i::render_view = create_interface< c_renderview* >( "engine.dll", "VEngineRenderView014" );
-	i::client = create_interface< c_client* >( "client_panorama.dll", "VClient018" );
-	i::surface = create_interface< c_surface* >( "vguimatsurface.dll", "VGUI_Surface031" );
-	i::engine = create_interface< c_engine* >( "engine.dll", "VEngineClient014" );
-	i::phys = create_interface< c_phys* >( "vphysics.dll", "VPhysicsSurfaceProps001" );
-	i::trace = create_interface< c_engine_trace* >( "engine.dll", "EngineTraceClient004" );
-	i::pred = create_interface< c_prediction* >( "client_panorama.dll", "VClientPrediction001" );
-	i::move = create_interface< c_movement* >( "client_panorama.dll", "GameMovement001" );
-	i::mdl_cache = create_interface< mdl_cache_t* >( "client_panorama.dll", "MDLCache004" );
-	i::events = create_interface< c_game_event_mgr* >( "engine.dll", "GAMEEVENTSMANAGER002" );
-	i::input = pattern::search( "client_panorama.dll", "B9 ? ? ? ? FF 60 60" ).add( 1 ).deref( ).get< c_input* >( );
-	i::cvar = create_interface< void* >( "vstdlib.dll", "VEngineCvar007" );
-	i::move_helper = **reinterpret_cast< c_move_helper*** >( pattern::search( "client_panorama.dll", "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" ).add( 2 ).get< std::uintptr_t >( ) );
+	i::globals = pattern::search( _( "client_panorama.dll"), _( "A1 ? ? ? ? F3 0F 10 8F ? ? ? ? F3 0F 10 05 ? ? ? ? ? ? ? ? ? 0F 2F C1 0F 86") ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
+	i::ent_list = create_interface< c_entlist* >( _( "client_panorama.dll"), _( "VClientEntityList003") );
+	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll"), _( "VMaterialSystem080") );
+	i::mdl_info = create_interface< c_mdlinfo* >( _( "engine.dll"), _( "VModelInfoClient004") );
+	i::mdl_render = create_interface< c_mdlrender* >( _( "engine.dll"), _( "VEngineModel016") );
+	i::render_view = create_interface< c_renderview* >( _( "engine.dll"), _( "VEngineRenderView014") );
+	i::client = create_interface< c_client* >( _( "client_panorama.dll"), _( "VClient018") );
+	i::surface = create_interface< c_surface* >( _( "vguimatsurface.dll"), _( "VGUI_Surface031") );
+	i::engine = create_interface< c_engine* >( _( "engine.dll"), _( "VEngineClient014") );
+	i::phys = create_interface< c_phys* >( _( "vphysics.dll"), _( "VPhysicsSurfaceProps001") );
+	i::trace = create_interface< c_engine_trace* >( _( "engine.dll"), _( "EngineTraceClient004") );
+	i::pred = create_interface< c_prediction* >( _( "client_panorama.dll"), _( "VClientPrediction001") );
+	i::move = create_interface< c_movement* >( _( "client_panorama.dll"), _( "GameMovement001") );
+	i::mdl_cache = create_interface< mdl_cache_t* >( _( "client_panorama.dll"), _( "MDLCache004") );
+	i::events = create_interface< c_game_event_mgr* >( _( "engine.dll"), _( "GAMEEVENTSMANAGER002") );
+	i::input = pattern::search( _( "client_panorama.dll"), _( "B9 ? ? ? ? FF 60 60") ).add( 1 ).deref( ).get< c_input* >( );
+	i::cvar = create_interface< void* >( _( "vstdlib.dll"), _( "VEngineCvar007") );
+	i::move_helper = **reinterpret_cast< c_move_helper*** >( pattern::search( _( "client_panorama.dll"), _( "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01") ).add( 2 ).get< std::uintptr_t >( ) );
 	i::client_state = **reinterpret_cast< c_clientstate*** >( reinterpret_cast< std::uintptr_t >( vfunc< void* >( i::engine, 12 ) ) + 16 );
-	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( "tier0.dll" ), "g_pMemAlloc" );
-	i::dev = pattern::search( "shaderapidx9.dll", "A1 ? ? ? ? 50 8B 08 FF 51 0C" ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
+	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" )), _( "g_pMemAlloc" ));
+	i::dev = pattern::search( _( "shaderapidx9.dll"), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C") ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
 
 	return true;
 }

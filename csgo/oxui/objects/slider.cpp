@@ -51,7 +51,7 @@ void oxui::slider::draw( ) {
 	auto start_x = cursor_pos.x + theme.spacing / 2;
 
 	/* centered text */
-	binds::text( pos( start_x, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, true );
+	binds::text( pos( start_x, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, false );
 	
 	/* slider box */
 	binds::rect( rect( start_x, area_center_y1 - slider_dimensions.h / 2, slider_dimensions.w, slider_dimensions.h ), theme.main );
@@ -69,7 +69,7 @@ void oxui::slider::draw( ) {
 	binds::text_bounds( font, text_value, value_text_size );
 	auto value_annotation_alpha = fade_timer > theme.animation_speed ? 255 : int( fade_timer * ( 1.0 / theme.animation_speed ) * 255.0 );
 	binds::fill_rect( rect( start_x + 1 + slide_w - value_text_size.w / 2 - 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 6, value_text_size.w + 4, value_text_size.h  + 4 ), color( theme.bg.r, theme.bg.g, theme.bg.b, value_annotation_alpha ) );
-	binds::text( pos( start_x + 1 + slide_w - value_text_size.w / 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 4 ), font, text_value, color( theme.text.r, theme.text.g, theme.text.b, value_annotation_alpha ), true );
+	binds::text( pos( start_x + 1 + slide_w - value_text_size.w / 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 4 ), font, text_value, color( theme.text.r, theme.text.g, theme.text.b, value_annotation_alpha ), false );
 
 	cursor_pos.y += theme.spacing / 2;
 }

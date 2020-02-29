@@ -34,5 +34,5 @@ void oxui::dropdown::draw( ) {
 	auto check_dimensions = rect( 0, 0, 10, 6 );
 
 	/* centered text */
-	binds::text( pos( area_center_x - text_size.w / 2 - 1, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, true );
+	binds::text( pos( area_center_x - text_size.w / 2 - 1, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, false );
 }

@@ -469,7 +469,7 @@ public:
 
     virtual next_step execute(const base_rvholder& against) const override
     {
-        CT retv;
+		CT retv {};
         condition->run( const_cast<void*>(reinterpret_cast<const void*>(&retv) ) );
         // this looks funny, however we cannot use the operator ==
         // due to a visual C++ 2015 compiler bug, which fails to compile and crashes

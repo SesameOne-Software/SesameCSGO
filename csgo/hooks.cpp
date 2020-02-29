@@ -15,6 +15,9 @@
 #include "features/antiaim.hpp"
 #include "features/prediction.hpp"
 
+/* security */
+#include "security/security_handler.hpp"
+
 bool hooks::in_autowall = false;
 int hooks::scroll_delta = 0;
 bool hooks::in_setupbones = false;
@@ -82,7 +85,7 @@ void __stdcall hooks::cl_sendmove_hk( ) {
 }
 
 void __fastcall hooks::override_view_hk( REG, void* setup ) {
-	FIND( bool, thirdperson, "misc", "effects", "third-person", oxui::object_checkbox );
+	FIND( bool, thirdperson, "Misc.", "Effects", "Third-Person", oxui::object_checkbox );
 	
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
 		vec3_t inverse;
@@ -146,11 +149,9 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 
 	csgo::clamp( ucmd->m_angs );
 
-	void* _ebp = nullptr;
-	__asm mov _ebp, ebp;
-	*( bool* ) ( *( std::uintptr_t* ) _ebp - 0x1C ) = g::send_packet;
-
 	csgo::rotate_movement( ucmd );
+
+	*( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	return false;
 }
@@ -169,13 +170,26 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 	if ( ret != _ReturnAddress( ) )
 		return endscene( REG_OUT, device );
 
+	static const D3DMATRIX identity_matrix = {
+		1.0, 0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	};
+
 	IDirect3DStateBlock9* pixel_state = nullptr;
 	IDirect3DVertexDeclaration9* vertex_decleration = nullptr;
 	IDirect3DVertexShader9* vertex_shader = nullptr;
 
+	DWORD rs_anti_alias = 0;
+	device->GetRenderState( D3DRS_MULTISAMPLEANTIALIAS, &rs_anti_alias );
 	device->CreateStateBlock( D3DSBT_PIXELSTATE, &pixel_state );
 	device->GetVertexDeclaration( &vertex_decleration );
 	device->GetVertexShader( &vertex_shader );
+	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
+	device->SetVertexShader( nullptr );
+	device->SetPixelShader( nullptr );
+	device->SetTransform( D3DTS_VIEW, &identity_matrix );
 
 	features::esp::render( );
 	menu::draw( );
@@ -185,6 +199,7 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 
 	device->SetVertexDeclaration( vertex_decleration );
 	device->SetVertexShader( vertex_shader );
+	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, rs_anti_alias );
 
 	return endscene( REG_OUT, device );
 }
@@ -197,8 +212,8 @@ long __fastcall hooks::reset_hk( REG, IDirect3DDevice9* device, D3DPRESENT_PARAM
 	auto hr = reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		render::create_font( ( void** ) &features::esp::esp_font, L"Tahoma", 12, false );
-		render::create_font( ( void** ) &features::esp::indicator_font, L"Tahoma", 16, true );
+		render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular"), 16, false );
+		render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular"), 16, false );
 		menu::reset( );
 	}
 
@@ -240,8 +255,8 @@ bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int 
 	const auto pl = reinterpret_cast< player_t* >( uintptr_t( ecx ) - 4 );
 
 	/* do not let game build bone matrix for players, we will build it ourselves with correct information. */
-	if ( pl && pl->is_player( ) )
-		return animations::build_matrix( pl );
+	//if ( pl && pl->is_player( ) )
+	//	return animations::build_matrix( pl );
 
 	return setupbones( REG_OUT, out, max_bones, mask, curtime );
 }
@@ -252,8 +267,8 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 	if ( ecx != local )
 		return get_eye_angles( REG_OUT );
 
-	static auto ret_to_thirdperson_pitch = pattern::search( "client_panorama.dll", "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55 ?" ).get< std::uintptr_t >( );
-	static auto ret_to_thirdperson_yaw = pattern::search( "client_panorama.dll", "F3 0F 10 55 ? 51 8B 8E ? ? ? ?" ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_pitch = pattern::search( _( "client_panorama.dll"), _( "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55") ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_yaw = pattern::search( _( "client_panorama.dll"), _( "F3 0F 10 55 ? 51 8B 8E") ).get< std::uintptr_t >( );
 
 	if ( ( std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_pitch
 		|| std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_yaw )
@@ -264,10 +279,10 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 }
 
 bool __fastcall hooks::get_bool_hk( REG ) {
-	static auto cl_interpolate = pattern::search( "client_panorama.dll", "85 C0 BF ? ? ? ? 0F 95 C3" ).get< std::uintptr_t >( );
-	static auto cam_think = pattern::search( "client_panorama.dll", "85 C0 75 30 38 86" ).get< std::uintptr_t >( );
-	static auto hermite_fix = pattern::search( "client_panorama.dll", "0F B6 15 ? ? ? ? 85 C0" ).get< std::uintptr_t >( );
-	static auto cl_extrapolate = pattern::search( "client_panorama.dll", "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ).get< std::uintptr_t >( );
+	static auto cl_interpolate = pattern::search( _( "client_panorama.dll"), _( "85 C0 BF ? ? ? ? 0F 95 C3") ).get< std::uintptr_t >( );
+	static auto cam_think = pattern::search( _( "client_panorama.dll"), _( "85 C0 75 30 38 86") ).get< std::uintptr_t >( );
+	static auto hermite_fix = pattern::search( _( "client_panorama.dll"), _( "0F B6 15 ? ? ? ? 85 C0") ).get< std::uintptr_t >( );
+	static auto cl_extrapolate = pattern::search( _( "client_panorama.dll"), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B") ).get< std::uintptr_t >( );
 
 	if ( !ecx )
 		return false;
@@ -343,33 +358,33 @@ bool hooks::init( ) {
 	menu::init( );
 
 	/* create fonts */
-	render::create_font( ( void** ) &features::esp::esp_font, L"Tahoma", 12, false );
-	render::create_font( ( void** ) &features::esp::indicator_font, L"Tahoma", 16, true );
+	render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular"), N( 16 ), false );
+	render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular"), N( 16 ), false );
 
 	/* load default config */
 	menu::load_default( );
 
-	const auto clsendmove = pattern::search( "engine.dll", "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 8F" ).resolve_rip( ).get< void* >( );
-	const auto clientmodeshared_createmove = pattern::search( "client_panorama.dll", "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ).get< decltype( &createmove_hk ) >( );
-	const auto chlclient_framestagenotify = pattern::search( "client_panorama.dll", "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ).get< decltype( &framestagenotify_hk ) >( );
-	const auto idirect3ddevice9_endscene = vfunc< decltype( &endscene_hk ) >( csgo::i::dev, 42 );
-	const auto idirect3ddevice9_reset = vfunc< decltype( &reset_hk ) >( csgo::i::dev, 16 );
-	const auto vguimatsurface_lockcursor = pattern::search( "vguimatsurface.dll", "80 3D ? ? ? ? 00 8B 91 A4 02 00 00 8B 0D ? ? ? ? C6 05 ? ? ? ? 01" ).get< decltype( &lockcursor_hk ) >( );
-	const auto ivrenderview_sceneend = vfunc< decltype( &sceneend_hk ) >( csgo::i::render_view, 9 );
-	const auto modelrender_drawmodelexecute = vfunc< decltype( &drawmodelexecute_hk ) >( csgo::i::mdl_render, 21 );
-	const auto c_csplayer_doextraboneprocessing = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ).get< void* >( );
-	const auto c_baseanimating_setupbones = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ).get< void* >( );
-	const auto c_csplayer_get_eye_angles = pattern::search( "client_panorama.dll", "56 8B F1 85 F6 74 32" ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D" ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( "client_panorama.dll", "E8 ? ? ? ? E9 ? ? ? ? 83 BE" ).resolve_rip( ).add( 0x366 ).get< void* >( );
-	const auto draw_bullet_impacts = pattern::search( "client_panorama.dll", "56 8B 71 4C 57" ).get< void* >( );
-	const auto convar_getbool = pattern::search( "client_panorama.dll", "8B 51 1C 3B D1 75 06" ).get< void* >( );
-	const auto traceray_fn = vfunc< void* >( csgo::i::trace, 5 );
-	const auto overrideview = pattern::search( "client_panorama.dll", "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ).get< void* >( );
-	const auto c_baseanimating_updateclientsideanimations = pattern::search( "client_panorama.dll", "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00" ).get< void* >( );
-	const auto nc_send_datagram = pattern::search( "engine.dll", "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ).get<void*>( );
-	const auto engine_fire_event = vfunc< void* >( csgo::i::engine, 59 );
-	const auto c_baseanimating_should_skip_animation_frame = pattern::search( "client_panorama.dll", "E8 ? ? ? ? 88 44 24 0B" ).add( 1 ).deref( ).get< void* >( );
+	const auto clsendmove = pattern::search( _( "engine.dll"), _( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 8F") ).resolve_rip( ).get< void* >( );
+	const auto clientmodeshared_createmove = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0") ).get< decltype( &createmove_hk ) >( );
+	const auto chlclient_framestagenotify = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2") ).get< decltype( &framestagenotify_hk ) >( );
+	const auto idirect3ddevice9_endscene = vfunc< decltype( &endscene_hk ) >( csgo::i::dev, N( 42 ) );
+	const auto idirect3ddevice9_reset = vfunc< decltype( &reset_hk ) >( csgo::i::dev, N( 16 ) );
+	const auto vguimatsurface_lockcursor = pattern::search( _( "vguimatsurface.dll"), _( "80 3D ? ? ? ? 00 8B 91 A4 02 00 00 8B 0D ? ? ? ? C6 05 ? ? ? ? 01") ).get< decltype( &lockcursor_hk ) >( );
+	const auto ivrenderview_sceneend = vfunc< decltype( &sceneend_hk ) >( csgo::i::render_view, N( 9 ) );
+	const auto modelrender_drawmodelexecute = vfunc< decltype( &drawmodelexecute_hk ) >( csgo::i::mdl_render, N( 21 ) );
+	const auto c_csplayer_doextraboneprocessing = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57") ).get< void* >( );
+	const auto c_baseanimating_setupbones = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9") ).get< void* >( );
+	const auto c_csplayer_get_eye_angles = pattern::search( _( "client_panorama.dll"), _( "56 8B F1 85 F6 74 32") ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D") ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( _( "client_panorama.dll"), _( "E8 ? ? ? ? E9 ? ? ? ? 83 BE") ).resolve_rip( ).add( 0x366 ).get< void* >( );
+	const auto draw_bullet_impacts = pattern::search( _( "client_panorama.dll"), _( "56 8B 71 4C 57") ).get< void* >( );
+	const auto convar_getbool = pattern::search( _( "client_panorama.dll"), _( "8B 51 1C 3B D1 75 06") ).get< void* >( );
+	const auto traceray_fn = vfunc< void* >( csgo::i::trace, N( 5 ) );
+	const auto overrideview = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF") ).get< void* >( );
+	const auto c_baseanimating_updateclientsideanimations = pattern::search( _( "client_panorama.dll"), _( "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00") ).get< void* >( );
+	const auto nc_send_datagram = pattern::search( _( "engine.dll"), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18") ).get<void*>( );
+	const auto engine_fire_event = vfunc< void* >( csgo::i::engine, N( 59 ) );
+	const auto c_baseanimating_should_skip_animation_frame = pattern::search( _( "client_panorama.dll"), _( "E8 ? ? ? ? 88 44 24 0B") ).add( N(1) ).deref( ).get< void* >( );
 
 	MH_Initialize( );
 
@@ -394,9 +409,9 @@ bool hooks::init( ) {
 	// MH_CreateHook( nc_send_datagram, send_datagram_hk, ( void** ) &send_datagram );
 	// MH_CreateHook( clsendmove, cl_sendmove_hk, ( void** ) &cl_sendmove );
 
-	MH_EnableHook( MH_ALL_HOOKS );
+	MH_EnableHook( nullptr );
 
-	o_wndproc = ( WNDPROC ) SetWindowLongA( FindWindowA( "Valve001", nullptr ), GWLP_WNDPROC, ( long ) wndproc );
+	o_wndproc = ( WNDPROC ) LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001"), nullptr ), GWLP_WNDPROC, long( wndproc ) );
 
 	return true;
 }

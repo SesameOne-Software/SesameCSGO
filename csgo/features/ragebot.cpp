@@ -5,14 +5,14 @@
 #include "../globals.hpp"
 
 void features::ragebot::best_point( player_t* pl, vec3_t& point, float& dmg ) {
-	FIND( bool, head, "rage", "target selection", "head", oxui::object_checkbox );
-	FIND( bool, neck, "rage", "target selection", "neck", oxui::object_checkbox );
-	FIND( bool, chest, "rage", "target selection", "chest", oxui::object_checkbox );
-	FIND( bool, pelvis, "rage", "target selection", "pelvis", oxui::object_checkbox );
-	FIND( bool, arms, "rage", "target selection", "arms", oxui::object_checkbox );
-	FIND( bool, legs, "rage", "target selection", "legs", oxui::object_checkbox );
-	FIND( bool, feet, "rage", "target selection", "feet", oxui::object_checkbox );
-	FIND( double, damage, "rage", "aimbot", "min dmg", oxui::object_slider );
+	FIND( bool, head, "Rage", "Target Selection", "Head", oxui::object_checkbox );
+	FIND( bool, neck, "Rage", "Target Selection", "Neck", oxui::object_checkbox );
+	FIND( bool, chest, "Rage", "Target Selection", "Chest", oxui::object_checkbox );
+	FIND( bool, pelvis, "Rage", "Target Selection", "Pelvis", oxui::object_checkbox );
+	FIND( bool, arms, "Rage", "Target Selection", "Arms", oxui::object_checkbox );
+	FIND( bool, legs, "Rage", "Target Selection", "Legs", oxui::object_checkbox );
+	FIND( bool, feet, "Rage", "Target Selection", "Feet", oxui::object_checkbox );
+	FIND( double, damage, "Rage", "Aimbot", "Min. Dmg", oxui::object_slider );
 
 	std::deque< int > hitboxes { };
 
@@ -164,11 +164,11 @@ void features::ragebot::best_point( player_t* pl, vec3_t& point, float& dmg ) {
 }
 
 void features::ragebot::run( ucmd_t* ucmd ) {
-	FIND( bool, ragebot, "rage", "aimbot", "ragebot", oxui::object_checkbox );
-	FIND( double, hitchance, "rage", "aimbot", "hit chance", oxui::object_slider );
-	FIND( bool, autoshoot, "rage", "aimbot", "auto-shoot", oxui::object_checkbox );
-	FIND( bool, silent, "rage", "aimbot", "silent", oxui::object_checkbox );
-	FIND( bool, autoscope, "rage", "aimbot", "auto-scope", oxui::object_checkbox );
+	FIND( bool, ragebot, "Rage", "Aimbot", "Ragebot", oxui::object_checkbox );
+	FIND( double, hitchance, "Rage", "Aimbot", "Hit Chance", oxui::object_slider );
+	FIND( bool, autoshoot, "Rage", "Aimbot", "Auto-Shoot", oxui::object_checkbox );
+	FIND( bool, silent, "Rage", "Aimbot", "Silent", oxui::object_checkbox );
+	FIND( bool, autoscope, "Rage", "Aimbot", "Auto-Scope", oxui::object_checkbox );
 
 	if ( !ragebot )
 		return;

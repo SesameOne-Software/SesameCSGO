@@ -38,47 +38,47 @@ void features::antiaim::run( ucmd_t* ucmd ) {
 	simulate_lby( );
 
 	/* toggle */
-	FIND( bool, air, "antiaim", "air", "aa on air", oxui::object_checkbox );
-	FIND( bool, move, "antiaim", "moving", "aa on move", oxui::object_checkbox );
-	FIND( bool, stand, "antiaim", "standing", "aa on stand", oxui::object_checkbox );
+	FIND( bool, air, "Anti-Aim", "Air", "AA in Air", oxui::object_checkbox );
+	FIND( bool, move, "Anti-Aim", "Moving", "AA on Move", oxui::object_checkbox );
+	FIND( bool, stand, "Anti-Aim", "Standing", "AA on Stand", oxui::object_checkbox );
 
 	/* desync */
-	FIND( bool, desync_air, "antiaim", "air", "desync", oxui::object_checkbox );
-	FIND( bool, desync_move, "antiaim", "moving", "desync", oxui::object_checkbox );
-	FIND( bool, desync_stand, "antiaim", "standing", "desync", oxui::object_checkbox );
+	FIND( bool, desync_air, "Anti-Aim", "Air", "Desync", oxui::object_checkbox );
+	FIND( bool, desync_move, "Anti-Aim", "Moving", "Desync", oxui::object_checkbox );
+	FIND( bool, desync_stand, "Anti-Aim", "Standing", "Desync", oxui::object_checkbox );
 
 	/* desync side */
-	FIND( bool, desync_side_air, "antiaim", "air", "desync side", oxui::object_checkbox );
-	FIND( bool, desync_side_move, "antiaim", "moving", "desync side", oxui::object_checkbox );
-	FIND( bool, desync_side_stand, "antiaim", "standing", "desync side", oxui::object_checkbox );
+	FIND( bool, desync_side_air, "Anti-Aim", "Air", "Desync Side", oxui::object_checkbox );
+	FIND( bool, desync_side_move, "Anti-Aim", "Moving", "Desync Side", oxui::object_checkbox );
+	FIND( bool, desync_side_stand, "Anti-Aim", "Standing", "Desync Side", oxui::object_checkbox );
 
 	/* fake lag */
-	FIND( double, lag_air, "antiaim", "air", "lag", oxui::object_slider );
-	FIND( double, lag_move, "antiaim", "moving", "lag", oxui::object_slider );
-	FIND( double, lag_stand, "antiaim", "standing", "lag", oxui::object_slider );
+	FIND( double, lag_air, "Anti-Aim", "Air", "Lag", oxui::object_slider );
+	FIND( double, lag_move, "Anti-Aim", "Moving", "Lag", oxui::object_slider );
+	FIND( double, lag_stand, "Anti-Aim", "Standing", "Lag", oxui::object_slider );
 
 	/* pitch */
-	FIND( double, pitch_air, "antiaim", "air", "pitch", oxui::object_slider );
-	FIND( double, pitch_move, "antiaim", "moving", "pitch", oxui::object_slider );
-	FIND( double, pitch_stand, "antiaim", "standing", "pitch", oxui::object_slider );
+	FIND( double, pitch_air, "Anti-Aim", "Air", "Pitch", oxui::object_slider );
+	FIND( double, pitch_move, "Anti-Aim", "Moving", "Pitch", oxui::object_slider );
+	FIND( double, pitch_stand, "Anti-Aim", "Standing", "Pitch", oxui::object_slider );
 
 	/* base yaw */
-	FIND( double, base_yaw_air, "antiaim", "air", "base yaw", oxui::object_slider );
-	FIND( double, base_yaw_move, "antiaim", "moving", "base yaw", oxui::object_slider );
-	FIND( double, base_yaw_stand, "antiaim", "standing", "base yaw", oxui::object_slider );
+	FIND( double, base_yaw_air, "Anti-Aim", "Air", "Base Yaw", oxui::object_slider );
+	FIND( double, base_yaw_move, "Anti-Aim", "Moving", "Base Yaw", oxui::object_slider );
+	FIND( double, base_yaw_stand, "Anti-Aim", "Standing", "Base Yaw", oxui::object_slider );
 
 	/* slow walk settings */
-	FIND( double, slow_walk_speed, "antiaim", "moving", "slow walk speed", oxui::object_slider );
+	FIND( double, slow_walk_speed, "Anti-Aim", "Moving", "Slow Walk Speed", oxui::object_slider );
 
 	/* jitter desync */
-	FIND( bool, jitter_air, "antiaim", "air", "jitter desync", oxui::object_checkbox );
-	FIND( bool, jitter_move, "antiaim", "moving", "jitter desync", oxui::object_checkbox );
-	FIND( bool, jitter_stand, "antiaim", "standing", "jitter desync", oxui::object_checkbox );
+	FIND( bool, jitter_air, "Anti-Aim", "Air", "Jitter Desync", oxui::object_checkbox );
+	FIND( bool, jitter_move, "Anti-Aim", "Moving", "Jitter Desync", oxui::object_checkbox );
+	FIND( bool, jitter_stand, "Anti-Aim", "Standing", "Jitter Desync", oxui::object_checkbox );
 
 	/* jitter amount */
-	FIND( double, jitter_amount_air, "antiaim", "air", "jitter amount", oxui::object_slider );
-	FIND( double, jitter_amount_move, "antiaim", "moving", "jitter amount", oxui::object_slider );
-	FIND( double, jitter_amount_stand, "antiaim", "standing", "jitter amount", oxui::object_slider );
+	FIND( double, jitter_amount_air, "Anti-Aim", "Air", "Jitter Amount", oxui::object_slider );
+	FIND( double, jitter_amount_move, "Anti-Aim", "Moving", "Jitter Amount", oxui::object_slider );
+	FIND( double, jitter_amount_stand, "Anti-Aim", "Standing", "Jitter Amount", oxui::object_slider );
 
 	/* ghetto slow walk */
 	if ( GetAsyncKeyState( VK_XBUTTON2 ) && g::local->valid( ) && g::local->flags( ) & 1 && g::local->weapon( ) && g::local->weapon( )->data( ) ) {

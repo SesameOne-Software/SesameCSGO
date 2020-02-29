@@ -72,6 +72,6 @@ int netvars::get( const std::string& table, const std::string& prop ) {
 }
 
 int netvars::get_offset( const char* name ) {
-	const auto items = split( name, "->" );
+	const auto items = split( name, _( "->") );
 	return m_offsets [ items.front( ) ][ items.back( ) ].m_offset;
 }

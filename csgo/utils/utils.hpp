@@ -4,3 +4,4 @@
 #include "vfunc.hpp"
 #include "padding.hpp"
 #include "registers.hpp"
+#include "../security/xorstr.hpp"

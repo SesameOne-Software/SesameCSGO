@@ -184,8 +184,8 @@ bool autowall::classname_is( player_t* entity, const char* class_name ) {
 }
 
 bool autowall::is_breakable_entity( player_t* entity ) {
-	static auto __rtdynamiccast_fn = pattern::search( "client_panorama.dll", "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" ).get<void*>();
-	static auto is_breakable_entity_fn = pattern::search( "client_panorama.dll", "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE" ).get<void*>( );
+	static auto __rtdynamiccast_fn = pattern::search( _( "client_panorama.dll"), _( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" )).get<void*>();
+	static auto is_breakable_entity_fn = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE") ).get<void*>( );
 	static auto multiplayer_phys_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x50 );
 	static auto baseentity_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x55 );
 	static auto breakablewithpropdata_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0xD5 );
@@ -220,14 +220,14 @@ bool autowall::is_breakable_entity( player_t* entity ) {
 			goto label_18;
 		}
 
-		if ( !classname_is( entity, "func_breakable" ) && !classname_is( entity, "func_breakable_surf" ) ) {
+		if ( !classname_is( entity, _( "func_breakable" )) && !classname_is( entity, _( "func_breakable_surf") ) ) {
 			if ( ( *( ( int( __thiscall** )( player_t* ) )*( std::uint32_t * ) entity + 604 ) )( entity ) & 0x10000 )
 				return false;
 
 			goto label_18;
 		}
 
-		if ( !classname_is( entity, "func_breakable_surf" ) || !*( ( uint8_t* ) entity + 2564 ) ) {
+		if ( !classname_is( entity, _( "func_breakable_surf") ) || !*( ( uint8_t* ) entity + 2564 ) ) {
 		label_18:
 			__asm {
 				push 0

@@ -30,8 +30,8 @@ namespace oxui {
 		}
 
 		void reset( ) {
-			binds::create_font( OSTR("Segoe UI"), 16, true, fonts [ OSTR( "title") ] );
-			binds::create_font( OSTR("Segoe UI Light"), 16, false, fonts [ OSTR( "object") ] );
+			binds::create_font( OSTR("MyriadPro-Regular"), 16, false, fonts [ OSTR( "title") ] );
+			binds::create_font( OSTR("MyriadPro-Regular"), 16, false, fonts [ OSTR( "object") ] );
 		}
 
 		void add_window( const std::shared_ptr< window >& new_window ) {

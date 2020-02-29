@@ -27,10 +27,10 @@ void features::esp::draw_nametag( int x, int y, int w, int h, const std::wstring
 }
 
 void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, float desync_amount, player_t* pl ) {
-	FIND( bool, balance_979, "visuals", "esp", "979", oxui::object_checkbox );
-	FIND( bool, health, "visuals", "esp", "health", oxui::object_checkbox );
-	FIND( bool, desync, "visuals", "esp", "desync", oxui::object_checkbox );
-	FIND( bool, weapon, "visuals", "esp", "weapon", oxui::object_checkbox );
+	FIND( bool, balance_979, "Visuals", "ESP", "979", oxui::object_checkbox );
+	FIND( bool, health, "Visuals", "ESP", "Health", oxui::object_checkbox );
+	FIND( bool, desync, "Visuals", "ESP", "Desync", oxui::object_checkbox );
+	FIND( bool, weapon, "Visuals", "ESP", "Weapon", oxui::object_checkbox );
 
 	const int desync_clamped = std::clamp( desync_amount, 0.0f, 58.0f );
 	const int health_clamped = std::clamp( health_amount, 0, 100 );
@@ -46,7 +46,7 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 				balance_adjusting = true;
 
 		if ( balance_adjusting )
-			render::text( x + w + 6, y + 2, D3DCOLOR_RGBA( 0, 255, 0, 255 ), indicator_font, L"979" );
+			render::text( x + w + 6, y + 2, D3DCOLOR_RGBA( 0, 255, 0, 255 ), indicator_font, _( L"979") );
 	}
 
 	/* health bar */
@@ -102,15 +102,15 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 }
 
 void features::esp::render( ) {
-	FIND( bool, esp, "visuals", "esp", "esp", oxui::object_checkbox );
-	FIND( bool, box, "visuals", "esp", "box", oxui::object_checkbox );
-	FIND( bool, name, "visuals", "esp", "name", oxui::object_checkbox );
-	FIND( bool, lagcomp, "visuals", "esp", "lagcomp", oxui::object_checkbox );
+	FIND( bool, esp, "Visuals", "ESP", "ESP", oxui::object_checkbox );
+	FIND( bool, box, "Visuals", "ESP", "Box", oxui::object_checkbox );
+	FIND( bool, name, "Visuals", "ESP", "Name", oxui::object_checkbox );
+	FIND( bool, lagcomp, "Visuals", "ESP", "Lag-Comp", oxui::object_checkbox );
 
-	FIND( bool, team, "visuals", "targets", "team", oxui::object_checkbox );
-	FIND( bool, enemy, "visuals", "targets", "enemy", oxui::object_checkbox );
-	FIND( bool, local,"visuals", "targets", "local", oxui::object_checkbox );
-	FIND( bool, weapon,"visuals", "targets", "weapon", oxui::object_checkbox );
+	FIND( bool, team, "Visuals", "Targets", "Team", oxui::object_checkbox );
+	FIND( bool, enemy, "Visuals", "Targets", "Enemy", oxui::object_checkbox );
+	FIND( bool, local,"Visuals", "Targets", "Local", oxui::object_checkbox );
+	FIND( bool, weapon,"Visuals", "Targets", "Weapon", oxui::object_checkbox );
 
 	if ( !g::local )
 		return;
@@ -139,7 +139,7 @@ void features::esp::render( ) {
 
 		if ( !weapon
 			&& e->client_class( )
-			&& !std::strcmp( e->client_class( )->m_network_name, "CWeapon" ) )
+			&& !std::strcmp( e->client_class( )->m_network_name, _( "CWeapon") ) )
 			continue;
 
 		if ( ( enemy || team )

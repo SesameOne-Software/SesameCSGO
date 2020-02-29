@@ -2,6 +2,7 @@
 #include <memory>
 #include <windows.h>
 #include <psapi.h>
+#include "../security/security_handler.hpp"
 
 #define in_range( x, a, b ) ( x >= a && x <= b )
 #define get_bits( x ) ( in_range( ( x & ( ~0x20 ) ), 'A', 'F' ) ? ( ( x & ( ~0x20 ) ) - 'A' + 0xA ) : ( in_range( x, '0', '9' ) ? x - '0' : 0 ) )
@@ -38,10 +39,10 @@ public:
 
 	static pattern search( const char* mod, const char* pat ) {
 		auto pat1 = const_cast< char* >( pat );
-		auto range_start = reinterpret_cast< std::uintptr_t >( GetModuleHandleA( mod ) );
+		auto range_start = reinterpret_cast< std::uintptr_t >( LI_FN( GetModuleHandleA )( mod ) );
 
 		MODULEINFO mi;
-		K32GetModuleInformation( GetCurrentProcess( ), reinterpret_cast< HMODULE >( range_start ), &mi, sizeof( MODULEINFO ) );
+		LI_FN( K32GetModuleInformation )( LI_FN( GetCurrentProcess )( ), reinterpret_cast< HMODULE >( range_start ), &mi, sizeof( MODULEINFO ) );
 
 		auto end = range_start + mi.SizeOfImage;
 

@@ -195,8 +195,9 @@ void oxui::window::draw( ) {
 	binds::fill_rect( area, theme.bg );
 
 	/* title bar */
-	shapes::box( rect( area.x, area.y - 26, area.w, 26 ), 0.0, false, false, true, false, false );
-	binds::text( pos( area.x + 4, area.y - 28 + 6 ), parent_panel.fonts [ OSTR( "title") ], title, theme.text, true );
+	binds::fill_rect( rect( area.x, area.y - 26, area.w, 26 ), theme.title_bar );
+	shapes::box( rect( area.x, area.y - 26, area.w, 26 ), 0.0, false, false, true, false, false, false );
+	binds::text( pos( area.x + 4, area.y - 28 + 6 ), parent_panel.fonts [ OSTR( "title") ], title, theme.title_text, false );
 
 	std::vector< std::pair< std::shared_ptr< tab >, int > > tab_list;
 	auto total_tabs_w = 0;
@@ -245,7 +246,7 @@ void oxui::window::draw( ) {
 			text_height = 2 * ( time_since_click * ( 1.0 / theme.animation_speed ) );
 		}
 
-		binds::text( pos( last_tab_pos.x, area.y - 28 + 6 - text_height ), parent_panel.fonts [ OSTR( "object") ], object.first->title, color( theme.text.r, theme.text .g, theme.text .b, alpha ), false );
+		binds::text( pos( last_tab_pos.x, area.y - 28 + 6 - text_height ), parent_panel.fonts [ OSTR( "object") ], object.first->title, color( theme.title_text.r, theme.title_text.g, theme.title_text.b, alpha ), false );
 		binds::line( pos( last_tab_pos.x + object.second / 2 - bar_width / 2, area.y - 28 + 6 + 16 ), pos( last_tab_pos.x + object.second / 2 + bar_width / 2, area.y - 28 + 6 + 16 ), theme.main );
 
 		last_tab_pos.x += object.second + 4;
