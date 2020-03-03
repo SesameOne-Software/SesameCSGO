@@ -19,6 +19,9 @@ namespace oxui {
 		object_dropdown
 	};
 
+	/* deactivating input for objects of lower order */
+	static bool g_input = true;
+
 	/*
 	*	INFO: Base object class. All objects inherit the base object properties.
 	*/
@@ -43,7 +46,6 @@ namespace oxui {
 					parent_iter = parent_iter->parent;
 			}
 			catch ( std::exception& ) {
-
 			}
 
 			return *static_cast< type* >( parent_iter );

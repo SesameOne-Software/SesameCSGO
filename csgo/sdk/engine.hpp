@@ -17,22 +17,22 @@ struct player_info_t {
 		};
 	};
 
-	char m_name[ 128 ];
+	char m_name [ 128 ];
 	int m_user_id;
-	char m_str_steam_id[ 20 ];
+	char m_str_steam_id [ 20 ];
 	PAD( 16 );
 	std::uintptr_t m_steam_id;
-	char m_friends_name[ 128 ];
+	char m_friends_name [ 128 ];
 	bool m_fake_player;
 	bool m_is_hltv;
-	std::uintptr_t m_custom_files[ 4 ];
+	std::uintptr_t m_custom_files [ 4 ];
 	std::uint8_t m_files_downloaded;
 };
 
 class nci_t {
 public:
-	virtual const char*	get_name( ) const = 0;
-	virtual const char*	get_address( ) const = 0;
+	virtual const char* get_name( ) const = 0;
+	virtual const char* get_address( ) const = 0;
 	virtual float get_time( ) const = 0;
 	virtual float get_time_connected( ) const = 0;
 	virtual int get_buffer_size( ) const = 0;
@@ -65,7 +65,7 @@ public:
 	std::uint32_t& delta_tick( ) {
 		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x174 );
 	}
-	
+
 	std::uint32_t& out_seq_num( ) {
 		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D24 );
 	}

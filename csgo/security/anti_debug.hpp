@@ -10,12 +10,12 @@
 namespace security {
 	//internal (used by the security itself, no need to be used outside of namespace)
 	namespace internal {
-		__forceinline void to_lower(unsigned char* input);
-		__forceinline const wchar_t* get_string(int index);
+		__forceinline void to_lower( unsigned char* input );
+		__forceinline const wchar_t* get_string( int index );
 
 		//dynamically resolved functions
-		typedef NTSTATUS(__stdcall* _NtQueryInformationProcess)(_In_ HANDLE, _In_  unsigned int, _Out_ PVOID, _In_ ULONG, _Out_ PULONG);
-		typedef NTSTATUS(__stdcall* _NtSetInformationThread)(_In_ HANDLE, _In_ THREAD_INFORMATION_CLASS, _In_ PVOID, _In_ ULONG);
+		typedef NTSTATUS( __stdcall* _NtQueryInformationProcess )( _In_ HANDLE, _In_  unsigned int, _Out_ PVOID, _In_ ULONG, _Out_ PULONG );
+		typedef NTSTATUS( __stdcall* _NtSetInformationThread )( _In_ HANDLE, _In_ THREAD_INFORMATION_CLASS, _In_ PVOID, _In_ ULONG );
 
 		//enum for the results of the antidebugger
 		enum debug_results
@@ -59,43 +59,43 @@ namespace security {
 		};
 
 		namespace memory {
-			__forceinline int being_debugged_peb();
-			__forceinline int remote_debugger_present();
-			__forceinline int check_window_name();
-			__forceinline int is_debugger_present();
-			__forceinline int nt_global_flag_peb();
-			__forceinline int nt_query_information_process();
-			__forceinline int nt_set_information_thread();
-			__forceinline int debug_active_process();
-			__forceinline int write_buffer();
+			__forceinline int being_debugged_peb( );
+			__forceinline int remote_debugger_present( );
+			__forceinline int check_window_name( );
+			__forceinline int is_debugger_present( );
+			__forceinline int nt_global_flag_peb( );
+			__forceinline int nt_query_information_process( );
+			__forceinline int nt_set_information_thread( );
+			__forceinline int debug_active_process( );
+			__forceinline int write_buffer( );
 		}
 
 		namespace exceptions {
-			__forceinline int close_handle_exception();
-			__forceinline int single_step_exception();
-			__forceinline int int_3();
-			__forceinline int int_2d();
-			__forceinline int prefix_hop();
-			__forceinline int debug_string();
+			__forceinline int close_handle_exception( );
+			__forceinline int single_step_exception( );
+			__forceinline int int_3( );
+			__forceinline int int_2d( );
+			__forceinline int prefix_hop( );
+			__forceinline int debug_string( );
 		}
 
 		namespace timing {
-			__forceinline int rdtsc();
-			__forceinline int query_performance_counter();
-			__forceinline int get_tick_count();
+			__forceinline int rdtsc( );
+			__forceinline int query_performance_counter( );
+			__forceinline int get_tick_count( );
 		}
 
 		namespace cpu {
-			__forceinline int hardware_debug_registers();
-			__forceinline int mov_ss();
+			__forceinline int hardware_debug_registers( );
+			__forceinline int mov_ss( );
 		}
 
 		namespace virtualization {
-			__forceinline int check_cpuid();
-			__forceinline int check_registry();
-			__forceinline int vm();
+			__forceinline int check_cpuid( );
+			__forceinline int check_registry( );
+			__forceinline int vm( );
 		}
 	}
 
-	extern __forceinline internal::debug_results check_security();
+	extern __forceinline internal::debug_results check_security( );
 }

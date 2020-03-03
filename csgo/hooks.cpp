@@ -44,6 +44,7 @@ decltype( &hooks::cl_sendmove_hk ) hooks::cl_sendmove = nullptr;
 decltype( &hooks::update_clientside_animations_hk ) hooks::update_clientside_animations = nullptr;
 decltype( &hooks::send_datagram_hk ) hooks::send_datagram = nullptr;
 decltype( &hooks::should_skip_animation_frame_hk ) hooks::should_skip_animation_frame = nullptr;
+decltype( &hooks::is_hltv_hk ) hooks::is_hltv = nullptr;
 
 /* fix event delays */
 bool __fastcall hooks::fire_event_hk( REG ) {
@@ -86,7 +87,7 @@ void __stdcall hooks::cl_sendmove_hk( ) {
 
 void __fastcall hooks::override_view_hk( REG, void* setup ) {
 	FIND( bool, thirdperson, "Misc.", "Effects", "Third-Person", oxui::object_checkbox );
-	
+
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
 		vec3_t inverse;
 		csgo::i::engine->get_viewangles( inverse );
@@ -136,6 +137,23 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 
 	g::ucmd = ucmd;
 
+	csgo::for_each_player( [ ] ( player_t* pl ) -> int {
+		if ( pl == g::local )
+			return 0;
+
+		const auto backup_origin = pl->origin( );
+
+		/* simulate movement 1 tick */
+		animations::simulate_command( pl );
+
+		animations::build_matrix( pl, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
+
+		if ( pl->bone_cache( ) )
+			std::memcpy( &animations::data::bones [ pl->idx( ) ], pl->bone_cache( ), N( sizeof matrix3x4_t ) * pl->bone_count( ) );
+
+		pl->origin( ) = backup_origin;
+	} );
+
 	features::movement::run( ucmd );
 
 	const auto backup_angle = ucmd->m_angs;
@@ -143,15 +161,33 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 	const auto backup_forwardmove = ucmd->m_fmove;
 
 	features::prediction::run( [ & ] ( ) {
-		features::antiaim::run( ucmd );
+		features::antiaim::simulate_lby( );
 		features::ragebot::run( ucmd );
-	} );
+		} );
+
+	features::antiaim::run( ucmd );
 
 	csgo::clamp( ucmd->m_angs );
 
 	csgo::rotate_movement( ucmd );
 
+	/* choke packets if requested */
 	*( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+
+	/* fix anti-aim slide */ {
+		if ( ucmd->m_fmove ) {
+			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? 8 : 16 );
+			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? 8 : 16 );
+		}
+
+		if ( ucmd->m_smove ) {
+			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? 1024 : 512 );
+			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? 1024 : 512 );
+		}
+	}
+
+	if ( g::send_packet )
+		g::sent_cmd = *ucmd;
 
 	return false;
 }
@@ -191,6 +227,20 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 	device->SetPixelShader( nullptr );
 	device->SetTransform( D3DTS_VIEW, &identity_matrix );
 
+	/*
+	struct net_graph_info {
+		PAD( 78264 );
+		float m_fps;
+		float m_latency;
+		float m_packet_loss;
+		float m_packet_choke;
+	};
+
+	static auto net_graph = pattern::search( _( "client_panorama.dll" ), _( "89 1D ? ? ? ? 8B C3" ) ).add( 2 ).deref( ).get< net_graph_info* >( );
+	*/
+
+	render::text( 20, 20, D3DCOLOR_RGBA( 255, 100, 200, 255 ), features::esp::indicator_font, std::to_wstring( static_cast< int >( 1.0f / csgo::i::globals->m_abs_frametime ) ) );
+
 	features::esp::render( );
 	menu::draw( );
 
@@ -212,8 +262,8 @@ long __fastcall hooks::reset_hk( REG, IDirect3DDevice9* device, D3DPRESENT_PARAM
 	auto hr = reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular"), 16, false );
-		render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular"), 16, false );
+		render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Light" ), N( 16 ), false );
+		render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Light" ), N( 20 ), true );
 		menu::reset( );
 	}
 
@@ -252,11 +302,19 @@ void __fastcall hooks::doextraboneprocessing_hk( REG, int a2, int a3, int a4, in
 }
 
 bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int mask, float curtime ) {
+	static auto c_csplayer__setupbones_ret_addr = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? 5E 5D C2 10 00 CC 55" ) ).add( 5 ).get< void* >( );
+
 	const auto pl = reinterpret_cast< player_t* >( uintptr_t( ecx ) - 4 );
 
 	/* do not let game build bone matrix for players, we will build it ourselves with correct information. */
-	//if ( pl && pl->is_player( ) )
-	//	return animations::build_matrix( pl );
+	if ( c_csplayer__setupbones_ret_addr == _ReturnAddress( ) && pl && g::local ) {
+		if ( pl == g::local )
+			return animations::build_matrix( pl, out, max_bones, mask, curtime );
+
+		const auto ret = setupbones( REG_OUT, out, max_bones, mask, curtime );
+		std::memcpy( pl->bone_cache( ), &animations::data::bones [ pl->idx( ) ], N( sizeof matrix3x4_t ) * pl->bone_count( ) );
+		return ret;
+	}
 
 	return setupbones( REG_OUT, out, max_bones, mask, curtime );
 }
@@ -267,8 +325,8 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 	if ( ecx != local )
 		return get_eye_angles( REG_OUT );
 
-	static auto ret_to_thirdperson_pitch = pattern::search( _( "client_panorama.dll"), _( "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55") ).get< std::uintptr_t >( );
-	static auto ret_to_thirdperson_yaw = pattern::search( _( "client_panorama.dll"), _( "F3 0F 10 55 ? 51 8B 8E") ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_pitch = pattern::search( _( "client_panorama.dll" ), _( "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55" ) ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_yaw = pattern::search( _( "client_panorama.dll" ), _( "F3 0F 10 55 ? 51 8B 8E" ) ).get< std::uintptr_t >( );
 
 	if ( ( std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_pitch
 		|| std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_yaw )
@@ -279,15 +337,13 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 }
 
 bool __fastcall hooks::get_bool_hk( REG ) {
-	static auto cl_interpolate = pattern::search( _( "client_panorama.dll"), _( "85 C0 BF ? ? ? ? 0F 95 C3") ).get< std::uintptr_t >( );
-	static auto cam_think = pattern::search( _( "client_panorama.dll"), _( "85 C0 75 30 38 86") ).get< std::uintptr_t >( );
-	static auto hermite_fix = pattern::search( _( "client_panorama.dll"), _( "0F B6 15 ? ? ? ? 85 C0") ).get< std::uintptr_t >( );
-	static auto cl_extrapolate = pattern::search( _( "client_panorama.dll"), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B") ).get< std::uintptr_t >( );
+	static auto cl_interpolate = pattern::search( _( "client_panorama.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< std::uintptr_t >( );
+	static auto cam_think = pattern::search( _( "client_panorama.dll" ), _( "85 C0 75 30 38 86" ) ).get< std::uintptr_t >( );
+	static auto hermite_fix = pattern::search( _( "client_panorama.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< std::uintptr_t >( );
+	static auto cl_extrapolate = pattern::search( _( "client_panorama.dll" ), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< std::uintptr_t >( );
 
 	if ( !ecx )
 		return false;
-
-	auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
 	if ( /* oxui::vars::items [ "thirdperson" ].val.b */ true ) {
 		if ( std::uintptr_t( _ReturnAddress( ) ) == cam_think )
@@ -297,11 +353,11 @@ bool __fastcall hooks::get_bool_hk( REG ) {
 	// /* disable client-side extrapolation */
 	// if ( std::uintptr_t( _ReturnAddress( ) ) == cl_interpolate )
 	// 	return false;
-	// 
+	//
 	// /* disable client-side hermite fix */
 	// if ( std::uintptr_t( _ReturnAddress( ) ) == hermite_fix )
 	// 	return false;
-	// 
+	//
 	// /* disable client-side interpolation */
 	// if ( std::uintptr_t( _ReturnAddress( ) ) == cl_extrapolate )
 	// 	return false;
@@ -340,11 +396,24 @@ void __fastcall hooks::trace_ray_hk( REG, const ray_t& ray, unsigned int mask, t
 }
 
 int __fastcall hooks::send_datagram_hk( REG, void* datagram ) {
-	// return tickbase::send_datagram( REG_OUT, datagram );
+	return send_datagram( REG_OUT, datagram );
 }
 
 bool __fastcall hooks::should_skip_animation_frame_hk( REG ) {
-	return true;
+	return false;
+}
+
+bool __fastcall hooks::is_hltv_hk( REG ) {
+	static const auto accumulate_layers_call = pattern::search( _( "client_panorama.dll" ), _( "84 C0 75 0D F6 87" ) ).get< void* >( );
+	static const auto setupvelocity_call = pattern::search( _( "client_panorama.dll" ), _( "84 C0 75 38 8B 0D ? ? ? ? 8B 01 8B 80 ? ? ? ? FF D0" ) ).get< void* >( );
+
+	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) )
+		return is_hltv( REG_OUT );
+
+	if ( _ReturnAddress( ) == accumulate_layers_call || _ReturnAddress( ) == setupvelocity_call )
+		return true;
+
+	return is_hltv( REG_OUT );
 }
 
 long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
@@ -358,33 +427,34 @@ bool hooks::init( ) {
 	menu::init( );
 
 	/* create fonts */
-	render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular"), N( 16 ), false );
-	render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular"), N( 16 ), false );
+	render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular" ), N( 16 ), false );
+	render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular" ), N( 20 ), true );
 
 	/* load default config */
 	menu::load_default( );
 
-	const auto clsendmove = pattern::search( _( "engine.dll"), _( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 8F") ).resolve_rip( ).get< void* >( );
-	const auto clientmodeshared_createmove = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0") ).get< decltype( &createmove_hk ) >( );
-	const auto chlclient_framestagenotify = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2") ).get< decltype( &framestagenotify_hk ) >( );
+	const auto clsendmove = pattern::search( _( "engine.dll" ), _( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 8F" ) ).resolve_rip( ).get< void* >( );
+	const auto clientmodeshared_createmove = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< decltype( &createmove_hk ) >( );
+	const auto chlclient_framestagenotify = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< decltype( &framestagenotify_hk ) >( );
 	const auto idirect3ddevice9_endscene = vfunc< decltype( &endscene_hk ) >( csgo::i::dev, N( 42 ) );
 	const auto idirect3ddevice9_reset = vfunc< decltype( &reset_hk ) >( csgo::i::dev, N( 16 ) );
-	const auto vguimatsurface_lockcursor = pattern::search( _( "vguimatsurface.dll"), _( "80 3D ? ? ? ? 00 8B 91 A4 02 00 00 8B 0D ? ? ? ? C6 05 ? ? ? ? 01") ).get< decltype( &lockcursor_hk ) >( );
+	const auto vguimatsurface_lockcursor = pattern::search( _( "vguimatsurface.dll" ), _( "80 3D ? ? ? ? 00 8B 91 A4 02 00 00 8B 0D ? ? ? ? C6 05 ? ? ? ? 01" ) ).get< decltype( &lockcursor_hk ) >( );
 	const auto ivrenderview_sceneend = vfunc< decltype( &sceneend_hk ) >( csgo::i::render_view, N( 9 ) );
 	const auto modelrender_drawmodelexecute = vfunc< decltype( &drawmodelexecute_hk ) >( csgo::i::mdl_render, N( 21 ) );
-	const auto c_csplayer_doextraboneprocessing = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57") ).get< void* >( );
-	const auto c_baseanimating_setupbones = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9") ).get< void* >( );
-	const auto c_csplayer_get_eye_angles = pattern::search( _( "client_panorama.dll"), _( "56 8B F1 85 F6 74 32") ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D") ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( _( "client_panorama.dll"), _( "E8 ? ? ? ? E9 ? ? ? ? 83 BE") ).resolve_rip( ).add( 0x366 ).get< void* >( );
-	const auto draw_bullet_impacts = pattern::search( _( "client_panorama.dll"), _( "56 8B 71 4C 57") ).get< void* >( );
-	const auto convar_getbool = pattern::search( _( "client_panorama.dll"), _( "8B 51 1C 3B D1 75 06") ).get< void* >( );
+	const auto c_csplayer_doextraboneprocessing = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
+	const auto c_baseanimating_setupbones = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
+	const auto c_csplayer_get_eye_angles = pattern::search( _( "client_panorama.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D" ) ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? E9 ? ? ? ? 83 BE" ) ).resolve_rip( ).add( 0x366 ).get< void* >( );
+	const auto draw_bullet_impacts = pattern::search( _( "client_panorama.dll" ), _( "56 8B 71 4C 57" ) ).get< void* >( );
+	const auto convar_getbool = pattern::search( _( "client_panorama.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
 	const auto traceray_fn = vfunc< void* >( csgo::i::trace, N( 5 ) );
-	const auto overrideview = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF") ).get< void* >( );
-	const auto c_baseanimating_updateclientsideanimations = pattern::search( _( "client_panorama.dll"), _( "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00") ).get< void* >( );
-	const auto nc_send_datagram = pattern::search( _( "engine.dll"), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18") ).get<void*>( );
+	const auto overrideview = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
+	const auto updateclientsideanimations = pattern::search( _( "client_panorama.dll" ), _( "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00" ) ).get< void* >( );
+	const auto nc_send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
 	const auto engine_fire_event = vfunc< void* >( csgo::i::engine, N( 59 ) );
-	const auto c_baseanimating_should_skip_animation_frame = pattern::search( _( "client_panorama.dll"), _( "E8 ? ? ? ? 88 44 24 0B") ).add( N(1) ).deref( ).get< void* >( );
+	const auto c_baseanimating_should_skip_animation_frame = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).add( N( 1 ) ).deref( ).get< void* >( );
+	const auto engine_is_hltv = vfunc< void* >( csgo::i::engine, N( 93 ) );
 
 	MH_Initialize( );
 
@@ -399,19 +469,16 @@ bool hooks::init( ) {
 	MH_CreateHook( c_csplayer_doextraboneprocessing, doextraboneprocessing_hk, ( void** ) &doextraboneprocessing );
 	MH_CreateHook( c_csplayer_get_eye_angles, get_eye_angles_hk, ( void** ) &get_eye_angles );
 	MH_CreateHook( traceray_fn, trace_ray_hk, ( void** ) &traceray );
-	// MH_CreateHook( draw_bullet_impacts, draw_bullet_impacts_hk, ( void** ) &drawbulletimpacts );
 	MH_CreateHook( c_baseanimating_setupbones, setupbones_hk, ( void** ) &setupbones );
-	// MH_CreateHook( c_csgoplayeranimstate_setupvelocity, setupvelocity_hk, ( void** ) &setupvelocity );
 	MH_CreateHook( convar_getbool, get_bool_hk, ( void** ) &get_bool );
 	MH_CreateHook( overrideview, override_view_hk, ( void** ) &override_view );
+	//MH_CreateHook( engine_is_hltv, is_hltv_hk, ( void** ) &is_hltv );
 	// MH_CreateHook( c_baseanimating_should_skip_animation_frame, should_skip_animation_frame_hk, ( void** ) &should_skip_animation_frame );
-	// MH_CreateHook( c_baseanimating_updateclientsideanimations, update_clientside_animations_hk, ( void** ) &update_clientside_animations );
-	// MH_CreateHook( nc_send_datagram, send_datagram_hk, ( void** ) &send_datagram );
-	// MH_CreateHook( clsendmove, cl_sendmove_hk, ( void** ) &cl_sendmove );
+	// MH_CreateHook( updateclientsideanimations, update_clientside_animations_hk, ( void** ) &update_clientside_animations );
 
 	MH_EnableHook( nullptr );
 
-	o_wndproc = ( WNDPROC ) LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001"), nullptr ), GWLP_WNDPROC, long( wndproc ) );
+	o_wndproc = ( WNDPROC ) LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( wndproc ) );
 
 	return true;
 }

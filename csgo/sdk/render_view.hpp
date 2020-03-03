@@ -29,7 +29,7 @@ public:
 
 	void set_color( int r, int g, int b ) {
 		using colormodulate_fn = void( __thiscall* )( void*, float* );
-		float clrf[ ] { static_cast< float >( r ) / 255.0f, static_cast< float >( g ) / 255.0f, static_cast< float >( b ) / 255.0f };
+		float clrf [ ] { static_cast< float >( r ) / 255.0f, static_cast< float >( g ) / 255.0f, static_cast< float >( b ) / 255.0f };
 		vfunc< colormodulate_fn >( this, 6 )( this, clrf );
 	}
 };

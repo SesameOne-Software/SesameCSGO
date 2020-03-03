@@ -29,7 +29,7 @@ namespace oxui {
 
 		static std::add_pointer_t< void( const str&, int, bool, font& ) > create_font = [ ] ( const str& font_name, int size, bool bold, font& fout ) {
 			font font_out;
-			render::create_font( (void**) &font_out, font_name, size, bold );
+			render::create_font( ( void** ) &font_out, font_name, size, bold );
 			fout = font_out;
 		};
 
@@ -56,14 +56,14 @@ namespace oxui {
 		static std::add_pointer_t< void( const oxui::rect&, const color&, const color&, bool ) > gradient_rect = [ ] ( const oxui::rect& r, const oxui::color& c, const oxui::color& c1, bool horizontal ) {
 			render::gradient( r.x, r.y, r.w, r.h, D3DCOLOR_RGBA( c.r, c.g, c.b, c.a ), D3DCOLOR_RGBA( c1.r, c1.g, c1.b, c1.a ), horizontal );
 		};
-		
+
 		static std::add_pointer_t< void( const oxui::pos&, const oxui::pos&, const color& ) > line = [ ] ( const oxui::pos& p1, const oxui::pos& p2, const color& c ) {
 			render::line( p1.x, p1.y, p2.x, p2.y, D3DCOLOR_RGBA( c.r, c.g, c.b, c.a ) );
 		};
 
 		static std::add_pointer_t< void( const font&, const str&, oxui::rect& ) > text_bounds = [ ] ( const font& font, const str& text, oxui::rect& bounds ) {
 			render::dim size;
-			render::text_size( (void*)font, text, size );
+			render::text_size( ( void* ) font, text, size );
 			bounds.w = size.w;
 			bounds.h = size.h;
 		};

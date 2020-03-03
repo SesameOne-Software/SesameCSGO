@@ -9,14 +9,21 @@
 
 namespace oxui {
 	class dropdown : public obj {
+		int hovered_index;
+
 	public:
 		str label;
 		std::vector< str > items;
+		int value;
+		bool opened;
 
 		dropdown( const str& label, const std::vector< str >& items ) {
+			this->hovered_index = 0;
+			this->value = 0;
+			this->opened = false;
 			this->label = label;
 			this->items = items;
-			type = object_dropdown;
+			this->type = object_dropdown;
 		}
 
 		~dropdown( ) {}

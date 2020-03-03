@@ -5,7 +5,7 @@
 
 namespace menu {
 	long __stdcall wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam );
-	
+
 	bool open( );
 	void* find_obj( const oxui::str& tab_name, const oxui::str& group_name, const oxui::str& object_name, oxui::object_type otype );
 

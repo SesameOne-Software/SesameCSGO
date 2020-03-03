@@ -48,11 +48,11 @@ public:
 	}
 
 	float& operator[]( int i ) {
-		return ( ( float* ) this )[ i ];
+		return ( ( float* ) this ) [ i ];
 	}
 
 	float operator[]( int i ) const {
-		return ( ( float* ) this )[ i ];
+		return ( ( float* ) this ) [ i ];
 	}
 
 	void zero( ) {

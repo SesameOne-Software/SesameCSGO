@@ -38,7 +38,7 @@ class vec2_t;
 
 struct animstate_pose_param_cache_t {
 	std::uint8_t pad_0x0 [ 0x4 ]; //0x0
-	std::uint32_t m_idx; //0x4 
+	std::uint32_t m_idx; //0x4
 	char* m_name; //0x8
 
 	void set_value( player_t* e, float val );
@@ -47,49 +47,49 @@ struct animstate_pose_param_cache_t {
 class animstate_t {
 public:
 	std::uint8_t pad_0x0000 [ 0x4 ]; //0x0000
-	bool m_force_update; //0x0005 
+	bool m_force_update; //0x0005
 	std::uint8_t pad_0x0006 [ 0x5A ]; //0x0006
-	player_t* m_entity; //0x0060 
-	weapon_t* m_weapon; //0x0064 
-	weapon_t* m_last_weapon; //0x0068 
-	float m_last_clientside_anim_update; //0x006C 
-	std::uint32_t m_last_clientside_anim_framecount; //0x0070 
-	float m_last_clientside_anim_update_time_delta; //0x0074 
-	float m_eye_yaw; //0x0078 
-	float m_pitch; //0x007C 
-	float m_abs_yaw; //0x0080 
-	float m_feet_yaw; //0x0084 
-	float m_body_yaw; //0x0088 
-	float m_body_yaw_clamped; //0x008C 
-	float m_feet_vel_dir_delta; //0x0090 
+	player_t* m_entity; //0x0060
+	weapon_t* m_weapon; //0x0064
+	weapon_t* m_last_weapon; //0x0068
+	float m_last_clientside_anim_update; //0x006C
+	std::uint32_t m_last_clientside_anim_framecount; //0x0070
+	float m_last_clientside_anim_update_time_delta; //0x0074
+	float m_eye_yaw; //0x0078
+	float m_pitch; //0x007C
+	float m_abs_yaw; //0x0080
+	float m_feet_yaw; //0x0084
+	float m_body_yaw; //0x0088
+	float m_body_yaw_clamped; //0x008C
+	float m_feet_vel_dir_delta; //0x0090
 	std::uint8_t pad_0x0094 [ 0x4 ]; //0x0094
-	float m_feet_cycle; //0x0098 
-	float m_feet_yaw_rate; //0x009C 
+	float m_feet_cycle; //0x0098
+	float m_feet_yaw_rate; //0x009C
 	std::uint8_t pad_0x00A0 [ 0x4 ]; //0x00A0
-	float m_duck_amount; //0x00A4 
-	float m_landing_duck_additive; //0x00A8 
+	float m_duck_amount; //0x00A4
+	float m_landing_duck_additive; //0x00A8
 	std::uint8_t pad_0x00AC [ 0x4 ]; //0x00AC
-	vec3_t m_origin; //0x00B0 
-	vec3_t m_old_origin; //0x00BC 
-	vec2_t m_vel2d; //0x00C8 
+	vec3_t m_origin; //0x00B0
+	vec3_t m_old_origin; //0x00BC
+	vec2_t m_vel2d; //0x00C8
 	std::uint8_t pad_0x00D0 [ 0x10 ]; //0x00D0
-	vec2_t m_last_accelerating_vel; //0x00E0 
+	vec2_t m_last_accelerating_vel; //0x00E0
 	std::uint8_t pad_0x00E8 [ 0x4 ]; //0x00E8
-	float m_speed2d; //0x00EC 
-	float m_up_vel; //0x00F0 
-	float m_speed_normalized; //0x00F4 
-	float m_run_speed; //0x00F8 
-	float m_unk_feet_speed_ratio; //0x00FC 
-	float m_time_since_move; //0x0100 
-	float m_time_since_stop; //0x0104 
-	bool m_on_ground; //0x0108 
-	bool m_hit_ground; //0x0109 
+	float m_speed2d; //0x00EC
+	float m_up_vel; //0x00F0
+	float m_speed_normalized; //0x00F4
+	float m_run_speed; //0x00F8
+	float m_unk_feet_speed_ratio; //0x00FC
+	float m_time_since_move; //0x0100
+	float m_time_since_stop; //0x0104
+	bool m_on_ground; //0x0108
+	bool m_hit_ground; //0x0109
 	std::uint8_t pad_0x010A [ 0x4 ]; //0x010A
-	float m_time_in_air; //0x0110 
+	float m_time_in_air; //0x0110
 	std::uint8_t pad_0x0114 [ 0x6 ]; //0x0114
-	float m_ground_fraction; //0x011C 
+	float m_ground_fraction; //0x011C
 	std::uint8_t pad_0x0120 [ 0x2 ]; //0x0120
-	float m_unk_fraction; //0x0124 
+	float m_unk_fraction; //0x0124
 	std::uint8_t pad_0x0128 [ 0xC ]; //0x0128
 	bool m_moving; //0x0134
 	std::uint8_t pad_0x0135 [ 0x7B ]; //0x0135
@@ -98,7 +98,7 @@ public:
 	animstate_pose_param_cache_t m_ladder_speed_pose; //0x01C8
 	animstate_pose_param_cache_t m_ladder_yaw_pose; //0x01D4
 	animstate_pose_param_cache_t m_move_yaw_pose; //0x01E0
-	animstate_pose_param_cache_t m_run_pose; //0x01EC 
+	animstate_pose_param_cache_t m_run_pose; //0x01EC
 	animstate_pose_param_cache_t m_body_yaw_pose; //0x01F8
 	animstate_pose_param_cache_t m_body_pitch_pose; //0x0204
 	animstate_pose_param_cache_t m_dead_yaw_pose; //0x0210
@@ -114,11 +114,11 @@ public:
 	animstate_pose_param_cache_t m_move_blend_run_pose; //0x0288
 	animstate_pose_param_cache_t m_move_blend_crouch_pose; //0x0294
 	std::uint8_t pad_0x02A0 [ 0x4 ]; //0x02A0
-	float m_vel_unk; //0x02A4 
+	float m_vel_unk; //0x02A4
 	std::uint8_t pad_0x02A8 [ 0x86 ]; //0x02A8
-	float m_min_yaw; //0x0330 
-	float m_max_yaw; //0x0334 
-	float m_max_pitch; //0x0338 
+	float m_min_yaw; //0x0330
+	float m_max_yaw; //0x0334
+	float m_max_pitch; //0x0338
 	float m_min_pitch; //0x033C
 
 	void reset( );
@@ -226,7 +226,7 @@ public:
 	}
 
 	std::array< animlayer_t, 15 >& overlays( ) {
-		return *reinterpret_cast< std::array< animlayer_t, 15 >* >( std::uintptr_t( this ) + 0x2980 );
+		return *reinterpret_cast< std::array< animlayer_t, 15 >* >( *reinterpret_cast< uintptr_t* >( std::uintptr_t( this ) + 0x2980 ) );
 	}
 
 	std::array< float, 24 >& poses( ) {
@@ -244,7 +244,7 @@ public:
 	}
 
 	void set_local_viewangles( const vec3_t& ang ) {
-		using fn = void( __thiscall*)( void*, const vec3_t& );
+		using fn = void( __thiscall* )( void*, const vec3_t& );
 		vfunc< fn >( this, 371 )( this, ang );
 	}
 
@@ -265,10 +265,10 @@ public:
 	vec3_t world_space( ) {
 		vec3_t wspace;
 		vec3_t va, vb;
-		
+
 		using fn = void( __thiscall* )( void*, vec3_t&, vec3_t& );
 		vfunc< fn >( this + 0x4, 17 )( this + 0x4, va, vb );
-		
+
 		wspace = abs_origin( );
 		wspace.z += ( va.z + vb.z ) * 0.5f;
 
@@ -341,7 +341,7 @@ public:
 
 	vec3_t eyes( );
 	std::uint32_t& bone_count( );
-	std::array< matrix3x4_t, 128 >& bone_cache( );
+	matrix3x4_t* bone_cache( );
 	weapon_t* weapon( );
 
 	float desync_amount( ) {

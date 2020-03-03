@@ -29,76 +29,76 @@ bool found = true;
 #define NtCurrentProcess        ((HANDLE)(LONG_PTR)-1)
 #define NtCurrentThread         ((HANDLE)(LONG_PTR)-2)
 
-int __cdecl vm_handler(EXCEPTION_RECORD* p_rec, void* est, unsigned char* p_context, void* disp)
+int __cdecl vm_handler( EXCEPTION_RECORD* p_rec, void* est, unsigned char* p_context, void* disp )
 {
 	found = true;
-	(*(unsigned long*)(p_context + 0xB8)) += 4;
+	( *( unsigned long* ) ( p_context + 0xB8 ) ) += 4;
 	return ExceptionContinueExecution;
 }
 
-__forceinline void security::internal::to_lower(unsigned char* input)
+__forceinline void security::internal::to_lower( unsigned char* input )
 {
-	char* p = (char*)input;
-	unsigned long length = LI_FN( strlen )(p);
-	for (unsigned long i = 0; i < length; i++) p[i] = LI_FN( tolower )(p[i]);
+	char* p = ( char* ) input;
+	unsigned long length = LI_FN( strlen )( p );
+	for ( unsigned long i = 0; i < length; i++ ) p [ i ] = LI_FN( tolower )( p [ i ] );
 }
 
 //returns strings for the check_window_name() function
 //this combined with the _ing of strings is to prevent static analysis / make it harder
-__forceinline const wchar_t* security::internal::get_string(int index) {
+__forceinline const wchar_t* security::internal::get_string( int index ) {
 	std::string value = "";
 
-	switch (index) {
-	case 0: value = _("Qt5QWindowIcon"); break; /* supposed to be AutoIT check, but can also be logitech software / other QT5 software. ignore. */
-	case 1: value = _("OLLYDBG"); break;
-	case 2: value = _("SunAwtFrame"); break;
-	case 3: value = _("ID"); break;
-	case 4: value = _("ntdll.dll"); break;
-	case 5: value = _("antidbg"); break;
-	case 6: value = _("%random_environment_var_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%"); break;
-	case 7: value = _("%random_file_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%"); break;
+	switch ( index ) {
+	case 0: value = _( "Qt5QWindowIcon" ); break; /* supposed to be AutoIT check, but can also be logitech software / other QT5 software. ignore. */
+	case 1: value = _( "OLLYDBG" ); break;
+	case 2: value = _( "SunAwtFrame" ); break;
+	case 3: value = _( "ID" ); break;
+	case 4: value = _( "ntdll.dll" ); break;
+	case 5: value = _( "antidbg" ); break;
+	case 6: value = _( "%random_environment_var_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
+	case 7: value = _( "%random_file_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
 	}
 
-	return std::wstring(value.begin(), value.end()).c_str();
+	return std::wstring( value.begin( ), value.end( ) ).c_str( );
 }
 
 //checks the process environment block (peb) for a "beingdebugged" field (gets set if process is launched in a debugger)
 //possible bypass: once the peb byte is set, set the value to 0 before the application checks
-__forceinline int security::internal::memory::being_debugged_peb() {
+__forceinline int security::internal::memory::being_debugged_peb( ) {
 	BOOL found = FALSE;
 	_asm
 	{
 		xor eax, eax;			//clear the eax register
 		mov eax, fs: [0x30] ;	//reference start of the process environment block
-		mov eax, [eax + 0x02];	//beingdebugged is stored in peb + 2
+		mov eax, [ eax + 0x02 ];	//beingdebugged is stored in peb + 2
 		and eax, 0x000000FF;	//reference one byte
 		mov found, eax;			//copy value to found
 	}
 
-	return (found) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
 }
 
 //checks if a debugger is running (in another system/process)
 //possible bypass: set a breakpoint before this gets called, single step, set the return value to 0
-__forceinline int security::internal::memory::remote_debugger_present() {
+__forceinline int security::internal::memory::remote_debugger_present( ) {
 	//declare variables to hold the process handle & bool to check if it was found
 	HANDLE h_process = INVALID_HANDLE_VALUE;
 	BOOL found = FALSE;
 
 	//check if a remote debugger is present
-	LI_FN( CheckRemoteDebuggerPresent )( NtCurrentProcess, &found);
+	LI_FN( CheckRemoteDebuggerPresent )( NtCurrentProcess, &found );
 
 	//if found is true, we return the right code.
-	return (found) ? security::internal::debug_results::remote_debugger_present : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::remote_debugger_present : security::internal::debug_results::none;
 }
 
 //checks if certain windows are present (not the name that can be easily changed but the window_class_name)
 //possible bypass: set a breakpoint before this gets called, single step, set the return value to 0
-__forceinline int security::internal::memory::check_window_name() {
-	const wchar_t* names[] = { /* get_string(0), */ get_string(1), get_string(2), get_string(3) };
+__forceinline int security::internal::memory::check_window_name( ) {
+	const wchar_t* names [ ] = { /* get_string(0), */ get_string( 1 ), get_string( 2 ), get_string( 3 ) };
 
-	for (const wchar_t* name : names) {
-		if (LI_FN( FindWindowW )(name, nullptr )) { return security::internal::debug_results::find_window; }
+	for ( const wchar_t* name : names ) {
+		if ( LI_FN( FindWindowW )( name, nullptr ) ) { return security::internal::debug_results::find_window; }
 	}
 
 	return security::internal::debug_results::none;
@@ -106,81 +106,81 @@ __forceinline int security::internal::memory::check_window_name() {
 
 //another check for the peb flag, this time by the function from winapi.h
 //possible bypass: set a breakpoint before this gets called, single step, set the return value to 0
-__forceinline int security::internal::memory::is_debugger_present() {
+__forceinline int security::internal::memory::is_debugger_present( ) {
 	//if debugger is found, we return the right code.
-	return (LI_FN( IsDebuggerPresent )()) ? security::internal::debug_results::debugger_is_present : security::internal::debug_results::none;
+	return ( LI_FN( IsDebuggerPresent )( ) ) ? security::internal::debug_results::debugger_is_present : security::internal::debug_results::none;
 }
 
 //looks for process environment block references
 //they usually start with FS:[0x30h]. fs = frame segment, indicates reference to the programs internal header structures
 //0x68 offset from the peb is ntglobalflag, three flags get set if a process is being debugged
 //FLG_HEAP_ENABLE_TAIL_CHECK (0x10), FLG_HEAP_ENABLE_FREE_CHECK (0x20), FLG_HEAP_VALIDATE_PARAMETERS(0x40)
-__forceinline int security::internal::memory::nt_global_flag_peb() {
+__forceinline int security::internal::memory::nt_global_flag_peb( ) {
 	//bool to indicate find status
 	BOOL found = FALSE;
 	_asm
 	{
 		xor eax, eax;			//clear the eax register
 		mov eax, fs: [0x30] ;   //reference start of the peb
-		mov eax, [eax + 0x68];	//peb+0x68 points to NtGlobalFlags
+		mov eax, [ eax + 0x68 ];	//peb+0x68 points to NtGlobalFlags
 		and eax, 0x00000070;	//check three flags
 		mov found, eax;			//copy value to found
 	}
 
 	//if found is true, we return the right code.
-	return (found) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
 }
 
 //two checks here, 1. xxx, 2. NoDebugInherit
-__forceinline int security::internal::memory::nt_query_information_process() {
+__forceinline int security::internal::memory::nt_query_information_process( ) {
 	HANDLE h_process = INVALID_HANDLE_VALUE;
 	DWORD found = FALSE;
 	DWORD process_debug_port = 0x07;	//first method, check msdn for details
 	DWORD process_debug_flags = 0x1F;	//second method, check msdn for details
 
 	//get a handle to ntdll.dll so we can use NtQueryInformationProcess
-	HMODULE h_ntdll = LoadLibraryW(get_string(4));
+	HMODULE h_ntdll = LI_FN( LoadLibraryW )( get_string( 4 ) );
 
 	//if we cant get the handle for some reason, we return none
-	if (h_ntdll == INVALID_HANDLE_VALUE || h_ntdll == nullptr) { return security::internal::debug_results::none; }
+	if ( h_ntdll == INVALID_HANDLE_VALUE || h_ntdll == nullptr ) { return security::internal::debug_results::none; }
 
 	//dynamically acquire the address of NtQueryInformationProcess
 	_NtQueryInformationProcess NtQueryInformationProcess = nullptr;
-	NtQueryInformationProcess = (_NtQueryInformationProcess)LI_FN( GetProcAddress )(h_ntdll, _("NtQueryInformationProcess"));
+	NtQueryInformationProcess = ( _NtQueryInformationProcess ) LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
 
 	//if we cant get access for some reason, we return none
-	if (NtQueryInformationProcess == nullptr) { return security::internal::debug_results::none; }
+	if ( NtQueryInformationProcess == nullptr ) { return security::internal::debug_results::none; }
 
-	NTSTATUS status = NtQueryInformationProcess( NtCurrentProcess, ProcessDebugPort, &found, sizeof(DWORD), nullptr);
+	NTSTATUS status = NtQueryInformationProcess( NtCurrentProcess, ProcessDebugPort, &found, sizeof( DWORD ), nullptr );
 
 	//found something
-	if (!status && found) { return security::internal::debug_results::nt_query_information_process; }
+	if ( !status && found ) { return security::internal::debug_results::nt_query_information_process; }
 
 	//method 2: query ProcessDebugFlags
-	status = NtQueryInformationProcess( NtCurrentProcess, process_debug_flags, &found, sizeof(DWORD), nullptr);
+	status = NtQueryInformationProcess( NtCurrentProcess, process_debug_flags, &found, sizeof( DWORD ), nullptr );
 
 	//the ProcessDebugFlags set found to 1 if no debugger is found, so we check !found.
-	if (!status && !found) { return security::internal::debug_results::nt_query_information_process; }
+	if ( !status && !found ) { return security::internal::debug_results::nt_query_information_process; }
 
 	return security::internal::debug_results::none;
 }
 
 //hides the thread from any debugger, any attempt to control the process after this call ends the debugging session
-__forceinline int security::internal::memory::nt_set_information_thread() {
+__forceinline int security::internal::memory::nt_set_information_thread( ) {
 	THREAD_INFORMATION_CLASS thread_hide_from_debugger = THREAD_INFORMATION_CLASS( 0x11 );
 
 	//get a handle to ntdll.dll so we can use NtQueryInformationProcess
-	HMODULE h_ntdll = LI_FN( LoadLibraryW )(get_string(4));
+	HMODULE h_ntdll = LI_FN( LoadLibraryW )( get_string( 4 ) );
 
 	//if we cant get the handle for some reason, we return none
-	if (h_ntdll == INVALID_HANDLE_VALUE || h_ntdll == nullptr) { return security::internal::debug_results::none; }
+	if ( h_ntdll == INVALID_HANDLE_VALUE || h_ntdll == nullptr ) { return security::internal::debug_results::none; }
 
 	//dynamically acquire the address of NtQueryInformationProcess
 	_NtQueryInformationProcess NtQueryInformationProcess = nullptr;
-	NtQueryInformationProcess = (_NtQueryInformationProcess)LI_FN( GetProcAddress )(h_ntdll, _ ("NtQueryInformationProcess"));
+	NtQueryInformationProcess = ( _NtQueryInformationProcess ) LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
 
 	//if we cant get access for some reason, we return none
-	if (NtQueryInformationProcess == nullptr) { return security::internal::debug_results::none; }
+	if ( NtQueryInformationProcess == nullptr ) { return security::internal::debug_results::none; }
 
 	_NtSetInformationThread NtSetInformationThread = nullptr;
 	NtSetInformationThread = ( _NtSetInformationThread ) LI_FN( GetProcAddress )( h_ntdll, _( "NtSetInformationThread" ) );
@@ -199,25 +199,25 @@ __forceinline int security::internal::memory::nt_set_information_thread() {
 	return security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::memory::debug_active_process() {
+__forceinline int security::internal::memory::debug_active_process( ) {
 	BOOL found = FALSE;
 	STARTUPINFOA si = { 0 };
 	PROCESS_INFORMATION pi = { 0 };
-	si.cb = sizeof(si);
-	TCHAR sz_path[MAX_PATH];
+	si.cb = sizeof( si );
+	TCHAR sz_path [ MAX_PATH ];
 	DWORD exit_code = 0;
 
-	DWORD proc_id = LI_FN( GetCurrentProcessId )();
+	DWORD proc_id = LI_FN( GetCurrentProcessId )( );
 	std::stringstream stream;
 	stream << proc_id;
-	std::string args = stream.str();
+	std::string args = stream.str( );
 
-	const char* cp_id = args.c_str();
-	LI_FN( CreateMutexW )(nullptr, FALSE, get_string(5));
-	if (LI_FN( GetLastError )() != ERROR_SUCCESS)
+	const char* cp_id = args.c_str( );
+	LI_FN( CreateMutexW )( nullptr, FALSE, get_string( 5 ) );
+	if ( LI_FN( GetLastError )( ) != ERROR_SUCCESS )
 	{
 		//if we get here, we're in the child process
-		if (LI_FN( DebugActiveProcess )((DWORD)LI_FN( atoi )(cp_id)))
+		if ( LI_FN( DebugActiveProcess )( ( DWORD ) LI_FN( atoi )( cp_id ) ) )
 		{
 			//no debugger found
 			return security::internal::debug_results::none;
@@ -225,15 +225,15 @@ __forceinline int security::internal::memory::debug_active_process() {
 		else
 		{
 			//debugger found, exit child with unique code that we can check for
-			exit(555);
+			exit( 555 );
 		}
 	}
 
 	//parent process
-	LI_FN( GetModuleFileName )(nullptr, sz_path, MAX_PATH);
+	LI_FN( GetModuleFileName )( nullptr, sz_path, MAX_PATH );
 
-	char cmdline[MAX_PATH + 1 + sizeof(int)];
-	LI_FN( snprintf )(cmdline, sizeof(cmdline), _ ("%ws %d"), sz_path, LI_FN( GetCurrentProcessId )( ) );
+	char cmdline [ MAX_PATH + 1 + sizeof( int ) ];
+	LI_FN( snprintf )( cmdline, sizeof( cmdline ), _( "%ws %d" ), sz_path, LI_FN( GetCurrentProcessId )( ) );
 
 	//start child process
 	BOOL success = LI_FN( CreateProcessA )(
@@ -244,21 +244,21 @@ __forceinline int security::internal::memory::debug_active_process() {
 		FALSE,		//set handle inheritance to FALSE
 		0,			//no creation flags
 		nullptr,		//use parent's environment block
-		nullptr,		//use parent's starting directory 
+		nullptr,		//use parent's starting directory
 		&si,		//pointer to STARTUPINFO structure
-		&pi);		//pointer to PROCESS_INFORMATION structure
+		&pi );		//pointer to PROCESS_INFORMATION structure
 
 	//wait until child process exits and get the code
-	LI_FN( WaitForSingleObject )(pi.hProcess, INFINITE);
+	LI_FN( WaitForSingleObject )( pi.hProcess, INFINITE );
 
 	//check for our unique exit code
-	if (LI_FN( GetExitCodeProcess )(pi.hProcess, &exit_code) == 555) { found = TRUE; }
+	if ( LI_FN( GetExitCodeProcess )( pi.hProcess, &exit_code ) == 555 ) { found = TRUE; }
 
-	// Close process and thread handles. 
-	LI_FN( CloseHandle )(pi.hProcess);
-	LI_FN( CloseHandle )(pi.hThread);
+	// Close process and thread handles.
+	LI_FN( CloseHandle )( pi.hProcess );
+	LI_FN( CloseHandle )( pi.hThread );
 	//if found is true, we return the right code.
-	return (found) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::being_debugged_peb : security::internal::debug_results::none;
 }
 
 //uses MEM_WRITE_WATCH feature of VirtualAlloc to check whether a debugger etc. is writing to our memory
@@ -269,64 +269,65 @@ __forceinline int security::internal::memory::debug_active_process() {
 //allocate an executable buffer, copy a debug check routine to it, run the check and check if any writes were performed after the initial write
 
 //thanks to LordNoteworthy/al-khaser for the idea
-__forceinline int security::internal::memory::write_buffer() {
+__forceinline int security::internal::memory::write_buffer( ) {
 	//first option
 
 	//vars to store the amount of accesses to the buffer and the granularity for GetWriteWatch()
 	ULONG_PTR hits;
 	DWORD granularity;
 
-	PVOID* addresses = static_cast<PVOID*>(LI_FN( VirtualAlloc )(nullptr, 4096 * sizeof(PVOID), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
-	if (addresses == nullptr) { 
-		return security::internal::debug_results::write_buffer; }
+	PVOID* addresses = static_cast< PVOID* >( LI_FN( VirtualAlloc )( nullptr, 4096 * sizeof( PVOID ), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE ) );
+	if ( addresses == nullptr ) {
+		return security::internal::debug_results::write_buffer;
+	}
 
-	int* buffer = static_cast<int*>( LI_FN( VirtualAlloc )(nullptr, 4096 * 4096, MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH, PAGE_READWRITE));
-	if (buffer == nullptr) {
-		LI_FN( VirtualFree )(addresses, 0, MEM_RELEASE);
+	int* buffer = static_cast< int* >( LI_FN( VirtualAlloc )( nullptr, 4096 * 4096, MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH, PAGE_READWRITE ) );
+	if ( buffer == nullptr ) {
+		LI_FN( VirtualFree )( addresses, 0, MEM_RELEASE );
 		return security::internal::debug_results::write_buffer;
 	}
 
 	//read the buffer once
-	buffer[0] = 1234;
+	buffer [ 0 ] = 1234;
 
 	hits = 4096;
-	if (LI_FN( GetWriteWatch )(0, buffer, 4096, addresses, &hits, &granularity) != 0) { return security::internal::debug_results::write_buffer; }
+	if ( LI_FN( GetWriteWatch )( 0, buffer, 4096, addresses, &hits, &granularity ) != 0 ) { return security::internal::debug_results::write_buffer; }
 	else
 	{
 		//free the memory again
-		LI_FN( VirtualFree )(addresses, 0, MEM_RELEASE);
-		LI_FN( VirtualFree )(buffer, 0, MEM_RELEASE);
+		LI_FN( VirtualFree )( addresses, 0, MEM_RELEASE );
+		LI_FN( VirtualFree )( buffer, 0, MEM_RELEASE );
 
 		//we should have 1 hit if everything is fine
-		return (hits == 1) ? security::internal::debug_results::none : security::internal::debug_results::write_buffer;
+		return ( hits == 1 ) ? security::internal::debug_results::none : security::internal::debug_results::write_buffer;
 	}
 
 	//second option
 
 	BOOL result = FALSE, error = FALSE;
 
-	addresses = static_cast<PVOID*>( LI_FN( VirtualAlloc )(nullptr, 4096 * sizeof(PVOID), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE));
-	if (addresses == nullptr) { return security::internal::debug_results::write_buffer; }
+	addresses = static_cast< PVOID* >( LI_FN( VirtualAlloc )( nullptr, 4096 * sizeof( PVOID ), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE ) );
+	if ( addresses == nullptr ) { return security::internal::debug_results::write_buffer; }
 
-	buffer = static_cast<int*>( LI_FN( VirtualAlloc )(nullptr, 4096 * 4096, MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH, PAGE_READWRITE));
-	if (buffer == nullptr) {
-		LI_FN( VirtualFree )(addresses, 0, MEM_RELEASE);
+	buffer = static_cast< int* >( LI_FN( VirtualAlloc )( nullptr, 4096 * 4096, MEM_RESERVE | MEM_COMMIT | MEM_WRITE_WATCH, PAGE_READWRITE ) );
+	if ( buffer == nullptr ) {
+		LI_FN( VirtualFree )( addresses, 0, MEM_RELEASE );
 		return security::internal::debug_results::write_buffer;
 	}
 
-	//make some calls where a buffer *can* be written to, but isn't actually edited because we pass invalid parameters	
-	if (LI_FN( GlobalGetAtomName )(INVALID_ATOM, (LPTSTR)buffer, 1) != FALSE || LI_FN( GetEnvironmentVariableW )(get_string(6), (LPWSTR)buffer, 4096 * 4096) != FALSE || LI_FN(GetBinaryTypeW)(get_string(7), (LPDWORD)buffer) != FALSE
-		|| LI_FN( HeapQueryInformation )(nullptr, (HEAP_INFORMATION_CLASS)69, buffer, 4096, nullptr) != FALSE || LI_FN( ReadProcessMemory )(INVALID_HANDLE_VALUE, (LPCVOID)0x69696969, buffer, 4096, nullptr) != FALSE
-		|| LI_FN( GetThreadContext )(INVALID_HANDLE_VALUE, (LPCONTEXT)buffer) != FALSE || LI_FN( GetWriteWatch )(0, &security::internal::memory::write_buffer, 0, nullptr, nullptr, (PULONG)buffer) == 0) {
+	//make some calls where a buffer *can* be written to, but isn't actually edited because we pass invalid parameters
+	if ( LI_FN( GlobalGetAtomName )( INVALID_ATOM, ( LPTSTR ) buffer, 1 ) != FALSE || LI_FN( GetEnvironmentVariableW )( get_string( 6 ), ( LPWSTR ) buffer, 4096 * 4096 ) != FALSE || LI_FN( GetBinaryTypeW )( get_string( 7 ), ( LPDWORD ) buffer ) != FALSE
+		|| LI_FN( HeapQueryInformation )( nullptr, ( HEAP_INFORMATION_CLASS ) 69, buffer, 4096, nullptr ) != FALSE || LI_FN( ReadProcessMemory )( INVALID_HANDLE_VALUE, ( LPCVOID ) 0x69696969, buffer, 4096, nullptr ) != FALSE
+		|| LI_FN( GetThreadContext )( INVALID_HANDLE_VALUE, ( LPCONTEXT ) buffer ) != FALSE || LI_FN( GetWriteWatch )( 0, &security::internal::memory::write_buffer, 0, nullptr, nullptr, ( PULONG ) buffer ) == 0 ) {
 		result = false;
 		error = true;
 	}
 
-	if (error == FALSE)
+	if ( error == FALSE )
 	{
 		//all calles failed as they're supposed to
 		hits = 4096;
-		if (LI_FN( GetWriteWatch )(0, buffer, 4096, addresses, &hits, &granularity) != 0)
+		if ( LI_FN( GetWriteWatch )( 0, buffer, 4096, addresses, &hits, &granularity ) != 0 )
 		{
 			result = FALSE;
 		}
@@ -338,8 +339,8 @@ __forceinline int security::internal::memory::write_buffer() {
 		}
 	}
 
-	LI_FN( VirtualFree)(addresses, 0, MEM_RELEASE);
-	LI_FN( VirtualFree)(buffer, 0, MEM_RELEASE);
+	LI_FN( VirtualFree )( addresses, 0, MEM_RELEASE );
+	LI_FN( VirtualFree )( buffer, 0, MEM_RELEASE );
 
 	return result;
 }
@@ -347,15 +348,15 @@ __forceinline int security::internal::memory::write_buffer() {
 //will throw an exception when trying to close an invalid handle (only when debugged)
 //so if we pass an invalid handle and get the exception, we know that we're being debugged
 //possible bypass: change the passed handle to an existing handle or adjust the extended instruction pointer register to skip over the invalid handle
-__forceinline int security::internal::exceptions::close_handle_exception() {
+__forceinline int security::internal::exceptions::close_handle_exception( ) {
 	//invalid handle
-	HANDLE h_invalid = (HANDLE)0xDEADBEEF;
+	HANDLE h_invalid = ( HANDLE ) 0xDEADBEEF;
 
 	__try
 	{
-		LI_FN(CloseHandle)(h_invalid);
+		LI_FN( CloseHandle )( h_invalid );
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
+	__except ( EXCEPTION_EXECUTE_HANDLER )
 	{
 		//if we get the exception, we return the right code.
 		return security::internal::debug_results::close_handle_exception;
@@ -365,23 +366,23 @@ __forceinline int security::internal::exceptions::close_handle_exception() {
 }
 
 //we force an exception to occur, if it occurs outside of a debugger the __except() handler is called, if it's inside a debugger it will not be called
-__forceinline int security::internal::exceptions::single_step_exception() {
+__forceinline int security::internal::exceptions::single_step_exception( ) {
 	BOOL debugger_present = TRUE;
 	__try
 	{
 		__asm
 		{
 			pushfd						//save flag register
-			or dword ptr[esp], 0x100	//set trap flag in EFlags
+			or dword ptr [ esp ], 0x100	//set trap flag in EFlags
 			popfd						//restore flag register
 			nop							//does nothing
 		}
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER) { debugger_present = FALSE; }
+	__except ( EXCEPTION_EXECUTE_HANDLER ) { debugger_present = FALSE; }
 
 	//if the exception was raised, return none
 	//if a debugger handled the exception (no exception for us to handle), return detection
-	return (debugger_present) ? security::internal::debug_results::single_step : security::internal::debug_results::none;
+	return ( debugger_present ) ? security::internal::debug_results::single_step : security::internal::debug_results::none;
 }
 
 //i3 is a standard software breakcode (opcode 0xCC), when you set a breakpoint the debugger replaces the opcode under the breakpoint location with
@@ -390,7 +391,7 @@ __forceinline int security::internal::exceptions::single_step_exception() {
 //without the debugger, something has to handle the breakpoint exception (our handler)
 //if it doesn't get hit, theres a debugger handling it instead -> we can detect that our handler was not run -> debugger found
 //possible bypass: most debuggers give an option (pass exception to the application or let the debugger handle it), if the debugger handles it, we can detect it.
-__forceinline int security::internal::exceptions::int_3() {
+__forceinline int security::internal::exceptions::int_3( ) {
 	__try
 	{
 		_asm
@@ -399,7 +400,7 @@ __forceinline int security::internal::exceptions::int_3() {
 		}
 	}
 	//exception is handled by our app = debugger did not attempt to intervene
-	__except (EXCEPTION_EXECUTE_HANDLER) { return security::internal::debug_results::none; }
+	__except ( EXCEPTION_EXECUTE_HANDLER ) { return security::internal::debug_results::none; }
 
 	//if we don't get the exception, we return the right code.
 	return security::internal::debug_results::int_3_cc;
@@ -417,7 +418,7 @@ __forceinline int security::internal::exceptions::int_3() {
 //this might result in a single-byte instruction being skipped (because windows increased the exception address by one) or in the
 //execution of a completely different instruction because the first instruction byte is missing.
 //this behaviour can be checked to see whether a debugger is present.
-__forceinline int security::internal::exceptions::int_2d() {
+__forceinline int security::internal::exceptions::int_2d( ) {
 	BOOL found = false;
 	__try
 	{
@@ -427,7 +428,7 @@ __forceinline int security::internal::exceptions::int_2d() {
 		}
 	}
 
-	__except (EXCEPTION_EXECUTE_HANDLER) { return security::internal::debug_results::none; }
+	__except ( EXCEPTION_EXECUTE_HANDLER ) { return security::internal::debug_results::none; }
 
 	__try
 	{
@@ -440,13 +441,13 @@ __forceinline int security::internal::exceptions::int_2d() {
 		}
 	}
 
-	__except (EXCEPTION_EXECUTE_HANDLER) { return security::internal::debug_results::none; }
+	__except ( EXCEPTION_EXECUTE_HANDLER ) { return security::internal::debug_results::none; }
 
 	//if we don't get the exception, we return the right code.
 	return security::internal::debug_results::int_2;
 }
 
-__forceinline int security::internal::exceptions::prefix_hop() {
+__forceinline int security::internal::exceptions::prefix_hop( ) {
 	__try
 	{
 		_asm
@@ -457,7 +458,7 @@ __forceinline int security::internal::exceptions::prefix_hop() {
 		}
 	}
 
-	__except (EXCEPTION_EXECUTE_HANDLER) { return security::internal::debug_results::none; }
+	__except ( EXCEPTION_EXECUTE_HANDLER ) { return security::internal::debug_results::none; }
 
 	//if we don't get the exception, we return the right code.
 	return security::internal::debug_results::prefix_hop;
@@ -465,14 +466,14 @@ __forceinline int security::internal::exceptions::prefix_hop() {
 
 //checks whether a debugger is present by attempting to output a string to the debugger (helper functions for debugging applications)
 //if no debugger is present an error occurs -> we can check if the last error is not 0 (an error) -> debugger not found
-__forceinline int security::internal::exceptions::debug_string() {
-	LI_FN(SetLastError)(0);
-	LI_FN(OutputDebugStringA)(_ ("OhyBsntiSJN4PqNnbvV2g86bg5DmWYnU"));
+__forceinline int security::internal::exceptions::debug_string( ) {
+	LI_FN( SetLastError )( 0 );
+	LI_FN( OutputDebugStringA )( _( "OhyBsntiSJN4PqNnbvV2g86bg5DmWYnU" ) );
 
-	return ( LI_FN(GetLastError)() != 0) ? security::internal::debug_results::debug_string : security::internal::debug_results::none;
+	return ( LI_FN( GetLastError )( ) != 0 ) ? security::internal::debug_results::debug_string : security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::timing::rdtsc() {
+__forceinline int security::internal::timing::rdtsc( ) {
 	//integers for time values
 	UINT64 time_a, time_b = 0;
 	int time_upper_a, time_lower_a = 0;
@@ -498,23 +499,23 @@ __forceinline int security::internal::timing::rdtsc() {
 	}
 
 	time_a = time_upper_a;
-	time_a = (time_a << 32) | time_lower_a;
+	time_a = ( time_a << 32 ) | time_lower_a;
 
 	time_b = time_upper_b;
-	time_b = (time_b << 32) | time_lower_b;
+	time_b = ( time_b << 32 ) | time_lower_b;
 
 	//0x10000 is purely empirical and is based on the computer's clock cycle, could be less if the cpu clocks really fast etc.
 	//should change depending on the length and complexity of the code between each rdtsc operation (-> asm code inbetween needs longer to execute but takes A LOT longer if its being debugged / someone is stepping through it)
-	return (time_b - time_a > 0x10000) ? security::internal::debug_results::rdtsc : security::internal::debug_results::none;
+	return ( time_b - time_a > 0x10000 ) ? security::internal::debug_results::rdtsc : security::internal::debug_results::none;
 }
 
 //checks how much time passes between the two query performance counters
 //if more than X (here 30ms) pass, a debugger is slowing execution down (manual breakpoints etc.)
-__forceinline int security::internal::timing::query_performance_counter() {
+__forceinline int security::internal::timing::query_performance_counter( ) {
 	LARGE_INTEGER t1;
 	LARGE_INTEGER t2;
 
-	LI_FN(QueryPerformanceCounter)(&t1);
+	LI_FN( QueryPerformanceCounter )( &t1 );
 
 	//junk code
 	_asm
@@ -528,18 +529,18 @@ __forceinline int security::internal::timing::query_performance_counter() {
 		shl ecx, 4;
 	}
 
-	LI_FN(QueryPerformanceCounter)(&t2);
+	LI_FN( QueryPerformanceCounter )( &t2 );
 
 	//30 is a random value
-	return ((t2.QuadPart - t1.QuadPart) > 30) ? security::internal::debug_results::query_performance_counter : security::internal::debug_results::none;
+	return ( ( t2.QuadPart - t1.QuadPart ) > 30 ) ? security::internal::debug_results::query_performance_counter : security::internal::debug_results::none;
 }
 
 //same as above
-__forceinline int security::internal::timing::get_tick_count() {
+__forceinline int security::internal::timing::get_tick_count( ) {
 	DWORD t1;
 	DWORD t2;
 
-	t1 = LI_FN( GetTickCount64)();
+	t1 = LI_FN( GetTickCount64 )( );
 
 	//junk code to keep the cpu busy for a few cycles so that time passes and the return value of GetTickCount() changes (so we can detect if it runs at "normal" speed or is being checked through by a human)
 	_asm
@@ -553,27 +554,27 @@ __forceinline int security::internal::timing::get_tick_count() {
 		shl ecx, 4;
 	}
 
-	t2 = LI_FN( GetTickCount64)();
+	t2 = LI_FN( GetTickCount64 )( );
 
 	//30 ms seems ok
-	return ((t2 - t1) > 30) ? security::internal::debug_results::query_performance_counter : security::internal::debug_results::none;
+	return ( ( t2 - t1 ) > 30 ) ? security::internal::debug_results::query_performance_counter : security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::cpu::hardware_debug_registers() {
+__forceinline int security::internal::cpu::hardware_debug_registers( ) {
 	CONTEXT ctx = { 0 };
-	HANDLE h_thread = LI_FN( GetCurrentThread)();
+	HANDLE h_thread = LI_FN( GetCurrentThread )( );
 
 	ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-	if ( LI_FN( GetThreadContext)(h_thread, &ctx))
+	if ( LI_FN( GetThreadContext )( h_thread, &ctx ) )
 	{
-		return ((ctx.Dr0 != 0x00) || (ctx.Dr1 != 0x00) || (ctx.Dr2 != 0x00) || (ctx.Dr3 != 0x00) || (ctx.Dr6 != 0x00) || (ctx.Dr7 != 0x00)) ? security::internal::debug_results::hardware_debug_registers : security::internal::debug_results::none;
+		return ( ( ctx.Dr0 != 0x00 ) || ( ctx.Dr1 != 0x00 ) || ( ctx.Dr2 != 0x00 ) || ( ctx.Dr3 != 0x00 ) || ( ctx.Dr6 != 0x00 ) || ( ctx.Dr7 != 0x00 ) ) ? security::internal::debug_results::hardware_debug_registers : security::internal::debug_results::none;
 	}
 
 	return security::internal::debug_results::none;
 }
 
 //single stepping check
-__forceinline int security::internal::cpu::mov_ss() {
+__forceinline int security::internal::cpu::mov_ss( ) {
 	BOOL found = FALSE;
 
 	_asm
@@ -581,7 +582,7 @@ __forceinline int security::internal::cpu::mov_ss() {
 		push ss;
 		pop ss;
 		pushfd;
-		test byte ptr[esp + 1], 1;
+		test byte ptr [ esp + 1 ], 1;
 		jne fnd;
 		jmp end;
 	fnd:
@@ -590,10 +591,10 @@ __forceinline int security::internal::cpu::mov_ss() {
 		nop;
 	}
 
-	return (found) ? security::internal::debug_results::mov_ss : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::mov_ss : security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::virtualization::check_cpuid() {
+__forceinline int security::internal::virtualization::check_cpuid( ) {
 	bool found = false;
 	__asm {
 		xor eax, eax
@@ -608,125 +609,124 @@ __forceinline int security::internal::virtualization::check_cpuid() {
 		nop
 	}
 
-	return (found) ? security::internal::debug_results::check_cpuid : security::internal::debug_results::none;
+	return ( found ) ? security::internal::debug_results::check_cpuid : security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::virtualization::check_registry() {
+__forceinline int security::internal::virtualization::check_registry( ) {
 	HKEY h_key = 0;
-	if ( LI_FN( RegOpenKeyExW)(HKEY_LOCAL_MACHINE, _ (L"HARDWARE\\ACPI\\DSDT\\VBOX__"), 0, KEY_READ, &h_key) == ERROR_SUCCESS) { return security::internal::debug_results::check_registry; }
+	if ( LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"HARDWARE\\ACPI\\DSDT\\VBOX__" ), 0, KEY_READ, &h_key ) == ERROR_SUCCESS ) { return security::internal::debug_results::check_registry; }
 
 	return security::internal::debug_results::none;
 }
 
-__forceinline int security::internal::virtualization::vm() {
-	if ( LI_FN( CreateFileW)(_ (L"\\\\.\\VBoxMiniRdrDN"), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr) != INVALID_HANDLE_VALUE) { return security::internal::debug_results::vm; }
-	
-	if ( LI_FN( LoadLibraryW)(_ (L"VBoxHook.dll"))) { return security::internal::debug_results::vm; }
+__forceinline int security::internal::virtualization::vm( ) {
+	if ( LI_FN( CreateFileW )( _( L"\\\\.\\VBoxMiniRdrDN" ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, 0, nullptr ) != INVALID_HANDLE_VALUE ) { return security::internal::debug_results::vm; }
+
+	if ( LI_FN( LoadLibraryW )( _( L"VBoxHook.dll" ) ) ) { return security::internal::debug_results::vm; }
 
 	HKEY h_key = 0;
-	if ((ERROR_SUCCESS == LI_FN( RegOpenKeyExW)(HKEY_LOCAL_MACHINE, _(L"SOFTWARE\\Oracle\\VirtualBox Guest Additions"), 0, KEY_READ, &h_key)) && h_key) { RegCloseKey(h_key); return security::internal::debug_results::vm; }
-	
+	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"SOFTWARE\\Oracle\\VirtualBox Guest Additions" ), 0, KEY_READ, &h_key ) ) && h_key ) { RegCloseKey( h_key ); return security::internal::debug_results::vm; }
+
 	h_key = 0;
-	if ( LI_FN( RegOpenKeyExW)(HKEY_LOCAL_MACHINE, _(L"HARDWARE\\DESCRIPTION\\System"), 0, KEY_READ, &h_key) == ERROR_SUCCESS)
+	if ( LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"HARDWARE\\DESCRIPTION\\System" ), 0, KEY_READ, &h_key ) == ERROR_SUCCESS )
 	{
 		unsigned long type = 0;
 		unsigned long size = 0x100;
-		char* systembiosversion = (char*) LI_FN( LocalAlloc)(LMEM_ZEROINIT, size + 10);
-		if (ERROR_SUCCESS == LI_FN( RegQueryValueExW)(h_key, _(L"SystemBiosVersion"), nullptr, &type, (unsigned char*)systembiosversion, &size))
+		char* systembiosversion = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
+		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"SystemBiosVersion" ), nullptr, &type, ( unsigned char* ) systembiosversion, &size ) )
 		{
-			to_lower((unsigned char*)systembiosversion);
-			if (type == REG_SZ || type == REG_MULTI_SZ)
+			to_lower( ( unsigned char* ) systembiosversion );
+			if ( type == REG_SZ || type == REG_MULTI_SZ )
 			{
-				if (strstr(systembiosversion, _("vbox")))
+				if ( strstr( systembiosversion, _( "vbox" ) ) )
 				{
 					return security::internal::debug_results::vm;
 				}
 			}
 		}
-		LI_FN( LocalFree)(systembiosversion);
+		LI_FN( LocalFree )( systembiosversion );
 
 		type = 0;
 		size = 0x200;
-		char* videobiosversion = (char*) LI_FN( LocalAlloc)(LMEM_ZEROINIT, size + 10);
-		if (ERROR_SUCCESS == LI_FN( RegQueryValueExW)(h_key, _(L"VideoBiosVersion"), nullptr, &type, (unsigned char*)videobiosversion, &size))
+		char* videobiosversion = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
+		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"VideoBiosVersion" ), nullptr, &type, ( unsigned char* ) videobiosversion, &size ) )
 		{
-			if (type == REG_MULTI_SZ)
+			if ( type == REG_MULTI_SZ )
 			{
 				char* video = videobiosversion;
-				while (*(unsigned char*)video)
+				while ( *( unsigned char* ) video )
 				{
-					to_lower((unsigned char*)video);
-					if (strstr(video, _("oracle")) || strstr(video, _("virtualbox"))) { return security::internal::debug_results::vm; }
-					video = &video[strlen(video) + 1];
+					to_lower( ( unsigned char* ) video );
+					if ( strstr( video, _( "oracle" ) ) || strstr( video, _( "virtualbox" ) ) ) { return security::internal::debug_results::vm; }
+					video = &video [ strlen( video ) + 1 ];
 				}
 			}
 		}
-		LI_FN( LocalFree)(videobiosversion);
-		LI_FN( RegCloseKey)(h_key);
+		LI_FN( LocalFree )( videobiosversion );
+		LI_FN( RegCloseKey )( h_key );
 	}
 
-	HANDLE h = LI_FN( CreateFileW)(_(L"\\\\.\\pipe\\VBoxTrayIPC"), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr );
-	if (h != INVALID_HANDLE_VALUE) { LI_FN( CloseHandle)(h); return security::internal::debug_results::vm; }
+	HANDLE h = LI_FN( CreateFileW )( _( L"\\\\.\\pipe\\VBoxTrayIPC" ), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr );
+	if ( h != INVALID_HANDLE_VALUE ) { LI_FN( CloseHandle )( h ); return security::internal::debug_results::vm; }
 
 	unsigned long pnsize = 0x1000;
-	char* s_provider = (char*) LI_FN( LocalAlloc)(LMEM_ZEROINIT, pnsize);
-	wchar_t w_provider[0x1000];
-	LI_FN( mbstowcs)(w_provider, s_provider, strlen(s_provider) + 1);
+	char* s_provider = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, pnsize );
+	wchar_t w_provider [ 0x1000 ];
+	LI_FN( mbstowcs )( w_provider, s_provider, strlen( s_provider ) + 1 );
 
 	h_key = 0;
-	char* s_subkey = _("SYSTEM\\CurrentControlSet\\Enum\\IDE");
-	wchar_t w_subkey[22];
+	char* s_subkey = _( "SYSTEM\\CurrentControlSet\\Enum\\IDE" );
+	wchar_t w_subkey [ 22 ];
 	LI_FN( mbstowcs )( w_subkey, s_subkey, strlen( s_subkey ) + 1 );
-	if ((ERROR_SUCCESS == LI_FN( RegOpenKeyExW)(HKEY_LOCAL_MACHINE, w_subkey, 0, KEY_READ, &h_key)) && h_key)
+	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, w_subkey, 0, KEY_READ, &h_key ) ) && h_key )
 	{
 		unsigned long n_subkeys = 0;
 		unsigned long max_subkey_length = 0;
-		if (ERROR_SUCCESS == LI_FN( RegQueryInfoKeyW)(h_key, nullptr, nullptr, nullptr, &n_subkeys, &max_subkey_length, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr ))
+		if ( ERROR_SUCCESS == LI_FN( RegQueryInfoKeyW )( h_key, nullptr, nullptr, nullptr, &n_subkeys, &max_subkey_length, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr ) )
 		{
 			//n_subkeys is usually 2
-			if (n_subkeys)
+			if ( n_subkeys )
 			{
-				char* s_new_key = (char*) LI_FN( LocalAlloc)(LMEM_ZEROINIT, max_subkey_length + 1);
-				for (unsigned long i = 0; i < n_subkeys; i++)
+				char* s_new_key = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, max_subkey_length + 1 );
+				for ( unsigned long i = 0; i < n_subkeys; i++ )
 				{
-					memset(s_new_key, 0, max_subkey_length + 1);
+					memset( s_new_key, 0, max_subkey_length + 1 );
 					HKEY h_new_key = 0;
 
-					wchar_t w_key_new[2048];
-					LI_FN( mbstowcs)(w_key_new, s_new_key, strlen(s_new_key) + 1);
+					wchar_t w_key_new [ 2048 ];
+					LI_FN( mbstowcs )( w_key_new, s_new_key, strlen( s_new_key ) + 1 );
 
-					if (ERROR_SUCCESS == LI_FN( RegEnumKeyW)(h_key, i, w_key_new, max_subkey_length + 1))
+					if ( ERROR_SUCCESS == LI_FN( RegEnumKeyW )( h_key, i, w_key_new, max_subkey_length + 1 ) )
 					{
-						if ( ( LI_FN( RegOpenKeyExW)(h_key, w_key_new, 0, KEY_READ, &h_new_key) == ERROR_SUCCESS) && h_new_key)
+						if ( ( LI_FN( RegOpenKeyExW )( h_key, w_key_new, 0, KEY_READ, &h_new_key ) == ERROR_SUCCESS ) && h_new_key )
 						{
 							unsigned long nn = 0;
 							unsigned long maxlen = 0;
-							RegQueryInfoKey(h_new_key, 0, 0, 0, &nn, &maxlen, 0, 0, 0, 0, 0, 0);
-							char* s_newer_key = (char*) LI_FN( LocalAlloc)(LMEM_ZEROINIT, maxlen + 1);
-							wchar_t w_key_newer[2048];
-							LI_FN( mbstowcs)(w_key_newer, s_newer_key, strlen(s_newer_key) + 1);
-							if ( LI_FN( RegEnumKeyW)(h_new_key, 0, w_key_newer, maxlen + 1) == ERROR_SUCCESS)
+							RegQueryInfoKey( h_new_key, 0, 0, 0, &nn, &maxlen, 0, 0, 0, 0, 0, 0 );
+							char* s_newer_key = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, maxlen + 1 );
+							wchar_t w_key_newer [ 2048 ];
+							LI_FN( mbstowcs )( w_key_newer, s_newer_key, strlen( s_newer_key ) + 1 );
+							if ( LI_FN( RegEnumKeyW )( h_new_key, 0, w_key_newer, maxlen + 1 ) == ERROR_SUCCESS )
 							{
-
 								HKEY HKKK = 0;
-								if ( LI_FN( RegOpenKeyExW)(h_new_key, w_key_newer, 0, KEY_READ, &HKKK) == ERROR_SUCCESS)
+								if ( LI_FN( RegOpenKeyExW )( h_new_key, w_key_newer, 0, KEY_READ, &HKKK ) == ERROR_SUCCESS )
 								{
 									unsigned long size = 0xFFF;
-									unsigned char value_name[0x1000] = { 0 };
-									if ( LI_FN( RegQueryValueExW)(h_new_key, _(L"FriendlyName"), nullptr, nullptr, value_name, &size) == ERROR_SUCCESS) { to_lower(value_name); if (strstr((char*)value_name, _("vbox"))) { return security::internal::debug_results::vm; } }
-									LI_FN( RegCloseKey)(HKKK);
+									unsigned char value_name [ 0x1000 ] = { 0 };
+									if ( LI_FN( RegQueryValueExW )( h_new_key, _( L"FriendlyName" ), nullptr, nullptr, value_name, &size ) == ERROR_SUCCESS ) { to_lower( value_name ); if ( strstr( ( char* ) value_name, _( "vbox" ) ) ) { return security::internal::debug_results::vm; } }
+									LI_FN( RegCloseKey )( HKKK );
 								}
 							}
-							LI_FN( LocalFree)(w_key_newer);
-							LI_FN( LocalFree)(s_newer_key);
-							LI_FN( RegCloseKey)(h_new_key);
+							LI_FN( LocalFree )( w_key_newer );
+							LI_FN( LocalFree )( s_newer_key );
+							LI_FN( RegCloseKey )( h_new_key );
 						}
 					}
 				}
-				LI_FN( LocalFree)(s_new_key);
+				LI_FN( LocalFree )( s_new_key );
 			}
 		}
-		LI_FN( RegCloseKey)(h_key);
+		LI_FN( RegCloseKey )( h_key );
 	}
 
 	__asm
@@ -738,9 +738,9 @@ __forceinline int security::internal::virtualization::vm() {
 		__emit 3Fh
 		__emit 07h
 		__emit 0Bh
-	} 
+	}
 
-	if (found == false) { return security::internal::debug_results::vm; }
+	if ( found == false ) { return security::internal::debug_results::vm; }
 
 	__asm
 	{
@@ -773,40 +773,40 @@ __forceinline int security::internal::virtualization::vm() {
 		jmp bye
 		hypervisor :
 		mov found, 1
-		jmp bye
-		cpu_id_not_supported :
+			jmp bye
+			cpu_id_not_supported :
 		mov found, 2
-		bye :
-		popad
+			bye :
+			popad
 	}
-	if (found == 1) { return security::internal::debug_results::vm; }
+	if ( found == 1 ) { return security::internal::debug_results::vm; }
 
 	return security::internal::debug_results::none;
 }
 
-__forceinline security::internal::debug_results security::check_security() {
+__forceinline security::internal::debug_results security::check_security( ) {
 	//memory
-	if (security::internal::memory::being_debugged_peb() != security::internal::debug_results::none) {
+	if ( security::internal::memory::being_debugged_peb( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::being_debugged_peb;
 	}
 
-	if (security::internal::memory::remote_debugger_present() != security::internal::debug_results::none) {
+	if ( security::internal::memory::remote_debugger_present( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::remote_debugger_present;
 	}
 
-	if (security::internal::memory::check_window_name() != security::internal::debug_results::none) {
+	if ( security::internal::memory::check_window_name( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::find_window;
 	}
 
-	if (security::internal::memory::is_debugger_present() != security::internal::debug_results::none) {
+	if ( security::internal::memory::is_debugger_present( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::debugger_is_present;
 	}
 
-	if (security::internal::memory::nt_global_flag_peb() != security::internal::debug_results::none) {
+	if ( security::internal::memory::nt_global_flag_peb( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::being_debugged_peb;
 	}
 
-	if (security::internal::memory::nt_query_information_process() != security::internal::debug_results::none) {
+	if ( security::internal::memory::nt_query_information_process( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::nt_query_information_process;
 	}
 
@@ -815,37 +815,37 @@ __forceinline security::internal::debug_results security::check_security() {
 		//return security::internal::debug_results::debug_active_process;
 	//}
 
-	if (security::internal::memory::write_buffer() != security::internal::debug_results::none) {
+	if ( security::internal::memory::write_buffer( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::write_buffer;
 	}
 
 	//exceptions
-	if (security::internal::exceptions::close_handle_exception() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::close_handle_exception( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::close_handle_exception;
 	}
 
-	if (security::internal::exceptions::single_step_exception() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::single_step_exception( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::single_step;
 	}
 
-	if (security::internal::exceptions::int_3() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::int_3( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::int_3_cc;
 	}
 
-	if (security::internal::exceptions::int_2d() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::int_2d( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::int_2;
 	}
 
-	if (security::internal::exceptions::prefix_hop() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::prefix_hop( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::prefix_hop;
 	}
 
-	if (security::internal::exceptions::debug_string() != security::internal::debug_results::none) {
+	if ( security::internal::exceptions::debug_string( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::debug_string;
 	}
 
 	//timing
-	if (security::internal::timing::rdtsc() != security::internal::debug_results::none) {
+	if ( security::internal::timing::rdtsc( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::rdtsc;
 	}
 
@@ -855,29 +855,29 @@ __forceinline security::internal::debug_results security::check_security() {
 	}
 	*/
 
-	if (security::internal::timing::get_tick_count() != security::internal::debug_results::none) {
+	if ( security::internal::timing::get_tick_count( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::get_tick_count;
 	}
 
 	//cpu
-	if (security::internal::cpu::hardware_debug_registers() != security::internal::debug_results::none) {
+	if ( security::internal::cpu::hardware_debug_registers( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::hardware_debug_registers;
 	}
 
-	if (security::internal::cpu::mov_ss() != security::internal::debug_results::none) {
+	if ( security::internal::cpu::mov_ss( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::mov_ss;
 	}
 
 	//virtualization
-	if (security::internal::virtualization::check_cpuid() != security::internal::debug_results::none) {
+	if ( security::internal::virtualization::check_cpuid( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::check_cpuid;
 	}
 
-	if (security::internal::virtualization::check_registry() != security::internal::debug_results::none) {
+	if ( security::internal::virtualization::check_registry( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::check_registry;
 	}
 
-	if (security::internal::virtualization::vm() != security::internal::debug_results::none) {
+	if ( security::internal::virtualization::vm( ) != security::internal::debug_results::none ) {
 		return security::internal::debug_results::vm;
 	}
 

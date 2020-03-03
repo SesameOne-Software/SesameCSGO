@@ -5,7 +5,10 @@
 bool oxui::shapes::click_switch = false;
 oxui::pos click_start;
 
-bool oxui::shapes::hovering( const rect& area, bool from_start ) {
+bool oxui::shapes::hovering( const rect& area, bool from_start, bool override ) {
+	if ( !g_input && !override )
+		return false;
+
 	pos mouse_pos;
 	binds::mouse_pos( mouse_pos );
 
@@ -19,7 +22,10 @@ bool oxui::shapes::hovering( const rect& area, bool from_start ) {
 	return mouse_pos.x >= area.x && mouse_pos.y >= area.y && mouse_pos.x <= area.x + area.w && mouse_pos.y <= area.y + area.h;
 }
 
-bool oxui::shapes::clicking( const rect& area, bool from_start ) {
+bool oxui::shapes::clicking( const rect& area, bool from_start, bool override ) {
+	if ( !g_input && !override )
+		return false;
+
 	if ( !click_switch && GetAsyncKeyState( VK_LBUTTON ) ) { /* press key */
 		pos mouse_pos;
 		binds::mouse_pos( mouse_pos );

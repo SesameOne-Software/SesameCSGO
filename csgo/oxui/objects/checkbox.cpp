@@ -15,7 +15,7 @@ void oxui::checkbox::draw( ) {
 	auto& parent_panel = find_parent< panel >( object_panel );
 	auto& parent_window = find_parent< window >( object_window );
 
-	auto& font = parent_panel.fonts [ OSTR( "object") ];
+	auto& font = parent_panel.fonts [ OSTR( "object" ) ];
 
 	auto& cursor_pos = parent_window.cursor_pos;
 
@@ -30,10 +30,10 @@ void oxui::checkbox::draw( ) {
 
 	/* centered text */
 	binds::text( pos( cursor_pos.x + 6, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, false );
-	
+
 	/* check box */
 	binds::rect( rect( cursor_pos.x + area.w - check_dimensions.w - 6, area_center_y - check_dimensions.h / 2, check_dimensions.w, check_dimensions.h ), theme.main );
-	
+
 	/* check mark */
 	auto max_offset = check_dimensions.w - ( check_dimensions.h - 3 ) - 3;
 	auto time_since_click = std::clamp( parent_panel.time - checked_time, 0.0, theme.animation_speed );

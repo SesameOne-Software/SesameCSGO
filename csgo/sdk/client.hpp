@@ -46,7 +46,7 @@ public:
 class c_client {
 public:
 	client_class_t* get_all_classes( ) {
-		using get_all_classes_fn = client_class_t *( __thiscall* )( void* );
+		using get_all_classes_fn = client_class_t * ( __thiscall* )( void* );
 		return vfunc< get_all_classes_fn >( this, 8 )( this );
 	}
 };

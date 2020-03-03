@@ -14,8 +14,8 @@ void oxui::group::draw( ) {
 	auto& parent_panel = find_parent< panel >( object_panel );
 	auto& parent_window = find_parent< window >( object_window );
 
-	auto& tfont = parent_panel.fonts [ OSTR( "title") ];
-	auto& font = parent_panel.fonts [ OSTR( "object")];
+	auto& tfont = parent_panel.fonts [ OSTR( "title" ) ];
+	auto& font = parent_panel.fonts [ OSTR( "object" ) ];
 
 	/* reset draw cursor pos */
 	auto& cursor_pos = parent_window.cursor_pos;
@@ -41,5 +41,5 @@ void oxui::group::draw( ) {
 				child->draw_ex( );
 			}
 		);
-	} );
+		} );
 }

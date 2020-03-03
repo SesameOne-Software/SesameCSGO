@@ -33,7 +33,7 @@ struct surfacedata_t {
 class c_phys {
 public:
 	surfacedata_t* surface( int idx ) {
-		using fn = surfacedata_t*( __thiscall* )( void*, int );
+		using fn = surfacedata_t * ( __thiscall* )( void*, int );
 		return vfunc< fn >( this, 5 )( this, idx );
 	}
 };

@@ -54,8 +54,8 @@ namespace csgo {
 	}
 
 	namespace render {
-		bool screen_transform( vec3_t &screen, vec3_t &origin );
-		bool world_to_screen( vec3_t &screen, vec3_t &origin );
+		bool screen_transform( vec3_t& screen, vec3_t& origin );
+		bool world_to_screen( vec3_t& screen, vec3_t& origin );
 	}
 
 	namespace util {
@@ -68,7 +68,7 @@ namespace csgo {
 	}
 
 	constexpr float ticks2time( int t ) {
-		return static_cast< float >( t ) * i::globals->m_ipt;
+		return static_cast< float >( t )* i::globals->m_ipt;
 	}
 
 	void for_each_player( std::function< void( player_t* ) > fn );

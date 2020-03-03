@@ -29,7 +29,6 @@ public:
 class c_event_listener {
 public:
 	virtual ~c_event_listener( ) {
-
 	};
 
 	virtual void fire_game_event( event_t* event ) = 0;

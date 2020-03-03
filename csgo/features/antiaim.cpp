@@ -35,8 +35,6 @@ void features::antiaim::simulate_lby( ) {
 }
 
 void features::antiaim::run( ucmd_t* ucmd ) {
-	simulate_lby( );
-
 	/* toggle */
 	FIND( bool, air, "Anti-Aim", "Air", "AA in Air", oxui::object_checkbox );
 	FIND( bool, move, "Anti-Aim", "Moving", "AA on Move", oxui::object_checkbox );
@@ -180,7 +178,7 @@ void features::antiaim::run( ucmd_t* ucmd ) {
 						g::send_packet = false;
 					}
 					else if ( !g::send_packet ) {
-						ucmd->m_angs.y += desync_side_stand ? -80.0f : 80.0f;
+						ucmd->m_angs.y += desync_side_stand ? -100.0f : 100.0f;
 					}
 				}
 			}

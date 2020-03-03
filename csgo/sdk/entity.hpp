@@ -24,7 +24,7 @@ public:
 	}
 
 	client_class_t* client_class( ) {
-		using fn = client_class_t*( __thiscall* )( void* );
+		using fn = client_class_t * ( __thiscall* )( void* );
 		return vfunc< fn >( networkable( ), 2 )( networkable( ) );
 	}
 };

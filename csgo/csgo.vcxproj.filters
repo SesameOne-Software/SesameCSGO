@@ -81,6 +81,12 @@
     <Filter Include="Source Files\security">
       <UniqueIdentifier>{1f4cc87e-e3ff-4633-bab9-74a7c6e6dba8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\resources">
+      <UniqueIdentifier>{f87b97cc-5a4b-4b0b-8146-8b1be89fe913}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\resources\images">
+      <UniqueIdentifier>{4e747938-60e0-4b98-ac5a-ee1b0f2ed00f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\d3d9.hpp">
@@ -280,6 +286,9 @@
     </ClInclude>
     <ClInclude Include="security\lazy_importer.hpp">
       <Filter>Header Files\security</Filter>
+    </ClInclude>
+    <ClInclude Include="resources\images\微信.hpp">
+      <Filter>Header Files\resources\images</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

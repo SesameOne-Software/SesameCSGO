@@ -18,7 +18,7 @@ void oxui::button::draw( ) {
 	auto& parent_panel = find_parent< panel >( object_panel );
 	auto& parent_window = find_parent< window >( object_window );
 
-	auto& font = parent_panel.fonts [ OSTR( "object") ];
+	auto& font = parent_panel.fonts [ OSTR( "object" ) ];
 
 	auto& cursor_pos = parent_window.cursor_pos;
 

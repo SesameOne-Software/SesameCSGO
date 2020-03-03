@@ -93,6 +93,7 @@ void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 		{ x2, y2, 0.0f, 1.0f, color }
 	};
 
+	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, true );
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
 	csgo::i::dev->SetTexture( 0, nullptr );
 	csgo::i::dev->SetPixelShader( nullptr );
@@ -100,11 +101,12 @@ void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 	csgo::i::dev->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
 	csgo::i::dev->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE );
 	csgo::i::dev->DrawPrimitiveUP( D3DPT_LINELIST, 1, &vert, sizeof( vtx_t ) );
+	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
 }
 
 void render::text( int x, int y, std::uint32_t color, void* font, const std::wstring_view& text ) {
 	RECT rect;
-	LI_FN( SetRect )( &rect, x, y, x, y );
+	SetRect( &rect, x, y, x, y );
 	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, true );
 	reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, color );
 	csgo::i::dev->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
@@ -164,13 +166,13 @@ void render::texture( unsigned char* data, int x, int y, int width, int height, 
 	D3DXMATRIX mat;
 	D3DXVECTOR2 scaling( scale, scale );
 
-	LI_FN( D3DXMatrixTransformation2D )( &mat, nullptr, 0.0f, &scaling, &center, 0.0f, &trans );
+	D3DXMatrixTransformation2D( &mat, nullptr, 0.0f, &scaling, &center, 0.0f, &trans );
 
 	ID3DXSprite* sprite = nullptr;
-	LI_FN( D3DXCreateSprite )( csgo::i::dev, &sprite );
+	D3DXCreateSprite( csgo::i::dev, &sprite );
 
 	IDirect3DTexture9* tex = nullptr;
-	LI_FN( D3DXCreateTextureFromFileInMemory )( csgo::i::dev, data, 4 * width * height, &tex );
+	D3DXCreateTextureFromFileInMemory( csgo::i::dev, data, 4 * width * height, &tex );
 
 	csgo::i::dev->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
 	csgo::i::dev->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
@@ -194,7 +196,7 @@ void render::clip_rect( int x, int y, int width, int height ) {
 }
 
 bool render::key_pressed( const std::uint32_t key ) {
-	return LI_FN( GetAsyncKeyState )( key );
+	return GetAsyncKeyState( key );
 }
 
 void render::mouse_pos( pos& position ) {

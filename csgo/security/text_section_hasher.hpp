@@ -23,7 +23,7 @@ namespace anti_patch {
 	} HASHSET, * PHASHSET;
 
 	static __forceinline int GetTextSectionInfo( uintptr_t lpModBaseAddr, PSECTIONINFO info ) {
-		PIMAGE_NT_HEADERS pNtHdr = LI_FN( ImageNtHeader )( (void*)lpModBaseAddr );
+		PIMAGE_NT_HEADERS pNtHdr = LI_FN( ImageNtHeader )( ( void* ) lpModBaseAddr );
 		PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER ) ( pNtHdr + 1 );
 
 		LPVOID lpTextAddr = NULL;

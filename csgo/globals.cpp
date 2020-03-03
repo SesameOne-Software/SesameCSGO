@@ -3,4 +3,5 @@
 
 player_t* g::local = nullptr;
 ucmd_t* g::ucmd = nullptr;
+ucmd_t g::sent_cmd { };
 bool g::send_packet = true;

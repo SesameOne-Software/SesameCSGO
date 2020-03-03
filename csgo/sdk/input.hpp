@@ -34,12 +34,12 @@ public:
 
 	ucmd_t* get_usercmd( int slot, int sequence_number ) {
 		auto _this = ( char* ) this;
-		auto unk = (int) this;
+		auto unk = ( int ) this;
 
 		if ( slot != -1 )
-			unk = (int)&_this [ 0xDC * slot ];
+			unk = ( int ) &_this [ 0xDC * slot ];
 
-		auto ret = ( ucmd_t* ) ( *( std::uintptr_t *)( std::uintptr_t( unk ) + 0xF4 ) + 100 * ( sequence_number % 150 ) );
+		auto ret = ( ucmd_t* ) ( *( std::uintptr_t* )( std::uintptr_t( unk ) + 0xF4 ) + 100 * ( sequence_number % 150 ) );
 
 		if ( ret->m_cmdnum != sequence_number )
 			ret = nullptr;

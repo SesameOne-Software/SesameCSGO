@@ -11,16 +11,16 @@ struct mstudiobone_t {
 	}
 
 	int m_parent;
-	int m_bonecontroller[ 6 ];
+	int m_bonecontroller [ 6 ];
 
 	vec3_t m_pos;
-	float m_quat[ 4 ];
+	float m_quat [ 4 ];
 	vec3_t m_rot;
 	vec3_t m_posscale;
 	vec3_t m_rotscale;
 
 	matrix3x4_t	m_pose_to_bone;
-	float m_quaternion_alignment[ 4 ];
+	float m_quaternion_alignment [ 4 ];
 	int m_flags;
 	int m_proctype;
 	int m_procindex;
@@ -81,12 +81,11 @@ struct mstudiohitboxset_t {
 	}
 };
 
-
 struct studiohdr_t {
 	int m_id;
 	int m_version;
 	long m_checksum;
-	char m_name[ 64 ];
+	char m_name [ 64 ];
 	int m_length;
 	vec3_t m_vec_eye_pos;
 	vec3_t m_vec_illumination_pos;
@@ -132,7 +131,7 @@ struct studiohdr_t {
 class c_mdlinfo {
 public:
 	void* mdl( int idx ) {
-		using getmdl_fn = void*( __thiscall* )( void*, int );
+		using getmdl_fn = void* ( __thiscall* )( void*, int );
 		return vfunc< getmdl_fn >( this, 1 )( this, idx );
 	}
 
@@ -142,7 +141,7 @@ public:
 	}
 
 	const char* mdl_name( const void* mdl ) {
-		using getmdlname_fn = const char*( __thiscall* )( void*, const void* );
+		using getmdlname_fn = const char* ( __thiscall* )( void*, const void* );
 		return vfunc< getmdlname_fn >( this, 3 )( this, mdl );
 	}
 

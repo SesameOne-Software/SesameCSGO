@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <vector>
+#include <functional>
 #include "object.hpp"
 #include "../types/types.hpp"
 #include "tab.hpp"
@@ -21,6 +22,8 @@ namespace oxui {
 		str title;
 		int toggle_bind = 0;
 		std::vector< std::shared_ptr< obj > > objects;
+		std::function< void( ) > overlay_func;
+		bool render_overlay = true;
 
 	public:
 		bool open = true;
@@ -67,6 +70,11 @@ namespace oxui {
 
 		void think( );
 		void draw( ) override;
+
+		void draw_overlay( const std::function< void( ) >& overlay_renderer ) {
+			overlay_func = overlay_renderer;
+			render_overlay = true;
+		}
 
 		void* find_obj( const str& tab_name, const str& group_name, const str& object_name, object_type type );
 

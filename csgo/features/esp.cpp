@@ -1,6 +1,7 @@
 ﻿#include "esp.hpp"
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
+#include "../animations/animations.hpp"
 
 ID3DXFont* features::esp::indicator_font = nullptr;
 ID3DXFont* features::esp::esp_font = nullptr;
@@ -26,7 +27,15 @@ void features::esp::draw_nametag( int x, int y, int w, int h, const std::wstring
 	render::text( x + w / 2 - dim.w / 2, y - name_tag_dim - 4 + name_tag_dim / 2 - dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), esp_font, name.data( ) );
 }
 
+uint32_t features::esp::color_variable_weight( float val, float cieling ) {
+	const auto clamped = std::clamp( val, 0.0f, cieling );
+	const auto scaled = static_cast< int >( clamped * ( 255.0f / cieling ) );
+
+	return D3DCOLOR_RGBA( scaled, 255 - scaled, 0, 255 );
+}
+
 void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, float desync_amount, player_t* pl ) {
+	FIND( bool, lc, "Visuals", "ESP", "Lag-Comp", oxui::object_checkbox );
 	FIND( bool, balance_979, "Visuals", "ESP", "979", oxui::object_checkbox );
 	FIND( bool, health, "Visuals", "ESP", "Health", oxui::object_checkbox );
 	FIND( bool, desync, "Visuals", "ESP", "Desync", oxui::object_checkbox );
@@ -36,6 +45,7 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 	const int health_clamped = std::clamp( health_amount, 0, 100 );
 
 	auto cur_y = y + h + 4;
+	auto cur_y_side = y;
 
 	/* 979 activity ( balance adjust ) */
 	if ( balance_979 ) {
@@ -45,8 +55,17 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 			if ( layer.m_sequence == 979 )
 				balance_adjusting = true;
 
-		if ( balance_adjusting )
-			render::text( x + w + 6, y + 2, D3DCOLOR_RGBA( 0, 255, 0, 255 ), indicator_font, _( L"979") );
+		render::text( x + w + 6, cur_y_side, balance_adjusting ? D3DCOLOR_RGBA( 0, 255, 0, 255 ) : D3DCOLOR_RGBA( 255, 0, 0, 255 ), indicator_font, _( L"979" ) );
+
+		cur_y_side += 24;
+	}
+
+	/* lag-comp break indicator */
+	if ( lc
+		&& animations::data::old_origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX )
+		&& animations::data::origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX ) ) {
+		render::text( x + w + 6, cur_y_side, color_variable_weight( animations::data::old_origin[ pl->idx( ) ].dist_to_sqr( animations::data::origin [ pl->idx( ) ] ), 4096.0f ), indicator_font, _( L"LC" ) );
+		cur_y_side += 24;
 	}
 
 	/* health bar */
@@ -55,7 +74,7 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 		render::rectangle( x + 1, cur_y + 1, static_cast< float >( w )* ( static_cast< float >( health_clamped ) / 100.0f ) - 1, 4 - 1, D3DCOLOR_RGBA( 0, 255, 0, 150 ) );
 		cur_y += 6;
 	}
-	
+
 	/* desync bar */
 	if ( desync ) {
 		render::outline( x, cur_y, w, 4, D3DCOLOR_RGBA( 0, 0, 0, 17 ) );
@@ -105,12 +124,11 @@ void features::esp::render( ) {
 	FIND( bool, esp, "Visuals", "ESP", "ESP", oxui::object_checkbox );
 	FIND( bool, box, "Visuals", "ESP", "Box", oxui::object_checkbox );
 	FIND( bool, name, "Visuals", "ESP", "Name", oxui::object_checkbox );
-	FIND( bool, lagcomp, "Visuals", "ESP", "Lag-Comp", oxui::object_checkbox );
 
 	FIND( bool, team, "Visuals", "Targets", "Team", oxui::object_checkbox );
 	FIND( bool, enemy, "Visuals", "Targets", "Enemy", oxui::object_checkbox );
-	FIND( bool, local,"Visuals", "Targets", "Local", oxui::object_checkbox );
-	FIND( bool, weapon,"Visuals", "Targets", "Weapon", oxui::object_checkbox );
+	FIND( bool, local, "Visuals", "Targets", "Local", oxui::object_checkbox );
+	FIND( bool, weapon, "Visuals", "Targets", "Weapon", oxui::object_checkbox );
 
 	if ( !g::local )
 		return;
@@ -139,7 +157,7 @@ void features::esp::render( ) {
 
 		if ( !weapon
 			&& e->client_class( )
-			&& !std::strcmp( e->client_class( )->m_network_name, _( "CWeapon") ) )
+			&& !std::strcmp( e->client_class( )->m_network_name, _( "CWeapon" ) ) )
 			continue;
 
 		if ( ( enemy || team )
@@ -205,6 +223,6 @@ void features::esp::render( ) {
 		if ( name )
 			draw_nametag( left, top, right - left, bottom - top, std::wstring( str.begin( ), str.end( ) ) );
 
-		draw_bars( left, top, right - left, bottom - top, e->health( ), e->desync_amount( ), e );		
+		draw_bars( left, top, right - left, bottom - top, e->health( ), e->desync_amount( ), e );
 	}
 }

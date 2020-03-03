@@ -5,12 +5,12 @@
 class material_t {
 public:
 	const char* get_name( void ) {
-		using getname_fn = const char*( __thiscall* )( void* );
+		using getname_fn = const char* ( __thiscall* )( void* );
 		return vfunc< getname_fn >( this, 0 )( this );
 	}
 
 	const char* get_texture_group_name( void ) {
-		using gettexturegroupname_fn = const char*( __thiscall* )( void* );
+		using gettexturegroupname_fn = const char* ( __thiscall* )( void* );
 		return vfunc< gettexturegroupname_fn >( this, 1 )( this );
 	}
 
@@ -20,7 +20,7 @@ public:
 	}
 
 	void* find_var( const char* var, bool* found, bool complain = true ) {
-		using findvar_fn = void*( __thiscall* )( void*, const char*, bool*, bool );
+		using findvar_fn = void* ( __thiscall* )( void*, const char*, bool*, bool );
 		return vfunc< findvar_fn >( this, 11 )( this, var, found, complain );
 	}
 

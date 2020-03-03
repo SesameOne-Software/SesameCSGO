@@ -68,7 +68,7 @@ void oxui::tab::draw( ) {
 		auto total_column_padding_h = theme.spacing * ( item_count_inside_row + 1 );
 		auto space_per_column_h = window_dimensions.h / item_count_inside_row;
 		auto calculated_column_height = 0;
-		
+
 		if ( item_count_inside_row > 1 )
 			calculated_column_height = space_per_column_h - theme.spacing - double( theme.spacing ) / double( item_count_inside_row );
 		else

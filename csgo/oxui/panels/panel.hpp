@@ -22,7 +22,7 @@ namespace oxui {
 
 		panel( ) { reset( ); type = object_panel; }
 		~panel( ) { }
-		
+
 		void destroy( ) {
 			std::for_each( fonts.begin( ), fonts.end( ), [ ] ( const std::pair<str, font>& f ) {
 				( ( ID3DXFont* ) f.second )->Release( );
@@ -30,8 +30,8 @@ namespace oxui {
 		}
 
 		void reset( ) {
-			binds::create_font( OSTR("MyriadPro-Regular"), 16, false, fonts [ OSTR( "title") ] );
-			binds::create_font( OSTR("MyriadPro-Regular"), 16, false, fonts [ OSTR( "object") ] );
+			binds::create_font( OSTR( "MyriadPro-Light" ), 16, false, fonts [ OSTR( "title" ) ] );
+			binds::create_font( OSTR( "MyriadPro-Light" ), 16, false, fonts [ OSTR( "object" ) ] );
 		}
 
 		void add_window( const std::shared_ptr< window >& new_window ) {

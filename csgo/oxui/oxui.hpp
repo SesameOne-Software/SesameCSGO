@@ -12,5 +12,6 @@
 #include "objects/checkbox.hpp"
 #include "objects/slider.hpp"
 #include "objects/button.hpp"
+#include "objects/dropdown.hpp"
 
 #endif // OXUI_HPP

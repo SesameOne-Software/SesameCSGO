@@ -1,7 +1,7 @@
 #include "autowall.hpp"
 
 void autowall::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace ) {
-	static auto clip_trace_to_players_add = pattern::search( "client_panorama.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get<void*>();
+	static auto clip_trace_to_players_add = pattern::search( "client_panorama.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get<void*>( );
 
 	__asm {
 		mov eax, filter
@@ -184,16 +184,16 @@ bool autowall::classname_is( player_t* entity, const char* class_name ) {
 }
 
 bool autowall::is_breakable_entity( player_t* entity ) {
-	static auto __rtdynamiccast_fn = pattern::search( _( "client_panorama.dll"), _( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" )).get<void*>();
-	static auto is_breakable_entity_fn = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE") ).get<void*>( );
+	static auto __rtdynamiccast_fn = pattern::search( _( "client_panorama.dll" ), _( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" ) ).get<void*>( );
+	static auto is_breakable_entity_fn = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE" ) ).get<void*>( );
 	static auto multiplayer_phys_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x50 );
 	static auto baseentity_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x55 );
 	static auto breakablewithpropdata_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0xD5 );
 
-	int( __thiscall ***v4 )( player_t* );
+	int( __thiscall * **v4 )( player_t* );
 	int v5;
 
-	if ( entity && ( *( std::uint32_t * ) ( entity + 256 ) >= 0 || ( *( int( ** )( void ) )( *( std::uint32_t* ) entity + 488 ) )( ) <= 0 ) && *( std::uint8_t * ) ( *( std::uint32_t* ) entity + 640 ) == 2 ) {
+	if ( entity && ( *( std::uint32_t* ) ( entity + 256 ) >= 0 || ( *( int( ** )( void ) )( *( std::uint32_t* ) entity + 488 ) )( ) <= 0 ) && *( std::uint8_t* ) ( *( std::uint32_t* ) entity + 640 ) == 2 ) {
 		auto v3 = *( std::uint32_t* ) ( *( std::uint32_t* ) entity + 1140 );
 
 		if ( v3 != 17 && v3 != 6 && v3 )
@@ -220,14 +220,14 @@ bool autowall::is_breakable_entity( player_t* entity ) {
 			goto label_18;
 		}
 
-		if ( !classname_is( entity, _( "func_breakable" )) && !classname_is( entity, _( "func_breakable_surf") ) ) {
-			if ( ( *( ( int( __thiscall** )( player_t* ) )*( std::uint32_t * ) entity + 604 ) )( entity ) & 0x10000 )
+		if ( !classname_is( entity, _( "func_breakable" ) ) && !classname_is( entity, _( "func_breakable_surf" ) ) ) {
+			if ( ( *( ( int( __thiscall** )( player_t* ) ) * ( std::uint32_t* ) entity + 604 ) )( entity ) & 0x10000 )
 				return false;
 
 			goto label_18;
 		}
 
-		if ( !classname_is( entity, _( "func_breakable_surf") ) || !*( ( uint8_t* ) entity + 2564 ) ) {
+		if ( !classname_is( entity, _( "func_breakable_surf" ) ) || !*( ( uint8_t* ) entity + 2564 ) ) {
 		label_18:
 			__asm {
 				push 0
@@ -240,7 +240,7 @@ bool autowall::is_breakable_entity( player_t* entity ) {
 				mov v5, eax
 			}
 
-			if ( v5 && ( ( float( __thiscall* )( uintptr_t ) ) *( uintptr_t* ) ( *( uintptr_t* ) v5 + 12 ) )( v5 ) <= 0.0f )
+			if ( v5 && ( ( float( __thiscall* )( uintptr_t ) ) * ( uintptr_t* ) ( *( uintptr_t* ) v5 + 12 ) )( v5 ) <= 0.0f )
 				return true;
 		}
 	}
@@ -304,7 +304,7 @@ bool autowall::trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, v
 	return false;
 }
 
-bool autowall::is_armored( player_t *player, int armor, int hitgroup ) {
+bool autowall::is_armored( player_t* player, int armor, int hitgroup ) {
 	if ( !player )
 		return false;
 

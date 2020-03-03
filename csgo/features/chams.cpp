@@ -9,7 +9,7 @@ material_t* m_mat = nullptr,
 * m_matflat = nullptr,
 * m_mat_wireframe = nullptr,
 * m_matflat_wireframe = nullptr,
-*m_mat_glow;
+* m_mat_glow;
 
 float m_last_reflectivity = 0.0f;
 float m_last_rimlight = 0.0f;
@@ -21,19 +21,19 @@ bool features::chams::create_materials( ) {
 	static auto& chams_glow_clr = oxui::theme.main;
 
 	auto ikv = [ ] ( void* kv, const char* name ) {
-		static auto ikv_fn = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 51 33 C0 C7 45" )).get< void( __thiscall* )( void*, const char* ) >( );
+		static auto ikv_fn = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 51 33 C0 C7 45" ) ).get< void( __thiscall* )( void*, const char* ) >( );
 		ikv_fn( kv, name );
 	};
 
 	auto lfb = [ ] ( void* kv, const char* name, const char* buf ) {
 		using lfb_fn = void( __thiscall* )( void*, const char*, const char*, void*, const char*, void*, void* );
-		static auto lfb = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 E4 F8 83 EC 34 53 8B 5D 0C 89" )).get< lfb_fn >( );
+		static auto lfb = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 83 EC 34 53 8B 5D 0C 89" ) ).get< lfb_fn >( );
 		lfb( kv, name, buf, nullptr, nullptr, nullptr, nullptr );
 	};
 
 	auto find_key = [ ] ( void* kv, const char* name, bool create ) {
 		using find_key_fn = void* ( __thiscall* )( void*, const char*, bool );
-		static auto findkey = pattern::search( _( "client_panorama.dll"), _( "55 8B EC 83 EC 1C 53 8B D9 85 DB") ).get< find_key_fn >( );
+		static auto findkey = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 EC 1C 53 8B D9 85 DB" ) ).get< find_key_fn >( );
 		return findkey( kv, name, create );
 	};
 
@@ -51,7 +51,7 @@ bool features::chams::create_materials( ) {
 
 		if ( k ) {
 			using setstring_fn = void( __thiscall* )( void*, const char* );
-			static auto setstring = pattern::search( _( "client_panorama.dll"), _( "55 8B EC A1 ? ? ? ? 53 56 57 8B F9 8B 08 8B 01") ).get< setstring_fn >( );
+			static auto setstring = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC A1 ? ? ? ? 53 56 57 8B F9 8B 08 8B 01" ) ).get< setstring_fn >( );
 			setstring( k, val );
 		}
 	};
@@ -63,10 +63,10 @@ bool features::chams::create_materials( ) {
 
 	auto create_mat = [ & ] ( bool xqz, bool flat, bool wireframe, bool glow ) {
 		static auto created = 0;
-		std::string type = flat ? _( "UnlitGeneric" ): _( "VertexLitGeneric");
+		std::string type = flat ? _( "UnlitGeneric" ) : _( "VertexLitGeneric" );
 
 		if ( glow )
-			type = _( "VertexLitGeneric");
+			type = _( "VertexLitGeneric" );
 
 		// allocating space for key values
 		auto kv = malloc( 36 );
@@ -76,56 +76,56 @@ bool features::chams::create_materials( ) {
 		if ( glow ) {
 			auto found = false;
 
-			set_string( kv, _( "$envmap"), _( "models/effects/cube_white") );
-			set_int( kv, _("$additive"), 1 );
-			set_int( kv, _( "$envmapfresnel"), 1 );
+			set_string( kv, _( "$envmap" ), _( "models/effects/cube_white" ) );
+			set_int( kv, _( "$additive" ), 1 );
+			set_int( kv, _( "$envmapfresnel" ), 1 );
 
 			auto glow_clr_str_r = std::to_string( chams_glow_clr.r / 255.0f );
 			auto glow_clr_str_g = std::to_string( chams_glow_clr.g / 255.0f );
 			auto glow_clr_str_b = std::to_string( chams_glow_clr.b / 255.0f );
-			auto glow_clr = _( "[")
-				+ glow_clr_str_r + _(" ")
-				+ glow_clr_str_g + _(" ")
-				+ glow_clr_str_b + _("]");
+			auto glow_clr = _( "[" )
+				+ glow_clr_str_r + _( " " )
+				+ glow_clr_str_g + _( " " )
+				+ glow_clr_str_b + _( "]" );
 
-			set_string( kv, _( "$envmapint"), glow_clr.data( ) );
-			set_string( kv, _( "$envmapfresnelminmaxexp"), _( "[ 0 1 2 ]") );
-			set_string( kv, _( "$alpha"), _( "1") );
+			set_string( kv, _( "$envmapint" ), glow_clr.data( ) );
+			set_string( kv, _( "$envmapfresnelminmaxexp" ), _( "[ 0 1 2 ]" ) );
+			set_string( kv, _( "$alpha" ), _( "1" ) );
 		}
 		else {
 			auto reflectivity_str = std::to_string( reflectivity );
 			auto luminance_str = std::to_string( luminance );
 
-			auto sreflectivity = _( "[")
-				+ reflectivity_str + _(" ")
-				+ reflectivity_str + _(" ")
-				+ reflectivity_str + _("]");
+			auto sreflectivity = _( "[" )
+				+ reflectivity_str + _( " " )
+				+ reflectivity_str + _( " " )
+				+ reflectivity_str + _( "]" );
 
-			auto sluminance = _( "[")
-				+ luminance_str + _(" ")
-				+ luminance_str + _(" ")
-				+ luminance_str + _("]");
+			auto sluminance = _( "[" )
+				+ luminance_str + _( " " )
+				+ luminance_str + _( " " )
+				+ luminance_str + _( "]" );
 
 			// set_string( kv, "$basetexture", "vgui/white_additive" );
-			set_string( kv, _( "$basetexture"), _( "vgui/white_additive"));
-			set_string( kv, _( "$envmaptint"), sreflectivity.data( ) );
-			set_string( kv, _( "$envmap"), _( "env_cubemap") );
+			set_string( kv, _( "$basetexture" ), _( "vgui/white_additive" ) );
+			set_string( kv, _( "$envmaptint" ), sreflectivity.data( ) );
+			set_string( kv, _( "$envmap" ), _( "env_cubemap" ) );
 
-			set_int( kv, _("$phong"), 1 );
-			set_int( kv, _("$phongexponent"), 15 );
-			set_int( kv, _("$normalmapalphaenvmask"), 1 );
-			set_string( kv, _( "$phongboost"), sluminance.data( ) );
+			set_int( kv, _( "$phong" ), 1 );
+			set_int( kv, _( "$phongexponent" ), 15 );
+			set_int( kv, _( "$normalmapalphaenvmask" ), 1 );
+			set_string( kv, _( "$phongboost" ), sluminance.data( ) );
 			//set_string( kv, "$phongfresnelranges", "[.5 .5 1]" );
-			set_int( kv, _( "$BasemapAlphaPhongMask"), 1 );
+			set_int( kv, _( "$BasemapAlphaPhongMask" ), 1 );
 
-			set_int( kv, _("$model"), 1 );
-			set_int( kv, _("$flat"), 1 );
-			set_int( kv, _("$selfillum"), 1 );
-			set_int( kv, _("$halflambert"), 1 );
-			set_int( kv, _("$ignorez"), 1 );
+			set_int( kv, _( "$model" ), 1 );
+			set_int( kv, _( "$flat" ), 1 );
+			set_int( kv, _( "$selfillum" ), 1 );
+			set_int( kv, _( "$halflambert" ), 1 );
+			set_int( kv, _( "$ignorez" ), 1 );
 		}
 
-		auto matname = _( "mat_") + std::to_string( created );
+		auto matname = _( "mat_" ) + std::to_string( created );
 
 		// lfb( kv, matname.c_str( ), matdata.c_str( ) );
 
@@ -182,20 +182,20 @@ void features::chams::update_mats( ) {
 		auto reflectivity_str = std::to_string( reflectivity );
 		auto luminance_str = std::to_string( luminance );
 
-		auto envmaptint = m_mat->find_var( _( "$envmaptint"), &found );
-		auto envmaptint1 = m_matflat->find_var( _( "$envmaptint"), &found );
-		auto envmaptint2 = m_matflat_wireframe->find_var( _( "$envmaptint"), &found );
-		auto envmaptint3 = m_mat_wireframe->find_var( _( "$envmaptint"), &found );
+		auto envmaptint = m_mat->find_var( _( "$envmaptint" ), &found );
+		auto envmaptint1 = m_matflat->find_var( _( "$envmaptint" ), &found );
+		auto envmaptint2 = m_matflat_wireframe->find_var( _( "$envmaptint" ), &found );
+		auto envmaptint3 = m_mat_wireframe->find_var( _( "$envmaptint" ), &found );
 
 		set_vec( envmaptint, reflectivity, reflectivity, reflectivity );
 		set_vec( envmaptint1, reflectivity, reflectivity, reflectivity );
 		set_vec( envmaptint2, reflectivity, reflectivity, reflectivity );
 		set_vec( envmaptint3, reflectivity, reflectivity, reflectivity );
 
-		auto phongboost = m_mat->find_var( _( "$phongboost"), &found );
-		auto phongboost1 = m_matflat->find_var( _( "$phongboost"), &found );
-		auto phongboost2 = m_matflat_wireframe->find_var( _( "$phongboost"), &found );
-		auto phongboost3 = m_mat_wireframe->find_var( _( "$phongboost"), &found );
+		auto phongboost = m_mat->find_var( _( "$phongboost" ), &found );
+		auto phongboost1 = m_matflat->find_var( _( "$phongboost" ), &found );
+		auto phongboost2 = m_matflat_wireframe->find_var( _( "$phongboost" ), &found );
+		auto phongboost3 = m_mat_wireframe->find_var( _( "$phongboost" ), &found );
 
 		set_vec( phongboost, luminance, luminance, luminance );
 		set_vec( phongboost1, luminance, luminance, luminance );
@@ -204,7 +204,7 @@ void features::chams::update_mats( ) {
 	}
 
 	if ( m_mat_glow ) {
-		auto envmap = m_mat_glow->find_var( _( "$envmapint"), &found );
+		auto envmap = m_mat_glow->find_var( _( "$envmapint" ), &found );
 		set_vec( envmap, chams_glow_clr.r / 255.0f, chams_glow_clr.g / 255.0f, chams_glow_clr.b / 255.0f );
 	}
 }
@@ -249,7 +249,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 		return;
 	}
 
-	auto is_weapon = std::strstr( mdl_name, _( "arms") ) || std::strstr( mdl_name, _( "v_models") );
+	auto is_weapon = std::strstr( mdl_name, _( "arms" ) ) || std::strstr( mdl_name, _( "v_models" ) );
 
 	if ( is_weapon || e ) {
 		auto is_player = e->valid( ) && e->is_player( );
@@ -259,7 +259,6 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 			|| ( is_player && local && e == g::local )
 			|| ( weapon && is_weapon ) ) {
 			/* fake chams */
-			/*
 			if ( e == g::local ) {
 				const auto backup_matrix = animations::fake::matrix( );
 
@@ -280,7 +279,6 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 
 				animations::fake::matrix( ) = backup_matrix;
 			}
-			*/
 
 			/* occluded */
 			if ( e == g::local ? false : xqz ) {

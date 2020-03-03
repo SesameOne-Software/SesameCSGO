@@ -79,6 +79,7 @@
     <ClInclude Include="oxui\themes\purple.hpp" />
     <ClInclude Include="oxui\types\types.hpp" />
     <ClInclude Include="renderer\d3d9.hpp" />
+    <ClInclude Include="resources\images\微信.hpp" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\engine.hpp" />
     <ClInclude Include="sdk\entity.hpp" />
@@ -137,7 +138,7 @@
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <SpectreMitigation>false</SpectreMitigation>
+    <SpectreMitigation>Spectre</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -209,6 +210,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

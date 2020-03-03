@@ -4,7 +4,7 @@
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
 
-void features::ragebot::best_point( player_t* pl, vec3_t& point, float& dmg ) {
+void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg ) {
 	FIND( bool, head, "Rage", "Target Selection", "Head", oxui::object_checkbox );
 	FIND( bool, neck, "Rage", "Target Selection", "Neck", oxui::object_checkbox );
 	FIND( bool, chest, "Rage", "Target Selection", "Chest", oxui::object_checkbox );
@@ -166,6 +166,7 @@ void features::ragebot::best_point( player_t* pl, vec3_t& point, float& dmg ) {
 void features::ragebot::run( ucmd_t* ucmd ) {
 	FIND( bool, ragebot, "Rage", "Aimbot", "Ragebot", oxui::object_checkbox );
 	FIND( double, hitchance, "Rage", "Aimbot", "Hit Chance", oxui::object_slider );
+	FIND( double, hitchance_tolerance, "Rage", "Aimbot", "Hit Chance Tolerance", oxui::object_slider );
 	FIND( bool, autoshoot, "Rage", "Aimbot", "Auto-Shoot", oxui::object_checkbox );
 	FIND( bool, silent, "Rage", "Aimbot", "Silent", oxui::object_checkbox );
 	FIND( bool, autoscope, "Rage", "Aimbot", "Auto-Scope", oxui::object_checkbox );
@@ -180,14 +181,73 @@ void features::ragebot::run( ucmd_t* ucmd ) {
 		return g::local->weapon( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::ticks2time( g::local->tick_base( ) ) && g::local->weapon( )->ammo( );
 	};
 
-	auto optimize_hitchance = [ & ] ( ) {
-		if ( !g::local->weapon( ) )
-			return 0.0f;
+	auto run_hitchance = [ & ] ( vec3_t ang, player_t* pl, vec3_t point ) {
+		auto weapon = g::local->weapon( );
 
-		if ( g::local->weapon( )->inaccuracy( ) <= 0.01f )
-			return 100.0f;
+		if ( !weapon )
+			return false;
 
-		return 1.0f / g::local->weapon( )->inaccuracy( );
+		auto src = g::local->eyes( );
+		csgo::clamp( ang );
+		auto forward = csgo::angle_vec( ang );
+		auto right = csgo::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
+		auto up = csgo::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
+
+		auto hits = 0;
+		auto needed_hits = static_cast< int >( 150.0f * ( hitchance / 100.0f ) );
+
+		//weapon->UpdateAccuracyPenalty( );
+		auto weap_spread = weapon->spread( );
+		auto weap_inaccuracy = weapon->inaccuracy( );
+
+		for ( auto i = 0; i < 150; i++ ) {
+			auto a = ( rand( ) % 180 ) * ( csgo::pi / 180.0f );
+			auto b = ( rand( ) % 360 ) * ( csgo::pi / 180.0f );
+			auto c = ( rand( ) % 180 ) * ( csgo::pi / 180.0f );
+			auto d = ( rand( ) % 360 ) * ( csgo::pi / 180.0f );
+
+			auto inaccuracy = a * weap_inaccuracy;
+			auto spread = c * weap_spread;
+
+			if ( weapon->item_definition_index( ) == 64 ) {
+				a = 1.0f - a * a;
+				a = 1.0f - c * c;
+			}
+
+			vec3_t spread_v( ( std::cosf( b ) * inaccuracy ) + ( std::cosf( d ) * spread ), ( std::sinf( b ) * inaccuracy ) + ( std::sinf( d ) * spread ), 0 ), direction;
+
+			direction.x = forward.x + ( spread_v.x * right.x ) + ( spread_v.y * up.x );
+			direction.y = forward.y + ( spread_v.x * right.y ) + ( spread_v.y * up.y );
+			direction.z = forward.z + ( spread_v.x * right.z ) + ( spread_v.y * up.z );
+			direction.normalize( );
+
+			auto va_spread = csgo::vec_angle( direction );
+			csgo::clamp( va_spread );
+
+			auto fwd_v = csgo::angle_vec( va_spread );
+			fwd_v.normalize( );
+
+			fwd_v = src + ( fwd_v * src.dist_to( point ) );
+
+			trace_t tr;
+
+			csgo::util_traceline( src, fwd_v, 0x600400B, g::local, &tr );
+
+			const auto dst = tr.m_endpos.dist_to( point );
+
+			// dbg_print( "%3.f\n", dst );
+
+			if ( dst <= hitchance_tolerance )
+				hits++;
+
+			if ( ( static_cast< float >( hits ) / 150.0f ) * 100.0f >= hitchance )
+				return true;
+
+			if ( ( 150 - i + hits ) < needed_hits )
+				return false;
+		}
+
+		return false;
 	};
 
 	auto lerp = [ ] ( ) {
@@ -199,36 +259,38 @@ void features::ragebot::run( ucmd_t* ucmd ) {
 
 	player_t* best_pl = nullptr;
 	auto best_ang = vec3_t( );
+	auto best_point = vec3_t( );
 	auto best_fov = 180.0f;
 	auto best_dmg = 0.0f;
 
 	csgo::for_each_player( [ & ] ( player_t* pl ) {
 		if ( pl->team( ) == g::local->team( ) || pl->immune( ) )
 			return;
-		
+
 		vec3_t point;
 		float dmg = 0.0f;
 
-		best_point( pl, point, dmg );
+		hitscan( pl, point, dmg );
 
 		auto ang = csgo::calc_angle( g::local->eyes( ), point );
 		csgo::clamp( ang );
 
 		const auto fov = ang.dist_to( engine_ang );
 
-		if ( dmg > best_dmg && fov < best_fov ) {
+		if ( dmg > best_dmg&& fov < best_fov ) {
 			best_pl = pl;
 			best_dmg = dmg;
 			best_fov = fov;
 			best_ang = ang;
+			best_point = point;
 		}
-	} );
+		} );
 
 	if ( autoshoot && !can_shoot( ) ) {
 		ucmd->m_buttons &= ~1;
 	}
 	else if ( can_shoot( ) ) {
-		auto should_aim = best_dmg > 0.0f && optimize_hitchance( ) >= hitchance;
+		auto should_aim = best_dmg > 0.0f && run_hitchance( best_ang, best_pl, best_point );
 
 		if ( !autoshoot )
 			should_aim = ucmd->m_buttons & 1 && best_dmg > 0.0f;
