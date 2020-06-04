@@ -9,6 +9,8 @@ namespace hooks {
 	extern bool in_autowall;
 	extern bool no_update;
 
+	bool __fastcall in_prediction_hk ( REG );
+	float __fastcall get_viewmodel_fov_hk( REG );
 	bool __fastcall fire_event_hk( REG );
 	int __fastcall send_datagram_hk( REG, void* datagram );
 	void __stdcall update_clientside_animations_hk( );
@@ -32,7 +34,14 @@ namespace hooks {
 	bool __fastcall should_skip_animation_frame_hk( REG );
 	bool __fastcall is_hltv_hk( REG );
 	long __stdcall wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam );
+	bool __fastcall write_usercmd_hk( REG, int slot, void* buf, int from, int to, bool new_cmd );
+	int __fastcall list_leaves_in_box_hk ( REG, vec3_t& mins, vec3_t& maxs, uint16_t* list, int list_max );
+	void __fastcall paint_traverse_hk ( REG, int ipanel, bool force_repaint, bool allow_force );
 
+	extern decltype( &in_prediction_hk ) in_prediction;
+	extern decltype( &get_viewmodel_fov_hk ) get_viewmodel_fov;
+	extern decltype( &list_leaves_in_box_hk ) list_leaves_in_box;
+	extern decltype( &write_usercmd_hk ) write_usercmd;
 	extern decltype( &fire_event_hk ) fire_event;
 	extern decltype( &update_clientside_animations_hk ) update_clientside_animations;
 	extern decltype( &cl_sendmove_hk ) cl_sendmove;
@@ -54,6 +63,7 @@ namespace hooks {
 	extern decltype( &draw_bullet_impacts_hk ) drawbulletimpacts;
 	extern decltype( &should_skip_animation_frame_hk ) should_skip_animation_frame;
 	extern decltype( &is_hltv_hk ) is_hltv;
+	extern decltype( &paint_traverse_hk ) paint_traverse;
 
 	bool init( );
 }

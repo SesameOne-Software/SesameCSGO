@@ -675,7 +675,7 @@ __forceinline int security::internal::virtualization::vm( ) {
 	LI_FN( mbstowcs )( w_provider, s_provider, strlen( s_provider ) + 1 );
 
 	h_key = 0;
-	char* s_subkey = _( "SYSTEM\\CurrentControlSet\\Enum\\IDE" );
+	const char* s_subkey = _( "SYSTEM\\CurrentControlSet\\Enum\\IDE" );
 	wchar_t w_subkey [ 22 ];
 	LI_FN( mbstowcs )( w_subkey, s_subkey, strlen( s_subkey ) + 1 );
 	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, w_subkey, 0, KEY_READ, &h_key ) ) && h_key )
@@ -855,9 +855,9 @@ __forceinline security::internal::debug_results security::check_security( ) {
 	}
 	*/
 
-	if ( security::internal::timing::get_tick_count( ) != security::internal::debug_results::none ) {
-		return security::internal::debug_results::get_tick_count;
-	}
+	//if ( security::internal::timing::get_tick_count( ) != security::internal::debug_results::none ) {
+	//	return security::internal::debug_results::get_tick_count;
+	//}
 
 	//cpu
 	if ( security::internal::cpu::hardware_debug_registers( ) != security::internal::debug_results::none ) {

@@ -2,10 +2,10 @@
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
 
-void features::movement::run( ucmd_t* ucmd ) {
-	FIND( bool, bhop, "Misc.", "Movement", "Bhop", oxui::object_checkbox );
-	FIND( bool, strafer, "Misc.", "Movement", "Strafer", oxui::object_checkbox );
-	FIND( bool, directional, "Misc.", "Movement", "Directional", oxui::object_checkbox );
+void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
+	OPTION( bool, bhop, "Sesame->E->Movement->Main->Bunnyhop", oxui::object_checkbox );
+	OPTION( bool, strafer, "Sesame->E->Movement->Main->Autostrafer", oxui::object_checkbox );
+	OPTION( bool, directional, "Sesame->E->Movement->Main->Omni-Directional Autostrafer", oxui::object_checkbox );
 
 	if ( !g::local->valid( )
 		|| g::local->movetype( ) == movetypes::movetype_noclip
@@ -28,22 +28,22 @@ void features::movement::run( ucmd_t* ucmd ) {
 				}
 
 				if ( ucmd->m_buttons & 16 )
-					ucmd->m_angs.y -= 180.0f;
+					old_angs.y -= 180.0f;
 				else if ( ucmd->m_buttons & 512 )
-					ucmd->m_angs.y += 90.0f;
+					old_angs.y += 90.0f;
 				else if ( ucmd->m_buttons & 1024 )
-					ucmd->m_angs.y -= 90.0f;
+					old_angs.y -= 90.0f;
 
-				const auto vel_delta = csgo::normalize( ucmd->m_angs.y - yaw_speed );
+				const auto vel_delta = csgo::normalize( old_angs.y - yaw_speed );
 
 				if ( speed <= 0.5f || speed == NAN || speed == INFINITE ) {
 					ucmd->m_fmove = 450.0f;
 					return;
 				}
 
-				ucmd->m_fmove = std::clamp( 5850.0f / speed, -450.0f, 450.0f );
+				ucmd->m_fmove = std::clamp( 300.0f / speed, -450.0f, 450.0f );
 				ucmd->m_smove = vel_delta > 0.0f ? -450.0f : 450.0f;
-				ucmd->m_angs.y = csgo::normalize( ucmd->m_angs.y - vel_delta );
+				old_angs.y = csgo::normalize( old_angs.y - vel_delta );
 			}
 			else {
 				if ( std::abs( ucmd->m_mousedx ) > 2 ) {

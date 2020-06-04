@@ -81,11 +81,14 @@
     <Filter Include="Source Files\security">
       <UniqueIdentifier>{1f4cc87e-e3ff-4633-bab9-74a7c6e6dba8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\resources">
-      <UniqueIdentifier>{f87b97cc-5a4b-4b0b-8146-8b1be89fe913}</UniqueIdentifier>
+    <Filter Include="Source Files\oxui\themes">
+      <UniqueIdentifier>{b8aa3c0c-5ee7-448f-975e-50e20b0ab614}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\resources\images">
-      <UniqueIdentifier>{4e747938-60e0-4b98-ac5a-ee1b0f2ed00f}</UniqueIdentifier>
+    <Filter Include="Header Files\oxui\json">
+      <UniqueIdentifier>{d86a2781-6ccc-4313-a2b4-e672ad8e59bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\oxui\json">
+      <UniqueIdentifier>{3cdb2425-0306-4fc9-815f-e14375f666df}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -287,8 +290,47 @@
     <ClInclude Include="security\lazy_importer.hpp">
       <Filter>Header Files\security</Filter>
     </ClInclude>
-    <ClInclude Include="resources\images\微信.hpp">
-      <Filter>Header Files\resources\images</Filter>
+    <ClInclude Include="features\clantag.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\textbox.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="features\lagcomp.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\colorpicker.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="features\glow.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="animations\resolver.hpp">
+      <Filter>Header Files\animations</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\keybind.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\json\cJSON.h">
+      <Filter>Header Files\oxui\json</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\label.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sesame_font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sesame_logo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\subtab.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="security\erase.hpp">
+      <Filter>Header Files\security</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -381,6 +423,39 @@
     </ClCompile>
     <ClCompile Include="security\anti_debug.cpp">
       <Filter>Source Files\security</Filter>
+    </ClCompile>
+    <ClCompile Include="features\clantag.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\themes\theme.cpp">
+      <Filter>Source Files\oxui\themes</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\textbox.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="features\lagcomp.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\colorpicker.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="features\glow.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\resolver.cpp">
+      <Filter>Source Files\animations</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\keybind.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\json\cJSON.c">
+      <Filter>Source Files\oxui\json</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\label.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\subtab.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

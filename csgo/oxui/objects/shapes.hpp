@@ -7,7 +7,10 @@
 
 namespace oxui {
 	namespace shapes {
+		extern bool finished_input_frame;
 		extern bool click_switch;
+		extern bool old_click_switch;
+		extern oxui::pos click_start;
 
 		bool hovering( const rect& area, bool from_start = false, bool override = false );
 		bool clicking( const rect& area, bool from_start = false, bool override = false );

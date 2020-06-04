@@ -21,6 +21,6 @@ namespace autowall {
 	bool is_breakable_entity( player_t* entity );
 	bool trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr );
 	bool is_armored( player_t* player, int armor, int hitgroup );
-	float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox );
+	float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox, vec3_t* impact_out = nullptr, int* hitgroup_out = nullptr );
 	int hitbox_to_hitgroup( int hitbox );
 }

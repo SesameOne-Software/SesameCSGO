@@ -17,25 +17,67 @@ namespace oxui {
 	*/
 	class window : public obj {
 		pos click_offset = pos( );
-		bool pressing_move_key = false;
-		bool pressing_open_key = false;
 		str title;
 		int toggle_bind = 0;
-		std::vector< std::shared_ptr< obj > > objects;
 		std::function< void( ) > overlay_func;
 		bool render_overlay = true;
 
 	public:
-		bool open = true;
+		bool open = false;
 		double scroll_delta = 0.0;
+		std::array< bool, 5 > mouse_down { false };
+		std::array< bool, 512 > key_down { false };
 		pos cursor_pos;
+		std::function< void( wchar_t ) > keyboard_handler_func;
+		bool handle_keyboard = true;
+		bool pressing_move_key = false;
+		bool pressing_open_key = false;
+		std::vector< std::shared_ptr< obj > > objects;
 
 		long __stdcall wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
 			if ( open ) {
 				switch ( msg ) {
+				case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK:
+				case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
+				case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
+				case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: {
+					int button = 0;
+					if ( msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDBLCLK ) { button = 0; }
+					if ( msg == WM_RBUTTONDOWN || msg == WM_RBUTTONDBLCLK ) { button = 1; }
+					if ( msg == WM_MBUTTONDOWN || msg == WM_MBUTTONDBLCLK ) { button = 2; }
+					if ( msg == WM_XBUTTONDOWN || msg == WM_XBUTTONDBLCLK ) { button = ( GET_XBUTTON_WPARAM( wparam ) == XBUTTON1 ) ? 3 : 4; }
+					mouse_down [ button ] = true;
+					return true;
+				}
+				case WM_LBUTTONUP:
+				case WM_RBUTTONUP:
+				case WM_MBUTTONUP:
+				case WM_XBUTTONUP: {
+					int button = 0;
+					if ( msg == WM_LBUTTONUP ) { button = 0; }
+					if ( msg == WM_RBUTTONUP ) { button = 1; }
+					if ( msg == WM_MBUTTONUP ) { button = 2; }
+					if ( msg == WM_XBUTTONUP ) { button = ( GET_XBUTTON_WPARAM( wparam ) == XBUTTON1 ) ? 3 : 4; }
+					mouse_down [ button ] = false;
+					return true;
+				}
+				case WM_KEYDOWN:
+				case WM_SYSKEYDOWN:
+					if ( wparam < 256 )
+						key_down [ wparam ] = true;
+					return true;
+				case WM_KEYUP:
+				case WM_SYSKEYUP:
+					if ( wparam < 256 )
+						key_down [ wparam ] = false;
+					return true;
+				case WM_CHAR:
+					if ( wparam > 0 && wparam < ( 1 << 16 ) && handle_keyboard )
+						keyboard_handler_func( wchar_t( wparam ) );
+					return true;
 				case WM_MOUSEWHEEL:
 					scroll_delta += GET_WHEEL_DELTA_WPARAM( wparam ) > 0 ? -1.0 : 1.0;
-					return 0;
+					return true;
 				}
 
 				return true;
@@ -76,7 +118,7 @@ namespace oxui {
 			render_overlay = true;
 		}
 
-		void* find_obj( const str& tab_name, const str& group_name, const str& object_name, object_type type );
+		void* find_obj( const str& option, object_type type );
 
 		void save_state( const str& file );
 		void load_state( const str& file );

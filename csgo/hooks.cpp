@@ -8,12 +8,15 @@
 
 /* features */
 #include "animations/animations.hpp"
+#include "animations/resolver.hpp"
 #include "features/chams.hpp"
 #include "features/esp.hpp"
 #include "features/movement.hpp"
 #include "features/ragebot.hpp"
 #include "features/antiaim.hpp"
 #include "features/prediction.hpp"
+#include "features/clantag.hpp"
+#include "features/glow.hpp"
 
 /* security */
 #include "security/security_handler.hpp"
@@ -24,6 +27,10 @@ bool hooks::in_setupbones = false;
 WNDPROC hooks::o_wndproc = nullptr;
 bool hooks::no_update = false;
 
+decltype( &hooks::in_prediction_hk ) hooks::in_prediction = nullptr;
+decltype( &hooks::get_viewmodel_fov_hk ) hooks::get_viewmodel_fov = nullptr;
+decltype( &hooks::list_leaves_in_box_hk ) hooks::list_leaves_in_box = nullptr;
+decltype( &hooks::write_usercmd_hk ) hooks::write_usercmd = nullptr;
 decltype( &hooks::fire_event_hk ) hooks::fire_event = nullptr;
 decltype( &hooks::override_view_hk ) hooks::override_view = nullptr;
 decltype( &hooks::get_bool_hk ) hooks::get_bool = nullptr;
@@ -45,12 +52,68 @@ decltype( &hooks::update_clientside_animations_hk ) hooks::update_clientside_ani
 decltype( &hooks::send_datagram_hk ) hooks::send_datagram = nullptr;
 decltype( &hooks::should_skip_animation_frame_hk ) hooks::should_skip_animation_frame = nullptr;
 decltype( &hooks::is_hltv_hk ) hooks::is_hltv = nullptr;
+decltype( &hooks::paint_traverse_hk ) hooks::paint_traverse = nullptr;
+
+/* event listener */
+class c_event_handler : c_event_listener {
+public:
+	c_event_handler( ) {
+		csgo::i::events->add_listener( this, _( "weapon_fire" ), false );
+		csgo::i::events->add_listener( this, _( "player_say" ), false );
+		csgo::i::events->add_listener( this, _( "player_hurt" ), false );
+		csgo::i::events->add_listener ( this, _ ( "bullet_impact" ), false );
+		csgo::i::events->add_listener ( this, _ ( "round_freeze_end" ), false );
+		csgo::i::events->add_listener ( this, _ ( "round_start" ), false );
+		csgo::i::events->add_listener ( this, _ ( "round_end" ), false );
+	}
+
+	virtual ~c_event_handler( ) {
+		csgo::i::events->remove_listener( this );
+	}
+
+	virtual void fire_game_event( event_t* event ) {
+		if ( !event || !g::local )
+			return;
+
+		//if ( !strcmp( event->get_name( ), _( "weapon_fire" ) ) )
+		//	features::lagcomp::cache_shot( event );
+
+		if ( !strcmp( event->get_name( ), _( "player_say" ) ) )
+			/* translator::translate( ); */;
+
+		if ( !strcmp( event->get_name( ), _( "player_hurt" ) ) )
+			animations::resolver::process_hurt( event );
+
+		if ( !strcmp( event->get_name( ), _( "bullet_impact" ) ) )
+			animations::resolver::process_impact( event );
+
+		if ( !strcmp ( event->get_name ( ), _ ( "round_freeze_end" ) ) )
+			g::round = round_t::in_progress;
+
+		if ( !strcmp ( event->get_name ( ), _ ( "round_start" ) ) )
+			g::round = round_t::starting;
+
+		if ( !strcmp ( event->get_name ( ), _ ( "round_end" ) ) )
+			g::round = round_t::ending;
+	}
+
+	int get_event_debug_id( ) override {
+		return 42;
+	}
+};
+
+std::unique_ptr< c_event_handler > event_handler;
+
+float __fastcall hooks::get_viewmodel_fov_hk ( REG ) {
+	OPTION ( double, viewmodel_fov, "Sesame->C->Other->Removals->Viewmodel FOV", oxui::object_slider );
+	return static_cast < float > ( viewmodel_fov );
+}
 
 /* fix event delays */
 bool __fastcall hooks::fire_event_hk( REG ) {
 	auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
-	if ( !local->valid( ) )
+	if ( !csgo::i::client_state )
 		return fire_event( REG_OUT );
 
 	struct event_t {
@@ -61,24 +124,15 @@ bool __fastcall hooks::fire_event_hk( REG ) {
 		event_t* next;
 	};
 
-	auto ei = *( event_t** ) ( std::uintptr_t( csgo::i::client_state ) + 0x4E64 );
-
-	event_t* next = nullptr;
-
-	if ( !ei )
-		return fire_event( REG_OUT );
-
-	do {
-		next = ei->next;
-		ei->delay = 0.f;
-		ei = next;
-	} while ( next );
+	for ( auto event = *( event_t** ) ( uintptr_t ( csgo::i::client_state ) + 0x4E64 ); event; event = event->next )
+		event->delay = 0.0f;
 
 	return fire_event( REG_OUT );
 }
 
 void __stdcall hooks::update_clientside_animations_hk( ) {
-	return;
+	if ( !g::local || !g::local->alive ( ) )
+		update_clientside_animations ( );
 }
 
 void __stdcall hooks::cl_sendmove_hk( ) {
@@ -86,7 +140,15 @@ void __stdcall hooks::cl_sendmove_hk( ) {
 }
 
 void __fastcall hooks::override_view_hk( REG, void* setup ) {
-	FIND( bool, thirdperson, "Misc.", "Effects", "Third-Person", oxui::object_checkbox );
+	OPTION( bool, thirdperson, "Sesame->E->Effects->Main->Third Person", oxui::object_checkbox );
+	OPTION ( double, thirdperson_range, "Sesame->E->Effects->Main->Third Person Range", oxui::object_slider );
+	OPTION ( int, thirdperson_key, "Sesame->E->Effects->Main->Third Person Key", oxui::object_keybind );
+	OPTION ( int, fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+	OPTION ( bool, no_zoom, "Sesame->C->Other->Removals->No Zoom", oxui::object_checkbox );
+	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
+
+	if ( g::local && ( no_zoom ? true : !g::local->scoped( ) ) )
+		*reinterpret_cast< float* > ( uintptr_t ( setup ) + 176 ) = static_cast < float > ( custom_fov );
 
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
 		vec3_t inverse;
@@ -105,74 +167,213 @@ void __fastcall hooks::override_view_hk( REG, void* setup ) {
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
 
-	if ( thirdperson && g::local->valid( ) ) {
-		vec3_t ang;
-		csgo::i::engine->get_viewangles( ang );
-		csgo::i::input->m_camera_in_thirdperson = true;
-		csgo::i::input->m_camera_offset = vec3_t( ang.x, ang.y, get_ideal_dist( 150.0f ) );
+	static bool tp_enabled = false;
 
-		if ( GetAsyncKeyState( VK_XBUTTON1 ) )
-			*reinterpret_cast< float* >( uintptr_t( setup ) + 0xc0 ) = g::local->abs_origin( ).z + 64.0f;
+	if ( thirdperson_key == -1 )
+		tp_enabled = true;
+
+	if ( thirdperson_key != -1 && GetAsyncKeyState ( thirdperson_key ) & 1 )
+		tp_enabled = !tp_enabled;
+
+	if ( thirdperson && tp_enabled && g::local ) {
+		if ( g::local->alive( ) ) {
+			vec3_t ang;
+			csgo::i::engine->get_viewangles ( ang );
+			csgo::i::input->m_camera_in_thirdperson = true;
+			csgo::i::input->m_camera_offset = vec3_t ( ang.x, ang.y, get_ideal_dist ( thirdperson_range ) );
+		}
+		else {
+			csgo::i::input->m_camera_in_thirdperson = false;
+			g::local->observer_mode ( ) = 5;
+		}
 	}
 	else {
 		csgo::i::input->m_camera_in_thirdperson = false;
 	}
 
+	if ( fd_key != -1 && GetAsyncKeyState ( fd_key ) && g::local && g::local->alive( ) )
+		*reinterpret_cast< float* >( uintptr_t ( setup ) + 0xc0 ) = g::local->abs_origin ( ).z + 64.0f;
+
 	override_view( REG_OUT, setup );
 }
 
+extern std::deque< animations::resolver::hit_matrix_rec_t > hit_matrix_rec;
+extern animations::resolver::hit_matrix_rec_t cur_hit_matrix_rec;
+
 void __fastcall hooks::sceneend_hk( REG ) {
 	sceneend( REG_OUT );
+
+	if ( !g::local || !g::local->alive ( ) )
+		hit_matrix_rec.clear ( );
+
+	if ( g::local ) {
+		for ( auto i = 1; i <= 200; i++ ) {
+			const auto ent = csgo::i::ent_list->get < entity_t* > ( i );
+
+			if ( !ent || !ent->client_class ( ) || ( ent->client_class ( )->m_class_id != 40 && ent->client_class ( )->m_class_id != 42 ) )
+				continue;
+
+			static auto off_player_handle = netvars::get_offset ( _ ( "DT_CSRagdoll->m_hPlayer" ) );
+
+			auto pl_idx = -1;
+
+			if ( ent->client_class ( )->m_class_id == 42 )
+				pl_idx = *reinterpret_cast< uint32_t* > ( uintptr_t ( ent ) + off_player_handle ) & 0xfff;
+			else
+				pl_idx = ent->idx ( );
+
+			if ( pl_idx != -1 && pl_idx ) {
+				std::vector< animations::resolver::hit_matrix_rec_t > hit_matricies { };
+
+				if ( !hit_matrix_rec.empty ( ) )
+					for ( auto& hit : hit_matrix_rec )
+						if ( hit.m_pl == pl_idx )
+							hit_matricies.push_back ( hit );
+
+				if ( !hit_matricies.empty ( ) ) {
+					for ( auto& hit : hit_matricies ) {
+						cur_hit_matrix_rec = hit;
+
+						features::chams::in_model = true;
+						ent->draw ( );
+						features::chams::in_model = false;
+					}
+				}
+			}
+		}
+	}
+
+	features::glow::cache_entities( );
 }
 
 void __fastcall hooks::drawmodelexecute_hk( REG, void* ctx, void* state, const mdlrender_info_t& info, matrix3x4_t* bone_to_world ) {
 	features::chams::drawmodelexecute( ctx, state, info, bone_to_world );
 }
 
+auto disable_sounds = false;
+
+bool __fastcall hooks::in_prediction_hk ( REG ) {
+	static const auto return_to_maintain_sequence_transitions = pattern::search ( "client.dll", "84 C0 74 17 8B 87" ).get < void* >( );
+	static const auto return_to_play_step_sound = pattern::search ( "client.dll", "84 C0 ? ? A1 ? ? ? ? B9 ? ? ? ? 8B 40 3C FF D0 84 C0 ? ? ? ? ? ? 8B 45 0C 85 C0 ? ? ? ? ? ? 8B 93 F8 2F" ).get < void* > ( );
+
+	g::local = csgo::i::ent_list->get< player_t* > ( csgo::i::engine->get_local_player ( ) );
+
+	if ( _ReturnAddress ( ) == return_to_maintain_sequence_transitions && g::local->valid ( ) )
+		return false;
+
+	if ( _ReturnAddress ( ) == return_to_play_step_sound && disable_sounds )
+		return true;
+
+	return in_prediction ( REG_OUT );
+}
+
+auto cock_ticks = 0;
+auto last_attack = false;
+
+void fix_event_delay ( ucmd_t* ucmd ) {
+	OPTION ( int, _fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
+	OPTION ( int, _fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+
+	/* choke packets if requested */
+	if ( ucmd->m_buttons & 1 && g::local && !( _fd_key != -1 && GetAsyncKeyState ( _fd_key ) && _fd_mode ) )
+		g::send_packet = true;
+
+	///* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
+	//if ( last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key != -1 && GetAsyncKeyState ( _fd_key ) && _fd_mode ) )
+	//	g::send_packet = true;
+	//
+	//last_attack = ucmd->m_buttons & 1;
+}
+
 bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
+	if ( !g::local || !g::local->alive ( ) ) {
+		g::shifted_tickbase = ucmd->m_cmdnum;
+	}
+
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return false;
+
+	security_handler::update ( );
+
+	/* thanks chambers */
+	if ( csgo::i::client_state->choked ( ) ) {
+		disable_sounds = true;
+
+		csgo::i::pred->update (
+			csgo::i::client_state->delta_tick( ),
+			csgo::i::client_state->delta_tick( ) > 0,
+			csgo::i::client_state->last_command_ack( ),
+			csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( ) );
+
+		disable_sounds = false;
+	}
+
+	features::esp::handle_dynamic_updates ( );
 
 	auto ret = createmove( REG_OUT, sampletime, ucmd );
 
 	g::ucmd = ucmd;
 
-	csgo::for_each_player( [ ] ( player_t* pl ) -> int {
-		if ( pl == g::local )
-			return 0;
+	auto get_shift_amount = [ ] ( ) -> int {
+		OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
+		return static_cast< int > ( tickbase_shift_amount );
+	};
 
-		const auto backup_origin = pl->origin( );
+	auto get_auto_revolver_enabled = [ ] ( ) {
+		OPTION ( bool, auto_revolver, "Sesame->A->Rage Aimbot->Main->Auto Revolver", oxui::object_checkbox );
+		return auto_revolver;
+	};
 
-		/* simulate movement 1 tick */
-		animations::simulate_command( pl );
+	const auto refresh_tickbase = ucmd->m_cmdnum > g::shifted_tickbase + 1 && std::abs ( ucmd->m_cmdnum - g::shifted_tickbase + 1 ) <= get_shift_amount ( ) + 1 && g::local && g::local->alive ( );
 
-		animations::build_matrix( pl, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
+	if ( refresh_tickbase ) {
+		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
+		ucmd->m_tickcount = INT_MAX;
+		return false;
+	}
+	
+	features::prediction::update_curtime( );
 
-		if ( pl->bone_cache( ) )
-			std::memcpy( &animations::data::bones [ pl->idx( ) ], pl->bone_cache( ), N( sizeof matrix3x4_t ) * pl->bone_count( ) );
+	auto old_angs = ucmd->m_angs;
 
-		pl->origin( ) = backup_origin;
+	features::clantag::run( ucmd );
+	features::movement::run( ucmd, old_angs );
+
+	auto old_smove = ucmd->m_smove;
+	auto old_fmove = ucmd->m_fmove;
+
+	csgo::for_each_player ( [ ] ( player_t* pl ) {
+		features::lagcomp::pop ( pl );
 	} );
 
-	features::movement::run( ucmd );
-
-	const auto backup_angle = ucmd->m_angs;
-	const auto backup_sidemove = ucmd->m_smove;
-	const auto backup_forwardmove = ucmd->m_fmove;
-
 	features::prediction::run( [ & ] ( ) {
-		features::antiaim::simulate_lby( );
-		features::ragebot::run( ucmd );
+		csgo::for_each_player ( [ ] ( player_t* pl ) {
+			features::lagcomp::pop ( pl );
 		} );
 
-	features::antiaim::run( ucmd );
+		features::antiaim::simulate_lby( );
+		features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
+		features::antiaim::run( ucmd, old_smove, old_fmove );
+		animations::resolver::update( ucmd );
+	} );
+
+	fix_event_delay ( ucmd );
+
+	if ( !refresh_tickbase && g::local && g::local->weapon( ) && get_auto_revolver_enabled( ) && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+		if ( csgo::time2ticks( features::prediction::predicted_curtime ) > cock_ticks ) {
+			ucmd->m_buttons &= ~1;
+			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 2;
+		}
+		else {
+			ucmd->m_buttons |= 1;
+		}
+	}
 
 	csgo::clamp( ucmd->m_angs );
 
-	csgo::rotate_movement( ucmd );
+	csgo::rotate_movement( ucmd, old_smove, old_fmove, old_angs );
 
-	/* choke packets if requested */
-	*( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+	*( bool* ) ( *( uintptr_t* ) ( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = refresh_tickbase ? true : g::send_packet;
 
 	/* fix anti-aim slide */ {
 		if ( ucmd->m_fmove ) {
@@ -186,38 +387,175 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 		}
 	}
 
-	if ( g::send_packet )
+	features::ragebot::tickbase_controller( ucmd );
+
+	if ( g::send_packet ) {
 		g::sent_cmd = *ucmd;
+		//animations::fake::simulate( );
+	}
+
+	ucmd->m_fmove = std::clamp< float > ( ucmd->m_fmove, -450.0f, 450.0f );
+	ucmd->m_smove = std::clamp< float > ( ucmd->m_smove, -450.0f, 450.0f );
 
 	return false;
 }
 
+void* find_hud_element ( const char* name ) {
+	static auto hud = pattern::search ( _("client.dll"), _("B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08") ).add ( 1 ).deref ( ).get< void* > ( );
+	static auto find_hud_element_func = pattern::search ( _("client.dll"), _("55 8B EC 53 8B 5D 08 56 57 8B F9 33 F6 39 77 28") ).get< void* ( __thiscall* )( void*, const char* ) > ( );
+	return ( void* ) find_hud_element_func ( hud, name );
+}
+
+void run_preserve_death_notices ( ) {
+	OPTION ( bool, preserve_killfeed, "Sesame->C->Other->Removals->Preserve Killfeed", oxui::object_checkbox );
+
+	if ( !g::local || !g::local->alive ( ) )
+		return;
+
+	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 53 56 8B 71 58" ) ).get< void ( __thiscall* )( void* ) > ( );
+	
+	const auto death_notice = find_hud_element ( _ ( "CCSGO_HudDeathNotice" ) );
+
+	if ( death_notice ) {
+		if ( g::round == round_t::in_progress ) {
+			auto* local_death_notice = reinterpret_cast< float* > ( uintptr_t ( death_notice ) + 80 );
+
+			if ( local_death_notice )
+				*local_death_notice = preserve_killfeed ? FLT_MAX : 1.5f;
+		}
+
+		if ( g::round == round_t::starting && uintptr_t ( death_notice ) - 20 > 0 )
+			if ( clear_death_notices )
+				clear_death_notices ( reinterpret_cast< void* > ( uintptr_t ( death_notice ) - 20 ) );
+	}
+}
+
+void set_aspect_ratio ( ) {
+	OPTION ( double, prop_alpha, "Sesame->C->Other->World->Prop Alpha", oxui::object_slider );
+	static auto r_drawstaticprops = pattern::search ( _ ( "engine.dll" ), _ ( "B9 ? ? ? ? FF 50 34 85 C0 0F 84 ? ? ? ? 8B 0D ? ? ? ? 81 F9 ? ? ? ? 75 0C A1 ? ? ? ? 35 ? ? ? ? EB 05 8B 01 FF 50 34 83 F8 02" ) ).add ( 1 ).deref ( ).get< void* > ( );
+	auto fval = ( static_cast < int > ( prop_alpha ) == 255 ) ? 1.0f : 3.0f;
+	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_drawstaticprops ) + 0x2c ) = *reinterpret_cast < uintptr_t* > ( uintptr_t( &fval ) ) ^ uintptr_t ( r_drawstaticprops );
+	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_drawstaticprops ) + 0x2c + 0x4 ) = static_cast < int > ( fval ) ^ uintptr_t ( r_drawstaticprops );
+
+	OPTION ( double, aspect_ratio, "Sesame->C->Other->Removals->Custom Aspect Ratio", oxui::object_slider );
+	static auto r_aspect_ratio = pattern::search ( _ ( "engine.dll" ), _ ( "81 F9 ? ? ? ? 75 16 F3 0F 10 0D ? ? ? ? F3 0F 11 4D ? 81 75 ? ? ? ? ? EB 18 8B 01 8B 40 30 FF D0 F3 0F 10 0D ? ? ? ? 8B 0D ? ? ? ? D9 5D FC F3 0F 10 45 ? 0F 2F 05 ? ? ? ? 76 34" ) ).add ( 2 ).deref ( ).get< void* > ( );
+	auto as_float = static_cast< float > ( aspect_ratio ) * 1.7777777f;
+	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_aspect_ratio ) + 0x2c ) = *reinterpret_cast< uintptr_t* > ( &as_float ) ^ uintptr_t ( r_aspect_ratio );
+}
+
 void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
+	OPTION ( bool, no_smoke, "Sesame->C->Other->Removals->No Smoke", oxui::object_checkbox );
+	OPTION ( bool, no_flash, "Sesame->C->Other->Removals->No Flash", oxui::object_checkbox );
+	OPTION ( bool, no_aimpunch, "Sesame->C->Other->Removals->No Aimpunch", oxui::object_checkbox );
+	OPTION ( bool, no_viewpunch, "Sesame->C->Other->Removals->No Viewpunch", oxui::object_checkbox );
+	OPTION ( oxui::color, world_clr, "Sesame->C->Other->World->World Color", oxui::object_colorpicker );
+	OPTION ( double, prop_alpha, "Sesame->C->Other->World->Prop Alpha", oxui::object_slider );
+
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
+
+	/* reset tickbase shift data if not in game. */
+	if ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) {
+		g::dt_ticks_to_shift = 0;
+		g::dt_recharge_time = 0;
+	}
+
+	security_handler::update ( );
+
+	vec3_t old_aimpunch;
+	vec3_t old_viewpunch;
+	float old_flashalpha;
 
 	animations::run( stage );
 
+	set_aspect_ratio ( );
+
+	if ( stage == 5 && g::local ) {
+		run_preserve_death_notices ( );
+
+		if ( g::local->alive ( ) ) {
+			old_aimpunch = g::local->aim_punch ( );
+			old_viewpunch = g::local->view_punch ( );
+
+			if ( no_aimpunch )
+				g::local->aim_punch ( ) = vec3_t( 0.0f, 0.0f, 0.0f );
+
+			if ( no_viewpunch )
+				g::local->view_punch ( ) = vec3_t ( 0.0f, 0.0f, 0.0f );
+		}
+
+		static const std::vector< const char* > smoke_mats = {
+			"particle/vistasmokev1/vistasmokev1_fire",
+			"particle/vistasmokev1/vistasmokev1_smokegrenade",
+			"particle/vistasmokev1/vistasmokev1_emods",
+			"particle/vistasmokev1/vistasmokev1_emods_impactdust",
+		};
+
+		for ( auto mat_s : smoke_mats ) {
+			const auto mat = csgo::i::mat_sys->findmat ( mat_s, _ ( "Other textures" ) );
+			mat->set_material_var_flag ( 4, no_smoke );
+		}
+
+		static auto smoke_count = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 8B 15 ? ? ? ? 0F 57 C0" ) ).add ( 8 ).deref( ).get< int* > ( );
+		
+		if ( no_smoke )
+			*smoke_count = 0;
+
+		static int last_prop_alpha = 0;
+		static oxui::color last_clr = world_clr;
+		static float spawn_time = 0.0f;
+
+		if ( g::local && ( g::local->spawn_time ( ) != spawn_time || ( last_clr.r != world_clr.r || last_clr.g != world_clr.g || last_clr.b != world_clr.b || last_clr.a != world_clr.a ) || ( int( last_prop_alpha ) != int( prop_alpha ) ) ) ) {
+			static auto load_named_sky = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void ( __fastcall* )( const char* ) > ( );
+			
+			load_named_sky ( _ ( "sky_csgo_night02" ) );
+
+			for ( auto i = csgo::i::mat_sys->first_material ( ); i != csgo::i::mat_sys->invalid_material ( ); i = csgo::i::mat_sys->next_material ( i ) ) {
+				auto mat = csgo::i::mat_sys->get_material ( i );
+
+				if ( !mat || mat->is_error_material ( ) )
+					continue;
+
+				const auto is_prop = strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) );
+
+				if ( strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) || is_prop ) {
+					mat->color_modulate ( world_clr.r, world_clr.g, world_clr.b );
+					mat->alpha_modulate ( is_prop ? prop_alpha : world_clr.a );
+				}
+			}
+
+			last_prop_alpha = int( prop_alpha );
+			last_clr = world_clr;
+			spawn_time = g::local->spawn_time ( );
+		}
+	}
+
+	if ( stage == 2 && g::local && no_flash )
+		g::local->flash_alpha ( ) = 0.0f;
+
 	framestagenotify( REG_OUT, stage );
+
+	if ( stage == 5 && g::local ) {
+		if ( g::local->alive ( ) ) {
+			g::local->aim_punch ( ) = old_aimpunch;
+			g::local->view_punch ( ) = old_viewpunch;
+		}
+	}
 }
 
 long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
+	OPTION ( bool, no_scope, "Sesame->C->Other->Removals->No Scope", oxui::object_checkbox );
+
 	static auto ret = _ReturnAddress( );
 
 	if ( ret != _ReturnAddress( ) )
 		return endscene( REG_OUT, device );
-
-	static const D3DMATRIX identity_matrix = {
-		1.0, 0.0, 0.0, 0.0,
-		0.0, 1.0, 0.0, 0.0,
-		0.0, 0.0, 1.0, 0.0,
-		0.0, 0.0, 0.0, 1.0
-	};
 
 	IDirect3DStateBlock9* pixel_state = nullptr;
 	IDirect3DVertexDeclaration9* vertex_decleration = nullptr;
 	IDirect3DVertexShader9* vertex_shader = nullptr;
 
 	DWORD rs_anti_alias = 0;
+
 	device->GetRenderState( D3DRS_MULTISAMPLEANTIALIAS, &rs_anti_alias );
 	device->CreateStateBlock( D3DSBT_PIXELSTATE, &pixel_state );
 	device->GetVertexDeclaration( &vertex_decleration );
@@ -225,23 +563,55 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
 	device->SetVertexShader( nullptr );
 	device->SetPixelShader( nullptr );
-	device->SetTransform( D3DTS_VIEW, &identity_matrix );
 
-	/*
-	struct net_graph_info {
-		PAD( 78264 );
-		float m_fps;
-		float m_latency;
-		float m_packet_loss;
-		float m_packet_choke;
-	};
+	device->SetVertexShader ( nullptr );
+	device->SetPixelShader ( nullptr );
+	device->SetFVF ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE );
+	device->SetRenderState ( D3DRS_LIGHTING, false );
+	device->SetRenderState ( D3DRS_FOGENABLE, false );
+	device->SetRenderState ( D3DRS_CULLMODE, D3DCULL_NONE );
+	device->SetRenderState ( D3DRS_FILLMODE, D3DFILL_SOLID );
+	device->SetRenderState ( D3DRS_ZENABLE, D3DZB_FALSE );
+	device->SetRenderState ( D3DRS_SCISSORTESTENABLE, true );
+	device->SetRenderState ( D3DRS_ZWRITEENABLE, false );
+	device->SetRenderState ( D3DRS_STENCILENABLE, false );
+	device->SetRenderState ( D3DRS_MULTISAMPLEANTIALIAS, true );
+	device->SetRenderState ( D3DRS_ANTIALIASEDLINEENABLE, true );
+	device->SetRenderState ( D3DRS_ALPHABLENDENABLE, true );
+	device->SetRenderState ( D3DRS_ALPHATESTENABLE, false );
+	device->SetRenderState ( D3DRS_SEPARATEALPHABLENDENABLE, true );
+	device->SetRenderState ( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+	device->SetRenderState ( D3DRS_SRCBLENDALPHA, D3DBLEND_INVDESTALPHA );
+	device->SetRenderState ( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+	device->SetRenderState ( D3DRS_DESTBLENDALPHA, D3DBLEND_ONE );
+	device->SetRenderState ( D3DRS_SRGBWRITEENABLE, false );
+	device->SetRenderState ( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
 
-	static auto net_graph = pattern::search( _( "client_panorama.dll" ), _( "89 1D ? ? ? ? 8B C3" ) ).add( 2 ).deref( ).get< net_graph_info* >( );
-	*/
+	security_handler::update ( );
 
-	render::text( 20, 20, D3DCOLOR_RGBA( 255, 100, 200, 255 ), features::esp::indicator_font, std::to_wstring( static_cast< int >( 1.0f / csgo::i::globals->m_abs_frametime ) ) );
-
+	static float last_counter_update = 0.0f;
+	static int last_framerate = 0;
+	
+	if ( std::fabs ( csgo::i::globals->m_curtime - last_counter_update ) > 1.0f ) {
+		last_framerate = static_cast< int >( 1.0f / csgo::i::globals->m_abs_frametime );
+		last_counter_update = csgo::i::globals->m_curtime;
+	}
+	
 	features::esp::render( );
+	animations::resolver::render_impacts ( );
+	
+	//if ( csgo::i::engine->is_in_game ( ) && csgo::i::engine->is_connected ( ) )
+	//	render::circle3d ( vec3_t( 0.0f, 0.0f, 64.0f ), 128, 40, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
+	
+	if ( no_scope && g::local && g::local->scoped( ) ) {
+		int w, h;
+		render::screen_size ( w, h );
+		render::line ( w / 2, 0, w / 2, h, D3DCOLOR_RGBA ( 0, 0, 0, 255 ) );
+		render::line ( 0, h / 2, w, h / 2, D3DCOLOR_RGBA( 0, 0, 0, 255 ) );
+	}
+	
+	render::text ( 20, 20, D3DCOLOR_RGBA ( 255, 100, 200, 255 ), features::esp::indicator_font, std::to_wstring ( last_framerate ), false, true );
+	
 	menu::draw( );
 
 	pixel_state->Apply( );
@@ -257,13 +627,16 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 long __fastcall hooks::reset_hk( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentation_params ) {
 	features::esp::esp_font->Release( );
 	features::esp::indicator_font->Release( );
+	features::esp::dbg_font->Release ( );
+
 	menu::destroy( );
 
 	auto hr = reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Light" ), N( 16 ), false );
-		render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Light" ), N( 20 ), true );
+		render::create_font( ( void** ) &features::esp::dbg_font, _( L"Arial" ), N( 10 ), false );
+		render::create_font( ( void** ) &features::esp::esp_font, _( L"Arial" ), N( 14 ), false );
+		render::create_font( ( void** ) &features::esp::indicator_font, _( L"Arial" ), N( 14 ), true );
 		menu::reset( );
 	}
 
@@ -280,39 +653,48 @@ void __fastcall hooks::lockcursor_hk( REG ) {
 }
 
 void __fastcall hooks::doextraboneprocessing_hk( REG, int a2, int a3, int a4, int a5, int a6, int a7 ) {
-	auto e = reinterpret_cast< player_t* >( ecx );
-
-	if ( !e ) {
-		doextraboneprocessing( REG_OUT, a2, a3, a4, a5, a6, a7 );
-		return;
-	}
-
-	auto animstate = e->animstate( );
-
-	if ( !animstate || !animstate->m_entity ) {
-		doextraboneprocessing( REG_OUT, a2, a3, a4, a5, a6, a7 );
-		return;
-	}
-
-	// prevent call to do_procedural_foot_plant
-	auto o_on_ground = animstate->m_on_ground;
-	animstate->m_on_ground = false;
-	doextraboneprocessing( REG_OUT, a2, a3, a4, a5, a6, a7 );
-	animstate->m_on_ground = o_on_ground;
+	return;
 }
 
 bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int mask, float curtime ) {
-	static auto c_csplayer__setupbones_ret_addr = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? 5E 5D C2 10 00 CC 55" ) ).add( 5 ).get< void* >( );
-
 	const auto pl = reinterpret_cast< player_t* >( uintptr_t( ecx ) - 4 );
 
-	/* do not let game build bone matrix for players, we will build it ourselves with correct information. */
-	if ( c_csplayer__setupbones_ret_addr == _ReturnAddress( ) && pl && g::local ) {
-		if ( pl == g::local )
-			return animations::build_matrix( pl, out, max_bones, mask, curtime );
+	if ( g::local && pl && pl->client_class ( ) && pl->client_class ( )->m_class_id == 40 && pl != g::local ) {
+		const auto backup_effects = *reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) );
 
-		const auto ret = setupbones( REG_OUT, out, max_bones, mask, curtime );
-		std::memcpy( pl->bone_cache( ), &animations::data::bones [ pl->idx( ) ], N( sizeof matrix3x4_t ) * pl->bone_count( ) );
+		const auto backup_curtime = csgo::i::globals->m_curtime;
+		const auto backup_realtime = csgo::i::globals->m_realtime;
+		const auto backup_frametime = csgo::i::globals->m_frametime;
+		const auto backup_abs_frametime = csgo::i::globals->m_abs_frametime;
+		const auto backup_abs_framestarttimestddev = csgo::i::globals->m_abs_framestarttimestddev;
+		const auto backup_interp = csgo::i::globals->m_interp;
+		const auto backup_framecount = csgo::i::globals->m_framecount;
+		const auto backup_tickcount = csgo::i::globals->m_tickcount;
+
+		csgo::i::globals->m_curtime = pl->simtime ( );
+		csgo::i::globals->m_realtime = pl->simtime ( );
+		csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
+		csgo::i::globals->m_abs_frametime = csgo::i::globals->m_ipt;
+		csgo::i::globals->m_abs_framestarttimestddev = pl->simtime ( ) - csgo::i::globals->m_ipt;
+		csgo::i::globals->m_interp = 0.0f;
+		csgo::i::globals->m_framecount = INT_MAX;
+		csgo::i::globals->m_tickcount = csgo::time2ticks ( pl->simtime ( ) );
+
+		*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) |= N ( 8 );
+
+		const auto ret = setupbones ( REG_OUT, out, max_bones, mask, curtime );
+
+		csgo::i::globals->m_curtime = backup_curtime;
+		csgo::i::globals->m_realtime = backup_realtime;
+		csgo::i::globals->m_frametime = backup_frametime;
+		csgo::i::globals->m_abs_frametime = backup_abs_frametime;
+		csgo::i::globals->m_abs_framestarttimestddev = backup_abs_framestarttimestddev;
+		csgo::i::globals->m_interp = backup_interp;
+		csgo::i::globals->m_framecount = backup_framecount;
+		csgo::i::globals->m_tickcount = backup_tickcount;
+
+		*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) = backup_effects;
+
 		return ret;
 	}
 
@@ -325,42 +707,30 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 	if ( ecx != local )
 		return get_eye_angles( REG_OUT );
 
-	static auto ret_to_thirdperson_pitch = pattern::search( _( "client_panorama.dll" ), _( "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55" ) ).get< std::uintptr_t >( );
-	static auto ret_to_thirdperson_yaw = pattern::search( _( "client_panorama.dll" ), _( "F3 0F 10 55 ? 51 8B 8E" ) ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_pitch = pattern::search( _( "client.dll" ), _( "8B CE F3 0F 10 00 8B 06 F3 0F 11 45 ? FF 90 ? ? ? ? F3 0F 10 55" ) ).get< std::uintptr_t >( );
+	static auto ret_to_thirdperson_yaw = pattern::search( _( "client.dll" ), _( "F3 0F 10 55 ? 51 8B 8E" ) ).get< std::uintptr_t >( );
 
 	if ( ( std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_pitch
 		|| std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_yaw )
 		&& !no_update )
-		return g::ucmd ? &g::ucmd->m_angs : &local->angles( );
+		return g::ucmd ? &g::angles : &local->angles( );
 
 	return get_eye_angles( REG_OUT );
 }
 
 bool __fastcall hooks::get_bool_hk( REG ) {
-	static auto cl_interpolate = pattern::search( _( "client_panorama.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< std::uintptr_t >( );
-	static auto cam_think = pattern::search( _( "client_panorama.dll" ), _( "85 C0 75 30 38 86" ) ).get< std::uintptr_t >( );
-	static auto hermite_fix = pattern::search( _( "client_panorama.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< std::uintptr_t >( );
-	static auto cl_extrapolate = pattern::search( _( "client_panorama.dll" ), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< std::uintptr_t >( );
+	static auto cl_interpolate = pattern::search( _( "client.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< void* >( );
+	static auto cam_think = pattern::search( _( "client.dll" ), _( "85 C0 75 30 38 86" ) ).get< void* >( );
+	static auto hermite_fix = pattern::search( _( "client.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< void* >( );
+	static auto cl_extrapolate = pattern::search ( _ ( "client.dll" ), _ ( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* > ( );
+	static auto color_static_props = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 0F 84 ? ? ? ? 8D 4B 32" ) ).get< void* > ( );
+	static auto color_static_props1 = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 75 74 8B 0D" ) ).get< void* > ( );
 
 	if ( !ecx )
 		return false;
 
-	if ( /* oxui::vars::items [ "thirdperson" ].val.b */ true ) {
-		if ( std::uintptr_t( _ReturnAddress( ) ) == cam_think )
-			return true;
-	}
-
-	// /* disable client-side extrapolation */
-	// if ( std::uintptr_t( _ReturnAddress( ) ) == cl_interpolate )
-	// 	return false;
-	//
-	// /* disable client-side hermite fix */
-	// if ( std::uintptr_t( _ReturnAddress( ) ) == hermite_fix )
-	// 	return false;
-	//
-	// /* disable client-side interpolation */
-	// if ( std::uintptr_t( _ReturnAddress( ) ) == cl_extrapolate )
-	// 	return false;
+	if ( _ReturnAddress ( ) == cam_think /*|| _ReturnAddress ( ) == color_static_props || _ReturnAddress ( ) == color_static_props1*/ )
+		return true;
 
 	return get_bool( REG_OUT );
 }
@@ -396,7 +766,36 @@ void __fastcall hooks::trace_ray_hk( REG, const ray_t& ray, unsigned int mask, t
 }
 
 int __fastcall hooks::send_datagram_hk( REG, void* datagram ) {
-	return send_datagram( REG_OUT, datagram );
+	class c_nc {
+	public:
+		PAD ( 23 );
+		bool should_delete;
+		int out_seq_nr;
+		int in_seq_nr;
+		int out_seq_nr_ack;
+		int out_reliable_state;
+		int in_reliable_state;
+		int choked_packets;
+	};
+
+	const auto nc = *reinterpret_cast< c_nc** >( uintptr_t ( csgo::i::client_state ) + 0x9c );
+
+	if ( nc && nc->choked_packets ) {
+		static auto nc_send_datagram = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get< int ( __thiscall* )( void*, void* )> ( );
+		const auto current_choke = nc->choked_packets;
+
+		nc->choked_packets = 0;
+
+		const auto ret = send_datagram ( REG_OUT, datagram );
+		//nc_send_datagram ( nc, nullptr );
+
+		nc->out_seq_nr--;
+		nc->choked_packets = current_choke;
+
+		return ret;
+	}
+
+	return send_datagram ( REG_OUT, datagram );
 }
 
 bool __fastcall hooks::should_skip_animation_frame_hk( REG ) {
@@ -404,8 +803,8 @@ bool __fastcall hooks::should_skip_animation_frame_hk( REG ) {
 }
 
 bool __fastcall hooks::is_hltv_hk( REG ) {
-	static const auto accumulate_layers_call = pattern::search( _( "client_panorama.dll" ), _( "84 C0 75 0D F6 87" ) ).get< void* >( );
-	static const auto setupvelocity_call = pattern::search( _( "client_panorama.dll" ), _( "84 C0 75 38 8B 0D ? ? ? ? 8B 01 8B 80 ? ? ? ? FF D0" ) ).get< void* >( );
+	static const auto accumulate_layers_call = pattern::search( _( "client.dll" ), _( "84 C0 75 0D F6 87" ) ).get< void* >( );
+	static const auto setupvelocity_call = pattern::search( _( "client.dll" ), _( "84 C0 75 38 8B 0D ? ? ? ? 8B 01 8B 80 ? ? ? ? FF D0" ) ).get< void* >( );
 
 	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) )
 		return is_hltv( REG_OUT );
@@ -416,6 +815,137 @@ bool __fastcall hooks::is_hltv_hk( REG ) {
 	return is_hltv( REG_OUT );
 }
 
+bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int to, bool new_cmd ) {
+	OPTION ( bool, dt_teleport, "Sesame->A->Rage Aimbot->Main->Doubletap Teleport", oxui::object_checkbox );
+	
+	static auto write_ucmd = pattern::search( _("client.dll"), _("55 8B EC 83 E4 F8 51 53 56 8B D9 8B 0D" )).get< void( __fastcall* )( void*, ucmd_t*, ucmd_t* ) >( );
+	static auto cl_sendmove_ret = pattern::search( _("engine.dll"), _("84 C0 74 04 B0 01 EB 02 32 C0 8B FE 46 3B F3 7E C9 84 C0 0F 84") ).get< void* >( );
+
+	if ( _ReturnAddress( ) != cl_sendmove_ret || g::dt_ticks_to_shift <= 0 ) {
+		return write_usercmd( REG_OUT, slot, buf, from, to, new_cmd );
+	}
+
+	if ( from != -1 )
+		return true;
+
+	const auto new_commands = *reinterpret_cast< int* >( uintptr_t( buf ) - 0x2C );
+	const auto num_cmd = csgo::i::client_state->choked ( ) + 1;
+	const auto next_cmd_num = csgo::i::client_state->last_outgoing_cmd( ) + num_cmd;
+	const auto total_new_cmds = std::min< int >( g::dt_ticks_to_shift, 16 );
+
+	from = -1;
+	*reinterpret_cast< int* >( uintptr_t( buf ) - 0x2C ) = total_new_cmds;
+	*reinterpret_cast< int* >( uintptr_t( buf ) - 0x30 ) = 0;
+
+	for ( to = next_cmd_num - new_commands + 1; to <= next_cmd_num; to++ ) {
+		if ( !write_usercmd( REG_OUT, slot, buf, from, to, true ) )
+			return false;
+
+		from = to;
+	}
+	
+	const auto last_real_cmd = vfunc< ucmd_t * ( __thiscall* )( void*, int, int ) >( csgo::i::input, 8 )( csgo::i::input, slot, from );
+	ucmd_t cmd_from;
+
+	if ( last_real_cmd )
+		cmd_from = *last_real_cmd;
+
+	ucmd_t cmd_to = cmd_from;
+	cmd_to.m_cmdnum++;
+
+	if ( dt_teleport )
+		cmd_to.m_tickcount++;
+	else
+		cmd_to.m_tickcount += 666;
+
+	for ( auto i = new_commands; i <= total_new_cmds; i++ ) {
+		write_ucmd ( buf, &cmd_to, &cmd_from );
+		cmd_from = cmd_to;
+		cmd_to.m_cmdnum++;
+		cmd_to.m_tickcount++;
+	}
+
+	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
+	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : csgo::ticks2time( g::dt_ticks_to_shift );
+
+	if ( dt_teleport )
+		g::shifted_tickbase = cmd_to.m_cmdnum + 1;
+
+	g::dt_ticks_to_shift = 0;
+
+	return true;
+}
+
+int __fastcall hooks::list_leaves_in_box_hk ( REG, vec3_t& mins, vec3_t& maxs, uint16_t* list, int list_max ) {
+	OPTION ( bool, skip_occlusion, "Sesame->C->Other->Removals->Skip Occlusion", oxui::object_checkbox );
+
+	if ( !skip_occlusion || !g::local )
+		return list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
+
+	struct render_info_t {
+		void* m_renderable;
+		void* m_alpha_property;
+		int m_enum_count;
+		int m_render_frame;
+		unsigned short m_first_shadow;
+		unsigned short m_leaf_list;
+		short m_area;
+		uint16_t m_flags;
+		uint16_t m_flags2;
+		vec3_t m_bloated_abs_mins;
+		vec3_t m_bloated_abs_maxs;
+		vec3_t m_abs_mins;
+		vec3_t m_abs_maxs;
+		PAD ( 4 );
+	};
+
+	static auto ret_addr = pattern::search ( _ ( "client.dll" ), _ ( "89 44 24 14 EB 08 C7 44 24 ? ? ? ? ? 8B 45" ) ).get< void* > ( );
+
+	if ( _ReturnAddress ( ) != ret_addr )
+		return list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
+
+	auto info = *( render_info_t** ) ( ( uintptr_t ) _AddressOfReturnAddress ( ) + 0x14 );
+
+	if ( !info || !info->m_renderable )
+		return list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
+
+	auto get_client_unknown = [ ] ( void* renderable ) {
+		typedef void* ( __thiscall* o_fn )( void* );
+		return ( *( o_fn** ) renderable ) [ 0 ] ( renderable );
+	};
+
+	auto get_base_entity = [ ] ( void* c_unk ) {
+		typedef player_t* ( __thiscall* o_fn )( void* );
+		return ( *( o_fn** ) c_unk ) [ 7 ] ( c_unk );
+	};
+
+	auto base_entity = get_base_entity ( get_client_unknown ( info->m_renderable ) );
+
+	if ( !base_entity || base_entity->idx( ) > 64 || !base_entity->idx( ) )
+		return list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
+
+	info->m_flags &= ~0x100;
+	info->m_flags2 |= 0x40;
+
+	static vec3_t map_min = vec3_t ( -16384.0f, -16384.0f, -16384.0f );
+	static vec3_t map_max = vec3_t ( 16384.0f, 16384.0f, 16384.0f );
+
+	return list_leaves_in_box ( REG_OUT, map_min, map_max, list, list_max );
+}
+
+void __fastcall hooks::paint_traverse_hk ( REG, int ipanel, bool force_repaint, bool allow_force ) {
+	OPTION ( bool, no_scope, "Sesame->C->Other->Removals->No Scope", oxui::object_checkbox );
+
+	static auto override_post_processing_disable = pattern::search ( _ ( "client.dll" ), _ ( "80 3D ? ? ? ? ? 53 56 57 0F 85" ) ).add ( 2 ).deref ( ).get< bool* > ( );
+
+	if ( no_scope && !strcmp ( _ ( "HudZoom" ), csgo::i::panel->get_name ( ipanel ) ) )
+		return;
+
+	paint_traverse ( REG_OUT, ipanel, force_repaint, allow_force );
+
+	*override_post_processing_disable = g::local && g::local->scoped( ) && no_scope;
+}
+
 long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
 	if ( menu::wndproc( hwnd, msg, wparam, lparam ) )
 		return true;
@@ -424,61 +954,97 @@ long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wpar
 }
 
 bool hooks::init( ) {
+	unsigned long font_count = 0;
+	LI_FN( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
+
 	menu::init( );
+	erase::erase_func ( menu::init );
 
 	/* create fonts */
-	render::create_font( ( void** ) &features::esp::esp_font, _( L"MyriadPro-Regular" ), N( 16 ), false );
-	render::create_font( ( void** ) &features::esp::indicator_font, _( L"MyriadPro-Regular" ), N( 20 ), true );
+	render::create_font( ( void** ) &features::esp::dbg_font, _( L"Arial" ), N( 12 ), false );
+	render::create_font( ( void** ) &features::esp::esp_font, _( L"Arial" ), N( 14 ), false );
+	render::create_font( ( void** ) &features::esp::indicator_font, _( L"Arial" ), N( 14 ), true );
 
 	/* load default config */
-	menu::load_default( );
+	//menu::load_default( );
+
+	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
+
+	if ( clsm_numUsrCmdProcessTicksMax_clamp ) {
+		unsigned long old_prot = 0;
+		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, PAGE_EXECUTE_READWRITE, &old_prot );
+		memset( clsm_numUsrCmdProcessTicksMax_clamp, 0x90, 3 );
+		LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
+	}
 
 	const auto clsendmove = pattern::search( _( "engine.dll" ), _( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 8F" ) ).resolve_rip( ).get< void* >( );
-	const auto clientmodeshared_createmove = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< decltype( &createmove_hk ) >( );
-	const auto chlclient_framestagenotify = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< decltype( &framestagenotify_hk ) >( );
+	const auto clientmodeshared_createmove = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< decltype( &createmove_hk ) >( );
+	const auto chlclient_framestagenotify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< decltype( &framestagenotify_hk ) >( );
 	const auto idirect3ddevice9_endscene = vfunc< decltype( &endscene_hk ) >( csgo::i::dev, N( 42 ) );
 	const auto idirect3ddevice9_reset = vfunc< decltype( &reset_hk ) >( csgo::i::dev, N( 16 ) );
 	const auto vguimatsurface_lockcursor = pattern::search( _( "vguimatsurface.dll" ), _( "80 3D ? ? ? ? 00 8B 91 A4 02 00 00 8B 0D ? ? ? ? C6 05 ? ? ? ? 01" ) ).get< decltype( &lockcursor_hk ) >( );
 	const auto ivrenderview_sceneend = vfunc< decltype( &sceneend_hk ) >( csgo::i::render_view, N( 9 ) );
 	const auto modelrender_drawmodelexecute = vfunc< decltype( &drawmodelexecute_hk ) >( csgo::i::mdl_render, N( 21 ) );
-	const auto c_csplayer_doextraboneprocessing = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
-	const auto c_baseanimating_setupbones = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
-	const auto c_csplayer_get_eye_angles = pattern::search( _( "client_panorama.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D" ) ).get< void* >( );
-	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? E9 ? ? ? ? 83 BE" ) ).resolve_rip( ).add( 0x366 ).get< void* >( );
-	const auto draw_bullet_impacts = pattern::search( _( "client_panorama.dll" ), _( "56 8B 71 4C 57" ) ).get< void* >( );
-	const auto convar_getbool = pattern::search( _( "client_panorama.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
+	const auto c_csplayer_doextraboneprocessing = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
+	const auto c_baseanimating_setupbones = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
+	const auto c_csplayer_get_eye_angles = pattern::search( _( "client.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D" ) ).get< void* >( );
+	const auto c_csgoplayeranimstate_setupvelocity_call = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? E9 ? ? ? ? 83 BE" ) ).resolve_rip( ).add( 0x366 ).get< void* >( );
+	const auto draw_bullet_impacts = pattern::search( _( "client.dll" ), _( "56 8B 71 4C 57" ) ).get< void* >( );
+	const auto convar_getbool = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
 	const auto traceray_fn = vfunc< void* >( csgo::i::trace, N( 5 ) );
-	const auto overrideview = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
-	const auto updateclientsideanimations = pattern::search( _( "client_panorama.dll" ), _( "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00" ) ).get< void* >( );
+	const auto overrideview = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
+	const auto updateclientsideanimations = pattern::search( _( "client.dll" ), _( "8B 0D ? ? ? ? 53 56 57 8B 99 0C 10 00 00 85 DB 74 ? 6A 04 6A 00" ) ).get< void* >( );
 	const auto nc_send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
 	const auto engine_fire_event = vfunc< void* >( csgo::i::engine, N( 59 ) );
-	const auto c_baseanimating_should_skip_animation_frame = pattern::search( _( "client_panorama.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).add( N( 1 ) ).deref( ).get< void* >( );
+	const auto c_baseanimating_should_skip_animation_frame = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).add( N( 1 ) ).deref( ).get< void* >( );
 	const auto engine_is_hltv = vfunc< void* >( csgo::i::engine, N( 93 ) );
+	const auto chlclient_write_usercmd = vfunc< void* > ( csgo::i::client, N ( 24 ) );
+	const auto bsp_query_list_leaves_in_box = vfunc< void* >( csgo::i::engine->get_bsp_tree_query( ), N( 6 ) );
+	const auto panel_painttraverse = vfunc< void* > ( csgo::i::panel, N ( 41 ) );
+	const auto clientmode_get_viewmodel_fov = vfunc< void* > ( **( void*** ) ( ( *( uintptr_t** ) csgo::i::client ) [ 10 ] + 5 ), N ( 35 ) );
+	const auto pred_in_prediction = vfunc< void* > ( csgo::i::pred, N( 14 ) );
 
 	MH_Initialize( );
 
-	MH_CreateHook( engine_fire_event, fire_event_hk, ( void** ) &fire_event );
-	MH_CreateHook( clientmodeshared_createmove, createmove_hk, ( void** ) &createmove );
-	MH_CreateHook( chlclient_framestagenotify, framestagenotify_hk, ( void** ) &framestagenotify );
-	MH_CreateHook( idirect3ddevice9_endscene, endscene_hk, ( void** ) &endscene );
-	MH_CreateHook( idirect3ddevice9_reset, reset_hk, ( void** ) &reset );
-	MH_CreateHook( vguimatsurface_lockcursor, lockcursor_hk, ( void** ) &lockcursor );
-	MH_CreateHook( ivrenderview_sceneend, sceneend_hk, ( void** ) &sceneend );
-	MH_CreateHook( modelrender_drawmodelexecute, drawmodelexecute_hk, ( void** ) &drawmodelexecute );
-	MH_CreateHook( c_csplayer_doextraboneprocessing, doextraboneprocessing_hk, ( void** ) &doextraboneprocessing );
-	MH_CreateHook( c_csplayer_get_eye_angles, get_eye_angles_hk, ( void** ) &get_eye_angles );
-	MH_CreateHook( traceray_fn, trace_ray_hk, ( void** ) &traceray );
-	MH_CreateHook( c_baseanimating_setupbones, setupbones_hk, ( void** ) &setupbones );
-	MH_CreateHook( convar_getbool, get_bool_hk, ( void** ) &get_bool );
-	MH_CreateHook( overrideview, override_view_hk, ( void** ) &override_view );
-	//MH_CreateHook( engine_is_hltv, is_hltv_hk, ( void** ) &is_hltv );
-	// MH_CreateHook( c_baseanimating_should_skip_animation_frame, should_skip_animation_frame_hk, ( void** ) &should_skip_animation_frame );
-	// MH_CreateHook( updateclientsideanimations, update_clientside_animations_hk, ( void** ) &update_clientside_animations );
+#define to_string( func ) #func
+#define dbg_hook( a, b, c ) print_and_hook ( a, b, c, _( to_string ( b ) ) )
+	auto print_and_hook = [ ] ( void* from, void* to, void** original, const char* func_name ) {
+		MH_CreateHook ( from, to, original );
+		MH_EnableHook ( from );
+		//printf ( "hooked: %s\n", func_name );
+		//std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
+	};
 
-	MH_EnableHook( nullptr );
+	dbg_hook ( panel_painttraverse, paint_traverse_hk, ( void** ) &paint_traverse );
+	dbg_hook( engine_fire_event, fire_event_hk, ( void** ) &fire_event );
+	dbg_hook( clientmodeshared_createmove, createmove_hk, ( void** ) &createmove );
+	dbg_hook( chlclient_framestagenotify, framestagenotify_hk, ( void** ) &framestagenotify );
+	dbg_hook( idirect3ddevice9_endscene, endscene_hk, ( void** ) &endscene );
+	dbg_hook( idirect3ddevice9_reset, reset_hk, ( void** ) &reset );
+	dbg_hook( vguimatsurface_lockcursor, lockcursor_hk, ( void** ) &lockcursor );
+	dbg_hook( ivrenderview_sceneend, sceneend_hk, ( void** ) &sceneend );
+	dbg_hook( modelrender_drawmodelexecute, drawmodelexecute_hk, ( void** ) &drawmodelexecute );
+	dbg_hook( c_csplayer_doextraboneprocessing, doextraboneprocessing_hk, ( void** ) &doextraboneprocessing );
+	dbg_hook( c_csplayer_get_eye_angles, get_eye_angles_hk, ( void** ) &get_eye_angles );
+	// dbg_hook( traceray_fn, trace_ray_hk, ( void** ) &traceray );
+	dbg_hook( c_baseanimating_setupbones, setupbones_hk, ( void** ) &setupbones );
+	dbg_hook( convar_getbool, get_bool_hk, ( void** ) &get_bool );
+	dbg_hook( overrideview, override_view_hk, ( void** ) &override_view );
+	dbg_hook( engine_is_hltv, is_hltv_hk, ( void** ) &is_hltv );
+	dbg_hook ( chlclient_write_usercmd, write_usercmd_hk, ( void** ) &write_usercmd );
+	dbg_hook ( bsp_query_list_leaves_in_box, list_leaves_in_box_hk, ( void** ) &list_leaves_in_box );
+	dbg_hook ( clientmode_get_viewmodel_fov, get_viewmodel_fov_hk, ( void** ) &get_viewmodel_fov );
+	dbg_hook ( pred_in_prediction, in_prediction_hk, ( void** ) &in_prediction );
+	//dbg_hook( nc_send_datagram, send_datagram_hk, ( void** ) &send_datagram );
+	dbg_hook( c_baseanimating_should_skip_animation_frame, should_skip_animation_frame_hk, ( void** ) &should_skip_animation_frame );
+	//dbg_hook( updateclientsideanimations, update_clientside_animations_hk, ( void** ) &update_clientside_animations );
+
+	event_handler = std::make_unique< c_event_handler >( );
 
 	o_wndproc = ( WNDPROC ) LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( wndproc ) );
+
+	END_FUNC
 
 	return true;
 }

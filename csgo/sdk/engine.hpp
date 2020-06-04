@@ -55,7 +55,7 @@ public:
 	}
 
 	std::uint32_t& last_outgoing_cmd( ) {
-		return *reinterpret_cast< std::uint32_t* >( &choked( ) + sizeof( std::uint32_t ) );
+		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D24 );
 	}
 
 	std::uint32_t& server_tickcount( ) {

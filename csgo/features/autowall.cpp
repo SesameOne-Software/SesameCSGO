@@ -1,7 +1,7 @@
 #include "autowall.hpp"
 
 void autowall::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace ) {
-	static auto clip_trace_to_players_add = pattern::search( "client_panorama.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get<void*>( );
+	static auto clip_trace_to_players_add = pattern::search( "client.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get<void*>( );
 
 	__asm {
 		mov eax, filter
@@ -74,6 +74,7 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 	if ( !weapon_data )
 		return false;
 
+	auto trace_len = data.src.dist_to ( end_pos );
 	auto enter_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 	auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
 
@@ -84,26 +85,25 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 
 	if ( data.penetrate_count > 0 ) {
 		while ( data.current_damage > 1.0f ) {
-			data.trace_length_remaining = data.src.dist_to( end_pos ) - data.trace_length;
+			data.trace_length_remaining = trace_len - data.trace_length;
 
 			auto end = data.direction * data.trace_length_remaining + data.src;
 
 			csgo::util_traceline( data.src, end, 0x4600400B, entity, &data.enter_trace );
-
 			clip_trace_to_players( data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
 
-			if ( data.enter_trace.m_fraction >= 0.97f || ( data.enter_trace.m_hit_entity && ( data.enter_trace.m_hit_entity->team( ) == 3 || data.enter_trace.m_hit_entity->team( ) == 2 ) && data.enter_trace.m_hit_entity->team( ) != entity->team( ) ) ) {
+			if ( data.enter_trace.m_fraction == 1.0f && hitgroup != -1 ) {
 				scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
-
-				data.enter_trace.m_hitgroup = hitgroup;
-				data.enter_trace.m_endpos = end_pos;
-				data.enter_trace.m_hit_entity = dst_entity;
-
 				return true;
 			}
 
 			data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
 			data.current_damage *= weapon_data->m_range_modifier;
+
+			if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && data.enter_trace.m_hit_entity == dst_entity ) {
+				scale_dmg( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
+				return true;
+			}
 
 			if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
 				break;
@@ -184,64 +184,65 @@ bool autowall::classname_is( player_t* entity, const char* class_name ) {
 }
 
 bool autowall::is_breakable_entity( player_t* entity ) {
-	static auto __rtdynamiccast_fn = pattern::search( _( "client_panorama.dll" ), _( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" ) ).get<void*>( );
-	static auto is_breakable_entity_fn = pattern::search( _( "client_panorama.dll" ), _( "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE" ) ).get<void*>( );
-	static auto multiplayer_phys_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x50 );
-	static auto baseentity_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x55 );
-	static auto breakablewithpropdata_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0xD5 );
+	static auto __rtdynamiccast_fn = pattern::search ( "client.dll", "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" ).get < void* > ( );
+	static auto is_breakable_entity_fn = pattern::search ( "client.dll", "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE" ).get < void* > ( );
+	static auto multiplayerphysics_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x4F );
+	static auto baseentity_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0x54 );
+	static auto breakablewithpropdata_rtti_desc = *( uintptr_t* ) ( ( uintptr_t ) is_breakable_entity_fn + 0xD4 );
 
-	int( __thiscall * **v4 )( player_t* );
+	if ( !entity )
+		return false;
+
+	const auto& take_damage = *reinterpret_cast < uint8_t* > ( uintptr_t ( entity ) + 0x280 );
+
+	int ( __thiscall*** v4 )( player_t* );
 	int v5;
 
-	if ( entity && ( *( std::uint32_t* ) ( entity + 256 ) >= 0 || ( *( int( ** )( void ) )( *( std::uint32_t* ) entity + 488 ) )( ) <= 0 ) && *( std::uint8_t* ) ( *( std::uint32_t* ) entity + 640 ) == 2 ) {
-		auto v3 = *( std::uint32_t* ) ( *( std::uint32_t* ) entity + 1140 );
+	if ( ( entity->health ( ) >= 0 || vfunc< int ( __thiscall* ) ( ) > ( entity, 122 )( ) /* GetMaxHealth */ > 0 ) && take_damage == 2 ) {
+		const auto& collision_group = *reinterpret_cast < int* > ( uintptr_t ( entity ) + 0x474 );
 
-		if ( v3 != 17 && v3 != 6 && v3 )
-			return false;
-
-		if ( *( std::uint32_t* ) ( *( std::uint32_t* ) entity + 256 ) > 200 )
-			return false;
-
-		__asm {
-			push 0
-			push multiplayer_phys_rtti_desc
-			push baseentity_rtti_desc
-			push 0
-			push entity
-			call __rtdynamiccast_fn
-			add esp, 20
-			mov v4, eax
-		}
-
-		if ( v4 ) {
-			if ( ( **v4 )( entity ) != 1 )
-				return false;
-
-			goto label_18;
-		}
-
-		if ( !classname_is( entity, _( "func_breakable" ) ) && !classname_is( entity, _( "func_breakable_surf" ) ) ) {
-			if ( ( *( ( int( __thiscall** )( player_t* ) ) * ( std::uint32_t* ) entity + 604 ) )( entity ) & 0x10000 )
-				return false;
-
-			goto label_18;
-		}
-
-		if ( !classname_is( entity, _( "func_breakable_surf" ) ) || !*( ( uint8_t* ) entity + 2564 ) ) {
-		label_18:
+		if ( ( collision_group == 17 || collision_group == 6 || !collision_group ) && entity->health ( ) <= 200 ) {
 			__asm {
 				push 0
-				push breakablewithpropdata_rtti_desc
+				push multiplayerphysics_rtti_desc
 				push baseentity_rtti_desc
 				push 0
 				push entity
 				call __rtdynamiccast_fn
 				add esp, 20
-				mov v5, eax
+				mov v4, eax
 			}
 
-			if ( v5 && ( ( float( __thiscall* )( uintptr_t ) ) * ( uintptr_t* ) ( *( uintptr_t* ) v5 + 12 ) )( v5 ) <= 0.0f )
-				return true;
+			if ( v4 ) {
+				if ( ( **v4 )( reinterpret_cast < player_t* > ( v4 ) ) != 1 )
+					return false;
+
+				goto label_18;
+			}
+
+			if ( !classname_is ( entity, _("func_breakable" )) && !classname_is ( entity, _("func_breakable_surf") ) ) {
+				if ( ( *( ( int ( __thiscall** )( player_t* ) ) * ( uint32_t* ) entity + 604 ) )( entity ) & 0x10000 /* PhysicsSolidMaskForEntity */ )
+					return false;
+
+				goto label_18;
+			}
+
+			if ( !classname_is ( entity, _("func_breakable_surf") ) || !*( ( uint8_t* ) entity + 0xA04 ) ) {
+			label_18:
+				__asm {
+					push 0
+					push breakablewithpropdata_rtti_desc
+					push baseentity_rtti_desc
+					push 0
+					push entity
+					call __rtdynamiccast_fn
+					add esp, 20
+					mov v5, eax
+				}
+
+				if ( v5 && ( ( float ( __thiscall* )( uintptr_t ) ) * ( uintptr_t* ) ( *( uintptr_t* ) v5 + 12 ) )( v5 ) <= 0.0f )
+					return true;
+			}
 		}
 	}
 
@@ -260,7 +261,7 @@ bool autowall::trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, v
 		if ( !first_contents )
 			first_contents = csgo::i::trace->get_point_contents( start, 0x4600400B, nullptr );
 
-		int point_contents = csgo::i::trace->get_point_contents( start, 0x4600400B, nullptr );
+		const auto point_contents = csgo::i::trace->get_point_contents( start, 0x4600400B, nullptr );
 
 		if ( point_contents & 0x600400B && ( !( point_contents & 0x40000000 ) || first_contents == point_contents ) )
 			continue;
@@ -280,24 +281,32 @@ bool autowall::trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, v
 			continue;
 		}
 
-		if ( exit_tr->did_hit( ) && !exit_tr->m_startsolid ) {
-			if ( is_breakable_entity( dst_entity ) && is_breakable_entity( dst_entity ) )
-				return true;
-
-			if ( tr->m_surface.m_flags & 0x80 || !( exit_tr->m_surface.m_flags & 0x80 ) && ( exit_tr->m_plane.m_normal.dot_product( dir ) <= 1.0f ) ) {
-				start -= dir * ( exit_tr->m_fraction * 4.0f );
+		if ( !exit_tr->did_hit ( ) || exit_tr->m_startsolid ) {
+			if ( tr->m_hit_entity && ( tr->m_hit_entity != nullptr && tr->m_hit_entity != csgo::i::ent_list->get< void* > ( 0 ) ) ) {
+				*exit_tr = *tr;
+				exit_tr->m_endpos = start + dir;
 				return true;
 			}
 
 			continue;
 		}
 
-		if ( !exit_tr->did_hit( ) || exit_tr->m_startsolid ) {
-			if ( !( exit_tr->m_hit_entity == csgo::i::ent_list->get<void*>( 0 ) ) && is_breakable_entity( dst_entity ) ) {
-				exit_tr = tr;
+		if ( !exit_tr->did_hit ( ) || exit_tr->m_startsolid ) {
+			if ( tr->m_hit_entity != nullptr && !tr->m_hit_entity->idx ( ) == 0 && is_breakable_entity ( static_cast< player_t* >( tr->m_hit_entity ) ) ) {
+				*exit_tr = *tr;
 				exit_tr->m_endpos = start + dir;
 				return true;
 			}
+
+			continue;
+		}
+
+		if ( exit_tr->m_surface.m_flags >> 7 & 0x1 && !( tr->m_surface.m_flags >> 7 & 0x1 ) )
+			continue;
+
+		if ( exit_tr->m_plane.m_normal.dot_product ( dir ) <= 1.0f ) {
+			end = end - dir * ( exit_tr->m_fraction * 4.0f );
+			return true;
 		}
 	}
 
@@ -328,7 +337,7 @@ bool autowall::is_armored( player_t* player, int armor, int hitgroup ) {
 	return result;
 }
 
-float autowall::dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox ) {
+float autowall::dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox, vec3_t* impact_out, int* hitgroup_out ) {
 	if ( !entity->valid( ) )
 		return 0.0f;
 
@@ -352,8 +361,15 @@ float autowall::dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t 
 	if ( !weapon_data )
 		return 0.0f;
 
-	if ( simulate_fire_bullet( entity, dst_entity, data, hitbox_to_hitgroup( hitbox ), dst ) )
+	if ( simulate_fire_bullet ( entity, dst_entity, data, hitbox_to_hitgroup ( hitbox ), dst ) ) {
+		if ( hitgroup_out )
+			*hitgroup_out = data.enter_trace.m_hitgroup;
+
+		if ( impact_out )
+			*impact_out = data.enter_trace.m_endpos;
+
 		return data.current_damage;
+	}
 
 	return 0.0f;
 }
@@ -362,10 +378,10 @@ int autowall::hitbox_to_hitgroup( int hitbox ) {
 	int result = 0; // eax
 
 	switch ( hitbox ) {
-	case 0: case 1:
+	case 0:
 		result = 1;
 		break;
-	case 2: case 4:
+	case 2: case 4: case 1:
 		result = 3;
 		break;
 	case 3: case 5: case 6:

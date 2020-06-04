@@ -197,10 +197,11 @@ public:
 	NETVAR( bool, scoped, "DT_CSPlayer->m_bIsScoped" );
 	NETVAR( float, lby, "DT_CSPlayer->m_flLowerBodyYawTarget" );
 	NETVAR( float, flash_duration, "DT_CSPlayer->m_flFlashDuration" );
-	NETVAR( float, flash_alpha, "DT_CSPlayer->m_flFlashAlpha" );
+	NETVAR( float, flash_alpha, "DT_CSPlayer->m_flFlashMaxAlpha" );
 	NETVAR( std::uint8_t, life_state, "DT_BasePlayer->m_lifeState" );
 	NETVAR( std::uint32_t, tick_base, "DT_BasePlayer->m_nTickBase" );
-	NETVAR( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
+	NETVAR ( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
+	NETVAR( float, crouch_speed, "DT_BasePlayer->m_flDuckSpeed" );
 	NETVAR( vec3_t, view_punch, "DT_BasePlayer->m_viewPunchAngle" );
 	NETVAR( vec3_t, aim_punch, "DT_BasePlayer->m_aimPunchAngle" );
 	NETVAR( vec3_t, vel, "DT_BasePlayer->m_vecVelocity[0]" );
@@ -212,12 +213,14 @@ public:
 	NETVAR( vec3_t, mins, "DT_CSPlayer->m_vecMins" );
 	NETVAR( vec3_t, maxs, "DT_CSPlayer->m_vecMaxs" );
 	NETVAR( std::uint32_t, observer_mode, "DT_CSPlayer->m_iObserverMode" );
+	NETVAR ( uint32_t, ragdoll_handle, "DT_CSPlayer->m_hRagdoll" );
+	NETVAR( uint32_t, viewmodel_handle, "DT_BasePlayer->m_hViewModel[0]" );
 	OFFSET( int, effects, 0xE4 );
 	OFFSET( int, eflags, 0xE8 );
 	OFFSET( void*, iks, 0x266C );
 	OFFSET( bool, should_update, 0x289C );
 	OFFSET( std::uint32_t, num_overlays, 0x298C );
-	OFFSET( float, spawn_time, 0xA350 );
+	OFFSET( float, spawn_time, 0xA360 );
 	OFFSET( c_bone_accessor, bone_accessor, 0x290C );
 
 	bool is_player( ) {
@@ -225,8 +228,8 @@ public:
 		return vfunc< fn >( this, 155 )( this );
 	}
 
-	std::array< animlayer_t, 15 >& overlays( ) {
-		return *reinterpret_cast< std::array< animlayer_t, 15 >* >( *reinterpret_cast< uintptr_t* >( std::uintptr_t( this ) + 0x2980 ) );
+	animlayer_t* layers( ) {
+		return *reinterpret_cast< animlayer_t** >( std::uintptr_t( this ) + 0x2980 );
 	}
 
 	std::array< float, 24 >& poses( ) {
@@ -255,11 +258,11 @@ public:
 	}
 
 	void pre_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 317 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
 	}
 
 	void post_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 319 )( this );
 	}
 
 	vec3_t world_space( ) {

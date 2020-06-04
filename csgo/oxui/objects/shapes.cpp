@@ -2,11 +2,23 @@
 #include "../themes/purple.hpp"
 #include "../panels/panel.hpp"
 
+bool g_oxui_input_clip_area = false;
+oxui::rect g_oxui_input_clip_rect = oxui::rect( );
+
+bool oxui::shapes::finished_input_frame = false;
 bool oxui::shapes::click_switch = false;
-oxui::pos click_start;
+bool oxui::shapes::old_click_switch = false;
+oxui::pos oxui::shapes::click_start;
+
+bool hits_clip ( oxui::pos& pos ) {
+	if ( !g_oxui_input_clip_area )
+		return false;
+
+	return !( pos.x >= g_oxui_input_clip_rect.x && pos.y >= g_oxui_input_clip_rect.y && pos.x <= g_oxui_input_clip_rect.x + g_oxui_input_clip_rect.w && pos.y <= g_oxui_input_clip_rect.y + g_oxui_input_clip_rect.h );
+}
 
 bool oxui::shapes::hovering( const rect& area, bool from_start, bool override ) {
-	if ( !g_input && !override )
+	if ( ( !g_input && !override ) || finished_input_frame )
 		return false;
 
 	pos mouse_pos;
@@ -14,35 +26,38 @@ bool oxui::shapes::hovering( const rect& area, bool from_start, bool override ) 
 
 	if ( from_start ) {
 		if ( click_start.x && click_start.y )
-			return click_start.x >= area.x && click_start.y >= area.y && click_start.x <= area.x + area.w && click_start.y <= area.y + area.h;
+			return click_start.x >= area.x && click_start.y >= area.y && click_start.x <= area.x + area.w && click_start.y <= area.y + area.h && !hits_clip ( click_start );
 
 		return false;
 	}
 
-	return mouse_pos.x >= area.x && mouse_pos.y >= area.y && mouse_pos.x <= area.x + area.w && mouse_pos.y <= area.y + area.h;
+	return mouse_pos.x >= area.x && mouse_pos.y >= area.y && mouse_pos.x <= area.x + area.w && mouse_pos.y <= area.y + area.h && !hits_clip ( mouse_pos );
 }
 
 bool oxui::shapes::clicking( const rect& area, bool from_start, bool override ) {
-	if ( !g_input && !override )
+	if ( ( !g_input && !override ) || finished_input_frame )
 		return false;
 
-	if ( !click_switch && GetAsyncKeyState( VK_LBUTTON ) ) { /* press key */
-		pos mouse_pos;
-		binds::mouse_pos( mouse_pos );
+	pos mouse_pos;
+	binds::mouse_pos ( mouse_pos );
+
+	if ( !click_switch && GetAsyncKeyState( VK_LBUTTON ) && !hits_clip( mouse_pos ) ) { /* press key */
 		click_start = mouse_pos;
 
 		if ( from_start ) {
-			if ( hovering( area, true ) ) {
+			if ( hovering ( area, true, override ) ) {
+				click_switch = true;
 				return true;
 			}
 		}
-		else if ( hovering( area ) ) {
+		else if ( hovering ( area, false, override ) ) {
+			click_switch = true;
+			finished_input_frame = true;
 			return true;
 		}
 	}
 	else if ( click_switch && !GetAsyncKeyState( VK_LBUTTON ) ) { /* release key */
-		click_start = pos( 0, 0 );
-		click_switch = false;
+		click_start = pos ( 0, 0 );
 	}
 
 	return false;

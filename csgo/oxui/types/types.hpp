@@ -4,6 +4,7 @@
 #include <memory>
 #include <string_view>
 #include <algorithm>
+#include <vector>
 #include "../../security/xorstr.hpp"
 
 namespace oxui {

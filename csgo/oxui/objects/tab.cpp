@@ -2,110 +2,104 @@
 #include "../panels/panel.hpp"
 #include "shapes.hpp"
 #include "../themes/purple.hpp"
+#include "subtab.hpp"
 
 void oxui::tab::draw( ) {
 	if ( !selected )
 		return;
 
 	/* reset draw cursor pos */
-	auto& parent_window = find_parent< window >( object_window );
+	auto& parent_window = find_parent< window > ( object_window );
+	auto& parent_panel = find_parent< panel >( object_panel );
 	auto& cursor_pos = parent_window.cursor_pos;
 	auto& window_dimensions = parent_window.area;
 
 	/* backup cursor information */
 	auto backup_pos = cursor_pos;
 
-	const auto rows = divider.columns_per_row.size( );
+	//const auto rows = divider.columns_per_row.size( );
+	//
+	//if ( !rows ) {
+	//	/* draw tab objects */
+	//	std::for_each(
+	//		objects.begin( ),
+	//		objects.end( ),
+	//		[ ] ( std::shared_ptr< obj > child ) {
+	//			child->draw( );
+	//		}
+	//	);
+	//
+	//	return;
+	//}
 
-	if ( !rows ) {
-		/* draw tab objects */
-		std::for_each(
-			objects.begin( ),
-			objects.end( ),
-			[ ] ( std::shared_ptr< obj >& child ) {
-				child->draw( );
-			}
-		);
+	auto subtab_count = 0;
+	auto subtab_tabs_w = 0;
 
-		return;
-	}
-
-	/* calculate column width with information */
-	auto total_column_padding = theme.spacing * ( rows + 1 );
-	auto space_per_column = window_dimensions.w / rows;
-	auto calculated_column_width = 0;
-
-	if ( rows > 1 )
-		calculated_column_width = space_per_column - theme.spacing - double( theme.spacing ) / double( rows );
-	else
-		calculated_column_width = space_per_column - theme.spacing * 2.0;
-
-	/* draw all the groups in all the rows and columns, automatically calculate the width and height of each groupbox */
-	for ( auto row = 0; row < rows; row++ ) {
-		auto selected_group = 0;
-
-		auto previous_group_count = 0;
-		auto next_group_count = 0;
-		auto item_count_inside_row = 0;
-
-		auto row_counter = 0;
-
-		/* find amount of columns behind the last row */
-		for ( auto& column_counter : divider.columns_per_row ) {
-			if ( row_counter < row ) {
-				previous_group_count += column_counter;
-			}
-
-			if ( row_counter <= row ) {
-				next_group_count = previous_group_count + column_counter;
-				item_count_inside_row = column_counter;
-			}
-
-			row_counter++;
+	/* get group data */
+	std::for_each (
+		objects.begin ( ),
+		objects.end ( ),
+		[ & ] ( std::shared_ptr< obj > child ) {
+		if ( child->type == object_subtab ) {
+			rect bounds;
+			binds::text_bounds ( parent_panel.fonts [ OSTR ( "group" ) ], std::dynamic_pointer_cast< subtab >( child )->title, bounds );
+			subtab_tabs_w += bounds.w + theme.spacing + 4;
+			subtab_count++;
 		}
+	} );
 
-		/* calculate column height with previous information */
-		auto total_column_padding_h = theme.spacing * ( item_count_inside_row + 1 );
-		auto space_per_column_h = window_dimensions.h / item_count_inside_row;
-		auto calculated_column_height = 0;
+	const auto subtab_tab_offset_x = window_dimensions.x + window_dimensions.w / 2 - subtab_tabs_w / 2;
+	const auto subtab_tab_offset_y = window_dimensions.y + 16;
+	auto current_tab_x = 0;
 
-		if ( item_count_inside_row > 1 )
-			calculated_column_height = space_per_column_h - theme.spacing - double( theme.spacing ) / double( item_count_inside_row );
-		else
-			calculated_column_height = space_per_column_h - theme.spacing * 2.0;
+	/* draw subtabs */
+	std::for_each (
+		objects.begin ( ),
+		objects.end ( ),
+		[ & ] ( std::shared_ptr< obj > child ) {
+		if ( child->type == object_subtab ) {
+			auto as_subtab = std::dynamic_pointer_cast< subtab >( child );
 
-		/* draw groups that are in the corresponding columns */
-		std::for_each(
-			objects.begin( ),
-			objects.end( ),
-			[ & ] ( std::shared_ptr< obj >& child ) {
-				if ( child->type == object_group ) {
-					if ( selected_group >= previous_group_count && selected_group < next_group_count ) {
-						/* set group dimension parameters accordingly */
-						child->area.w = calculated_column_width;
-						child->area.h = calculated_column_height;
+			rect bounds;
+			binds::text_bounds ( parent_panel.fonts [ OSTR ( "group" ) ], as_subtab->title, bounds );
 
-						auto backup_pos_child = cursor_pos;
+			rect selectable_bounds { subtab_tab_offset_x + current_tab_x + 2, subtab_tab_offset_y, bounds.w + theme.spacing, 26 };
 
-						child->draw_ex( );
+			if ( shapes::clicking ( selectable_bounds ) ) {
+				/* update click timer */
+				as_subtab->time = parent_panel.time;
 
-						cursor_pos.x = backup_pos_child.x;
-						cursor_pos.y = backup_pos_child.y;
+				/* deselect all */
+				std::for_each (
+					objects.begin ( ),
+					objects.end ( ),
+					[ & ] ( std::shared_ptr< obj > child ) {
+					auto as_subtab = std::dynamic_pointer_cast< subtab >( child );
 
-						/* move down to next group */
-						cursor_pos.y += calculated_column_height + theme.spacing;
+					if ( child->type == object_subtab ) {
+						if ( as_subtab->selected )
+							as_subtab->time = parent_panel.time;
+
+						as_subtab->selected = false;
 					}
+				} );
 
-					selected_group++;
-				}
+				/* select clicked tab */
+				as_subtab->selected = true;
 			}
-		);
 
-		/* reset cursor y value */
-		cursor_pos.y = backup_pos.y;
-		/* move to the next row */
-		cursor_pos.x += calculated_column_width + theme.spacing;
-	}
+			if ( as_subtab->selected ) {
+				binds::rounded_rect ( selectable_bounds, selectable_bounds.h / 2, 16, { 0, 0, 0, 90 }, false );
+				binds::rounded_rect ( selectable_bounds, selectable_bounds.h / 2, 16, { 0, 0, 0, 90 }, true );
+			}
+
+			binds::text ( { selectable_bounds.x + theme.spacing / 2, subtab_tab_offset_y + selectable_bounds.h / 2 - bounds.h / 2 }, parent_panel.fonts [ OSTR ( "group" ) ], as_subtab->title, as_subtab->selected ? color ( theme.title_text.r, theme.title_text.g, theme.title_text.b, 150 ) : color ( theme.text.r, theme.text.g, theme.text.b, 150 ), as_subtab->selected );
+
+			as_subtab->draw ( );
+
+			current_tab_x += selectable_bounds.w + 2;
+		}
+	} );
 
 	/* restore to original location */
 	cursor_pos = backup_pos;

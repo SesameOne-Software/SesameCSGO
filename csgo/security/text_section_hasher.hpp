@@ -9,8 +9,16 @@
 #include "security_handler.hpp"
 
 namespace anti_patch {
-	static uint64_t g_text_section_hash;
-	static uintptr_t g_this_module;
+	extern uint64_t g_text_section_hash;
+	extern uintptr_t g_text_section;
+	extern uintptr_t g_text_section_size;
+
+	struct s_header_data {
+		size_t m_num_of_sections;
+		std::vector< IMAGE_SECTION_HEADER > m_sections;
+	};
+
+	extern s_header_data g_header_data;
 
 	typedef struct {
 		LPVOID lpVirtualAddress;
@@ -22,38 +30,24 @@ namespace anti_patch {
 		SECTIONINFO SectionInfo;
 	} HASHSET, * PHASHSET;
 
-	static __forceinline int GetTextSectionInfo( uintptr_t lpModBaseAddr, PSECTIONINFO info ) {
-		PIMAGE_NT_HEADERS pNtHdr = LI_FN( ImageNtHeader )( ( void* ) lpModBaseAddr );
-		PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER ) ( pNtHdr + 1 );
-
-		LPVOID lpTextAddr = NULL;
-		DWORD dwSizeOfRawData = NULL;
-
-		for ( int i = 0; i < pNtHdr->FileHeader.NumberOfSections; ++i ) {
-			char* name = ( char* ) pSectionHeader->Name;
-
-			if ( !strcmp( name, _( ".text" ) ) ) {
-				info->lpVirtualAddress = ( LPVOID ) ( ( DWORD64 ) lpModBaseAddr + pSectionHeader->VirtualAddress );
-				info->dwSizeOfRawData = pSectionHeader->SizeOfRawData;
+	__forceinline int GetTextSectionInfo( uintptr_t lpModBaseAddr ) {
+		for ( int i = 0; i < anti_patch::g_header_data.m_num_of_sections; ++i ) {
+			if ( !strcmp( ( char* ) anti_patch::g_header_data.m_sections [ i ].Name, _( ".text" ) ) ) {
+				g_text_section = ( uintptr_t ) ( ( DWORD64 ) lpModBaseAddr + anti_patch::g_header_data.m_sections [ i ].VirtualAddress );
+				g_text_section_size = anti_patch::g_header_data.m_sections [ i ].SizeOfRawData;
 				break;
 			}
-
-			++pSectionHeader;
-		}
-
-		if ( info->dwSizeOfRawData == NULL ) {
-			return -1;
 		}
 
 		return 0;
 	}
 
-	static __forceinline DWORD64 HashSection( LPVOID lpSectionAddress, DWORD dwSizeOfRawData ) {
+	__forceinline DWORD64 HashSection( ) {
 		DWORD64 hash = 0;
-		BYTE* str = ( BYTE* ) lpSectionAddress;
-		for ( int i = 0; i < dwSizeOfRawData; ++i, ++str ) {
-			if ( *str ) {
-				hash = *str + ( hash << 6 ) + ( hash << 16 ) - hash;
+
+		for ( int i = 0; i < g_text_section_size; ++i ) {
+			if ( *reinterpret_cast< uint8_t* > ( g_text_section + i ) ) {
+				hash = *reinterpret_cast< uint8_t* > ( g_text_section + i ) + ( hash << 6 ) + ( hash << 16 ) - hash;
 			}
 		}
 

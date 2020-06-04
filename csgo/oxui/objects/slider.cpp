@@ -16,7 +16,7 @@ void oxui::slider::think( ) {
 	auto start_x = cursor_pos.x + theme.spacing / 2;
 
 	/* if started clicking slider, do slider logic */
-	if ( shapes::hovering( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), true ) ) {
+	if ( shapes::hovering( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), true ) && !shapes::finished_input_frame ) {
 		pos mouse_pos;
 		binds::mouse_pos( mouse_pos );
 
@@ -39,8 +39,11 @@ void oxui::slider::draw( ) {
 	auto& font = parent_panel.fonts [ OSTR( "object" ) ];
 	auto& cursor_pos = parent_window.cursor_pos;
 
+	const auto fade_alpha = fade_timer > theme.animation_speed ? 90 : int ( fade_timer * ( 1.0 / theme.animation_speed ) * 90.0 );
+
 	/* highlighted selection */
-	shapes::box( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), fade_timer, true, true, true, false, false, false );
+	binds::rounded_rect ( { cursor_pos.x, cursor_pos.y, area.w, area.h }, 8, 16, { 0, 0, 0, fade_alpha }, false );
+	binds::rounded_rect ( { cursor_pos.x, cursor_pos.y, area.w, area.h }, 8, 16, { 0, 0, 0, fade_alpha }, true );
 
 	rect text_size;
 	binds::text_bounds( font, label, text_size );
@@ -54,21 +57,25 @@ void oxui::slider::draw( ) {
 	binds::text( pos( start_x, area_center_y - text_size.h / 2 - 1 ), font, label, theme.text, false );
 
 	/* slider box */
-	binds::rect( rect( start_x, area_center_y1 - slider_dimensions.h / 2, slider_dimensions.w, slider_dimensions.h ), theme.main );
+	binds::fill_rect( rect( start_x, area_center_y1 - slider_dimensions.h / 2, slider_dimensions.w, 2 ), theme.container_bg );
 
 	/* slider inner box*/
 	auto slide_w_old_value = std::clamp( int( double( slider_dimensions.w ) * ( old_value / ( max - min ) ) ), 0, slider_dimensions.w - 1 );
 	auto slide_w_new_value = std::clamp( int( double( slider_dimensions.w ) * ( value / ( max - min ) ) ), 0, slider_dimensions.w - 1 );
 	auto slide_w = slide_w_old_value + ( std::clamp( parent_panel.time - changed_time, 0.0, theme.animation_speed ) / theme.animation_speed ) * ( slide_w_new_value - slide_w_old_value );
-	binds::fill_rect( rect( start_x + 1, area_center_y1 - slider_dimensions.h / 2 + 1, slide_w, slider_dimensions.h - 1 ), color( theme.main.r, theme.main.g, theme.main.b, 125 ) );
+	binds::fill_rect( rect( start_x, area_center_y1 - slider_dimensions.h / 2, slide_w, 2 ), color( theme.main.r, theme.main.g, theme.main.b, 125 ) );
+	binds::circle ( { static_cast< int > ( start_x + slide_w + 0.5 ), area_center_y1 - slider_dimensions.h / 2 + 1 }, 6, 16, theme.main, false );
+	binds::circle ( { static_cast< int > ( start_x + slide_w + 0.5 ), area_center_y1 - slider_dimensions.h / 2 + 1 }, 6, 16, { 0, 0, 0, 70 }, true );
 
 	/* slider value popup */
 	wchar_t text_value [ 64 ];
 	swprintf_s( text_value, OSTR( "%0.1f" ), value );
 	rect value_text_size;
 	binds::text_bounds( font, text_value, value_text_size );
-	auto value_annotation_alpha = fade_timer > theme.animation_speed ? 255 : int( fade_timer * ( 1.0 / theme.animation_speed ) * 255.0 );
-	binds::fill_rect( rect( start_x + 1 + slide_w - value_text_size.w / 2 - 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 6, value_text_size.w + 4, value_text_size.h + 4 ), color( theme.bg.r, theme.bg.g, theme.bg.b, value_annotation_alpha ) );
+	auto value_annotation_alpha = fade_timer > theme.animation_speed ? 255 : int ( fade_timer * ( 1.0 / theme.animation_speed ) * 255.0 );
+	auto value_black_alpha = fade_timer > theme.animation_speed ? 100 : int( fade_timer * ( 1.0 / theme.animation_speed ) * 100.0 );
+	binds::rounded_rect ( rect ( start_x + 1 + slide_w - value_text_size.w / 2 - 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 6, value_text_size.w + 4, value_text_size.h + 4 ), 6, 4, color ( theme.bg.r, theme.bg.g, theme.bg.b, value_annotation_alpha ), false );
+	binds::rounded_rect ( rect( start_x + 1 + slide_w - value_text_size.w / 2 - 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 6, value_text_size.w + 4, value_text_size.h + 4 ), 6, 4, color( 0, 0 , 0, value_black_alpha ), false );
 	binds::text( pos( start_x + 1 + slide_w - value_text_size.w / 2, area_center_y1 - slider_dimensions.h / 2 + 1 - value_text_size.h - 4 ), font, text_value, color( theme.text.r, theme.text.g, theme.text.b, value_annotation_alpha ), false );
 
 	cursor_pos.y += theme.spacing / 2;

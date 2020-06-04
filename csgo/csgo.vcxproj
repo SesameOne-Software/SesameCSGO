@@ -20,10 +20,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="animations\animations.cpp" />
+    <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="features\antiaim.cpp" />
     <ClCompile Include="features\autowall.cpp" />
     <ClCompile Include="features\chams.cpp" />
+    <ClCompile Include="features\clantag.cpp" />
     <ClCompile Include="features\esp.cpp" />
+    <ClCompile Include="features\glow.cpp" />
+    <ClCompile Include="features\lagcomp.cpp" />
     <ClCompile Include="features\movement.cpp" />
     <ClCompile Include="features\prediction.cpp" />
     <ClCompile Include="features\ragebot.cpp" />
@@ -31,16 +35,23 @@
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu\menu.cpp" />
+    <ClCompile Include="oxui\json\cJSON.c" />
     <ClCompile Include="oxui\objects\button.cpp" />
     <ClCompile Include="oxui\objects\checkbox.cpp" />
+    <ClCompile Include="oxui\objects\colorpicker.cpp" />
     <ClCompile Include="oxui\objects\dropdown.cpp" />
     <ClCompile Include="oxui\objects\groupbox.cpp" />
+    <ClCompile Include="oxui\objects\keybind.cpp" />
+    <ClCompile Include="oxui\objects\label.cpp" />
     <ClCompile Include="oxui\objects\object.cpp" />
     <ClCompile Include="oxui\objects\shapes.cpp" />
     <ClCompile Include="oxui\objects\slider.cpp" />
+    <ClCompile Include="oxui\objects\subtab.cpp" />
     <ClCompile Include="oxui\objects\tab.cpp" />
+    <ClCompile Include="oxui\objects\textbox.cpp" />
     <ClCompile Include="oxui\objects\window.cpp" />
     <ClCompile Include="oxui\panels\panel.cpp" />
+    <ClCompile Include="oxui\themes\theme.cpp" />
     <ClCompile Include="renderer\d3d9.cpp" />
     <ClCompile Include="sdk\netvar.cpp" />
     <ClCompile Include="sdk\player.cpp" />
@@ -52,10 +63,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
+    <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="features\antiaim.hpp" />
     <ClInclude Include="features\autowall.hpp" />
     <ClInclude Include="features\chams.hpp" />
+    <ClInclude Include="features\clantag.hpp" />
     <ClInclude Include="features\esp.hpp" />
+    <ClInclude Include="features\glow.hpp" />
+    <ClInclude Include="features\lagcomp.hpp" />
     <ClInclude Include="features\movement.hpp" />
     <ClInclude Include="features\prediction.hpp" />
     <ClInclude Include="features\ragebot.hpp" />
@@ -64,14 +79,20 @@
     <ClInclude Include="menu\menu.hpp" />
     <ClInclude Include="minhook\minhook.h" />
     <ClInclude Include="oxui\bindings\bindings.hpp" />
+    <ClInclude Include="oxui\json\cJSON.h" />
     <ClInclude Include="oxui\objects\button.hpp" />
     <ClInclude Include="oxui\objects\checkbox.hpp" />
+    <ClInclude Include="oxui\objects\colorpicker.hpp" />
     <ClInclude Include="oxui\objects\dropdown.hpp" />
     <ClInclude Include="oxui\objects\groupbox.hpp" />
+    <ClInclude Include="oxui\objects\keybind.hpp" />
+    <ClInclude Include="oxui\objects\label.hpp" />
     <ClInclude Include="oxui\objects\object.hpp" />
     <ClInclude Include="oxui\objects\shapes.hpp" />
     <ClInclude Include="oxui\objects\slider.hpp" />
+    <ClInclude Include="oxui\objects\subtab.hpp" />
     <ClInclude Include="oxui\objects\tab.hpp" />
+    <ClInclude Include="oxui\objects\textbox.hpp" />
     <ClInclude Include="oxui\objects\window.hpp" />
     <ClInclude Include="oxui\oxui.hpp" />
     <ClInclude Include="oxui\panels\panel.hpp" />
@@ -79,7 +100,7 @@
     <ClInclude Include="oxui\themes\purple.hpp" />
     <ClInclude Include="oxui\types\types.hpp" />
     <ClInclude Include="renderer\d3d9.hpp" />
-    <ClInclude Include="resources\images\微信.hpp" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\engine.hpp" />
     <ClInclude Include="sdk\entity.hpp" />
@@ -105,11 +126,14 @@
     <ClInclude Include="sdk\vec3.hpp" />
     <ClInclude Include="sdk\weapon.hpp" />
     <ClInclude Include="security\anti_debug.hpp" />
+    <ClInclude Include="security\erase.hpp" />
     <ClInclude Include="security\lazy_importer.hpp" />
     <ClInclude Include="security\obfy.hpp" />
     <ClInclude Include="security\security_handler.hpp" />
     <ClInclude Include="security\text_section_hasher.hpp" />
     <ClInclude Include="security\xorstr.hpp" />
+    <ClInclude Include="sesame_font.h" />
+    <ClInclude Include="sesame_logo.h" />
     <ClInclude Include="utils\base64.hpp" />
     <ClInclude Include="utils\detours.hpp" />
     <ClInclude Include="utils\miniz.h" />
@@ -138,7 +162,7 @@
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <SpectreMitigation>Spectre</SpectreMitigation>
+    <SpectreMitigation>false</SpectreMitigation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -200,17 +224,22 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OXUI_WIDESTR;OXUI_THEME_PURPLE_HPP;ANTI_DEBUG;DEV_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OXUI_WIDESTR;OXUI_THEME_PURPLE_HPP;ANTI_DEBUG;DEV_BUILD;JM_XORSTR_DISABLE_AVX_INTRINSICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <WholeProgramOptimization>false</WholeProgramOptimization>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ControlFlowGuard>false</ControlFlowGuard>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -218,6 +247,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>minhook/minhook.lib;d3dx9.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <DataExecutionPrevention>false</DataExecutionPrevention>
+      <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

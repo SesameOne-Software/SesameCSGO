@@ -39,6 +39,8 @@ bool netvars::init( ) {
 	for ( ; list != nullptr; list = list->m_next )
 		store_table( list->m_recv_table->m_net_table_name, list->m_recv_table );
 
+	END_FUNC
+
 	return true;
 }
 

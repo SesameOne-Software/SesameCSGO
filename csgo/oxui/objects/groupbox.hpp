@@ -11,13 +11,23 @@ namespace oxui {
 	*	INFO: Container for control objects.
 	*/
 	class group : public obj {
+		double scroll_offset = 0.0;
+		int max_height = 0;
+
 	public:
 		std::vector< std::shared_ptr< obj > > objects;
+		bool selected = false;
 		str title;
+		std::vector< float > fractions;
+		bool hide_title;
+		bool extend_separator;
 
-		group( const str& title ) {
+		group( const str& title, const std::vector< float >& fractions, bool hide_title = false, bool extend_separator = false ) {
 			this->area = area;
 			this->title = title;
+			this->fractions = fractions;
+			this->hide_title = hide_title;
+			this->extend_separator = extend_separator;
 			type = object_group;
 		}
 

@@ -17,6 +17,7 @@ public:
 	NETVAR( std::uint32_t, highlight_g, "DT_BaseAnimating->m_nHighlightColorG" );
 	NETVAR( std::uint32_t, highlight_b, "DT_BaseAnimating->m_nHighlightColorB" );
 	NETVAR( std::uint32_t, model_scale, "DT_BaseAnimating->m_flModelScale" );
+	NETVAR ( bool, did_smoke_effect, "DT_SmokeGrenadeProjectile->m_bDidSmokeEffect" );
 
 	void draw( ) {
 		using drawmodel_fn = int( __thiscall* )( void*, int, std::uint8_t );

@@ -31,6 +31,7 @@ namespace csgo {
 
 	namespace i {
 		extern c_surface* surface;
+		extern c_panel* panel;
 		extern c_engine* engine;
 		extern c_client* client;
 		extern c_entlist* ent_list;
@@ -82,7 +83,8 @@ namespace csgo {
 	vec3_t angle_vec( vec3_t angle );
 	void util_tracehull( const vec3_t& start, const vec3_t& end, const vec3_t& mins, const vec3_t& maxs, unsigned int mask, const void* ignore, trace_t* tr );
 	void util_traceline( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr );
-	void rotate_movement( ucmd_t* ucmd );
+	void rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, const vec3_t& old_angs );
+	bool is_visible( const vec3_t& point );
 
 #define DOT_PROD( a, b ) ( a.x * b.x + a.y * b.y + a.z * b.z )
 
