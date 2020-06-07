@@ -239,7 +239,7 @@ void render::clip( int x, int y, int width, int height, const std::function< voi
 }
 
 bool render::key_pressed( const std::uint32_t key ) {
-	return GetAsyncKeyState( key );
+	return utils::key_state ( key );
 }
 
 void render::mouse_pos( pos& position ) {

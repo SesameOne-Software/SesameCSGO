@@ -101,6 +101,8 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 			*pl->animstate ( ) = rec.m_state;
 			pl->angles ( ) = rec.m_ang;
 
+			pl->poses ( ) [ 11 ] = animations::data::body_yaw [ pl->idx ( ) ];
+
 			std::memcpy ( pl->layers ( ), rec.m_layers, sizeof backup_overlays );
 			std::memcpy ( &pl->poses ( ), rec.m_poses, sizeof backup_poses );
 
@@ -290,12 +292,17 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	/* skip all hitboxes but head if we have their onshot */
 	if ( head_only ) {
 		hitboxes.clear( );
+		hitboxes.push_back ( 2 ); // pelvis
 		hitboxes.push_front( 0 );
 	}
 
 	auto should_baim = false;
 
 	/* override to baim if we can doubletap */ {
+		/* tickbase manip controller */
+		OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
+		KEYBIND ( tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key" );
+
 		auto can_shoot = [ & ] ( ) {
 			if ( !g::local->weapon ( ) || !g::local->weapon ( )->ammo ( ) )
 				return false;
@@ -306,18 +313,14 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 			return g::local->weapon ( )->next_primary_attack ( ) <= csgo::i::globals->m_curtime;
 		};
 
-		/* tickbase manip controller */
-		OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
-		OPTION ( int, tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key", oxui::object_keybind );
-
 		const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
 		const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
 		auto tickbase_as_int = std::clamp< int > ( csgo::time2ticks ( fire_rate ), 0, static_cast< int >( tickbase_shift_amount ) );
 
-		if ( tickbase_key != -1 && !GetAsyncKeyState ( tickbase_key ) )
+		if ( !tickbase_key )
 			tickbase_as_int = 0;
 
-		if ( tickbase_as_int && can_shoot ( ) && std::abs ( g::ucmd->m_tickcount - g::dt_recharge_time ) >= tickbase_as_int && !g::dt_ticks_to_shift && g::local->weapon ( )->item_definition_index ( ) != 64 ) {
+		if ( tickbase_as_int && ( ( can_shoot ( ) && ( std::abs ( g::ucmd->m_tickcount - g::dt_recharge_time ) >= tickbase_as_int && !g::dt_ticks_to_shift ) ) || g::next_tickbase_shot ) && g::local->weapon ( )->item_definition_index ( ) != 64 ) {
 			should_baim = true;
 		}
 	}
@@ -515,7 +518,7 @@ retry_without_safe_points:
 					}
 				}
 
-				if ( best_dmg >= pl->health ( ) || ( should_baim && best_dmg >= damage ) ) {
+				if ( best_dmg >= pl->health ( ) || ( should_baim && ( best_dmg * 1.75f >= damage || best_dmg * 1.75f >= pl->health ( ) ) ) ) {
 					pl->mins ( ) = backup_min;
 					pl->maxs ( ) = backup_max;
 					pl->origin ( ) = backup_origin;
@@ -898,7 +901,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 			if ( dst <= 6.0f )
 				hits++;
 
-			if ( ( static_cast< float >( hits ) / 150.0f ) * 100.0f >= ( ( std::abs ( ucmd->m_cmdnum - g::shifted_tickbase + 1 ) <= tickbase_shift_amount + 1 ) ? dt_hitchance : hitchance ) )
+			if ( ( static_cast< float >( hits ) / 150.0f ) * 100.0f >= ( g::next_tickbase_shot ? dt_hitchance : hitchance ) )
 				return true;
 
 			if ( ( 150 - i + hits ) < needed_hits )
@@ -967,7 +970,6 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 				old_fmove = normal.x * speed_2d;
 				old_smove = normal.y * speed_2d;
-				
 			}
 			else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
 				old_fmove = ( old_fmove / magnitude ) * move_ratio;
@@ -1043,18 +1045,18 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	/* tickbase manip controller */
 	OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
-	OPTION ( int, tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key", oxui::object_keybind );
+	KEYBIND ( tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key" );
 	OPTION ( int, _fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
-	OPTION ( int, _fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+	KEYBIND ( _fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
 	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	auto tickbase_as_int = std::clamp< int > ( csgo::time2ticks( fire_rate ), 0, static_cast< int >( tickbase_shift_amount ) );
+	auto tickbase_as_int = std::clamp< int > ( csgo::time2ticks( fire_rate ) - 1, 0, static_cast< int >( tickbase_shift_amount ) );
 
-	if ( tickbase_key != -1 && !GetAsyncKeyState( tickbase_key ) )
+	if ( !tickbase_key )
 		tickbase_as_int = 0;
 
-	if ( tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && std::abs( ucmd->m_cmdnum - g::dt_recharge_time ) > tickbase_as_int && !g::dt_ticks_to_shift && g::local->weapon ( )->item_definition_index ( ) != 64 && !( _fd_key != -1 && GetAsyncKeyState ( _fd_key ) && _fd_mode )) {
+	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && std::abs( ucmd->m_cmdnum - g::dt_recharge_time ) > tickbase_as_int && !g::dt_ticks_to_shift && !( g::local->weapon ( )->item_definition_index ( ) == 64 || g::local->weapon ( )->data ( )->m_type == 0 || g::local->weapon ( )->data ( )->m_type >= 7 ) && !_fd_key ) {
 		g::dt_ticks_to_shift = tickbase_as_int;
 		g::dt_recharge_time = ucmd->m_cmdnum + tickbase_as_int;
 	}

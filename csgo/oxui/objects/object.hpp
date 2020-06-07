@@ -66,7 +66,7 @@ namespace oxui {
 		}
 
 		bool clicking( ) {
-			//return hovering( ) && GetKeyState( VK_LBUTTON ) & KF_UP;
+			//return hovering( ) && utils::key_state( VK_LBUTTON ) & KF_UP;
 			return false;
 		}
 

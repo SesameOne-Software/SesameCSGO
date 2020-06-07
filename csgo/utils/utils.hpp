@@ -1,10 +1,28 @@
 #pragma once
+#include <array>
 #include "detours.hpp"
 #include "patternscanner.hpp"
 #include "vfunc.hpp"
 #include "padding.hpp"
 #include "registers.hpp"
 #include "../security/xorstr.hpp"
+
+extern std::array< bool, 5 > mouse_down;
+extern std::array< bool, 512 > key_down;
+
+namespace utils {
+	__forceinline bool key_state ( int vkey ) {
+		switch ( vkey ) {
+		case VK_LBUTTON: return mouse_down [ 0 ];
+		case VK_RBUTTON: return mouse_down [ 1 ];
+		case VK_MBUTTON: return mouse_down [ 2 ];
+		case VK_XBUTTON1: return mouse_down [ 3 ];
+		case VK_XBUTTON2: return mouse_down [ 4 ];
+		}
+
+		return key_down [ vkey ];
+	}
+}
 
 static void dbg_print( const char* msg, ... ) {
 	if ( !msg )

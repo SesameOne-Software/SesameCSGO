@@ -68,12 +68,12 @@ void oxui::textbox::think( ) {
 		parent_window.handle_keyboard = false;
 	}
 
-	if ( shapes::hovering( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !GetAsyncKeyState( VK_RBUTTON ) && last_rkey ) {
+	if ( shapes::hovering( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !utils::key_state ( VK_RBUTTON ) && last_rkey ) {
 		opened_shortcut_menu = true;
 		binds::mouse_pos( rclick_pos );
 	}
 
-	last_rkey = GetAsyncKeyState( VK_RBUTTON );
+	last_rkey = utils::key_state ( VK_RBUTTON );
 
 	if ( opened ) {
 		/* set input handler */
@@ -88,6 +88,9 @@ void oxui::textbox::think( ) {
 
 	if ( opened_shortcut_menu ) {
 		std::vector< str > rclick_menu_items { OSTR( "Paste" ), OSTR( "Copy" ), OSTR( "Cut" ), OSTR( "Erase" ), OSTR( "Close" ) };
+
+		pos mouse_pos;
+		binds::mouse_pos ( mouse_pos );
 
 		/* background of the list */
 		rect list_pos( rclick_pos.x, rclick_pos.y, 100, theme.spacing );
@@ -104,14 +107,19 @@ void oxui::textbox::think( ) {
 			g_oxui_input_clip_area = false;
 
 			/* check if we are clicking the thingy */
-			if ( shapes::clicking( list_pos, false, true ) ) {
+			if ( utils::key_state (VK_LBUTTON) && mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
 				selected = index;
 
 				/* remove if you want to close it manually instead of automatically (snek) */ {
 					opened_shortcut_menu = false;
 				}
+
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				opened = false;
 			}
-			else if ( shapes::hovering( list_pos, false, true ) ) {
+			else if ( mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
 				hovered_index = index;
 			}
 
@@ -193,6 +201,36 @@ void oxui::textbox::think( ) {
 			case 5:
 				break;
 			}
+		}
+
+		/* we clicked outside the right click menu, close */
+		if ( utils::key_state ( VK_LBUTTON ) ) {
+			pos mouse_pos;
+			binds::mouse_pos ( mouse_pos );
+
+			const auto hovered_area = mouse_pos.x >= list_pos.x && mouse_pos.y >= rclick_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y;
+
+			if ( !hovered_area ) {
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				opened = false;
+				opened_shortcut_menu = false;
+			}
+		}
+	}
+
+	if ( ( opened || opened_shortcut_menu ) && utils::key_state ( VK_LBUTTON ) ) {
+		pos mouse_pos;
+		binds::mouse_pos ( mouse_pos );
+
+		const auto hovered = mouse_pos.x >= cursor_pos.x && mouse_pos.y >= cursor_pos.y && mouse_pos.x <= cursor_pos.x + area.w && mouse_pos.y <= cursor_pos.y + area.h;
+
+		if ( !hovered ) {
+			shapes::finished_input_frame = true;
+			shapes::click_start = pos ( 0, 0 );
+			g_input = true;
+			opened = false;
 		}
 	}
 }

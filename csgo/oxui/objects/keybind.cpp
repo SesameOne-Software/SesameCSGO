@@ -176,12 +176,19 @@ void oxui::keybind::think ( ) {
 	pos& cursor_pos = parent_window.cursor_pos;
 	animate ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ) );
 
-	if ( shapes::clicking ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) )
+	if ( shapes::clicking ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !opened_shortcut_menu )
 		searching = true;
+
+	if ( shapes::hovering ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !utils::key_state ( VK_RBUTTON ) && last_rkey ) {
+		opened_shortcut_menu = true;
+		binds::mouse_pos ( rclick_pos );
+	}
+
+	last_rkey = utils::key_state ( VK_RBUTTON );
 
 	if ( searching ) {
 		for ( int i = 0; i < 255; i++ ) {
-			if ( GetAsyncKeyState ( i ) ) {
+			if ( utils::key_state ( i ) ) {
 
 				/* we can't bind left/right click */
 				if ( i == VK_LBUTTON || i == VK_RBUTTON ) {
@@ -219,10 +226,78 @@ void oxui::keybind::think ( ) {
 
 				/* stop searching */
 				shapes::finished_input_frame = searching = false;
-
 			}
 		}
+	}
 
+	if ( opened_shortcut_menu ) {
+		std::vector< str > rclick_menu_items { OSTR ( "Hold" ), OSTR ( "Toggle" ), OSTR ( "Always" ) };
+
+		/* background of the list */
+		rect list_pos ( rclick_pos.x, rclick_pos.y, 100, theme.spacing );
+
+		pos mouse_pos;
+		binds::mouse_pos ( mouse_pos );
+
+		hovered_index = 0;
+
+		auto index = 0;
+		auto selected = -1;
+
+		for ( const auto& it : rclick_menu_items ) {
+			const auto backup_input_clip_area = g_oxui_input_clip_area;
+
+			/* ignore clipping */
+			g_oxui_input_clip_area = false;
+
+			/* check if we are clicking the thingy */
+			if ( utils::key_state ( VK_LBUTTON ) && mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
+				selected = index;
+
+				/* remove if you want to close it manually instead of automatically (snek) */ {
+					opened_shortcut_menu = false;
+				}
+
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				searching = false;
+			}
+			else if ( mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
+				hovered_index = index;
+			}
+
+			/* ignore clipping */
+			g_oxui_input_clip_area = backup_input_clip_area;
+
+			list_pos.y += theme.spacing;
+			index++;
+		}
+
+		if ( selected != -1 ) {
+			g_input = false;
+
+			if ( selected == 2 )
+				key = -1;
+			
+			mode = static_cast < keybind_mode > ( selected );
+		}
+
+		/* we clicked outside the right click menu, close */
+		if ( utils::key_state ( VK_LBUTTON ) ) {
+			pos mouse_pos;
+			binds::mouse_pos ( mouse_pos );
+
+			const auto hovered_area = mouse_pos.x >= list_pos.x && mouse_pos.y >= rclick_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y;
+
+			if ( !hovered_area ) {
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				searching = false;
+				opened_shortcut_menu = false;
+			}
+		}
 	}
 }
 
@@ -269,4 +344,36 @@ void oxui::keybind::draw( ) {
 
 	/* centered text */
 	binds::text ( pos ( area_center_x - text_size.w / 2 - 1, area_center_y - text_size.h / 2 - 1 ), font, text, lerp_color ( theme.text, { 56, 56, 56, 255 }, lerp_fraction ), false );
+
+	/* draw rclick menu items */
+	if ( opened_shortcut_menu ) {
+		parent_window.draw_overlay ( [ = ] ( ) {
+			std::vector< str > rclick_menu_items { OSTR ( "Hold" ), OSTR ( "Toggle" ), OSTR ( "Always" ) };
+
+			/* render the items name */
+			auto index = 0;
+
+			/* background of the list */
+			binds::rounded_rect ( { rclick_pos.x, rclick_pos.y, 100, theme.spacing + 8 }, 8, 16, hovered_index == index ? theme.bg : theme.container_bg, false );
+			binds::rounded_rect ( { rclick_pos.x, rclick_pos.y + theme.spacing * ( static_cast< int > ( rclick_menu_items.size ( ) ) - 1 ) - 8, 100, theme.spacing + 8 }, 8, 16, hovered_index == ( rclick_menu_items.size ( ) - 1 ) ? theme.bg : theme.container_bg, false );
+
+			for ( const auto& it : rclick_menu_items ) {
+				/* get the text size */
+				rect item_text_size;
+				binds::text_bounds ( font, it, item_text_size );
+
+				/* render the square background if not first or last (middle of rounded rectangles) */
+				if ( index && index != rclick_menu_items.size ( ) - 1 )
+					binds::fill_rect ( { rclick_pos.x, rclick_pos.y + theme.spacing * index, 100, theme.spacing }, hovered_index == index ? theme.bg : theme.container_bg );
+
+				/* render the name */
+				binds::text ( { rclick_pos.x + 50 - item_text_size.w / 2 - 1, rclick_pos.y + theme.spacing * index + theme.spacing / 2 - item_text_size.h / 2 }, font, it, hovered_index == index ? theme.main : theme.text, hovered_index == index );
+
+				index++;
+			}
+
+			/* outline of the list */
+			binds::rounded_rect ( { rclick_pos.x, rclick_pos.y, 100, theme.spacing * static_cast< int > ( rclick_menu_items.size ( ) ) }, 8, 16, { 0, 0, 0, 90 }, true );
+		} );
+	}
 }

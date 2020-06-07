@@ -66,18 +66,21 @@ void oxui::color_picker::think( ) {
 		mcursor_pos2 = pos ( 0, 0 );
 	}
 
-	if ( shapes::hovering ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !GetAsyncKeyState ( VK_RBUTTON ) && last_rkey ) {
+	if ( shapes::hovering ( rect ( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, true ) && !utils::key_state ( VK_RBUTTON ) && last_rkey ) {
 		opened_shortcut_menu = true;
 		binds::mouse_pos ( rclick_pos );
 	}
 
-	last_rkey = GetAsyncKeyState ( VK_RBUTTON );
+	last_rkey = utils::key_state ( VK_RBUTTON );
 
 	if ( opened_shortcut_menu ) {
 		std::vector< str > rclick_menu_items { OSTR ( "Paste" ), OSTR ( "Copy" ), OSTR ( "Close" ) };
 
 		/* background of the list */
 		rect list_pos ( rclick_pos.x, rclick_pos.y, 100, theme.spacing );
+
+		pos mouse_pos;
+		binds::mouse_pos ( mouse_pos );
 
 		hovered_index = 0;
 
@@ -91,14 +94,19 @@ void oxui::color_picker::think( ) {
 			g_oxui_input_clip_area = false;
 
 			/* check if we are clicking the thingy */
-			if ( shapes::clicking ( list_pos, false, true ) ) {
+			if ( utils::key_state ( VK_LBUTTON ) && mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
 				selected = index;
 
 				/* remove if you want to close it manually instead of automatically (snek) */ {
 					opened_shortcut_menu = false;
 				}
+
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				opened = false;
 			}
-			else if ( shapes::hovering ( list_pos, false, true ) ) {
+			else if ( mouse_pos.x >= list_pos.x && mouse_pos.y >= list_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y + list_pos.h ) {
 				hovered_index = index;
 			}
 
@@ -129,6 +137,22 @@ void oxui::color_picker::think( ) {
 			} break;
 			}
 		}
+
+		/* we clicked outside the right click menu, close */
+		if ( utils::key_state ( VK_LBUTTON ) ) {
+			pos mouse_pos;
+			binds::mouse_pos ( mouse_pos );
+
+			const auto hovered_area = mouse_pos.x >= list_pos.x && mouse_pos.y >= rclick_pos.y && mouse_pos.x <= list_pos.x + list_pos.w && mouse_pos.y <= list_pos.y;
+
+			if ( !hovered_area ) {
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				opened = false;
+				opened_shortcut_menu = false;
+			}
+		}
 	}
 
 	/* handle */
@@ -142,7 +166,7 @@ void oxui::color_picker::think( ) {
 		rect alpha_bar { picker_frame.x, picker_frame.y + picker_frame.h - 10, picker_frame.w - 15, 10 };
 		rect preview_rect { picker_frame.x + picker_frame.w - 10, picker_frame.y + picker_frame.h - 10, 11, 11 };
 
-		if ( GetAsyncKeyState ( VK_LBUTTON ) ) {
+		if ( utils::key_state ( VK_LBUTTON ) ) {
 			pos mouse_pos;
 			binds::mouse_pos ( mouse_pos );
 
@@ -173,6 +197,18 @@ void oxui::color_picker::think( ) {
 			if ( hovered_alpha_bar ) {
 				clr.a = 255.0 - ( ( 255.0 / alpha_bar.w ) * ( mouse_pos.x - picker_rect.x ) );
 				mcursor_pos2 = mouse_pos;
+			}
+
+			/* we clicked outside the color picker, let's close */ {
+				const auto hovered_area = mouse_pos.x >= picker_area.x && mouse_pos.y >= picker_area.y && mouse_pos.x <= picker_area.x + picker_area.w - 1 && mouse_pos.y <= picker_area.y + picker_area.h;
+				const auto hovered_open = mouse_pos.x >= cursor_pos.x && mouse_pos.y >= cursor_pos.y && mouse_pos.x <= cursor_pos.x + area.w - 1 && mouse_pos.y <= cursor_pos.y + area.h;
+
+				if ( !hovered && !hovered_brightness_bar && !hovered_alpha_bar && !hovered_area && !hovered_open ) {
+					shapes::finished_input_frame = true;
+					shapes::click_start = pos ( 0, 0 );
+					g_input = true;
+					opened = false;
+				}
 			}
 		}
 	}
@@ -243,7 +279,7 @@ void oxui::color_picker::draw( ) {
 
 			const auto hovered = mouse_pos.x >= picker_rect.x && mouse_pos.y >= picker_rect.y && mouse_pos.x <= picker_rect.x + picker_rect.w - 1 && mouse_pos.y <= picker_rect.y + picker_rect.h;
 
-			if ( GetAsyncKeyState ( VK_LBUTTON ) && hovered )
+			if ( utils::key_state ( VK_LBUTTON ) && hovered )
 				animate ( picker_area );
 
 			auto hover_highlight_time = theme.animation_speed;

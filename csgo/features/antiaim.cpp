@@ -168,20 +168,20 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( double, jitter_amount_stand, "Sesame->B->Standing->Base->Jitter Range", oxui::object_slider );
 	OPTION( double, jitter_amount_slow_walk, "Sesame->B->Slow Walk->Base->Jitter Range", oxui::object_slider );
 
-	OPTION ( int, left_key, "Sesame->B->Other->Other->Left Side Key", oxui::object_keybind );
-	OPTION ( int, back_key, "Sesame->B->Other->Other->Back Side Key", oxui::object_keybind );
-	OPTION ( int, right_key, "Sesame->B->Other->Other->Right Side Key", oxui::object_keybind );
-	OPTION ( int, slowwalk_key, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Key", oxui::object_keybind );
+	KEYBIND ( left_key, "Sesame->B->Other->Other->Left Side Key" );
+	KEYBIND ( back_key, "Sesame->B->Other->Other->Back Side Key" );
+	KEYBIND ( right_key, "Sesame->B->Other->Other->Right Side Key" );
+	KEYBIND ( slowwalk_key, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Key" );
 	OPTION ( int, fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
-	OPTION ( int, fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
-	OPTION ( int, desync_flip_key, "Sesame->B->Other->Other->Desync Flip Key", oxui::object_keybind );
+	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
+	KEYBIND ( desync_flip_key, "Sesame->B->Other->Other->Desync Flip Key" );
 
 	OPTION ( bool, center_real_air, "Sesame->B->Air->Desync->Center Real", oxui::object_checkbox );
 	OPTION ( bool, center_real_move, "Sesame->B->Moving->Desync->Center Real", oxui::object_checkbox );
 	OPTION ( bool, center_real_stand, "Sesame->B->Standing->Desync->Center Real", oxui::object_checkbox );
 	OPTION ( bool, center_real_slow_walk, "Sesame->B->Slow Walk->Desync->Center Real", oxui::object_checkbox );
 
-	OPTION ( int, tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key", oxui::object_keybind );
+	KEYBIND ( tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key" );
 
 	OPTION ( bool, anti_bruteforce_air, "Sesame->B->Air->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
 	OPTION ( bool, anti_bruteforce_move, "Sesame->B->Moving->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
@@ -195,28 +195,28 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 	security_handler::update ( );
 
-	if ( left_key == -1 && side == 1 )
+	if ( MAKE_KEYBIND ( left_key )->key == -1 && side == 1 )
 		side = 0;
 
-	if ( right_key == -1 && side == 2 )
+	if ( MAKE_KEYBIND ( right_key )->key == -1 && side == 2 )
 		side = 2;
 
-	if ( back_key == -1 && side == 0 )
+	if ( MAKE_KEYBIND ( back_key )->key == -1 && side == 0 )
 		side = -1;
 
 	if ( desync_flip_key == -1 && desync_side != -1 )
 		desync_side = -1;
 
-	if ( left_key != -1 && GetAsyncKeyState ( left_key ) & 1 )
+	if ( MAKE_KEYBIND ( left_key )->key != -1 && utils::key_state ( MAKE_KEYBIND( left_key )->key ) & 1 )
 		side = 1;
 
-	if ( right_key != -1 && GetAsyncKeyState ( right_key ) & 1 )
+	if ( MAKE_KEYBIND ( right_key )->key != -1 && utils::key_state ( MAKE_KEYBIND ( right_key )->key ) & 1 )
 		side = 2;
 
-	if ( back_key != -1 && GetAsyncKeyState ( back_key ) & 1 )
+	if ( MAKE_KEYBIND ( back_key )->key != -1 && utils::key_state ( MAKE_KEYBIND ( back_key )->key ) & 1 )
 		side = 0;
 
-	if ( desync_flip_key != -1 && GetAsyncKeyState ( desync_flip_key ) & 1 )
+	if ( desync_flip_key )
 		desync_side = !desync_side;
 
 	/* reset anti-bruteforce when new round starts */
@@ -266,11 +266,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		static auto last_final_shift_amount = 0;
 		auto final_shift_amount_max = static_cast< int >( tickbase_shift_amount );
 
-		if ( tickbase_key != -1 && !GetAsyncKeyState ( tickbase_key ) )
+		if ( !tickbase_key )
 			final_shift_amount_max = 0;
 
 		/* dont shift tickbase with revolver */
-		if ( g::local->weapon ( ) && g::local->weapon ( )->item_definition_index ( ) == 64 )
+		if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && ( g::local->weapon ( )->item_definition_index ( ) == 64 || g::local->weapon ( )->data ( )->m_type == 0 || g::local->weapon ( )->data ( )->m_type >= 7 ) )
 			final_shift_amount_max = 0;
 
 		if ( final_shift_amount_max && !last_final_shift_amount )
@@ -295,7 +295,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		aa::was_on_ground = g::local->flags ( ) & 1;
 
-		if ( fd_key != -1 && GetAsyncKeyState ( fd_key ) && fd_mode ) {
+		if ( fd_key && fd_mode ) {
 			aa::was_fd = true;
 			g::send_packet = csgo::i::client_state->choked ( ) >= 16;
 			ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
@@ -311,7 +311,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 
 		/* tiny slowwalk */
-		if ( slow_walk_speed > 0.0f && slowwalk_key != -1 && GetAsyncKeyState ( slowwalk_key ) && g::local->valid ( ) && g::local->flags ( ) & 1 && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
+		if ( slow_walk_speed > 0.0f && slowwalk_key && g::local->valid ( ) && g::local->flags ( ) & 1 && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
 			const auto vec_move = vec3_t ( old_fmove, old_smove, ucmd->m_umove );
 			const auto magnitude = vec_move.length_2d ( );
 			const auto max_speed = g::local->weapon ( )->data ( )->m_max_speed;
@@ -390,7 +390,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		}
 		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
-			if ( GetAsyncKeyState ( slowwalk_key ) && slow_walk ) {
+			if ( slowwalk_key && slow_walk ) {
 				if ( side != -1 ) {
 					vec3_t angs;
 					csgo::i::engine->get_viewangles ( angs );

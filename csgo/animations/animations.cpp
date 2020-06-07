@@ -46,6 +46,7 @@ namespace animations {
 		std::array< int, 65 > last_animation_frame { 0 };
 		std::array< int, 65 > old_tick { 0 };
 		std::array< float, 65 > old_abs { 0.0f };
+		std::array< float, 65 > body_yaw { 0.0f };
 		std::array< std::array< animlayer_t, 15 >, 65 > overlays { };
 	}
 }
@@ -330,10 +331,10 @@ int animations::fix_local ( ) {
 	g::local->poses( ) = local_data::poses;
 	//g::local->flags ( ) = backup_flags;
 
-	OPTION ( int, fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
 	if ( !csgo::i::input->m_camera_in_thirdperson ) {
-		state->m_duck_amount = ( fd_key != -1 && GetAsyncKeyState ( fd_key ) ) ? 0.0f : g::local->crouch_amount ( );
+		state->m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
 		state->m_unk_feet_speed_ratio = g::local->crouch_speed ( );
 	}
 
@@ -583,7 +584,7 @@ int animations::fix_pl ( player_t* pl ) {
 	state->m_feet_yaw_rate = 0.0f;
 	state->m_feet_yaw = state->m_abs_yaw;
 
-	//rebuilt::poses::calculate ( pl );
+	rebuilt::poses::calculate ( pl );
 
 	/* build and store safe point matrix */
 	if ( safe_point ) {
@@ -606,12 +607,24 @@ int animations::fix_pl ( player_t* pl ) {
 
 		new_pose_11 = std::copysignf ( 120.0f, -pose_11_val ) * 0.5f;
 
+		const auto backup_frametime = csgo::i::globals->m_frametime;
+		csgo::i::globals->m_frametime = 666.0f;
 		pl->poses ( ) [ 11 ] = ( new_pose_11 / 120.0f ) + 0.5f;
 		animations::build_matrix ( pl, ( matrix3x4_t* ) &data::bones [ pl->idx ( ) ], N ( 128 ), N ( 0x7ff00 ), csgo::i::globals->m_curtime );
 		pl->poses ( ) [ 11 ] = backup_pose_11;
+		csgo::i::globals->m_frametime = backup_frametime;
 
 		for ( auto& bone : data::bones [ pl->idx ( ) ] )
 			bone.set_origin ( bone.origin ( ) - pl->origin( ) );
+	}
+	else {
+		state->m_abs_yaw = data::old_abs [ pl->idx ( ) ];
+		resolver::resolve ( pl, state->m_abs_yaw );
+		state->m_feet_yaw_rate = 0.0f;
+		state->m_feet_yaw = state->m_abs_yaw;
+
+		data::body_yaw [ pl->idx ( ) ] = std::clamp ( csgo::normalize ( csgo::normalize ( state->m_eye_yaw ) - csgo::normalize ( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
+		pl->poses ( ) [ 11 ] = data::body_yaw [ pl->idx ( ) ];
 	}
 
 	//data::fake_states [ pl->idx( ) ] = *state;

@@ -568,6 +568,7 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Third Person" ) ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Third Person Range" ), 0.0, 0.0, 500.0 ) );
 						main->add_element ( std::make_shared< oxui::keybind > ( OSTR ( "Third Person Key" ) ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Ragdoll Force" ), 1.0, 0.0, 25.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Clantag" ) ) );
 						main->add_element ( std::make_shared< oxui::textbox > ( OSTR ( "Clantag Text" ), OSTR ( "sesame.one" ) ) );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Clantag Animation" ), std::vector< oxui::str > { OSTR ( "Static" ), OSTR ( "Marquee" ), OSTR ( "Capitalize" ) } ) );

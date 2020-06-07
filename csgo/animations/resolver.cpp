@@ -108,7 +108,7 @@ void animations::resolver::process_hurt( event_t* event ) {
 	if ( !attacker || !victim || attacker != g::local || victim->team( ) == g::local->team( ) )
 		return;
 
-	csgo::i::engine->client_cmd_unrestricted( _( "play physics\\metal\\paintcan_impact_hard3" ) );
+	csgo::i::engine->client_cmd_unrestricted( _( "play buttons\\arena_switch_press_02" ) );
 
 	rdata::player_dmg [ victim->idx ( ) ] = dmg;
 	rdata::player_hurt [ victim->idx( ) ] = true;
@@ -418,7 +418,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 
 	const auto in_shot = animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( );
 	const auto using_micro_movements = animations::data::overlays [ pl->idx ( ) ][ 6 ].m_weight < 0.1f && pl->vel ( ).length_2d ( ) > 0.0f && pl->vel ( ).length_2d ( ) < 5.0f;
-	const auto eye_feet_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( pl->abs_angles ( ).y ) );
+	const auto eye_feet_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( pl->lby ( ) ) );
 	const auto avg_yaw = calc_avg_yaw ( pl, avg_yaw_delta );
 	const auto jitter_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( avg_yaw ) );
 	const auto is_legit = std::fabsf ( pl->angles ( ).x ) < 45.0f;
@@ -491,7 +491,8 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 			}*/
 			else /*if ( !is_legit )*/ {
 				const auto yaw1 = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) ).y;
-				const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( yaw1 ) - csgo::normalize ( pl->abs_angles ( ).y ) ) );
+				//const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( yaw1 ) - csgo::normalize ( pl->lby ( ) ) ) );
+				const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( pl->angles().y ) - csgo::normalize ( pl->lby ( ) ) ) );
 
 				if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 && initial_fake_side [ pl->idx ( ) ] != -1 ) {
 					rdata::tried_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;

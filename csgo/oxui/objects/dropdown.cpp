@@ -52,6 +52,21 @@ void oxui::dropdown::think( ) {
 			list_pos.y += theme.spacing;
 			index++;
 		}
+
+		/* we clicked outside the dropdown list, let's close */
+		if ( utils::key_state ( VK_LBUTTON ) ) {
+			pos mouse_pos;
+			binds::mouse_pos ( mouse_pos );
+
+			const auto hovered_area = mouse_pos.x >= cursor_pos.x && mouse_pos.y >= cursor_pos.y && mouse_pos.x <= cursor_pos.x + area.w && mouse_pos.y <= list_pos.y;
+
+			if ( !hovered_area ) {
+				shapes::finished_input_frame = true;
+				shapes::click_start = pos ( 0, 0 );
+				g_input = true;
+				opened = false;
+			}
+		}
 	}
 }
 

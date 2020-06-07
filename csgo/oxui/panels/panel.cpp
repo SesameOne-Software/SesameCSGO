@@ -17,6 +17,6 @@ void oxui::panel::render( double t ) {
 		);
 		} );
 
-	if ( !shapes::click_switch && GetAsyncKeyState( VK_LBUTTON ) )
+	if ( !shapes::click_switch && utils::key_state ( VK_LBUTTON ) )
 		shapes::click_switch = true;
 }

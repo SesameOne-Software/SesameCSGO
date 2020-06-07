@@ -142,8 +142,8 @@ void __stdcall hooks::cl_sendmove_hk( ) {
 void __fastcall hooks::override_view_hk( REG, void* setup ) {
 	OPTION( bool, thirdperson, "Sesame->E->Effects->Main->Third Person", oxui::object_checkbox );
 	OPTION ( double, thirdperson_range, "Sesame->E->Effects->Main->Third Person Range", oxui::object_slider );
-	OPTION ( int, thirdperson_key, "Sesame->E->Effects->Main->Third Person Key", oxui::object_keybind );
-	OPTION ( int, fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+	KEYBIND ( thirdperson_key, "Sesame->E->Effects->Main->Third Person Key" );
+	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 	OPTION ( bool, no_zoom, "Sesame->C->Other->Removals->No Zoom", oxui::object_checkbox );
 	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
 
@@ -167,15 +167,7 @@ void __fastcall hooks::override_view_hk( REG, void* setup ) {
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
 
-	static bool tp_enabled = false;
-
-	if ( thirdperson_key == -1 )
-		tp_enabled = true;
-
-	if ( thirdperson_key != -1 && GetAsyncKeyState ( thirdperson_key ) & 1 )
-		tp_enabled = !tp_enabled;
-
-	if ( thirdperson && tp_enabled && g::local ) {
+	if ( thirdperson && thirdperson_key && g::local ) {
 		if ( g::local->alive( ) ) {
 			vec3_t ang;
 			csgo::i::engine->get_viewangles ( ang );
@@ -191,7 +183,7 @@ void __fastcall hooks::override_view_hk( REG, void* setup ) {
 		csgo::i::input->m_camera_in_thirdperson = false;
 	}
 
-	if ( fd_key != -1 && GetAsyncKeyState ( fd_key ) && g::local && g::local->alive( ) )
+	if ( fd_key && g::local && g::local->alive( ) )
 		*reinterpret_cast< float* >( uintptr_t ( setup ) + 0xc0 ) = g::local->abs_origin ( ).z + 64.0f;
 
 	override_view( REG_OUT, setup );
@@ -267,19 +259,21 @@ bool __fastcall hooks::in_prediction_hk ( REG ) {
 	return in_prediction ( REG_OUT );
 }
 
+auto restore_ticks = 0;
 auto cock_ticks = 0;
 auto last_attack = false;
+auto last_tickbase_shot = false;
 
 void fix_event_delay ( ucmd_t* ucmd ) {
 	OPTION ( int, _fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
-	OPTION ( int, _fd_key, "Sesame->B->Other->Other->Fakeduck Key", oxui::object_keybind );
+	KEYBIND ( _fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
 	/* choke packets if requested */
-	if ( ucmd->m_buttons & 1 && g::local && !( _fd_key != -1 && GetAsyncKeyState ( _fd_key ) && _fd_mode ) )
+	if ( ucmd->m_buttons & 1 && g::local && !_fd_key )
 		g::send_packet = true;
 
 	///* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	//if ( last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key != -1 && GetAsyncKeyState ( _fd_key ) && _fd_mode ) )
+	//if ( last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key != -1 && utils::key_state ( _fd_key ) && _fd_mode ) )
 	//	g::send_packet = true;
 	//
 	//last_attack = ucmd->m_buttons & 1;
@@ -288,6 +282,7 @@ void fix_event_delay ( ucmd_t* ucmd ) {
 bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !g::local || !g::local->alive ( ) ) {
 		g::shifted_tickbase = ucmd->m_cmdnum;
+		cock_ticks = 0;
 	}
 
 	if ( !ucmd || !ucmd->m_cmdnum )
@@ -324,7 +319,7 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 		return auto_revolver;
 	};
 
-	const auto refresh_tickbase = ucmd->m_cmdnum > g::shifted_tickbase + 1 && std::abs ( ucmd->m_cmdnum - g::shifted_tickbase + 1 ) <= get_shift_amount ( ) + 1 && g::local && g::local->alive ( );
+	const auto refresh_tickbase = g::shifted_tickbase > ucmd->m_cmdnum && g::local && g::local->alive ( );
 
 	if ( refresh_tickbase ) {
 		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
@@ -359,10 +354,21 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 
 	fix_event_delay ( ucmd );
 
-	if ( !refresh_tickbase && g::local && g::local->weapon( ) && get_auto_revolver_enabled( ) && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+	last_tickbase_shot = g::next_tickbase_shot;
+
+	if ( ucmd->m_buttons & 1 )
+		g::next_tickbase_shot = false;
+
+	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
+		g::shifted_tickbase = ucmd->m_cmdnum + get_shift_amount( );
+		g::next_tickbase_shot = false;
+		last_tickbase_shot = false;
+	}
+
+	if ( !refresh_tickbase && g::local && g::local->weapon ( ) && g::local->weapon ( )->data( ) && get_auto_revolver_enabled( ) && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
 		if ( csgo::time2ticks( features::prediction::predicted_curtime ) > cock_ticks ) {
 			ucmd->m_buttons &= ~1;
-			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 2;
+			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 1;
 		}
 		else {
 			ucmd->m_buttons |= 1;
@@ -450,6 +456,7 @@ void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
 	OPTION ( bool, no_viewpunch, "Sesame->C->Other->Removals->No Viewpunch", oxui::object_checkbox );
 	OPTION ( oxui::color, world_clr, "Sesame->C->Other->World->World Color", oxui::object_colorpicker );
 	OPTION ( double, prop_alpha, "Sesame->C->Other->World->Prop Alpha", oxui::object_slider );
+	OPTION ( double, ragdoll_force, "Sesame->E->Effects->Main->Ragdoll Force", oxui::object_slider );
 
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
@@ -526,6 +533,16 @@ void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
 			last_prop_alpha = int( prop_alpha );
 			last_clr = world_clr;
 			spawn_time = g::local->spawn_time ( );
+		}
+
+		for ( int i = 1; i <= 200; i++ ) {
+			const auto pl = csgo::i::ent_list->get < player_t* > ( i );
+
+			if ( !pl || pl->dormant ( ) || !pl->client_class ( ) || pl->client_class ( )->m_class_id != 42 )
+				continue;
+
+			pl->force ( ) *= ragdoll_force;
+			pl->ragdoll_vel ( ) *= ragdoll_force;
 		}
 	}
 
@@ -868,10 +885,11 @@ bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int
 	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : csgo::ticks2time( g::dt_ticks_to_shift );
 
-	if ( dt_teleport )
-		g::shifted_tickbase = cmd_to.m_cmdnum + 1;
+	//if ( dt_teleport )
+	//	g::shifted_tickbase = cmd_to.m_cmdnum + 1;
 
 	g::dt_ticks_to_shift = 0;
+	g::next_tickbase_shot = true;
 
 	return true;
 }
@@ -947,7 +965,50 @@ void __fastcall hooks::paint_traverse_hk ( REG, int ipanel, bool force_repaint, 
 }
 
 long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
-	if ( menu::wndproc( hwnd, msg, wparam, lparam ) )
+	auto skip_mouse_input_processing = false;
+
+	switch ( msg ) {
+	case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK:
+	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
+	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
+	case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: {
+		int button = 0;
+		if ( msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDBLCLK ) { button = 0; }
+		if ( msg == WM_RBUTTONDOWN || msg == WM_RBUTTONDBLCLK ) { button = 1; }
+		if ( msg == WM_MBUTTONDOWN || msg == WM_MBUTTONDBLCLK ) { button = 2; }
+		if ( msg == WM_XBUTTONDOWN || msg == WM_XBUTTONDBLCLK ) { button = ( GET_XBUTTON_WPARAM ( wparam ) == XBUTTON1 ) ? 3 : 4; }
+		mouse_down [ button ] = true;
+		skip_mouse_input_processing = true;
+		break;
+	}
+	case WM_LBUTTONUP:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONUP:
+	case WM_XBUTTONUP: {
+		int button = 0;
+		if ( msg == WM_LBUTTONUP ) { button = 0; }
+		if ( msg == WM_RBUTTONUP ) { button = 1; }
+		if ( msg == WM_MBUTTONUP ) { button = 2; }
+		if ( msg == WM_XBUTTONUP ) { button = ( GET_XBUTTON_WPARAM ( wparam ) == XBUTTON1 ) ? 3 : 4; }
+		mouse_down [ button ] = false;
+		skip_mouse_input_processing = true;
+		break;
+	}
+	case WM_KEYDOWN:
+	case WM_SYSKEYDOWN:
+		if ( wparam < 256 )
+			key_down [ wparam ] = true;
+		break;
+	case WM_KEYUP:
+	case WM_SYSKEYUP:
+		if ( wparam < 256 )
+			key_down [ wparam ] = false;
+		break;
+	}
+
+	menu::wndproc ( hwnd, msg, wparam, lparam );
+
+	if ( menu::open( ) && ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) )
 		return true;
 
 	return CallWindowProcA( o_wndproc, hwnd, msg, wparam, lparam );

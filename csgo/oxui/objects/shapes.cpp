@@ -41,7 +41,7 @@ bool oxui::shapes::clicking( const rect& area, bool from_start, bool override ) 
 	pos mouse_pos;
 	binds::mouse_pos ( mouse_pos );
 
-	if ( !click_switch && GetAsyncKeyState( VK_LBUTTON ) && !hits_clip( mouse_pos ) ) { /* press key */
+	if ( !click_switch && utils::key_state ( VK_LBUTTON ) && !hits_clip( mouse_pos ) ) { /* press key */
 		click_start = mouse_pos;
 
 		if ( from_start ) {
@@ -56,7 +56,7 @@ bool oxui::shapes::clicking( const rect& area, bool from_start, bool override ) 
 			return true;
 		}
 	}
-	else if ( click_switch && !GetAsyncKeyState( VK_LBUTTON ) ) { /* release key */
+	else if ( click_switch && !utils::key_state ( VK_LBUTTON ) ) { /* release key */
 		click_start = pos ( 0, 0 );
 	}
 

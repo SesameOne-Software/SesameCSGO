@@ -16,6 +16,7 @@ namespace g {
 	extern ucmd_t sent_cmd;
 	extern vec3_t angles;
 	extern bool hold_aim;
+	extern bool next_tickbase_shot;
 	extern bool send_packet;
 	extern int shifted_tickbase;
 	extern int dt_ticks_to_shift;

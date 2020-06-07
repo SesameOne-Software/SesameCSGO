@@ -11,7 +11,7 @@ void oxui::obj::animate( const rect& area ) {
 
 	fade_timer = parent_panel.time;
 
-	if ( type == object_checkbox ? shapes::clicking( area ) : shapes::hovering( area ) && GetAsyncKeyState( VK_LBUTTON ) ) {
+	if ( type == object_checkbox ? shapes::clicking( area ) : shapes::hovering( area ) && utils::key_state ( VK_LBUTTON ) ) {
 		switch ( type ) {
 		case object_checkbox: {
 			auto as_checkbox = static_cast< checkbox* >( this );

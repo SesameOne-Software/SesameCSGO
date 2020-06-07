@@ -98,7 +98,7 @@ void* oxui::window::find_obj( const str& option, object_type type ) {
 									auto as_keybind = std::static_pointer_cast< keybind >( _control );
 
 									if ( as_keybind->label == tree [ 4 ] )
-										return &as_keybind->key;
+										return as_keybind.get ( );
 
 									break;
 								}
@@ -176,7 +176,10 @@ void oxui::window::save_state( const str& file ) {
 					case object_keybind: {
 						auto as_keybind = ( ( std::shared_ptr< keybind >& ) object );
 						auto obj_str = std::string ( as_keybind->label.begin ( ), as_keybind->label.end ( ) );
-						cJSON_AddItemToObject ( jgroup, obj_str.c_str ( ), cJSON_CreateNumber ( as_keybind->key ) );
+						const auto keybind_data_arr = cJSON_CreateArray ( );
+						cJSON_AddItemToArray ( keybind_data_arr, cJSON_CreateNumber ( as_keybind->key ) );
+						cJSON_AddItemToArray ( keybind_data_arr, cJSON_CreateNumber ( static_cast< int > ( as_keybind->mode ) ) );
+						cJSON_AddItemToObject ( jgroup, obj_str.c_str ( ), keybind_data_arr );
 						break;
 					}
 					case object_colorpicker: {
@@ -363,12 +366,29 @@ void oxui::window::load_state( const str& file ) {
 
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
 
-						if ( !jitem || !cJSON_IsNumber ( jitem ) ) {
+						if ( !jitem || !cJSON_IsArray ( jitem ) ) {
 							dbg_print ( cJSON_GetErrorPtr ( ) );
 							return;
 						}
 
-						as_keybind->key = jitem->valueint;
+						const cJSON* cur_keybind_data = nullptr;
+						int keybind_data_index = 0;
+
+						cJSON_ArrayForEach ( cur_keybind_data, jitem ) {
+							if ( !cur_keybind_data || !cJSON_IsNumber ( cur_keybind_data ) ) {
+								dbg_print ( cJSON_GetErrorPtr ( ) );
+								keybind_data_index++;
+								continue;
+							}
+
+							switch ( keybind_data_index ) {
+							case 0: as_keybind->key = cur_keybind_data->valueint; break;
+							case 1: as_keybind->mode = static_cast < oxui::keybind_mode > ( cur_keybind_data->valueint ); break;
+							}
+
+							keybind_data_index++;
+						}
+
 						break;
 					}
 					case object_colorpicker: {
@@ -414,13 +434,13 @@ void oxui::window::load_state( const str& file ) {
 }
 
 void oxui::window::think( ) {
-	if ( !pressing_move_key && GetAsyncKeyState( VK_LBUTTON ) && shapes::hovering( rect( area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6, area.w / 6 ) ) ) {
+	if ( !pressing_move_key && utils::key_state( VK_LBUTTON ) && shapes::hovering( rect( area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6, area.w / 6 ) ) ) {
 		pressing_move_key = true;
 		pos mouse_mpos;
 		binds::mouse_pos( mouse_mpos );
 		click_offset = pos( mouse_mpos.x - area.x, mouse_mpos.y - area.y );
 	}
-	else if ( pressing_move_key && GetAsyncKeyState( VK_LBUTTON ) ) {
+	else if ( pressing_move_key && utils::key_state ( VK_LBUTTON ) ) {
 		pos mouse_mpos;
 		binds::mouse_pos( mouse_mpos );
 
@@ -454,10 +474,10 @@ void oxui::window::draw( ) {
 	render_overlay = false;
 
 	if ( toggle_bind ) {
-		if ( !pressing_open_key && GetAsyncKeyState( toggle_bind ) ) {
+		if ( !pressing_open_key && utils::key_state ( toggle_bind ) ) {
 			pressing_open_key = true;
 		}
-		else if ( pressing_open_key && !GetAsyncKeyState( toggle_bind ) ) {
+		else if ( pressing_open_key && !utils::key_state ( toggle_bind ) ) {
 			open = !open;
 			pressing_open_key = false;
 

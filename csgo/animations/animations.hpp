@@ -22,6 +22,7 @@ namespace animations {
 		extern std::array< int, 65 > last_animation_frame;
 		extern std::array< int, 65 > old_tick;
 		extern std::array< float, 65 > old_abs;
+		extern std::array< float, 65 > body_yaw;
 		extern std::array< std::array< animlayer_t, 15 >, 65 > overlays;
 	}
 
