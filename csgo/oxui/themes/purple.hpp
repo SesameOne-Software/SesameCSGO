@@ -20,7 +20,7 @@ namespace oxui {
 
 		int spacing = 20;
 		double animation_speed = 0.4;
-		int list_spacing = 0;
+		int list_spacing = 12;
 		color bg = color( 0x27, 0x29, 0x3d, 255 );
 		color text = color( 0x6d, 0x6e, 0x7c, 255 );
 		color title_text = color( 0xf9, 0xf9, 0xf9, 255 );

@@ -584,8 +584,6 @@ int animations::fix_pl ( player_t* pl ) {
 	state->m_feet_yaw_rate = 0.0f;
 	state->m_feet_yaw = state->m_abs_yaw;
 
-	rebuilt::poses::calculate ( pl );
-
 	/* build and store safe point matrix */
 	if ( safe_point ) {
 		const auto backup_eye_yaw = state->m_eye_yaw;
@@ -626,6 +624,8 @@ int animations::fix_pl ( player_t* pl ) {
 		data::body_yaw [ pl->idx ( ) ] = std::clamp ( csgo::normalize ( csgo::normalize ( state->m_eye_yaw ) - csgo::normalize ( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
 		pl->poses ( ) [ 11 ] = data::body_yaw [ pl->idx ( ) ];
 	}
+
+	rebuilt::poses::calculate ( pl );
 
 	//data::fake_states [ pl->idx( ) ] = *state;
 
@@ -731,10 +731,10 @@ int animations::run( int stage ) {
 			for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 				const auto pl = csgo::i::ent_list->get< player_t* > ( i );
 
+				resolver::process_event_buffer ( i );
+
 				if ( !pl || !pl->is_player ( ) )
 					continue;
-
-				resolver::process_event_buffer ( pl );
 
 				if ( pl != g::local && pl->team ( ) != g::local->team ( ) )
 					fix_pl ( pl );

@@ -59,7 +59,7 @@ namespace animations {
 		bool jittering( player_t* pl );
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
-		void process_event_buffer( player_t* pl );
+		void process_event_buffer( int pl_idx );
 		void resolve_edge ( player_t* pl, float& yaw );
 		void resolve_smart ( player_t* pl, float& yaw );
 		void resolve_smart_v2 ( player_t* pl, float& yaw );

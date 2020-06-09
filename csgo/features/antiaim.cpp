@@ -26,6 +26,7 @@ namespace aa {
 	int choke_counter = 0;
 	int old_lag_air = 0;
 	int old_lag_move = 0;
+	int old_lag_slow_walk = 0;
 	int old_lag_stand = 0;
 }
 
@@ -70,6 +71,7 @@ player_t* looking_at ( ) {
 
 	vec3_t angs;
 	csgo::i::engine->get_viewangles ( angs );
+	csgo::clamp ( angs );
 
 	auto best_fov = 180.0f;
 
@@ -77,8 +79,9 @@ player_t* looking_at ( ) {
 		if ( pl->team ( ) == g::local->team ( ) )
 			return;
 
-		const auto yaw_to = csgo::normalize ( csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) ).y );
-		const auto fov = csgo::normalize( yaw_to - csgo::normalize ( angs.y ) );
+		auto angle_to = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) );
+		csgo::clamp ( angle_to );
+		auto fov = csgo::normalize( angle_to.dist_to ( angs ) );
 
 		if ( fov < best_fov ) {
 			ret = pl;
@@ -142,10 +145,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION( double, pitch_slow_walk, "Sesame->B->Slow Walk->Base->Base Pitch", oxui::object_slider );
 
 	/* base yaw */
-	OPTION( double, base_yaw_air, "Sesame->B->Air->Base->Base Yaw", oxui::object_slider );
-	OPTION( double, base_yaw_move, "Sesame->B->Moving->Base->Base Yaw", oxui::object_slider );
-	OPTION ( double, base_yaw_stand, "Sesame->B->Standing->Base->Base Yaw", oxui::object_slider );
-	OPTION ( double, base_yaw_slow_walk , "Sesame->B->Slow Walk->Base->Base Yaw", oxui::object_slider );
+	OPTION( double, yaw_offset_air, "Sesame->B->Air->Base->Yaw Offset", oxui::object_slider );
+	OPTION( double, yaw_offset_move, "Sesame->B->Moving->Base->Yaw Offset", oxui::object_slider );
+	OPTION ( double, yaw_offset_stand, "Sesame->B->Standing->Base->Yaw Offset", oxui::object_slider );
+	OPTION ( double, yaw_offset_slow_walk , "Sesame->B->Slow Walk->Base->Yaw Offset", oxui::object_slider );
 
 	/* slow walk settings */
 	OPTION ( double, slow_walk_speed, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Speed", oxui::object_slider );
@@ -163,10 +166,15 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( double, desync_amount_slow_walk, "Sesame->B->Slow Walk->Desync->Desync Range", oxui::object_slider );
 
 	/* jitter amount */
-	OPTION( double, jitter_amount_air, "Sesame->B->Air->Base->Jitter Range", oxui::object_slider );
-	OPTION( double, jitter_amount_move, "Sesame->B->Moving->Base->Jitter Range", oxui::object_slider );
+	OPTION ( double, jitter_amount_air, "Sesame->B->Air->Base->Jitter Range", oxui::object_slider );
+	OPTION ( double, jitter_amount_move, "Sesame->B->Moving->Base->Jitter Range", oxui::object_slider );
 	OPTION ( double, jitter_amount_stand, "Sesame->B->Standing->Base->Jitter Range", oxui::object_slider );
-	OPTION( double, jitter_amount_slow_walk, "Sesame->B->Slow Walk->Base->Jitter Range", oxui::object_slider );
+	OPTION ( double, jitter_amount_slow_walk, "Sesame->B->Slow Walk->Base->Jitter Range", oxui::object_slider );
+
+	OPTION ( double, auto_direction_amount_air, "Sesame->B->Air->Base->Auto Direction Amount", oxui::object_slider );
+	OPTION ( double, auto_direction_amount_move, "Sesame->B->Moving->Base->Auto Direction Amount", oxui::object_slider );
+	OPTION ( double, auto_direction_amount_stand, "Sesame->B->Standing->Base->Auto Direction Amount", oxui::object_slider );
+	OPTION ( double, auto_direction_amount_slow_walk, "Sesame->B->Slow Walk->Base->Auto Direction Amount", oxui::object_slider );
 
 	KEYBIND ( left_key, "Sesame->B->Other->Other->Left Side Key" );
 	KEYBIND ( back_key, "Sesame->B->Other->Other->Back Side Key" );
@@ -192,6 +200,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( bool, anti_freestand_prediction_move, "Sesame->B->Moving->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
 	OPTION ( bool, anti_freestand_prediction_stand, "Sesame->B->Standing->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
 	OPTION ( bool, anti_freestand_prediction_slow_walk, "Sesame->B->Slow Walk->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
+
+	OPTION ( int, base_yaw_air, "Sesame->B->Air->Base->Base Yaw", oxui::object_dropdown );
+	OPTION ( int, base_yaw_move, "Sesame->B->Moving->Base->Base Yaw", oxui::object_dropdown );
+	OPTION ( int, base_yaw_stand, "Sesame->B->Standing->Base->Base Yaw", oxui::object_dropdown );
+	OPTION ( int, base_yaw_slow_walk, "Sesame->B->Slow Walk->Base->Base Yaw", oxui::object_dropdown );
 
 	security_handler::update ( );
 
@@ -230,6 +243,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		if ( air && !( g::local->flags ( ) & 1 ) )
 			max_lag = lag_air;
+		else if ( slow_walk && g::local->vel ( ).length_2d ( ) > 5.0f && slowwalk_key )
+			max_lag = lag_slow_walk;
 		else if ( move && g::local->vel ( ).length_2d ( ) > 0.1f )
 			max_lag = lag_move;
 		else if ( stand )
@@ -239,6 +254,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		if ( air && !( g::local->flags ( ) & 1 ) )
 			max_send = lag_send_air;
+		else if ( slow_walk && g::local->vel ( ).length_2d ( ) > 5.0f && slowwalk_key )
+			max_send = lag_send_slow_walk;
 		else if ( move && g::local->vel ( ).length_2d ( ) > 0.1f )
 			max_send = lag_send_move;
 		else if ( stand )
@@ -247,6 +264,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( aa::old_lag_air != static_cast< int >( lag_air ) ) {
 			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_air );
 			aa::old_lag_air = static_cast< int >( lag_air );
+		}
+
+		if ( aa::old_lag_slow_walk != static_cast< int >( lag_slow_walk ) ) {
+			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_slow_walk );
+			aa::old_lag_slow_walk = static_cast< int >( lag_slow_walk );
 		}
 
 		if ( aa::old_lag_move != static_cast< int >( lag_move ) ) {
@@ -349,21 +371,62 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	//update_anti_bruteforce ( );
 	auto desync_amnt = ( desync_side || desync_side == -1 ) ? 120.0f : -120.0f;
 
+	auto process_base_yaw = [ & ] ( int base_yaw, float auto_dir_amount ) {
+		switch ( base_yaw ) {
+		case 0: {
+			vec3_t ang;
+			csgo::i::engine->get_viewangles ( ang );
+			ucmd->m_angs.y = ang.y;
+		} break;
+		case 1: {
+			ucmd->m_angs.y = 0.0f;
+		} break;
+		case 2: {
+			if ( target_player ) {
+				const auto yaw_to = csgo::normalize ( csgo::calc_angle ( g::local->origin ( ), target_player->origin ( ) ).y );
+				ucmd->m_angs.y = yaw_to;
+			}
+			else {
+				vec3_t ang;
+				csgo::i::engine->get_viewangles ( ang );
+				ucmd->m_angs.y = ang.y;
+			}
+		} break;
+		case 3: {
+			if ( target_player ) {
+				const auto desync_side = find_freestand_side ( target_player );
+
+				if ( desync_side != -1 ) {
+					ucmd->m_angs.y += desync_side ? -auto_dir_amount : auto_dir_amount;
+				}
+				else {
+					const auto yaw_to = csgo::normalize ( csgo::calc_angle ( g::local->origin ( ), target_player->origin ( ) ).y + 180.0f );
+					ucmd->m_angs.y = yaw_to;
+				}
+			}
+			else {
+				vec3_t ang;
+				csgo::i::engine->get_viewangles ( ang );
+				ucmd->m_angs.y = ang.y + 180.0f;
+			}
+		} break;
+		}
+	};
+
 	/* manage antiaim */ {
 		if ( !( g::local->flags( ) & 1 ) ) {
 			if ( air ) {
-				if ( side != -1 ) {
-					vec3_t angs;
-					csgo::i::engine->get_viewangles ( angs );
+				process_base_yaw ( base_yaw_air, auto_direction_amount_air );
 
+				if ( side != -1 ) {
 					switch ( side ) {
-					case 0: ucmd->m_angs.y = angs.y + 180.0f; break;
-					case 1: ucmd->m_angs.y = angs.y + 90.0f; break;
-					case 2: ucmd->m_angs.y = angs.y - 90.0f; break;
+					case 0: ucmd->m_angs.y += 180.0f; break;
+					case 1: ucmd->m_angs.y += 90.0f; break;
+					case 2: ucmd->m_angs.y += -90.0f; break;
 					}
 				}
 
-				ucmd->m_angs.y += base_yaw_air;
+				ucmd->m_angs.y += yaw_offset_air;
 				ucmd->m_angs.x = pitch_air;
 
 				if ( target_player && anti_freestand_prediction_air ) {
@@ -391,18 +454,17 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
 			if ( slowwalk_key && slow_walk ) {
-				if ( side != -1 ) {
-					vec3_t angs;
-					csgo::i::engine->get_viewangles ( angs );
+				process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk );
 
+				if ( side != -1 ) {
 					switch ( side ) {
-					case 0: ucmd->m_angs.y = angs.y + 180.0f; break;
-					case 1: ucmd->m_angs.y = angs.y + 90.0f; break;
-					case 2: ucmd->m_angs.y = angs.y - 90.0f; break;
+					case 0: ucmd->m_angs.y += 180.0f; break;
+					case 1: ucmd->m_angs.y += 90.0f; break;
+					case 2: ucmd->m_angs.y += -90.0f; break;
 					}
 				}
 
-				ucmd->m_angs.y += base_yaw_slow_walk;
+				ucmd->m_angs.y += yaw_offset_slow_walk;
 				ucmd->m_angs.x = pitch_slow_walk;
 
 				if ( target_player && anti_freestand_prediction_slow_walk ) {
@@ -428,18 +490,17 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_slow_walk : jitter_amount_slow_walk;
 			}
 			else if ( move ) {
-				if ( side != -1 ) {
-					vec3_t angs;
-					csgo::i::engine->get_viewangles ( angs );
+				process_base_yaw ( base_yaw_move, auto_direction_amount_move );
 
+				if ( side != -1 ) {
 					switch ( side ) {
-					case 0: ucmd->m_angs.y = angs.y + 180.0f; break;
-					case 1: ucmd->m_angs.y = angs.y + 90.0f; break;
-					case 2: ucmd->m_angs.y = angs.y - 90.0f; break;
+					case 0: ucmd->m_angs.y += 180.0f; break;
+					case 1: ucmd->m_angs.y += 90.0f; break;
+					case 2: ucmd->m_angs.y += -90.0f; break;
 					}
 				}
 
-				ucmd->m_angs.y += base_yaw_move;
+				ucmd->m_angs.y += yaw_offset_move;
 				ucmd->m_angs.x = pitch_move;
 
 				if ( target_player && anti_freestand_prediction_move ) {
@@ -466,18 +527,17 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		}
 		else if ( stand ) {
-			if ( side != -1 ) {
-				vec3_t angs;
-				csgo::i::engine->get_viewangles ( angs );
+			process_base_yaw ( base_yaw_stand, auto_direction_amount_stand );
 
+			if ( side != -1 ) {
 				switch ( side ) {
-				case 0: ucmd->m_angs.y = angs.y + 180.0f; break;
-				case 1: ucmd->m_angs.y = angs.y + 90.0f; break;
-				case 2: ucmd->m_angs.y = angs.y - 90.0f; break;
+				case 0: ucmd->m_angs.y += 180.0f; break;
+				case 1: ucmd->m_angs.y += 90.0f; break;
+				case 2: ucmd->m_angs.y += -90.0f; break;
 				}
 			}
 
-			ucmd->m_angs.y += base_yaw_stand;
+			ucmd->m_angs.y += yaw_offset_stand;
 			ucmd->m_angs.x = pitch_stand;
 
 			if ( target_player && anti_freestand_prediction_stand ) {

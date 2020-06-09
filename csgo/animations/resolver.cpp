@@ -75,6 +75,8 @@ std::array< bool, 65 > animations::resolver::flags::force_pitch_flick_yaw { fals
 std::array< float, 65 > last_recorded_resolve { FLT_MAX };
 std::array< int, 65 > last_recorded_tick { 0 };
 
+std::array< int, 65 > hit_hitgroup { 0 };
+
 void animations::resolver::process_hurt( event_t* event ) {
 	// ambient\atmosphere\firewerks_burst_02
 	// buttons\weapon_confirm
@@ -114,13 +116,31 @@ void animations::resolver::process_hurt( event_t* event ) {
 	rdata::player_hurt [ victim->idx( ) ] = true;
 	features::ragebot::get_hits( victim->idx( ) )++;
 
+	hit_hitgroup [ victim->idx ( ) ] = hitgroup;
+
 	/* hit wrong hitbox, probably due to resolver */
 	//if ( hitgroup != autowall::hitbox_to_hitgroup ( features::ragebot::get_hitbox ( victim->idx ( ) ) ) ) {
 	//	rdata::player_hurt [ victim->idx ( ) ] = false;
 	//}
 }
 
-void animations::resolver::process_event_buffer( player_t* pl ) {
+template < typename ...args_t >
+void print_console ( const oxui::color& clr, const char* fmt, args_t ...args ) {
+	if ( !fmt )
+		return;
+
+	struct {
+		uint8_t r, g, b, a;
+	} s_clr;
+
+	s_clr = { static_cast < uint8_t > ( clr.r ), static_cast < uint8_t > ( clr.g ), static_cast < uint8_t > ( clr.b ), static_cast < uint8_t > ( clr.a ) };
+
+	static auto con_color_msg = reinterpret_cast< void ( * )( const decltype( s_clr )&, const char*, ... ) >( LI_FN ( GetProcAddress ) ( LI_FN ( GetModuleHandleA ) ( _ ( "tier0.dll" ) ), _ ( "?ConColorMsg@@YAXABVColor@@PBDZZ" ) ) );
+
+	con_color_msg ( s_clr, fmt, args... );
+}
+
+void animations::resolver::process_event_buffer( int pl_idx ) {
 	if ( !g::local || !g::local->weapon( ) || !g::local->weapon( )->data( ) )
 		return;
 
@@ -132,45 +152,70 @@ void animations::resolver::process_event_buffer( player_t* pl ) {
 		return d >= FLT_EPSILON;
 	};
 
-	if ( rdata::last_shots [ pl->idx ( ) ] != features::ragebot::get_shots ( pl->idx ( ) ) && rdata::impacts [ pl->idx ( ) ] != vec3_t ( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl->idx ( ) ] ) {
-		const auto vec_to_extended = csgo::angle_vec ( csgo::calc_angle ( features::ragebot::get_shot_pos ( pl->idx ( ) ), rdata::impacts [ pl->idx ( ) ] ) ) * g::local->weapon ( )->data ( )->m_range;
-		const auto reached_without_obstruction = ray_intersects_sphere ( features::ragebot::get_shot_pos ( pl->idx ( ) ), features::ragebot::get_shot_pos ( pl->idx ( ) ) + vec_to_extended, features::ragebot::get_target_pos ( pl->idx ( ) ), 8.0f );
+	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots ( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t ( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
+		//const auto vec_to_extended = csgo::angle_vec ( csgo::calc_angle ( features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ] ) ) * g::local->weapon ( )->data ( )->m_range;
+		//const auto reached_without_obstruction = ray_intersects_sphere ( features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_shot_pos ( pl_idx ) + vec_to_extended, features::ragebot::get_target_pos ( pl_idx ), 8.0f );
 
-		/*if ( rdata::impact_dmg [ pl->idx ( ) ] <= 0.0f && reached_without_obstruction ) {
-			features::ragebot::get_misses ( pl->idx ( ) ).occlusion++;
-			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl->idx ( ) ), rdata::impacts [ pl->idx ( ) ], _ ( L"occlusion ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl->idx ( ) ).occlusion ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+		/*if ( rdata::impact_dmg [ pl_idx ] <= 0.0f && reached_without_obstruction ) {
+			features::ragebot::get_misses ( pl_idx ).occlusion++;
+			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"occlusion ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).occlusion ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
 		}
-		else*/ if ( rdata::impact_dmg [ pl->idx ( ) ] <= 0.0f ) {
-			features::ragebot::get_misses ( pl->idx ( ) ).spread++;
-			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl->idx ( ) ), rdata::impacts [ pl->idx ( ) ], _ ( L"spread ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl->idx ( ) ).spread ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+		else*/ if ( rdata::impact_dmg [ pl_idx ] <= 0.0f ) {
+			features::ragebot::get_misses ( pl_idx ).spread++;
+			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"spread ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).spread ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+			print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+			print_console ( oxui::color( 255, 255, 255, 255 ), _("Missed shot due to spread ( %d )\n"), features::ragebot::get_misses ( pl_idx ).spread );
 		}
 		else {
-			features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve++;
-			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl->idx ( ) ), rdata::impacts [ pl->idx ( ) ], _ ( L"resolve ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+			features::ragebot::get_misses ( pl_idx ).bad_resolve++;
+			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"resolve ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).bad_resolve ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+			print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to bad resolve ( %d )\n" ), features::ragebot::get_misses ( pl_idx ).bad_resolve );
 		}
 
-		rdata::impacts [ pl->idx ( ) ] = vec3_t ( 0.0f, 0.0f, 0.0f );
-		rdata::player_hurt [ pl->idx( ) ] = false;
-		rdata::last_shots [ pl->idx ( ) ] = features::ragebot::get_shots ( pl->idx ( ) );
-		features::ragebot::get_shot_pos ( pl->idx ( ) ) = vec3_t ( 0.0f, 0.0f, 0.0f );
-		rdata::player_dmg [ pl->idx ( ) ] = 0;
-		rdata::impact_dmg [ pl->idx ( ) ] = 0.0f;
+		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::player_hurt [ pl_idx ] = false;
+		rdata::last_shots [ pl_idx ] = features::ragebot::get_shots ( pl_idx );
+		features::ragebot::get_shot_pos ( pl_idx ) = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::player_dmg [ pl_idx ] = 0;
+		rdata::impact_dmg [ pl_idx ] = 0.0f;
 		features::ragebot::get_target_idx ( ) = 0;
 		features::ragebot::get_target ( ) = nullptr;
 	}
-	else if ( rdata::player_hurt [ pl->idx ( ) ] ) {
-		hit_matrix_rec.push_back ( { pl->idx ( ), { }, csgo::i::globals->m_curtime, D3DCOLOR_RGBA ( 202, 252, 3, 255 ) } );
-		std::memcpy ( &hit_matrix_rec.back ( ).m_bones, features::ragebot::get_lag_rec ( pl->idx ( ) ).m_bones, sizeof features::ragebot::get_lag_rec ( pl->idx ( ) ).m_bones );
+	else if ( rdata::player_hurt [ pl_idx ] ) {
+		hit_matrix_rec.push_back ( { uint32_t( pl_idx ), { }, csgo::i::globals->m_curtime, D3DCOLOR_RGBA ( 202, 252, 3, 255 ) } );
+		std::memcpy ( &hit_matrix_rec.back ( ).m_bones, features::ragebot::get_lag_rec ( pl_idx ).m_bones, sizeof features::ragebot::get_lag_rec ( pl_idx ).m_bones );
 
-		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl->idx ( ) ), features::ragebot::get_target_pos( pl->idx( ) ), std::to_wstring ( rdata::player_dmg [ pl->idx ( ) ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos( pl_idx ), std::to_wstring ( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+		
+		player_info_t pl_info;
+		csgo::i::engine->get_player_info ( pl_idx, &pl_info );
 
-		rdata::impacts [ pl->idx ( ) ] = vec3_t ( 0.0f, 0.0f, 0.0f );
-		rdata::queued_hit [ pl->idx ( ) ] = true;
-		rdata::player_hurt [ pl->idx( ) ] = false;
-		rdata::last_shots [ pl->idx ( ) ] = features::ragebot::get_shots ( pl->idx ( ) );
-		features::ragebot::get_shot_pos ( pl->idx ( ) ) = vec3_t ( 0.0f, 0.0f, 0.0f );
-		rdata::player_dmg [ pl->idx ( ) ] = 0;
-		rdata::impact_dmg [ pl->idx ( ) ] = 0.0f;
+		print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+		print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Hit %s in the " ), pl_info.m_name );
+
+		switch ( hit_hitgroup [ pl_idx ] ) {
+		case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "generic" ) ); break;
+		case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "head" ) ); break;
+		case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "chest" ) ); break;
+		case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "stomach" ) ); break;
+		case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left arm" ) ); break;
+		case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right arm" ) ); break;
+		case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left leg" ) ); break;
+		case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right leg" ) ); break;
+		case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "gear" ) ); break;
+		}
+
+		print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " for " ) );
+		print_console ( oxui::color ( 255, 86, 86, 255 ), _ ( "%d\n" ), rdata::player_dmg [ pl_idx ] );
+
+		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::queued_hit [ pl_idx ] = true;
+		rdata::player_hurt [ pl_idx ] = false;
+		rdata::last_shots [ pl_idx ] = features::ragebot::get_shots ( pl_idx );
+		features::ragebot::get_shot_pos ( pl_idx ) = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::player_dmg [ pl_idx ] = 0;
+		rdata::impact_dmg [ pl_idx ] = 0.0f;
 		features::ragebot::get_target_idx ( ) = 0;
 		features::ragebot::get_target ( ) = nullptr;
 	}
@@ -205,8 +250,8 @@ void animations::resolver::update( ucmd_t* ucmd ) {
 		const auto src = g::local->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f );
 		const auto dst = pl->origin ( ) + pl->vel ( ) * ( csgo::i::globals->m_curtime - pl->simtime ( ) ) + vec3_t ( 0.0f, 0.0f, 64.0f );
 
-		rdata::l_dmg [ pl->idx ( ) ] = autowall::dmg ( g::local, pl, src + cross * 32.0f, dst + cross * 32.0f, 0 );
-		rdata::r_dmg [ pl->idx ( ) ] = autowall::dmg ( g::local, pl, src - cross * 32.0f, dst - cross * 32.0f, 0 );
+		rdata::l_dmg [ pl->idx ( ) ] = autowall::dmg ( g::local, pl, src + cross * 64.0f, dst + cross * 64.0f, 0 );
+		rdata::r_dmg [ pl->idx ( ) ] = autowall::dmg ( g::local, pl, src - cross * 64.0f, dst - cross * 64.0f, 0 );
 
 		if ( ( rdata::l_dmg [ pl->idx ( ) ] == rdata::r_dmg [ pl->idx ( ) ] ) || ( rdata::l_dmg [ pl->idx ( ) ] == 0.0f && rdata::r_dmg [ pl->idx ( ) ] == 0.0f ) ) {
 			rdata::l_dmg [ pl->idx ( ) ] = 0.0f;
@@ -332,7 +377,7 @@ void animations::resolver::resolve_smart ( player_t* pl, float& yaw ) {
 
 	auto brute_center = [ & ] ( float& ang_body ) {
 		const auto yaw1 = csgo::calc_angle ( g::local->eyes ( ), pl->eyes ( ) ).y;
-		const auto max_delta5 = csgo::rad2deg ( std::atan2f ( std::sinf ( csgo::deg2rad ( csgo::normalize ( yaw1 - pl->abs_angles ( ).y ) ) ), std::cosf ( csgo::deg2rad ( csgo::normalize ( yaw1 - pl->abs_angles ( ).y ) ) ) ) );
+		const auto max_delta5 = csgo::rad2deg ( std::atan2f ( std::sinf ( csgo::deg2rad ( csgo::normalize ( yaw1 - pl->lby ( ) ) ) ), std::cosf ( csgo::deg2rad ( csgo::normalize ( yaw1 - pl->abs_angles ( ).y ) ) ) ) );
 
 		//const auto yaw = csgo::calc_angle (  ).y;
 		//
@@ -452,12 +497,12 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 		has_slow_walk = std::fabsf ( pl->vel ( ).length_2d ( ) - rdata::last_vel_rate [ pl->idx ( ) ] ) < 10.0f && rdata::last_vel_rate [ pl->idx ( ) ] > 20.0f && pl->vel ( ).length_2d ( ) > 20.0f && rdata::last_vel_rate [ pl->idx ( ) ] < pl->weapon ( )->data ( )->m_max_speed * 0.33f && pl->vel ( ).length_2d ( ) < pl->weapon ( )->data ( )->m_max_speed * 0.33f;
 
 	/* jitter resolver */
-	//if ( avg_yaw_delta > 75.0f /*&& !is_legit*/ ) {
-	//	auto switch_delta = ( ( jitter_delta > 0.0f ) ? pl->desync_amount ( ) : -pl->desync_amount ( ) ) * 2.0f;
-	//	switch_delta = ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
-	//	yaw += switch_delta;
-	//}
-	/*else*/ {
+	if ( avg_yaw_delta >= pl->desync_amount() /*&& !is_legit*/ ) {
+		auto switch_delta = ( ( jitter_delta > 0.0f ) ? pl->desync_amount ( ) : -pl->desync_amount ( ) ) * 2.0f;
+		switch_delta = ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
+		yaw += switch_delta;
+	}
+	else {
 		const auto at_target = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) ).y;
 		const auto is_sideways = std::fabsf( csgo::normalize ( csgo::normalize ( at_target ) - csgo::normalize ( pl->angles ( ).y ) ) ) > 75.0f;
 
@@ -468,14 +513,23 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 		else {
 			if ( ( /*using_micro_movements || has_slow_walk ||*/ std::fabsf ( eye_feet_delta ) < 45.0f ) /*&& !is_legit*/ ) {
 				if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 && initial_fake_side [ pl->idx ( ) ] != -1 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;
+
 					rdata::tried_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;
 					yaw += initial_fake_side [ pl->idx ( ) ] ? pl->desync_amount ( ) : -pl->desync_amount ( );
 				}
 				else if ( ( rdata::r_dmg [ pl->idx ( ) ] > rdata::l_dmg [ pl->idx ( ) ] || rdata::forced_side [ pl->idx ( ) ] == 2 ) && features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = 2;
+
 					rdata::tried_side [ pl->idx ( ) ] = 2;
 					yaw += pl->desync_amount ( );
 				}
 				else if ( ( rdata::l_dmg [ pl->idx ( ) ] > rdata::r_dmg [ pl->idx ( ) ] || rdata::forced_side [ pl->idx ( ) ] == 1 ) && features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = 1;
+
 					rdata::tried_side [ pl->idx ( ) ] = 1;
 					yaw -= pl->desync_amount ( );
 				}
@@ -495,14 +549,23 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 				const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( pl->angles().y ) - csgo::normalize ( pl->lby ( ) ) ) );
 
 				if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 && initial_fake_side [ pl->idx ( ) ] != -1 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;
+
 					rdata::tried_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;
 					yaw += initial_fake_side [ pl->idx ( ) ] ? pl->desync_amount ( ) : -pl->desync_amount ( );
 				}
 				else if ( max_delta5 > 0.0f && features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 2 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = 2;
+
 					rdata::tried_side [ pl->idx ( ) ] = 2;
 					yaw += ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 ) ? pl->desync_amount ( ) : ( pl->desync_amount ( ) * 0.5f );
 				}
 				else if ( max_delta5 < 0.0f && features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 2 ) {
+					if ( rdata::queued_hit [ pl->idx ( ) ] )
+						rdata::forced_side [ pl->idx ( ) ] = 1;
+
 					rdata::tried_side [ pl->idx ( ) ] = 1;
 					yaw -= ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 ) ? pl->desync_amount ( ) : ( pl->desync_amount ( ) * 0.5f );
 				}
@@ -519,7 +582,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 
 void animations::resolver::resolve( player_t* pl, float& yaw ) {
 	OPTION ( bool, resolver, "Sesame->A->Rage Aimbot->Accuracy->Resolve Desync", oxui::object_checkbox );
-	OPTION ( bool, beta_resolver, "Sesame->A->Rage Aimbot->Accuracy->Beta Resolver", oxui::object_checkbox );
+	//OPTION ( bool, beta_resolver, "Sesame->A->Rage Aimbot->Accuracy->Beta Resolver", oxui::object_checkbox );
 
 	security_handler::update ( );
 
@@ -562,12 +625,7 @@ void animations::resolver::resolve( player_t* pl, float& yaw ) {
 		return;
 	}
 
-	if ( beta_resolver ) {
-		resolve_smart_v2 ( pl, yaw );
-	}
-	else {
-		resolve_smart ( pl, yaw );
-	}
+	resolve_smart_v2 ( pl, yaw );
 
 	last_recorded_resolve [ pl->idx ( ) ] = yaw;
 	last_recorded_tick [ pl->idx ( ) ] = csgo::i::globals->m_tickcount;
@@ -630,10 +688,13 @@ void animations::resolver::render_impacts ( ) {
 			continue;
 		}
 
-		if ( !csgo::render::world_to_screen ( scrn_src, impact.m_src ) || !csgo::render::world_to_screen ( scrn_dst, impact.m_dst ) ) {
-			cur_ray++;
-			continue;
-		}
+		csgo::render::world_to_screen ( scrn_src, impact.m_src );
+		csgo::render::world_to_screen ( scrn_dst, impact.m_dst );
+
+		//if ( !csgo::render::world_to_screen ( scrn_src, impact.m_src ) || !csgo::render::world_to_screen ( scrn_dst, impact.m_dst ) ) {
+		//	cur_ray++;
+		//	continue;
+		//}
 
 		impact.m_clr = D3DCOLOR_RGBA ( ( impact.m_clr >> 16 ) & 0xff,  ( impact.m_clr >> 8 ) & 0xff, ( impact.m_clr ) & 0xff, alpha );
 

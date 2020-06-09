@@ -10,6 +10,9 @@
 namespace oxui {
 	class dropdown : public obj {
 		int hovered_index;
+		int height_target = 0;
+		double animation_time = 0.0;
+		int current_height = 0;
 
 	public:
 		str label;

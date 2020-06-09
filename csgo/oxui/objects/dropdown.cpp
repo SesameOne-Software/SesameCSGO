@@ -4,6 +4,7 @@
 #include "../themes/purple.hpp"
 
 void oxui::dropdown::think( ) {
+	auto& parent_panel = find_parent< panel > ( object_panel );
 	auto& parent_window = find_parent< window >( object_window );
 	auto& cursor_pos = parent_window.cursor_pos;
 	animate( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ) );
@@ -11,6 +12,25 @@ void oxui::dropdown::think( ) {
 	if ( shapes::clicking( rect( cursor_pos.x, cursor_pos.y, area.w, area.h ), false, opened ) ) {
 		opened = !opened;
 		g_input = !opened;
+
+		if ( opened ) {
+			current_height = cursor_pos.y;
+			height_target = cursor_pos.y + theme.spacing + theme.list_spacing;
+		}
+		else {
+			height_target = cursor_pos.y;
+		}
+	}
+	
+	if ( std::abs ( height_target - current_height ) > 1.0 ) {
+		const auto signed_scroll_delta = height_target - current_height;
+		const auto target_pixels_per_second = signed_scroll_delta / theme.animation_speed;
+		const auto new_offset = current_height + std::clamp ( std::abs ( parent_panel.time - animation_time ), 0.0, theme.animation_speed ) * target_pixels_per_second;
+		current_height = new_offset;
+	}
+	else {
+		animation_time = parent_panel.time;
+		current_height = height_target;
 	}
 
 	/* handle */
@@ -36,6 +56,7 @@ void oxui::dropdown::think( ) {
 				value = index;
 
 				/* remove if you want to close it manually instead of automatically (snek) */ {
+					height_target = cursor_pos.y;
 					shapes::finished_input_frame = true;
 					shapes::click_start = pos ( 0, 0 );
 					g_input = true;
@@ -61,6 +82,7 @@ void oxui::dropdown::think( ) {
 			const auto hovered_area = mouse_pos.x >= cursor_pos.x && mouse_pos.y >= cursor_pos.y && mouse_pos.x <= cursor_pos.x + area.w && mouse_pos.y <= list_pos.y;
 
 			if ( !hovered_area ) {
+				height_target = cursor_pos.y;
 				shapes::finished_input_frame = true;
 				shapes::click_start = pos ( 0, 0 );
 				g_input = true;
@@ -151,37 +173,43 @@ void oxui::dropdown::draw( ) {
 	}
 
 	/* draw items */
-	if ( opened ) {
-		g_input = false;
+	auto dropdown_alpha = ( opened && parent_panel.time == animation_time ) ? 255 : static_cast < int > ( std::clamp ( parent_panel.time - animation_time, 0.0, theme.animation_speed ) / theme.animation_speed * 255.0 );
+	auto dropdown_outline_alpha = ( opened && parent_panel.time == animation_time ) ? 90 : static_cast < int > ( std::clamp ( parent_panel.time - animation_time, 0.0, theme.animation_speed ) / theme.animation_speed * 90.0 );
 
-		parent_window.draw_overlay( [ = ] ( ) {
+	if ( !opened ) {
+		dropdown_alpha = ( parent_panel.time == animation_time ) ? 0 : static_cast < int > ( ( theme.animation_speed - std::clamp ( parent_panel.time - animation_time, 0.0, theme.animation_speed ) ) / theme.animation_speed * 255.0 );
+		dropdown_outline_alpha = ( parent_panel.time == animation_time ) ? 0 : static_cast < int > ( ( theme.animation_speed - std::clamp ( parent_panel.time - animation_time, 0.0, theme.animation_speed ) ) / theme.animation_speed * 90.0 );
+	}
+
+	if ( dropdown_alpha ) {
+		parent_window.draw_overlay ( [ = ] ( ) {
 			/* get list end position */
-			auto end_pos_y = cursor_pos.y + theme.spacing + theme.list_spacing;
+			auto end_pos_y = current_height;
 
 			/* render the items name */
 			auto index = 0;
 
 			/* background of the list */
-			binds::rounded_rect ( { cursor_pos.x, end_pos_y, area.w, area.h + 8 }, 8, 16, hovered_index == index ? theme.bg : theme.container_bg, false );
-			binds::rounded_rect ( { cursor_pos.x, end_pos_y + area.h * ( static_cast< int > ( items.size ( ) ) - 1 ) - 8, area.w, area.h + 8 }, 8, 16, hovered_index == ( items.size ( ) - 1 ) ? theme.bg : theme.container_bg, false );
+			binds::rounded_rect ( { cursor_pos.x, end_pos_y, area.w, area.h + 8 }, 8, 16, hovered_index == index ? oxui::color ( theme.bg.r, theme.bg.g, theme.bg.b, dropdown_alpha ) : oxui::color ( theme.container_bg.r, theme.container_bg.g, theme.container_bg.b, dropdown_alpha ), false );
+			binds::rounded_rect ( { cursor_pos.x, end_pos_y + area.h * ( static_cast< int > ( items.size ( ) ) - 1 ) - 8, area.w, area.h + 8 }, 8, 16, hovered_index == ( items.size ( ) - 1 ) ? oxui::color ( theme.bg.r, theme.bg.g, theme.bg.b, dropdown_alpha ) : oxui::color ( theme.container_bg.r, theme.container_bg.g, theme.container_bg.b, dropdown_alpha ), false );
 
 			for ( const auto& it : items ) {
 				/* get the text size */
 				rect item_text_size;
-				binds::text_bounds( font, it, item_text_size );
+				binds::text_bounds ( font, it, item_text_size );
 
 				/* render the square background if not first or last (middle of rounded rectangles) */
 				if ( index && index != items.size ( ) - 1 )
-					binds::fill_rect ( { cursor_pos.x, end_pos_y + area.h * index, area.w, area.h }, hovered_index == index ? theme.bg : theme.container_bg );
+					binds::fill_rect ( { cursor_pos.x, end_pos_y + area.h * index, area.w, area.h }, hovered_index == index ? oxui::color ( theme.bg.r, theme.bg.g, theme.bg.b, dropdown_alpha ) : oxui::color ( theme.container_bg.r, theme.container_bg.g, theme.container_bg.b, dropdown_alpha ) );
 
 				/* render the name */
-				binds::text( { area_center_x - item_text_size.w / 2 - 1, end_pos_y + area.h * ( index + 1 ) - area.h / 2 - item_text_size.h / 2 }, font, it, theme.text, hovered_index == index );
+				binds::text ( { area_center_x - item_text_size.w / 2 - 1, end_pos_y + area.h * ( index + 1 ) - area.h / 2 - item_text_size.h / 2 }, font, it, oxui::color ( theme.text.r, theme.text.g, theme.text.b, dropdown_alpha ), hovered_index == index );
 
 				index++;
 			}
 
 			/* outline of the list */
-			binds::rounded_rect ( rect ( cursor_pos.x, end_pos_y, area.w, area.h * items.size ( ) ), 8, 16, { 0, 0, 0, 90 }, true );
+			binds::rounded_rect ( rect ( cursor_pos.x, end_pos_y, area.w, area.h * items.size ( ) ), 8, 16, { 0, 0, 0, dropdown_outline_alpha }, true );
 		} );
 	}
 }

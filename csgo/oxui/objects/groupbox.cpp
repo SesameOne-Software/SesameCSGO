@@ -4,6 +4,7 @@
 #include "../themes/purple.hpp"
 
 void oxui::group::think ( ) {
+	auto& parent_panel = find_parent< panel > ( object_panel );
 	auto& parent_window = find_parent< window > ( object_window );
 	animate ( rect ( parent_window.cursor_pos.x, parent_window.cursor_pos.y, area.w, area.h ) );
 
@@ -22,8 +23,19 @@ void oxui::group::think ( ) {
 
 	/* manage scrolling */
 	if ( shapes::hovering ( rect ( parent_window.cursor_pos.x, parent_window.cursor_pos.y, area.w, area.h ) ) && parent_window.scroll_delta != 0.0 ) {
-		scroll_offset += parent_window.scroll_delta * 18.0;
-		scroll_offset = std::clamp< double > ( scroll_offset, 0, static_cast< double >( max_height - area.h ) );
+		scroll_offset_target += parent_window.scroll_delta * 18.0;
+		scroll_offset_target = std::clamp< double > ( scroll_offset_target, 0, static_cast< double >( max_height - area.h ) );
+	}
+
+	if ( std::abs( scroll_offset_target - scroll_offset ) > 1.0 ) {
+		const auto signed_scroll_delta = scroll_offset_target - scroll_offset;
+		const auto target_pixels_per_second = signed_scroll_delta / ( theme.animation_speed * 4.0f );
+		const auto new_offset = scroll_offset + std::clamp( std::abs( parent_panel.time - scroll_time ), 0.0, ( theme.animation_speed * 4.0f ) ) * target_pixels_per_second;
+		scroll_offset = new_offset;
+	}
+	else {
+		scroll_offset = scroll_offset_target;
+		scroll_time = parent_panel.time;
 	}
 }
 
@@ -93,12 +105,22 @@ void oxui::group::draw ( ) {
 	if ( max_height - area.h > 0 ) {
 		/* let's draw a gradient next to the top to let people know that there are more items on the way on the top */
 		if ( scroll_offset > 0 ) {
+			if ( shapes::clicking ( { cursor_pos.x + area.w / 2 - 5, cursor_pos.y + 22 - 5, 10, 10 } ) ) {
+				scroll_offset_target -= parent_window.scroll_delta * 18.0;
+				scroll_offset_target = std::clamp< double > ( scroll_offset_target, 0, static_cast< double >( max_height - area.h ) );
+			}
+
 			//binds::gradient_rect ( rect ( og_cursor_pos.x + 1, og_cursor_pos.y + 26 + 1, area.w - 2, theme.spacing / 2 ), color ( 0, 0, 0, 100 ), color ( 0, 0, 0, 0 ), false );
 			render::polygon ( { { og_cursor_pos.x + area.w / 2, og_cursor_pos.y + 22 }, {og_cursor_pos.x + area.w / 2 - 3, og_cursor_pos.y + 22 + 3}, {og_cursor_pos.x + area.w / 2 + 3, og_cursor_pos.y + 22 + 3} }, D3DCOLOR_RGBA( theme.title_text.r, theme.title_text.g, theme.title_text.b, theme.title_text.a ), false );
 		}
 
 		/* let's draw a gradient next to the bottom to let people know that there are more items on the way on the bottom */
 		if ( scroll_offset < static_cast< double >( max_height - area.h ) ) {
+			if ( shapes::clicking ( { cursor_pos.x + area.w / 2 - 3 - 5, cursor_pos.y + area.h - theme.spacing / 2 - 1 + 10 - 5, 10, 10 } ) ) {
+				scroll_offset_target += parent_window.scroll_delta * 18.0;
+				scroll_offset_target = std::clamp< double > ( scroll_offset_target, 0, static_cast< double >( max_height - area.h ) );
+			}
+
 			//binds::gradient_rect ( rect ( og_cursor_pos.x + 1, og_cursor_pos.y + area.h - theme.spacing / 2 - 1, area.w - 2, theme.spacing / 2 ), color ( 0, 0, 0, 0 ), color ( 0, 0, 0, 100 ), false );
 			render::polygon ( { { og_cursor_pos.x + area.w / 2 - 3, og_cursor_pos.y + area.h - theme.spacing / 2 - 1 + 10 }, {og_cursor_pos.x + area.w / 2, og_cursor_pos.y + area.h - theme.spacing / 2 - 1 + 3 + 10}, {og_cursor_pos.x + area.w / 2 + 3, og_cursor_pos.y + area.h - theme.spacing / 2 - 1 + 10} }, D3DCOLOR_RGBA ( theme.title_text.r, theme.title_text.g, theme.title_text.b, theme.title_text.a ), false );
 		}

@@ -13,7 +13,7 @@ namespace features {
 			player_t* m_pl;
 			int m_tick, m_flags, m_priority;
 			float m_simtime;
-			bool m_lc, m_needs_matrix_construction;
+			bool m_lc, m_needs_matrix_construction, m_extrapolated;
 			vec3_t m_min, m_max, m_vel, m_origin, m_ang;
 			animlayer_t m_layers [ 15 ];
 			animstate_t m_state;
@@ -53,7 +53,7 @@ namespace features {
 
 				m_priority = 0;
 				m_needs_matrix_construction = false;
-				m_tick = csgo::i::globals->m_tickcount;
+				m_tick = csgo::time2ticks ( prediction::predicted_curtime );
 				m_simtime = pl->simtime( );
 				m_flags = pl->flags( );
 				m_ang = pl->angles( );

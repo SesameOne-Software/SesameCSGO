@@ -204,9 +204,9 @@ void menu::init( ) {
 
 					auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 1.0f, 0.2f } ); {
 						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fix Fakelag" ) ) );
-						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Predict Fakelag" ) ) );
+						//accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Predict Fakelag" ) ) );
 						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolve Desync" ) ) );
-						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Beta Resolver" ) ) );
+						//accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Beta Resolver" ) ) );
 						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Safe Point" ) ) );
 
 						rage_aimbot->add_element ( accuracy );
@@ -245,7 +245,9 @@ void menu::init( ) {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "In Air" ) ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Yaw" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						air_aa->add_element ( base );
@@ -275,7 +277,9 @@ void menu::init( ) {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Moving" ) ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Yaw" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						moving_aa->add_element ( base );
@@ -305,7 +309,9 @@ void menu::init( ) {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Slow Walk" ) ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Yaw" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						slowwalk_aa->add_element ( base );
@@ -342,7 +348,9 @@ void menu::init( ) {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Standing" ) ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Yaw" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						ground_aa->add_element ( base );

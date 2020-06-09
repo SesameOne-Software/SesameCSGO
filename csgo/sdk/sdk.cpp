@@ -45,8 +45,8 @@ bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	const auto w = world_matrix [ 3 ][ 0 ] * origin.x + world_matrix [ 3 ][ 1 ] * origin.y + world_matrix [ 3 ][ 2 ] * origin.z + world_matrix [ 3 ][ 3 ];
 
 	if ( w < 0.001f ) {
-		screen.x *= 100000.0f;
-		screen.y *= 100000.0f;
+		screen.x *= -1.0f / w;
+		screen.y *= -1.0f / w;
 
 		return true;
 	}
@@ -58,17 +58,32 @@ bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 }
 
 bool csgo::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
-	if ( !screen_transform( screen, origin ) ) {
-		int width, height;
-		csgo::i::engine->get_screen_size( width, height ); // TODO: use the one we calculate in sceneend instead
+	const auto find_point = [ ] ( vec3_t& point, int screen_w, int screen_h, float deg ) {
+		const auto x2 = screen_w / 2.0f;
+		const auto y2 = screen_h / 2.0f;
+		const auto one = point.x - x2;
+		const auto two = point.y - y2;
+		const auto d = std::sqrt ( one * one + two * two );
+		const auto r = deg / d;
 
-		screen.x = ( width * 0.5f ) + ( screen.x * width ) * 0.5f;
-		screen.y = ( height * 0.5f ) - ( screen.y * height ) * 0.5f;
+		point.x = r * point.x + ( 1.0f - r ) * x2;
+		point.y = r * point.y + ( 1.0f - r ) * y2;
+	};
 
-		return true;
+	const auto transform = screen_transform ( screen, origin );
+
+	int width, height;
+	csgo::i::engine->get_screen_size ( width, height );
+
+	screen.x = ( width * 0.5f ) + ( screen.x * width ) * 0.5f;
+	screen.y = ( height * 0.5f ) - ( screen.y * height ) * 0.5f;
+
+	if ( screen.x > width || screen.x < 0 || screen.y > height || screen.y < 0 || transform ) {
+		find_point ( screen, width, height, std::sqrt ( width * width + height * height ) );
+		return false;
 	}
 
-	return false;
+	return true;
 }
 
 void csgo::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32_t mask, const entity_t* ignore, trace_t* ptr ) {

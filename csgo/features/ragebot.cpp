@@ -67,7 +67,7 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	OPTION( double, body_ps, "Sesame->A->Rage Aimbot->Hitscan->Body Pointscale", oxui::object_slider );
 	OPTION ( double, baim_after_misses, "Sesame->A->Rage Aimbot->Hitscan->Baim After X Misses", oxui::object_slider );
 	OPTION ( bool, safe_point, "Sesame->A->Rage Aimbot->Accuracy->Safe Point", oxui::object_dropdown );
-	OPTION ( bool, predict_fakelag, "Sesame->A->Rage Aimbot->Accuracy->Predict Fakelag", oxui::object_checkbox );
+	//OPTION ( bool, predict_fakelag, "Sesame->A->Rage Aimbot->Accuracy->Predict Fakelag", oxui::object_checkbox );
 
 	const auto recs = lagcomp::get( pl );
 	//auto extrapolated = lagcomp::get_extrapolated( pl );
@@ -205,9 +205,9 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 		head_only = true;
 	}
 	else if ( recs.second ) {
-		if ( predict_fakelag && !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks( csgo::i::globals->m_curtime - pl->simtime( ) ) > 2 && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) <= 5 )
-			best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
-		else
+		//if ( predict_fakelag && !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks( csgo::i::globals->m_curtime - pl->simtime( ) ) > 2 /*&& csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) <= 5*/ )
+		//	best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
+		//else
 			best_recs.push_back ( recs.first.front ( ) );
 
 		best_recs.push_back ( recs.first.back ( ) );
@@ -732,7 +732,7 @@ void meleebot ( ucmd_t* ucmd ) {
 		auto ang = csgo::calc_angle ( g::local->eyes ( ), hitbox_pos );
 		csgo::clamp ( ang );
 
-		const auto fov = ang.dist_to ( engine_ang );
+		const auto fov = csgo::normalize( ang.dist_to ( engine_ang ) );
 
 		auto can_use = false;
 
@@ -931,7 +931,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		auto ang = csgo::calc_angle( g::local->eyes( ), point );
 		csgo::clamp( ang );
 
-		const auto fov = ang.dist_to( engine_ang );
+		const auto fov = csgo::normalize( ang.dist_to ( engine_ang ) );
 
 		if ( dmg > 0.0f && dmg > best_dmg && fov < best_fov ) {
 			best_pl = pl;

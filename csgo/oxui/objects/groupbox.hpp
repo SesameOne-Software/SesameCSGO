@@ -12,6 +12,9 @@ namespace oxui {
 	*/
 	class group : public obj {
 		double scroll_offset = 0.0;
+		double scroll_offset_from = 0.0;
+		double scroll_offset_target = 0.0;
+		double scroll_time = 0.0;
 		int max_height = 0;
 
 	public:

@@ -498,6 +498,12 @@ void oxui::window::draw( ) {
 	/* menu physics */
 	think( );
 
+	/* animate dropdown popup */
+	/* fix how the button looks to match loader */
+	/* resizeable menu */
+	/* add hitmarker option, local fake chams, bullet tracers, bullet impacts, hit matrix */
+	/* change default visuals color */
+
 	cursor_pos = pos( area.x + theme.spacing, area.y + theme.spacing );
 
 	/* draw window rect */
@@ -587,9 +593,18 @@ void oxui::window::draw( ) {
 			object->selected = true;
 		}
 
+		auto time_since_click = std::clamp ( parent_panel.time - object->time, 0.0, theme.animation_speed );
+		auto selection_rad = 22.0 - 10.0 * ( time_since_click * ( 1.0 / theme.animation_speed ) );
+		auto selection_alpha = 90.0 - int ( time_since_click * ( 1.0 / theme.animation_speed ) * 90.0 );
+
 		if ( object->selected ) {
-			binds::circle ( { center_w, tabs_start_y + cur_tab_y }, 22, 20, { 0, 0, 0, 90 }, false );
-			binds::circle ( { center_w, tabs_start_y + cur_tab_y }, 22, 20, { 0, 0, 0, 90 }, true );
+			selection_alpha = int ( time_since_click * ( 1.0 / theme.animation_speed ) * 90.0 );
+			selection_rad = 12.0 + 10.0 * ( time_since_click * ( 1.0 / theme.animation_speed ) );
+		}
+
+		if ( selection_rad > 0 && selection_alpha > 0 ) {
+			binds::circle ( { center_w, tabs_start_y + cur_tab_y }, selection_rad, 20, { 0, 0, 0, static_cast < int > ( selection_alpha ) }, false );
+			binds::circle ( { center_w, tabs_start_y + cur_tab_y }, selection_rad, 20, { 0, 0, 0, static_cast < int > ( selection_alpha ) }, true );
 		}
 
 		rect bounds;
@@ -604,9 +619,18 @@ void oxui::window::draw( ) {
 		rect bounds;
 		binds::text_bounds ( parent_panel.fonts [ OSTR ( "tab" ) ], OSTR ( "D" ), bounds );
 
+		auto time_since_click = std::clamp ( parent_panel.time - tab_list.back ( )->time, 0.0, theme.animation_speed );
+		auto selection_rad = 16.0 - 6.0 * ( time_since_click * ( 1.0 / theme.animation_speed ) );
+		auto selection_alpha = 90.0 - int ( time_since_click * ( 1.0 / theme.animation_speed ) * 90.0 );
+
+		if ( tab_list.back ( )->selected ) {
+			selection_alpha = int ( time_since_click * ( 1.0 / theme.animation_speed ) * 90.0 );
+			selection_rad = 10.0 + 6.0 * ( time_since_click * ( 1.0 / theme.animation_speed ) );
+		}
+
 		if ( tab_list.back( )->selected ) {
-			binds::circle ( { center_w + 1, area.y + area.h - 56 - 1 }, bounds.w / 2 + 2, 16, { 0, 0, 0, 90 }, false );
-			binds::circle ( { center_w + 1, area.y + area.h - 56 - 1 }, bounds.w / 2 + 2, 16, { 0, 0, 0, 90 }, true );
+			binds::circle ( { center_w + 1, area.y + area.h - 56 - 1 }, bounds.w / 2 + 2, selection_rad, { 0, 0, 0, static_cast < int > ( selection_alpha ) }, false );
+			binds::circle ( { center_w + 1, area.y + area.h - 56 - 1 }, bounds.w / 2 + 2, selection_rad, { 0, 0, 0, static_cast < int > ( selection_alpha ) }, true );
 		}
 
 		binds::text ( { center_w - bounds.w / 2 + 1, area.y + area.h - 56 - bounds.h / 2 }, parent_panel.fonts [ OSTR ( "tab" ) ], OSTR ( "D" ), tab_list.back ( )->selected ? color ( theme.title_text.r, theme.title_text.g, theme.title_text.b, 150 ) : color ( 0, 0, 0, 80 ), tab_list.back ( )->selected );
@@ -705,8 +729,10 @@ void oxui::window::draw( ) {
 		);
 	} );
 
-	if ( render_overlay )
-		overlay_func ( );
+	if ( render_overlay && overlay_func.size( ) )
+		std::for_each ( overlay_func.begin ( ), overlay_func.end ( ), [ ] ( std::function < void ( ) >& func ) { func ( ); } );
+
+	overlay_func.clear ( );
 
 	shapes::click_switch = false;
 

@@ -196,9 +196,12 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 	for ( auto& bone : rec.m_bones )
 		bone.set_origin ( bone.origin ( ) - extrap_rec.m_origin + rec.m_origin );
 
-	rec.m_tick += dtick;
-	rec.m_simtime += csgo::ticks2time( dtick );
+	const auto estimated_tick = csgo::time2ticks ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + prediction::predicted_curtime ) - dtick;
+
+	rec.m_tick = estimated_tick;
+	rec.m_simtime = csgo::ticks2time( estimated_tick );
 	rec.m_lc = true;
+	rec.m_extrapolated = true;
 
 	/* make sure to prioritize set data */
 	//if ( angle != vec3_t( 0.0f, 0.0f, 0.0f ) )

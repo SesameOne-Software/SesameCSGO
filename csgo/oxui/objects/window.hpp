@@ -19,7 +19,7 @@ namespace oxui {
 		pos click_offset = pos( );
 		str title;
 		int toggle_bind = 0;
-		std::function< void( ) > overlay_func;
+		std::vector < std::function< void ( ) > > overlay_func;
 		bool render_overlay = true;
 
 	public:
@@ -114,7 +114,7 @@ namespace oxui {
 		void draw( ) override;
 
 		void draw_overlay( const std::function< void( ) >& overlay_renderer ) {
-			overlay_func = overlay_renderer;
+			overlay_func.push_back ( overlay_renderer );
 			render_overlay = true;
 		}
 
