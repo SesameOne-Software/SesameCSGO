@@ -29,6 +29,8 @@
     <ClCompile Include="features\glow.cpp" />
     <ClCompile Include="features\lagcomp.cpp" />
     <ClCompile Include="features\movement.cpp" />
+    <ClCompile Include="features\nade_prediction.cpp" />
+    <ClCompile Include="features\other_visuals.cpp" />
     <ClCompile Include="features\prediction.cpp" />
     <ClCompile Include="features\ragebot.cpp" />
     <ClCompile Include="globals.cpp" />
@@ -72,6 +74,8 @@
     <ClInclude Include="features\glow.hpp" />
     <ClInclude Include="features\lagcomp.hpp" />
     <ClInclude Include="features\movement.hpp" />
+    <ClInclude Include="features\nade_prediction.hpp" />
+    <ClInclude Include="features\other_visuals.hpp" />
     <ClInclude Include="features\prediction.hpp" />
     <ClInclude Include="features\ragebot.hpp" />
     <ClInclude Include="globals.hpp" />
@@ -102,6 +106,7 @@
     <ClInclude Include="renderer\d3d9.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sdk\client.hpp" />
+    <ClInclude Include="sdk\effects.hpp" />
     <ClInclude Include="sdk\engine.hpp" />
     <ClInclude Include="sdk\entity.hpp" />
     <ClInclude Include="sdk\entlist.hpp" />

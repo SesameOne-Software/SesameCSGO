@@ -276,8 +276,7 @@ void render::circle3d ( const vec3_t& pos, int rad, int segments, std::uint32_t 
 		auto new_point = rotate_point ( pos, src_point, i );
 		vec3_t screen;
 
-		if ( !csgo::render::world_to_screen ( screen, new_point ) )
-			return;
+		csgo::render::world_to_screen ( screen, new_point );
 
 		points.push_back ( { screen.x - 0.5f, screen.y - 0.5f } );
 	}

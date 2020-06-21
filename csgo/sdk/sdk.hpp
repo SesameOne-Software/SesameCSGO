@@ -25,6 +25,7 @@
 #include "prediction.hpp"
 #include "input.hpp"
 #include "events.hpp"
+#include "effects.hpp"
 
 namespace csgo {
 	constexpr auto pi = 3.14159265358979f;
@@ -85,6 +86,7 @@ namespace csgo {
 	void util_traceline( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr );
 	void rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, const vec3_t& old_angs );
 	bool is_visible( const vec3_t& point );
+	bool is_valve_server ( );
 
 #define DOT_PROD( a, b ) ( a.x * b.x + a.y * b.y + a.z * b.z )
 

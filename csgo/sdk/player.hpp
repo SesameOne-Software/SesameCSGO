@@ -156,21 +156,27 @@ public:
 		m_writeable = flags;
 	}
 
-	const matrix3x4_t& get_bone( int bone ) const {
-		return m_bones [ bone ];
+	const matrix3x4_t* get_bone( int bone ) const {
+		if ( !m_bones )
+			return nullptr;
+
+		return &m_bones [ bone ];
 	}
 
-	matrix3x4_t& get_bone_for_write( int bone ) {
-		return m_bones [ bone ];
+	matrix3x4_t* get_bone_for_write( int bone ) {
+		if ( !m_bones )
+			return nullptr;
+
+		return &m_bones [ bone ];
 	}
 
-	std::array< matrix3x4_t, 128 >& get_bone_arr_for_write( ) const {
+	matrix3x4_t* get_bone_arr_for_write( ) const {
 		return m_bones;
 	};
 
 private:
 	const void* m_animating;
-	std::array< matrix3x4_t, 128 >& m_bones;
+	matrix3x4_t* m_bones;
 	int m_readable;
 	int m_writeable;
 };
@@ -186,6 +192,7 @@ struct anim_list_t {
 
 class player_t : public entity_t {
 public:
+	NETVAR ( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
 	NETVAR( std::uint32_t, flags, "DT_BasePlayer->m_fFlags" );
 	NETVAR( bool, has_defuser, "DT_CSPlayer->m_bHasDefuser" );
 	NETVAR( bool, immune, "DT_CSPlayer->m_bGunGameImmunity" );

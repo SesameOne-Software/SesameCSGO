@@ -228,6 +228,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	OPTION( bool, flat, "Sesame->C->Chams->Main->Flat", oxui::object_checkbox );
 	OPTION( bool, xqz, "Sesame->C->Chams->Main->XQZ", oxui::object_checkbox );
 	OPTION ( bool, lcchams, "Sesame->C->Chams->Main->Backtrack", oxui::object_checkbox );
+	OPTION ( bool, fake_matrix, "Sesame->C->Chams->Main->Fake Matrix", oxui::object_checkbox );
 
 	OPTION ( oxui::color, chams_clr, "Sesame->C->Chams->Colors->Chams", oxui::object_colorpicker );
 	OPTION ( oxui::color, chams_clr_xqz, "Sesame->C->Chams->Colors->XQZ", oxui::object_colorpicker );
@@ -271,7 +272,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	//if ( e == g::local ? false : !recs.second ) {
 	//	csgo::i::render_view->set_alpha( 255 );
 	//	csgo::i::render_view->set_color( 255, 255, 255 );
-	//	hooks::drawmodelexecute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+	//	hooks::drawmodelexecute( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first.front().m_bones : bone_to_world );
 	//	return;
 	//}
 
@@ -321,7 +322,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				csgo::i::mdl_render->force_mat ( nullptr );
 			}
 			else {
-				///* extrapolation chams */
+				/* extrapolation chams */
 				//if ( e != g::local && e->vel ( ).length ( ) > 10.0f && !lagcomp::data::extrapolated_records [ e->idx ( ) ].empty ( ) && g::local->alive ( ) ) {
 				//	csgo::i::render_view->set_alpha ( 255 );
 				//	csgo::i::render_view->set_color ( 255, 50, 80 );
@@ -345,7 +346,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				}
 
 				/* fake chams */
-				if ( e == g::local ) {
+				if ( e == g::local && fake_matrix ) {
 					auto& ref_matrix = animations::fake::matrix ( );
 					const auto backup_matrix = ref_matrix;
 				
@@ -376,7 +377,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				//	mat->set_material_var_flag( 0x8000, true );
 				//	mat->set_material_var_flag( 0x1000, flat );
 				//	csgo::i::mdl_render->force_mat( mat );
-				//	hooks::drawmodelexecute( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first.front ( ).m_bones : bone_to_world );
+				//	hooks::drawmodelexecute( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first.front().m_bones : bone_to_world );
 				//	csgo::i::mdl_render->force_mat( nullptr );
 				//	mat->set_material_var_flag( 268435456, false );
 				//}
@@ -415,21 +416,24 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					//}
 				}
 
-				if ( ( local && e == g::local ) ? !g::local->scoped ( ) : true ) {
-					if ( ( local && e == g::local ) && g::local->scoped ( ) ) {
-						csgo::i::render_view->set_alpha ( 40 );
-						csgo::i::render_view->set_color ( 255, 255, 255 );
-					}
-					else {
-						csgo::i::render_view->set_alpha ( chams_clr.a );
-						csgo::i::render_view->set_color ( chams_clr.r, chams_clr.g, chams_clr.b );
-					}
-					
+				if ( true ) {
 					auto mat = flat ? m_matflat : m_mat;
 					// mat->set_material_var_flag( 268435456, false );
 					mat->set_material_var_flag ( 0x8000, false );
 					mat->set_material_var_flag ( 0x1000, flat );
-					csgo::i::mdl_render->force_mat ( mat );
+
+					if ( ( local && e == g::local ) && g::local->scoped ( ) ) {
+						csgo::i::render_view->set_alpha ( 22 );
+						csgo::i::render_view->set_color ( 255, 255, 255 );
+						csgo::i::mdl_render->force_mat ( nullptr );
+					}
+					else {
+						csgo::i::render_view->set_alpha ( chams_clr.a );
+						csgo::i::render_view->set_color ( chams_clr.r, chams_clr.g, chams_clr.b );
+						csgo::i::mdl_render->force_mat ( mat );
+					}
+					
+					
 					hooks::drawmodelexecute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first.front ( ).m_bones : bone_to_world );
 					csgo::i::mdl_render->force_mat ( nullptr );
 				}

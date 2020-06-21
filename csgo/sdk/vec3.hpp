@@ -239,3 +239,22 @@ __forceinline vec3_t operator*( float lhs, const vec3_t& rhs ) {
 __forceinline vec3_t operator/( float lhs, const vec3_t& rhs ) {
 	return rhs / lhs;
 }
+
+class __declspec( align( 16 ) ) vec_aligned_t : public vec3_t {
+public:
+	inline vec_aligned_t ( ) { }
+	inline vec_aligned_t ( float x, float y, float z ) {
+		init ( x, y, z );
+	}
+
+	explicit vec_aligned_t ( const vec3_t& other ) {
+		init ( other.x, other.y, other.z );
+	}
+
+	vec_aligned_t& operator=( const vec3_t& other ) {
+		init ( other.x, other.y, other.z );
+		return *this;
+	}
+
+	float w;
+};

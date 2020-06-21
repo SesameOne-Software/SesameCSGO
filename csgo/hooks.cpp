@@ -17,6 +17,9 @@
 #include "features/prediction.hpp"
 #include "features/clantag.hpp"
 #include "features/glow.hpp"
+#include "features/nade_prediction.hpp"
+#include "features/autowall.hpp"
+#include "features/other_visuals.hpp"
 
 /* security */
 #include "security/security_handler.hpp"
@@ -53,6 +56,10 @@ decltype( &hooks::send_datagram_hk ) hooks::send_datagram = nullptr;
 decltype( &hooks::should_skip_animation_frame_hk ) hooks::should_skip_animation_frame = nullptr;
 decltype( &hooks::is_hltv_hk ) hooks::is_hltv = nullptr;
 decltype( &hooks::paint_traverse_hk ) hooks::paint_traverse = nullptr;
+decltype( &hooks::send_net_msg_hk ) hooks::send_net_msg = nullptr;
+decltype( &hooks::emit_sound_hk ) hooks::emit_sound = nullptr;
+decltype( &hooks::cs_blood_spray_callback_hk ) hooks::cs_blood_spray_callback = nullptr;
+decltype( &hooks::modify_eye_pos_hk ) hooks::modify_eye_pos = nullptr;
 
 /* event listener */
 class c_event_handler : c_event_listener {
@@ -61,7 +68,7 @@ public:
 		csgo::i::events->add_listener( this, _( "weapon_fire" ), false );
 		csgo::i::events->add_listener( this, _( "player_say" ), false );
 		csgo::i::events->add_listener( this, _( "player_hurt" ), false );
-		csgo::i::events->add_listener ( this, _ ( "bullet_impact" ), false );
+		csgo::i::events->add_listener ( this, _ ( "bullet_impact" ), true );
 		csgo::i::events->add_listener ( this, _ ( "round_freeze_end" ), false );
 		csgo::i::events->add_listener ( this, _ ( "round_start" ), false );
 		csgo::i::events->add_listener ( this, _ ( "round_end" ), false );
@@ -272,23 +279,42 @@ void fix_event_delay ( ucmd_t* ucmd ) {
 	if ( ucmd->m_buttons & 1 && g::local && !_fd_key )
 		g::send_packet = true;
 
-	///* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	//if ( last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key != -1 && utils::key_state ( _fd_key ) && _fd_mode ) )
-	//	g::send_packet = true;
-	//
-	//last_attack = ucmd->m_buttons & 1;
+	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
+	if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key && _fd_mode ) )
+		g::send_packet = true;
+	
+	last_attack = ucmd->m_buttons & 1;
 }
 
+bool in_cm = false;
+bool ducking = false;
+
 bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
+	ducking = ucmd->m_buttons & 4;
+	in_cm = true;
+
+	features::ragebot::get_weapon_config(features::ragebot::active_config);
+
 	if ( !g::local || !g::local->alive ( ) ) {
 		g::shifted_tickbase = ucmd->m_cmdnum;
 		cock_ticks = 0;
 	}
 
-	if ( !ucmd || !ucmd->m_cmdnum )
+	if ( !ucmd || !ucmd->m_cmdnum ) {
+		in_cm = false;
 		return false;
+	}
 
 	security_handler::update ( );
+
+	const auto refresh_tickbase = g::shifted_tickbase > ucmd->m_cmdnum && g::local && g::local->alive ( );
+
+	if ( refresh_tickbase && !csgo::is_valve_server( ) ) {
+		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
+		ucmd->m_tickcount = INT_MAX;
+		in_cm = false;
+		return false;
+	}
 
 	/* thanks chambers */
 	if ( csgo::i::client_state->choked ( ) ) {
@@ -308,24 +334,6 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 	auto ret = createmove( REG_OUT, sampletime, ucmd );
 
 	g::ucmd = ucmd;
-
-	auto get_shift_amount = [ ] ( ) -> int {
-		OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
-		return static_cast< int > ( tickbase_shift_amount );
-	};
-
-	auto get_auto_revolver_enabled = [ ] ( ) {
-		OPTION ( bool, auto_revolver, "Sesame->A->Rage Aimbot->Main->Auto Revolver", oxui::object_checkbox );
-		return auto_revolver;
-	};
-
-	const auto refresh_tickbase = g::shifted_tickbase > ucmd->m_cmdnum && g::local && g::local->alive ( );
-
-	if ( refresh_tickbase ) {
-		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
-		ucmd->m_tickcount = INT_MAX;
-		return false;
-	}
 	
 	features::prediction::update_curtime( );
 
@@ -338,8 +346,24 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 	auto old_fmove = ucmd->m_fmove;
 
 	csgo::for_each_player ( [ ] ( player_t* pl ) {
+		static auto reloading_offset = pattern::search ( _ ( "client.dll" ), _ ( "C6 87 ? ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 2 ).deref ( ).get < uint32_t > ( );
+
+		features::esp::esp_data [ pl->idx ( ) ].m_fakeducking = pl->crouch_speed ( ) == 8.0f && pl->crouch_amount ( ) > 0.1f && pl->crouch_amount ( ) < 0.9f;
+		features::esp::esp_data [ pl->idx ( ) ].m_reloading= pl->weapon ( ) ? false : *reinterpret_cast< bool* >( uintptr_t ( pl->weapon ( ) ) + reloading_offset );
+
+		if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
+			auto dmg_out = static_cast< float >( g::local->weapon ( )->data ( )->m_dmg );
+			autowall::scale_dmg ( pl, g::local->weapon ( )->data ( ), 3, dmg_out );
+			features::esp::esp_data [ pl->idx ( ) ].m_fatal = static_cast< int > ( dmg_out ) >= pl->health ( );
+		}
+		else {
+			features::esp::esp_data [ pl->idx ( ) ].m_fatal = false;
+		}
+
 		features::lagcomp::pop ( pl );
 	} );
+
+	features::nade_prediction::trace ( ucmd );
 
 	features::prediction::run( [ & ] ( ) {
 		csgo::for_each_player ( [ ] ( player_t* pl ) {
@@ -347,6 +371,7 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 		} );
 
 		features::antiaim::simulate_lby( );
+		ducking = ucmd->m_buttons & 4;
 		features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
 		features::antiaim::run( ucmd, old_smove, old_fmove );
 		animations::resolver::update( ucmd );
@@ -354,18 +379,18 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 
 	fix_event_delay ( ucmd );
 
-	last_tickbase_shot = g::next_tickbase_shot;
-
 	if ( ucmd->m_buttons & 1 )
 		g::next_tickbase_shot = false;
 
 	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
-		g::shifted_tickbase = ucmd->m_cmdnum + get_shift_amount( );
+		g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( static_cast < int > ( features::ragebot::active_config.max_dt_ticks ), 0, csgo::is_valve_server ( ) ? 8 : 16 );
 		g::next_tickbase_shot = false;
 		last_tickbase_shot = false;
 	}
 
-	if ( !refresh_tickbase && g::local && g::local->weapon ( ) && g::local->weapon ( )->data( ) && get_auto_revolver_enabled( ) && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+	last_tickbase_shot = g::next_tickbase_shot;
+
+	if ( !refresh_tickbase && g::local && g::local->weapon ( ) && g::local->weapon ( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
 		if ( csgo::time2ticks( features::prediction::predicted_curtime ) > cock_ticks ) {
 			ucmd->m_buttons &= ~1;
 			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 1;
@@ -403,6 +428,7 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 	ucmd->m_fmove = std::clamp< float > ( ucmd->m_fmove, -450.0f, 450.0f );
 	ucmd->m_smove = std::clamp< float > ( ucmd->m_smove, -450.0f, 450.0f );
 
+	in_cm = false;
 	return false;
 }
 
@@ -437,9 +463,9 @@ void run_preserve_death_notices ( ) {
 }
 
 void set_aspect_ratio ( ) {
-	OPTION ( double, prop_alpha, "Sesame->C->Other->World->Prop Alpha", oxui::object_slider );
+	OPTION ( oxui::color, prop_clr, "Sesame->C->Other->World->Prop Color", oxui::object_colorpicker );
 	static auto r_drawstaticprops = pattern::search ( _ ( "engine.dll" ), _ ( "B9 ? ? ? ? FF 50 34 85 C0 0F 84 ? ? ? ? 8B 0D ? ? ? ? 81 F9 ? ? ? ? 75 0C A1 ? ? ? ? 35 ? ? ? ? EB 05 8B 01 FF 50 34 83 F8 02" ) ).add ( 1 ).deref ( ).get< void* > ( );
-	auto fval = ( static_cast < int > ( prop_alpha ) == 255 ) ? 1.0f : 3.0f;
+	auto fval = ( prop_clr.r == 255 && prop_clr.g == 255 && prop_clr.b == 255 && prop_clr.a == 255 ) ? 1.0f : 3.0f;
 	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_drawstaticprops ) + 0x2c ) = *reinterpret_cast < uintptr_t* > ( uintptr_t( &fval ) ) ^ uintptr_t ( r_drawstaticprops );
 	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_drawstaticprops ) + 0x2c + 0x4 ) = static_cast < int > ( fval ) ^ uintptr_t ( r_drawstaticprops );
 
@@ -455,7 +481,7 @@ void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
 	OPTION ( bool, no_aimpunch, "Sesame->C->Other->Removals->No Aimpunch", oxui::object_checkbox );
 	OPTION ( bool, no_viewpunch, "Sesame->C->Other->Removals->No Viewpunch", oxui::object_checkbox );
 	OPTION ( oxui::color, world_clr, "Sesame->C->Other->World->World Color", oxui::object_colorpicker );
-	OPTION ( double, prop_alpha, "Sesame->C->Other->World->Prop Alpha", oxui::object_slider );
+	OPTION ( oxui::color, prop_clr, "Sesame->C->Other->World->Prop Color", oxui::object_colorpicker );
 	OPTION ( double, ragdoll_force, "Sesame->E->Effects->Main->Ragdoll Force", oxui::object_slider );
 
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
@@ -507,11 +533,11 @@ void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
 		if ( no_smoke )
 			*smoke_count = 0;
 
-		static int last_prop_alpha = 0;
+		static oxui::color last_prop_clr = prop_clr;
 		static oxui::color last_clr = world_clr;
 		static float spawn_time = 0.0f;
 
-		if ( g::local && ( g::local->spawn_time ( ) != spawn_time || ( last_clr.r != world_clr.r || last_clr.g != world_clr.g || last_clr.b != world_clr.b || last_clr.a != world_clr.a ) || ( int( last_prop_alpha ) != int( prop_alpha ) ) ) ) {
+		if ( g::local && ( g::local->spawn_time ( ) != spawn_time || ( last_clr.r != world_clr.r || last_clr.g != world_clr.g || last_clr.b != world_clr.b || last_clr.a != world_clr.a ) || ( last_prop_clr.r != prop_clr.r || last_prop_clr.g != prop_clr.g || last_prop_clr.b != prop_clr.b || last_prop_clr.a != prop_clr.a ) ) ) {
 			static auto load_named_sky = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void ( __fastcall* )( const char* ) > ( );
 			
 			load_named_sky ( _ ( "sky_csgo_night02" ) );
@@ -524,13 +550,17 @@ void __fastcall hooks::framestagenotify_hk( REG, int stage ) {
 
 				const auto is_prop = strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) );
 
-				if ( strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) || is_prop ) {
+				if ( is_prop ) {
+					mat->color_modulate ( prop_clr.r, prop_clr.g, prop_clr.b );
+					mat->alpha_modulate ( prop_clr.a );
+				}
+				else if ( strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) ) {
 					mat->color_modulate ( world_clr.r, world_clr.g, world_clr.b );
-					mat->alpha_modulate ( is_prop ? prop_alpha : world_clr.a );
+					mat->alpha_modulate ( world_clr.a );
 				}
 			}
 
-			last_prop_alpha = int( prop_alpha );
+			last_prop_clr = prop_clr;
 			last_clr = world_clr;
 			spawn_time = g::local->spawn_time ( );
 		}
@@ -605,20 +635,10 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 	device->SetRenderState ( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
 
 	security_handler::update ( );
-
-	static float last_counter_update = 0.0f;
-	static int last_framerate = 0;
 	
-	if ( std::fabs ( csgo::i::globals->m_curtime - last_counter_update ) > 1.0f ) {
-		last_framerate = static_cast< int >( 1.0f / csgo::i::globals->m_abs_frametime );
-		last_counter_update = csgo::i::globals->m_curtime;
-	}
-	
+	features::nade_prediction::draw ( );
 	features::esp::render( );
 	animations::resolver::render_impacts ( );
-	
-	//if ( csgo::i::engine->is_in_game ( ) && csgo::i::engine->is_connected ( ) )
-	//	render::circle3d ( vec3_t( 0.0f, 0.0f, 64.0f ), 128, 40, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
 	
 	if ( no_scope && g::local && g::local->scoped( ) ) {
 		int w, h;
@@ -627,8 +647,9 @@ long __fastcall hooks::endscene_hk( REG, IDirect3DDevice9* device ) {
 		render::line ( 0, h / 2, w, h / 2, D3DCOLOR_RGBA( 0, 0, 0, 255 ) );
 	}
 	
-	render::text ( 20, 20, D3DCOLOR_RGBA ( 255, 100, 200, 255 ), features::esp::indicator_font, std::to_wstring ( last_framerate ), false, true );
+	features::spread_circle::draw ( );
 	
+	menu::draw_watermark ( );
 	menu::draw( );
 
 	pixel_state->Apply( );
@@ -645,15 +666,17 @@ long __fastcall hooks::reset_hk( REG, IDirect3DDevice9* device, D3DPRESENT_PARAM
 	features::esp::esp_font->Release( );
 	features::esp::indicator_font->Release( );
 	features::esp::dbg_font->Release ( );
+	features::esp::watermark_font->Release ( );
 
 	menu::destroy( );
 
 	auto hr = reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		render::create_font( ( void** ) &features::esp::dbg_font, _( L"Arial" ), N( 10 ), false );
-		render::create_font( ( void** ) &features::esp::esp_font, _( L"Arial" ), N( 14 ), false );
-		render::create_font( ( void** ) &features::esp::indicator_font, _( L"Arial" ), N( 14 ), true );
+		render::create_font ( ( void** ) &features::esp::dbg_font, _ ( L"Segoe UI" ), N ( 12 ), false );
+		render::create_font ( ( void** ) &features::esp::esp_font, _ ( L"Segoe UI" ), N ( 18 ), false );
+		render::create_font ( ( void** ) &features::esp::indicator_font, _ ( L"Segoe UI" ), N ( 14 ), true );
+		render::create_font ( ( void** ) &features::esp::watermark_font, _ ( L"Segoe UI" ), N ( 18 ), false );
 		menu::reset( );
 	}
 
@@ -712,6 +735,12 @@ bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int 
 
 		*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) = backup_effects;
 
+		if ( out )
+			std::memcpy ( out, &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+		
+		//if ( pl->bone_accessor ( ).get_bone_arr_for_write ( ) )
+		//	std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+
 		return ret;
 	}
 
@@ -746,7 +775,7 @@ bool __fastcall hooks::get_bool_hk( REG ) {
 	if ( !ecx )
 		return false;
 
-	if ( _ReturnAddress ( ) == cam_think /*|| _ReturnAddress ( ) == color_static_props || _ReturnAddress ( ) == color_static_props1*/ )
+	if ( _ReturnAddress ( ) == cam_think || _ReturnAddress ( ) == hermite_fix || _ReturnAddress ( ) == cl_extrapolate )
 		return true;
 
 	return get_bool( REG_OUT );
@@ -782,19 +811,19 @@ void __fastcall hooks::trace_ray_hk( REG, const ray_t& ray, unsigned int mask, t
 		trace->m_surface.m_flags |= 4;
 }
 
-int __fastcall hooks::send_datagram_hk( REG, void* datagram ) {
-	class c_nc {
-	public:
-		PAD ( 23 );
-		bool should_delete;
-		int out_seq_nr;
-		int in_seq_nr;
-		int out_seq_nr_ack;
-		int out_reliable_state;
-		int in_reliable_state;
-		int choked_packets;
-	};
+class c_nc {
+public:
+	PAD ( 23 );
+	bool should_delete;
+	int out_seq_nr;
+	int in_seq_nr;
+	int out_seq_nr_ack;
+	int out_reliable_state;
+	int in_reliable_state;
+	int choked_packets;
+};
 
+int __fastcall hooks::send_datagram_hk( REG, void* datagram ) {
 	const auto nc = *reinterpret_cast< c_nc** >( uintptr_t ( csgo::i::client_state ) + 0x9c );
 
 	if ( nc && nc->choked_packets ) {
@@ -833,8 +862,6 @@ bool __fastcall hooks::is_hltv_hk( REG ) {
 }
 
 bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int to, bool new_cmd ) {
-	OPTION ( bool, dt_teleport, "Sesame->A->Rage Aimbot->Main->Doubletap Teleport", oxui::object_checkbox );
-	
 	static auto write_ucmd = pattern::search( _("client.dll"), _("55 8B EC 83 E4 F8 51 53 56 8B D9 8B 0D" )).get< void( __fastcall* )( void*, ucmd_t*, ucmd_t* ) >( );
 	static auto cl_sendmove_ret = pattern::search( _("engine.dll"), _("84 C0 74 04 B0 01 EB 02 32 C0 8B FE 46 3B F3 7E C9 84 C0 0F 84") ).get< void* >( );
 
@@ -848,7 +875,7 @@ bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int
 	const auto new_commands = *reinterpret_cast< int* >( uintptr_t( buf ) - 0x2C );
 	const auto num_cmd = csgo::i::client_state->choked ( ) + 1;
 	const auto next_cmd_num = csgo::i::client_state->last_outgoing_cmd( ) + num_cmd;
-	const auto total_new_cmds = std::min< int >( g::dt_ticks_to_shift, 16 );
+	const auto total_new_cmds = std::clamp( g::dt_ticks_to_shift, 0, csgo::is_valve_server( ) ? 8 : 16 );
 
 	from = -1;
 	*reinterpret_cast< int* >( uintptr_t( buf ) - 0x2C ) = total_new_cmds;
@@ -870,7 +897,7 @@ bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int
 	ucmd_t cmd_to = cmd_from;
 	cmd_to.m_cmdnum++;
 
-	if ( dt_teleport )
+	if ( features::ragebot::active_config.dt_teleport && !csgo::is_valve_server ( ) /* don't wanna set tickcount to int_max or else we will get banned on valve servers */ )
 		cmd_to.m_tickcount++;
 	else
 		cmd_to.m_tickcount += 666;
@@ -883,9 +910,9 @@ bool __fastcall hooks::write_usercmd_hk( REG, int slot, void* buf, int from, int
 	}
 
 	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
-	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : csgo::ticks2time( g::dt_ticks_to_shift );
+	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : total_new_cmds;
 
-	//if ( dt_teleport )
+	//if ( features::ragebot::active_config.dt_teleport )
 	//	g::shifted_tickbase = cmd_to.m_cmdnum + 1;
 
 	g::dt_ticks_to_shift = 0;
@@ -917,7 +944,7 @@ int __fastcall hooks::list_leaves_in_box_hk ( REG, vec3_t& mins, vec3_t& maxs, u
 		PAD ( 4 );
 	};
 
-	static auto ret_addr = pattern::search ( _ ( "client.dll" ), _ ( "89 44 24 14 EB 08 C7 44 24 ? ? ? ? ? 8B 45" ) ).get< void* > ( );
+	static auto ret_addr = pattern::search ( _ ( "client.dll" ), _ ( "56 52 FF 50 18" ) ).add( 5 ).get< void* > ( );
 
 	if ( _ReturnAddress ( ) != ret_addr )
 		return list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
@@ -962,6 +989,55 @@ void __fastcall hooks::paint_traverse_hk ( REG, int ipanel, bool force_repaint, 
 	paint_traverse ( REG_OUT, ipanel, force_repaint, allow_force );
 
 	*override_post_processing_disable = g::local && g::local->scoped( ) && no_scope;
+}
+
+bool __fastcall hooks::send_net_msg_hk ( REG, void* msg, bool force_reliable, bool voice ) {	if ( vfunc < int ( __thiscall* )( void* ) > ( msg, 8 )( msg ) == 9 )
+		voice = true;
+
+	return send_net_msg ( REG_OUT, msg, force_reliable, voice );
+}
+
+int __fastcall hooks::emit_sound_hk ( REG, void* filter, int ent_idx, int chan, const char* sound_entry, unsigned int sound_entry_hash, const char* sample, float volume, float attenuation, int seed, int flags, int pitch, const vec3_t* origin, const vec3_t* dir, vec3_t* vec_origins, bool update_positions, float sound_time, int speaker_ent, void* sound_params ) {
+	OPTION ( double, revolver_cock_volume, "Sesame->E->Effects->Main->Revolver Cock Volume", oxui::object_slider );
+	OPTION ( double, weapon_volume, "Sesame->E->Effects->Main->Weapon Volume", oxui::object_slider );
+	
+	if ( !strcmp ( sound_entry, _ ( "Weapon_Revolver.Prepare" ) ) && revolver_cock_volume != 1.0 )
+		volume *= revolver_cock_volume;
+	else if ( strstr ( sound_entry, _ ( "Weapon_" ) ) )
+		volume *= weapon_volume;
+	
+	return emit_sound ( REG_OUT, filter, ent_idx, chan, sound_entry, sound_entry_hash, sample, volume, attenuation, seed, flags, pitch, origin, dir, vec_origins, update_positions, sound_time, speaker_ent, sound_params );
+}
+
+void __cdecl hooks::cs_blood_spray_callback_hk( const effect_data_t& effect_data ) {
+	animations::resolver::process_blood ( effect_data );
+	cs_blood_spray_callback ( effect_data );
+}
+
+void __fastcall hooks::modify_eye_pos_hk ( REG, vec3_t& pos ) {
+	const auto state = reinterpret_cast < animstate_t* > ( ecx );
+	const auto pl = state->m_entity;
+
+	using bone_lookup_fn = int ( __thiscall* )( void*, const char* );
+	static auto lookup_bone = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 53 56 8B F1 57 83 BE ? ? ? ? ? 75" ) ).get<bone_lookup_fn> ( );
+
+	if ( !g::local->valid ( ) || !pl->valid ( ) || pl != g::local )
+		return modify_eye_pos ( REG_OUT, pos );
+
+	if ( !in_cm && !ducking )
+		return modify_eye_pos ( REG_OUT, pos );
+
+	if ( !state->m_hit_ground && state->m_duck_amount == 0.0f && csgo::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) )
+		return;
+
+	auto bone_idx = lookup_bone ( pl, _ ( "head_0" ) );
+	vec3_t bone_pos = animations::data::fixed_bones [ g::local->idx ( ) ][ bone_idx ].origin ( );
+	bone_pos.z += 1.7f;
+
+	if ( bone_pos.z < pos.z ) {
+		auto lerp = std::clamp< float > ( ( std::fabsf ( pos.z - bone_pos.z ) - 4.0f ) / 6.0f, 0.0f, 1.0f );
+		pos.z += ( ( bone_pos.z - pos.z ) * ( ( ( lerp * lerp ) * 3.0f ) - ( ( ( lerp * lerp ) * 2.0f ) * lerp ) ) );
+	}
 }
 
 long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
@@ -1022,9 +1098,10 @@ bool hooks::init( ) {
 	erase::erase_func ( menu::init );
 
 	/* create fonts */
-	render::create_font( ( void** ) &features::esp::dbg_font, _( L"Arial" ), N( 12 ), false );
-	render::create_font( ( void** ) &features::esp::esp_font, _( L"Arial" ), N( 14 ), false );
-	render::create_font( ( void** ) &features::esp::indicator_font, _( L"Arial" ), N( 14 ), true );
+	render::create_font( ( void** ) &features::esp::dbg_font, _( L"Segoe UI" ), N( 12 ), false );
+	render::create_font( ( void** ) &features::esp::esp_font, _( L"Segoe UI" ), N( 18 ), false );
+	render::create_font ( ( void** ) &features::esp::indicator_font, _ ( L"Segoe UI" ), N ( 14 ), true );
+	render::create_font( ( void** ) &features::esp::watermark_font, _( L"Segoe UI" ), N( 18 ), false );
 
 	/* load default config */
 	//menu::load_default( );
@@ -1065,6 +1142,10 @@ bool hooks::init( ) {
 	const auto panel_painttraverse = vfunc< void* > ( csgo::i::panel, N ( 41 ) );
 	const auto clientmode_get_viewmodel_fov = vfunc< void* > ( **( void*** ) ( ( *( uintptr_t** ) csgo::i::client ) [ 10 ] + 5 ), N ( 35 ) );
 	const auto pred_in_prediction = vfunc< void* > ( csgo::i::pred, N( 14 ) );
+	const auto nc_sendnetmsg = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 EC 08 56 8B F1 8B 86 ? ? ? ? 85 C0" ) ).get<void*> ( );
+	const auto ienginesound_emitsound = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 8B E5 5D C2 3C 00 55" ) ).resolve_rip ( ).get<void*> ( );
+	const auto global_cs_blood_spray_callback = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 4D 08 F3 0F 10 51 ? 8D 51 18" ) ).get<void*> ( );
+	const auto modify_eye_position = pattern::search ( _ ( "client.dll" ), _ ( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add(1).resolve_rip().get<void*> ( );
 
 	MH_Initialize( );
 
@@ -1073,7 +1154,7 @@ bool hooks::init( ) {
 	auto print_and_hook = [ ] ( void* from, void* to, void** original, const char* func_name ) {
 		MH_CreateHook ( from, to, original );
 		MH_EnableHook ( from );
-		//printf ( "hooked: %s\n", func_name );
+		// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
 		//std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
 	};
 
@@ -1098,7 +1179,11 @@ bool hooks::init( ) {
 	dbg_hook ( clientmode_get_viewmodel_fov, get_viewmodel_fov_hk, ( void** ) &get_viewmodel_fov );
 	dbg_hook ( pred_in_prediction, in_prediction_hk, ( void** ) &in_prediction );
 	//dbg_hook( nc_send_datagram, send_datagram_hk, ( void** ) &send_datagram );
-	dbg_hook( c_baseanimating_should_skip_animation_frame, should_skip_animation_frame_hk, ( void** ) &should_skip_animation_frame );
+	dbg_hook ( c_baseanimating_should_skip_animation_frame, should_skip_animation_frame_hk, ( void** ) &should_skip_animation_frame );
+	dbg_hook ( nc_sendnetmsg, send_net_msg_hk, ( void** ) &send_net_msg );
+	dbg_hook ( ienginesound_emitsound, emit_sound_hk, ( void** ) &emit_sound );
+	dbg_hook ( global_cs_blood_spray_callback, cs_blood_spray_callback_hk, ( void** ) &cs_blood_spray_callback );
+	dbg_hook( modify_eye_position, modify_eye_pos_hk, ( void** ) &modify_eye_pos );
 	//dbg_hook( updateclientsideanimations, update_clientside_animations_hk, ( void** ) &update_clientside_animations );
 
 	event_handler = std::make_unique< c_event_handler >( );

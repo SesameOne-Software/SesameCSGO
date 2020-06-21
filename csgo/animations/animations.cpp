@@ -14,6 +14,7 @@ namespace local_data {
 	bool was_on_ground = true;
 	int old_tick = 0;
 	float abs = 0.0f;
+	float hit_ground_time = 0.0f;
 	std::array< float, 24 > poses { };
 	std::array< animlayer_t, 15 > overlays { };
 	float old_update = 0.0f;
@@ -42,9 +43,11 @@ namespace animations {
 		std::array< vec3_t, 65 > origin { vec3_t ( FLT_MAX, FLT_MAX, FLT_MAX ) };
 		std::array< vec3_t, 65 > old_origin { vec3_t ( FLT_MAX, FLT_MAX, FLT_MAX ) };
 		std::array< std::array< matrix3x4_t, 128 >, 65 > bones;
+		std::array< std::array< matrix3x4_t, 128 >, 65 > fixed_bones;
 		std::array< std::array< float, 24 >, 65 > poses { };
 		std::array< int, 65 > last_animation_frame { 0 };
 		std::array< int, 65 > old_tick { 0 };
+		std::array< float, 65 > old_eye_yaw { 0.0f };
 		std::array< float, 65 > old_abs { 0.0f };
 		std::array< float, 65 > body_yaw { 0.0f };
 		std::array< std::array< animlayer_t, 15 >, 65 > overlays { };
@@ -102,13 +105,13 @@ void animations::rebuilt::poses::calculate( player_t* pl ) {
 	if ( !state || !layers )
 		return;
 
-	pl->poses ( ) [ N ( 17 ) ] = ( 1.0f - data::overlays [ pl->idx ( ) ][ N ( 6 ) ].m_weight ) * pl->crouch_amount ( );
-	pl->poses ( ) [ N ( 18 ) ] = pl->crouch_amount ( ) * data::overlays [ pl->idx ( ) ][ N ( 6 ) ].m_weight;
-	pl->poses ( ) [ N ( 19 ) ] = pl->crouch_amount ( );
-	pl->poses ( ) [ N ( 6 ) ] = rebuilt::poses::jump_fall ( pl, data::overlays [ pl->idx ( ) ][ N ( 4 ) ].m_cycle );
-	pl->poses ( ) [ N ( 12 ) ] = csgo::normalize( pl->angles ( ).x ) / 90.0f + 0.5f;
-	pl->poses ( ) [ N ( 9 ) ] = 1.0f - ( pl->crouch_speed( ) * pl->crouch_amount( ) );
-	pl->poses ( ) [ N ( 11 ) ] = std::clamp( csgo::normalize ( csgo::normalize ( state->m_eye_yaw ) - csgo::normalize ( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
+	state->m_lean_yaw_pose.set_value ( pl, ( csgo::normalize ( pl->angles ( ).y ) + 180.0f ) / 360.0f );
+	state->m_move_blend_walk_pose.set_value ( pl, ( 1.0f - data::overlays [ pl->idx ( ) ][ N ( 6 ) ].m_weight ) * ( 1.0f - pl->crouch_amount ( ) ) );
+	state->m_move_blend_run_pose.set_value ( pl, ( 1.0f - pl->crouch_amount ( ) ) * data::overlays [ pl->idx ( ) ][ N ( 6 ) ].m_weight );
+	state->m_move_blend_crouch_pose.set_value ( pl, pl->crouch_amount ( ) );
+	state->m_jump_fall_pose.set_value ( pl, rebuilt::poses::jump_fall ( pl, data::overlays [ pl->idx ( ) ][ N ( 4 ) ].m_cycle ) );
+	state->m_body_pitch_pose.set_value ( pl, ( csgo::normalize ( state->m_pitch ) + 90.0f ) / 180.0f );
+	state->m_body_yaw_pose.set_value ( pl, std::clamp ( csgo::normalize ( csgo::normalize ( state->m_eye_yaw ) - csgo::normalize ( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f );
 }
 
 void animations::estimate_vel ( player_t* pl, vec3_t& out ) {
@@ -166,6 +169,13 @@ if ( g::local->simtime ( ) != g::local->old_simtime ( ) ) {
 	csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
 	fake_state.update ( g::sent_cmd.m_angs );
 	csgo::i::globals->m_frametime = backup_frametime;
+
+	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
+
+	if ( !csgo::i::input->m_camera_in_thirdperson ) {
+		fake_state.m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
+		fake_state.m_unk_feet_speed_ratio = g::local->crouch_speed ( );
+	}
 
 	csgo::i::globals->m_framecount = INT_MAX;
 	build_matrix( g::local, reinterpret_cast< matrix3x4_t* > ( &local_data::fake::simulated_mat ), N ( 128 ), N ( 256 ), csgo::i::globals->m_curtime );
@@ -285,30 +295,25 @@ int animations::fix_local ( ) {
 
 	if ( local_data::old_tick != csgo::i::globals->m_tickcount ) {
 		local_data::old_tick = csgo::i::globals->m_tickcount;
-
-		if ( g::local->layers ( ) )
-			g::local->layers ( ) [ 12 ].m_weight = 0.0f;
+		
+		//if ( g::local->flags ( ) & 1 )
+		//	local_data::hit_ground_time = csgo::i::globals->m_curtime;
+		//
+		//if ( g::local->layers ( ) )
+		//	g::local->layers ( ) [ 12 ].m_weight = 0.0f;
+		//
+		//if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
+		//	g::local->layers ( ) [ 6 ].m_weight = 0.0f;
+		//
+		//if ( !( g::local->flags ( ) & 1 ) )
+		//	g::local->layers ( ) [ 4 ].m_cycle = std::fabsf ( csgo::i::globals->m_curtime - local_data::hit_ground_time );
 
 		std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
+		std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 
 		update_animations( g::local );
 
-		if ( g::local->layers ( ) )
-			g::local->layers ( ) [ 12 ].m_weight = 0.0f;
-
-		/* calculate jump_fall pose */ {
-			const auto air_time = local_data::overlays [ 4 ].m_cycle;
-			const auto airtime = ( air_time - 0.72f ) * 1.25f;
-			const auto clamped = airtime >= 0.0f ? std::min< float > ( airtime, 1.0f ) : 0.0f;
-			auto jump_fall = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
-
-			if ( jump_fall >= 0.0f )
-				jump_fall = std::min< float > ( jump_fall, 1.0f );
-
-			state->m_jump_fall_pose.set_value ( g::local, jump_fall );
-		}
-
-		//rebuilt::poses::calculate( g::local );
+		rebuilt::poses::calculate ( g::local );
 
 		if ( g::send_packet ) {
 			local_data::abs = state->m_abs_yaw;
@@ -333,15 +338,18 @@ int animations::fix_local ( ) {
 
 	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
-	if ( !csgo::i::input->m_camera_in_thirdperson ) {
-		state->m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
-		state->m_unk_feet_speed_ratio = g::local->crouch_speed ( );
-	}
+	//if ( !csgo::i::input->m_camera_in_thirdperson ) {
+	//	state->m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
+	//	state->m_unk_feet_speed_ratio = g::local->crouch_speed ( );
+	//}
 
-	const auto backup_frametime = csgo::i::globals->m_frametime;
-	csgo::i::globals->m_frametime = 666.0f;
+	const auto backup_framecount = csgo::i::globals->m_framecount;
+	csgo::i::globals->m_framecount = INT_MAX;
 	animations::build_matrix( g::local, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
-	csgo::i::globals->m_frametime = backup_frametime;
+	csgo::i::globals->m_framecount = backup_framecount;
+
+	if ( g::local->bone_accessor ( ).get_bone_arr_for_write ( ) )
+		std::memcpy ( &data::fixed_bones [ g::local->idx ( ) ], g::local->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof ( matrix3x4_t ) * g::local->bone_count ( ) );
 	//features::lagcomp::cache( g::local );
 }
 
@@ -374,7 +382,7 @@ void animations::simulate_command( player_t* pl ) {
 //}
 
 void animations::simulate ( player_t* pl, bool updated ) {
-	if ( updated && pl->animstate ( ) && pl->layers ( ) && pl->bone_cache ( ) ) {
+	if ( updated && pl->animstate ( ) && pl->layers ( ) && pl->bone_accessor ( ).get_bone_arr_for_write ( ) ) {
 		data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( );
 		data::simulated::flags [ pl->idx ( ) ] = pl->flags ( );
 		data::simulated::velocities [ pl->idx ( ) ] = pl->vel ( );
@@ -385,7 +393,7 @@ void animations::simulate ( player_t* pl, bool updated ) {
 		std::memcpy ( &data::simulated::animstates [ pl->idx ( ) ], pl->animstate ( ), sizeof ( animstate_t ) );
 		std::memcpy ( data::simulated::poses [ pl->idx ( ) ], &pl->poses ( ), sizeof ( float ) * 24 );
 		std::memcpy ( data::simulated::overlays [ pl->idx ( ) ], pl->layers ( ), sizeof ( animlayer_t ) * 15 );
-		std::memcpy ( data::simulated::bones [ pl->idx ( ) ], pl->bone_cache ( ), sizeof ( matrix3x4_t ) * pl->bone_count( ) );
+		std::memcpy ( data::simulated::bones [ pl->idx ( ) ], pl->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof ( matrix3x4_t ) * pl->bone_count( ) );
 
 		data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( );
 
@@ -509,7 +517,8 @@ void animations::simulate ( player_t* pl, bool updated ) {
 
 int animations::fix_pl ( player_t* pl ) {
 	//FIND ( int, safe_point_mode, "rage", "aimbot", "safe point", oxui::object_dropdown );
-	OPTION ( bool, safe_point, "Sesame->A->Rage Aimbot->Accuracy->Safe Point", oxui::object_dropdown );
+	KEYBIND ( safe_point_key, "Sesame->A->Default->Accuracy->Safe Point Key" );
+	OPTION ( bool, safe_point, "Sesame->A->Default->Accuracy->Safe Point", oxui::object_checkbox );
 
 	if ( !pl->valid ( ) || !pl->animstate ( ) || !pl->layers ( ) ) {
 		if ( pl ) {
@@ -555,6 +564,7 @@ int animations::fix_pl ( player_t* pl ) {
 	//}
 
 	//estimate_vel ( pl, pl->vel( ) );
+	pl->set_abs_origin ( pl->origin ( ) );
 	* reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) ) = pl->vel ( );
 	//pl->vel ( ) = *reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) );
 
@@ -577,15 +587,19 @@ int animations::fix_pl ( player_t* pl ) {
 
 		update_animations ( pl );
 
-	data::old_abs [ pl->idx ( ) ] = state->m_abs_yaw;
+		data::old_abs [ pl->idx ( ) ] = state->m_abs_yaw;
+	data::old_eye_yaw [ pl->idx ( ) ] = state->m_eye_yaw;
 
 	//state->m_abs_yaw = data::old_abs [ pl->idx ( ) ];
 	resolver::resolve ( pl, state->m_abs_yaw );
 	state->m_feet_yaw_rate = 0.0f;
 	state->m_feet_yaw = state->m_abs_yaw;
+	//pl->set_abs_angles ( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
+
+	rebuilt::poses::calculate ( pl );
 
 	/* build and store safe point matrix */
-	if ( safe_point ) {
+	if ( safe_point && safe_point_key ) {
 		const auto backup_eye_yaw = state->m_eye_yaw;
 		const auto backup_pose_11 = pl->poses ( ) [ 11 ];
 		const auto abs_delta = csgo::rad2deg ( std::atan2f ( std::sinf ( csgo::deg2rad ( csgo::normalize ( pl->abs_angles ( ).y - pl->lby ( ) ) ) ), std::cosf ( csgo::deg2rad ( csgo::normalize ( pl->abs_angles ( ).y - pl->lby ( ) ) ) ) ) );
@@ -605,27 +619,13 @@ int animations::fix_pl ( player_t* pl ) {
 
 		new_pose_11 = std::copysignf ( 120.0f, -pose_11_val ) * 0.5f;
 
-		const auto backup_frametime = csgo::i::globals->m_frametime;
-		csgo::i::globals->m_frametime = 666.0f;
 		pl->poses ( ) [ 11 ] = ( new_pose_11 / 120.0f ) + 0.5f;
 		animations::build_matrix ( pl, ( matrix3x4_t* ) &data::bones [ pl->idx ( ) ], N ( 128 ), N ( 0x7ff00 ), csgo::i::globals->m_curtime );
 		pl->poses ( ) [ 11 ] = backup_pose_11;
-		csgo::i::globals->m_frametime = backup_frametime;
 
 		for ( auto& bone : data::bones [ pl->idx ( ) ] )
 			bone.set_origin ( bone.origin ( ) - pl->origin( ) );
 	}
-	else {
-		state->m_abs_yaw = data::old_abs [ pl->idx ( ) ];
-		resolver::resolve ( pl, state->m_abs_yaw );
-		state->m_feet_yaw_rate = 0.0f;
-		state->m_feet_yaw = state->m_abs_yaw;
-
-		data::body_yaw [ pl->idx ( ) ] = std::clamp ( csgo::normalize ( csgo::normalize ( state->m_eye_yaw ) - csgo::normalize ( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
-		pl->poses ( ) [ 11 ] = data::body_yaw [ pl->idx ( ) ];
-	}
-
-	rebuilt::poses::calculate ( pl );
 
 	//data::fake_states [ pl->idx( ) ] = *state;
 
@@ -633,8 +633,6 @@ int animations::fix_pl ( player_t* pl ) {
 	//data::old_origin [ pl->idx( ) ] = data::origin [ pl->idx( ) ];
 	//data::origin [ pl->idx( ) ] = pl->origin( );
 
-	/* store unsimulated animation data */
-	data::poses [ pl->idx ( ) ] = pl->poses ( );
 
 	//simulate ( pl, true );
 
@@ -663,17 +661,18 @@ int animations::fix_pl ( player_t* pl ) {
 
 			animations::build_matrix( pl, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
 
-			std::memcpy( &data::bones [ pl->idx( ) ], pl->bone_cache( ), N( sizeof matrix3x4_t ) * pl->bone_count( ) );
+			std::memcpy( &data::bones [ pl->idx( ) ], pl->bone_accessor( ).get_bone_arr_for_write( ), N( sizeof matrix3x4_t ) * pl->bone_count( ) );
 
 			pl->origin( ) = backup_origin;
 			pl->poses( ) = backup_poses;
 			pl->overlays( ) = backup_overlays;
 			*/
 
-				const auto backup_frametime = csgo::i::globals->m_frametime;
-				csgo::i::globals->m_frametime = 666.0f;
-			animations::build_matrix ( pl, nullptr, N ( 128 ), N ( 0x7ff00 ), csgo::i::globals->m_curtime );
-			csgo::i::globals->m_frametime = backup_frametime;
+				//pl->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
+				animations::build_matrix ( pl, nullptr, N ( 128 ), N ( 0x7ff00 ), csgo::i::globals->m_curtime );
+
+				if ( pl->bone_accessor ( ).get_bone_arr_for_write ( ) )
+					std::memcpy ( &data::fixed_bones [ pl->idx ( ) ], pl->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 
 				features::lagcomp::cache( pl );
 
@@ -691,7 +690,6 @@ int animations::run( int stage ) {
 
 		switch ( stage ) {
 		case 5: { /* fix local anims */
-			animations::fake::simulate ( );
 			fix_local( );
 
 				//auto util_playerbyindex = [ ] ( int idx ) {
@@ -728,18 +726,17 @@ int animations::run( int stage ) {
 		case 4: {
 			security_handler::update ( );
 
+			animations::fake::simulate ( );
+
 			for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 				const auto pl = csgo::i::ent_list->get< player_t* > ( i );
 
 				resolver::process_event_buffer ( i );
 
-				if ( !pl || !pl->is_player ( ) )
+				if ( !pl || !pl->is_player ( ) || pl == g::local )
 					continue;
 
-				if ( pl != g::local && pl->team ( ) != g::local->team ( ) )
-					fix_pl ( pl );
-				else if ( pl != g::local )
-					pl->animate ( ) = true;
+				fix_pl ( pl );
 			}
 		} break;
 		case 2: /* store incoming data */ {

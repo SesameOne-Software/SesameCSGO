@@ -37,6 +37,10 @@ namespace hooks {
 	bool __fastcall write_usercmd_hk( REG, int slot, void* buf, int from, int to, bool new_cmd );
 	int __fastcall list_leaves_in_box_hk ( REG, vec3_t& mins, vec3_t& maxs, uint16_t* list, int list_max );
 	void __fastcall paint_traverse_hk ( REG, int ipanel, bool force_repaint, bool allow_force );
+	bool __fastcall send_net_msg_hk ( REG, void* msg, bool force_reliable, bool voice );
+	int __fastcall emit_sound_hk ( REG, void* filter, int ent_idx, int chan, const char* sound_entry, unsigned int sound_entry_hash, const char* sample, float volume, float attenuation, int seed, int flags, int pitch, const vec3_t* origin, const vec3_t* dir, vec3_t* vec_origins, bool update_positions, float sound_time, int speaker_ent, void* sound_params );
+	void __cdecl cs_blood_spray_callback_hk ( const effect_data_t& effect_data );
+	void __fastcall modify_eye_pos_hk ( REG, vec3_t& pos );
 
 	extern decltype( &in_prediction_hk ) in_prediction;
 	extern decltype( &get_viewmodel_fov_hk ) get_viewmodel_fov;
@@ -64,6 +68,10 @@ namespace hooks {
 	extern decltype( &should_skip_animation_frame_hk ) should_skip_animation_frame;
 	extern decltype( &is_hltv_hk ) is_hltv;
 	extern decltype( &paint_traverse_hk ) paint_traverse;
+	extern decltype( &send_net_msg_hk ) send_net_msg;
+	extern decltype( &emit_sound_hk ) emit_sound;
+	extern decltype( &cs_blood_spray_callback_hk ) cs_blood_spray_callback;
+	extern decltype( &modify_eye_pos_hk ) modify_eye_pos;
 
 	bool init( );
 }

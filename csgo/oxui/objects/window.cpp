@@ -61,55 +61,57 @@ void* oxui::window::find_obj( const str& option, object_type type ) {
 
 						if ( group->title == tree [ 3 ] ) {
 							for ( auto& _control : group->objects ) {
-								switch ( _control->type ) {
-								case object_checkbox: {
-									auto as_checkbox = std::static_pointer_cast< checkbox >( _control );
+								if ( _control->type == type ) {
+									switch ( _control->type ) {
+									case object_checkbox: {
+										auto as_checkbox = std::static_pointer_cast< checkbox >( _control );
 
-									if ( as_checkbox->label == tree [ 4 ] )
-										return &as_checkbox->checked;
+										if ( as_checkbox->label == tree [ 4 ] )
+											return &as_checkbox->checked;
 
-									break;
-								}
-								case object_slider: {
-									auto as_slider = std::static_pointer_cast< slider >( _control );
+										break;
+									}
+									case object_slider: {
+										auto as_slider = std::static_pointer_cast< slider >( _control );
 
-									if ( as_slider->label == tree [ 4 ] )
-										return &as_slider->value;
+										if ( as_slider->label == tree [ 4 ] )
+											return &as_slider->value;
 
-									break;
-								}
-								case object_dropdown: {
-									auto as_dropdown = std::static_pointer_cast< dropdown >( _control );
+										break;
+									}
+									case object_dropdown: {
+										auto as_dropdown = std::static_pointer_cast< dropdown >( _control );
 
-									if ( as_dropdown->label == tree [ 4 ] )
-										return &as_dropdown->value;
+										if ( as_dropdown->label == tree [ 4 ] )
+											return &as_dropdown->value;
 
-									break;
-								}
-								case object_textbox: {
-									auto as_textbox = std::static_pointer_cast< textbox >( _control );
+										break;
+									}
+									case object_textbox: {
+										auto as_textbox = std::static_pointer_cast< textbox >( _control );
 
-									if ( as_textbox->label == tree [ 4 ] )
-										return &as_textbox->buf;
+										if ( as_textbox->label == tree [ 4 ] )
+											return &as_textbox->buf;
 
-									break;
-								}
-								case object_keybind: {
-									auto as_keybind = std::static_pointer_cast< keybind >( _control );
+										break;
+									}
+									case object_keybind: {
+										auto as_keybind = std::static_pointer_cast< keybind >( _control );
 
-									if ( as_keybind->label == tree [ 4 ] )
-										return as_keybind.get ( );
+										if ( as_keybind->label == tree [ 4 ] )
+											return as_keybind.get ( );
 
-									break;
-								}
-								case object_colorpicker: {
-									auto as_colorpicker = std::static_pointer_cast< color_picker >( _control );
+										break;
+									}
+									case object_colorpicker: {
+										auto as_colorpicker = std::static_pointer_cast< color_picker >( _control );
 
-									if ( as_colorpicker->label == tree [ 4 ] )
-										return &as_colorpicker->clr;
+										if ( as_colorpicker->label == tree [ 4 ] )
+											return &as_colorpicker->clr;
 
-									break;
-								}
+										break;
+									}
+									}
 								}
 							}
 						}
@@ -313,7 +315,7 @@ void oxui::window::load_state( const str& file ) {
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
 
 						if ( !jitem || !cJSON_IsBool ( jitem ) ) {
-							dbg_print ( cJSON_GetErrorPtr ( ) );
+							dbg_print ( _ ( "Error while parsing checkbox \"%s\": Failed to find object.\n" ), obj_str.c_str( ) );
 							return;
 						}
 
@@ -327,7 +329,7 @@ void oxui::window::load_state( const str& file ) {
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
 
 						if ( !jitem || !cJSON_IsNumber ( jitem ) ) {
-							dbg_print ( cJSON_GetErrorPtr ( ) );
+							dbg_print ( _ ( "Error while parsing slider \"%s\": Failed to find object.\n" ), obj_str.c_str ( ) );
 							return;
 						}
 
@@ -341,7 +343,7 @@ void oxui::window::load_state( const str& file ) {
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
 
 						if ( !jitem || !cJSON_IsNumber ( jitem ) ) {
-							dbg_print ( cJSON_GetErrorPtr ( ) );
+							dbg_print ( _ ( "Error while parsing dropdown \"%s\": Failed to find object.\n" ), obj_str.c_str ( ) );
 							return;
 						}
 
@@ -367,7 +369,7 @@ void oxui::window::load_state( const str& file ) {
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
 
 						if ( !jitem || !cJSON_IsArray ( jitem ) ) {
-							dbg_print ( cJSON_GetErrorPtr ( ) );
+							dbg_print ( _ ( "Error while parsing keybind \"%s\": Failed to find object.\n" ), obj_str.c_str ( ) );
 							return;
 						}
 
@@ -376,7 +378,11 @@ void oxui::window::load_state( const str& file ) {
 
 						cJSON_ArrayForEach ( cur_keybind_data, jitem ) {
 							if ( !cur_keybind_data || !cJSON_IsNumber ( cur_keybind_data ) ) {
-								dbg_print ( cJSON_GetErrorPtr ( ) );
+								if ( !keybind_data_index )
+									dbg_print ( _ ( "Error while parsing keybind data \"%s\": Failed to find key code.\n" ), obj_str.c_str ( ) );
+								else if ( keybind_data_index == 1 )
+									dbg_print ( _ ( "Error while parsing keybind data \"%s\": Failed to find key mode.\n" ), obj_str.c_str ( ) );
+
 								keybind_data_index++;
 								continue;
 							}
@@ -396,9 +402,9 @@ void oxui::window::load_state( const str& file ) {
 						auto obj_str = std::string ( as_colorpicker->label.begin ( ), as_colorpicker->label.end ( ) );
 
 						const auto jitem = cJSON_GetObjectItemCaseSensitive ( jgroup, obj_str.c_str ( ) );
-
+						
 						if ( !jitem || !cJSON_IsArray ( jitem ) ) {
-							dbg_print ( cJSON_GetErrorPtr ( ) );
+							dbg_print ( _ ( "Error while parsing color picker \"%s\": Failed to find object.\n" ), obj_str.c_str ( ) );
 							return;
 						}
 
@@ -407,7 +413,15 @@ void oxui::window::load_state( const str& file ) {
 
 						cJSON_ArrayForEach ( clr_channel, jitem ) {
 							if ( !clr_channel || !cJSON_IsNumber ( clr_channel ) ) {
-								dbg_print ( cJSON_GetErrorPtr ( ) );
+								if ( !clr_channel_num )
+									dbg_print ( _ ( "Error while parsing color picker data \"%s\": Failed to find red channel.\n" ), obj_str.c_str ( ) );
+								else if ( clr_channel_num == 1 )
+									dbg_print ( _ ( "Error while parsing color picker data \"%s\": Failed to find green channel.\n" ), obj_str.c_str ( ) );
+								else if ( clr_channel_num == 2 )
+									dbg_print ( _ ( "Error while parsing color picker data \"%s\": Failed to find blue channel.\n" ), obj_str.c_str ( ) );
+								else if ( clr_channel_num == 3 )
+									dbg_print ( _ ( "Error while parsing color picker data \"%s\": Failed to find alpha channel.\n" ), obj_str.c_str ( ) );
+
 								clr_channel_num++;
 								continue;
 							}

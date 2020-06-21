@@ -4,11 +4,17 @@
 #include "../animations/animations.hpp"
 #include "ragebot.hpp"
 #include "../animations/resolver.hpp"
+#include "autowall.hpp"
+#include <locale>
 
 ID3DXFont* features::esp::indicator_font = nullptr;
+ID3DXFont* features::esp::watermark_font = nullptr;
 ID3DXFont* features::esp::esp_font = nullptr;
 ID3DXFont* features::esp::dbg_font = nullptr;
 float box_alpha = 0.0f;
+
+std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
+std::array< features::esp::esp_data_t, 65 > features::esp::esp_data;
 
 void features::esp::draw_esp_box( int x, int y, int w, int h, bool dormant ) {
 	OPTION ( oxui::color, esp_clr, "Sesame->C->ESP->Colors->Box", oxui::object_colorpicker );
@@ -43,10 +49,14 @@ uint32_t features::esp::color_variable_weight( float val, float cieling ) {
 }
 
 void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, float desync_amount, player_t* pl, bool dormant ) {
-	OPTION( bool, lc, "Sesame->C->ESP->Main->Box", oxui::object_checkbox );
+	//OPTION( bool, lc, "Sesame->C->ESP->Main->Box", oxui::object_checkbox );
 	OPTION( bool, health, "Sesame->C->ESP->Main->Health Bar", oxui::object_checkbox );
 	OPTION( bool, desync, "Sesame->C->ESP->Main->Desync Bar", oxui::object_checkbox );
 	OPTION( bool, weapon, "Sesame->C->ESP->Main->Weapon", oxui::object_checkbox );
+	OPTION ( bool, resolver_confidence, "Sesame->C->ESP->Main->Resolver Confidence", oxui::object_checkbox );
+	OPTION ( bool, reloading_flag, "Sesame->C->ESP->Main->Reloading Flag", oxui::object_checkbox );
+	OPTION ( bool, fakeduck_flag, "Sesame->C->ESP->Main->Fakeduck Flag", oxui::object_checkbox );
+	OPTION ( bool, fatal_baim_flag, "Sesame->C->ESP->Main->Fatal Baim Flag", oxui::object_checkbox );
 
 	OPTION ( oxui::color, name_clr, "Sesame->C->ESP->Colors->Name", oxui::object_colorpicker );
 	OPTION ( oxui::color, indicator_on_clr, "Sesame->C->ESP->Colors->Flag On", oxui::object_colorpicker );
@@ -61,10 +71,32 @@ void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, fl
 	auto cur_y_side = y;
 
 	/* lag-comp break indicator */
-	if ( lc
-		&& animations::data::old_origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX )
-		&& animations::data::origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX ) ) {
-		render::text( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( lagcomp::breaking_lc ( pl ) ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _( L"LC" ), true, false );
+	//if ( lc
+	//	&& animations::data::old_origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX )
+	//	&& animations::data::origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX ) ) {
+	//	render::text( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( lagcomp::breaking_lc ( pl ) ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _( L"LC" ), true, false );
+	//	cur_y_side += 16;
+	//}
+
+	if ( resolver_confidence ) {
+		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( ( animations::resolver::get_confidence ( pl->idx ( ) ) > 55.0f ) ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, std::to_wstring ( static_cast < int > ( animations::resolver::get_confidence ( pl->idx ( ) ) ) ) + _ ( L"%" ), true, false );
+		cur_y_side += 16;
+	}
+
+	//C6 87 ? ? ? ? ? 8B 06 8B CE FF 90
+
+	if ( reloading_flag && esp_data [ pl->idx ( ) ].m_reloading ) {
+		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"RELOADING" ), true, false );
+		cur_y_side += 16;
+	}
+
+	if ( fakeduck_flag && esp_data [ pl->idx ( ) ].m_fakeducking ) {
+		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"FAKEDUCK" ), true, false );
+		cur_y_side += 16;
+	}
+
+	if ( fatal_baim_flag && esp_data [ pl->idx ( ) ].m_fatal ) {
+		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"BAIM FATAL" ), true, false );
 		cur_y_side += 16;
 	}
 
@@ -176,7 +208,8 @@ void features::esp::render( ) {
 	OPTION ( bool, name, "Sesame->C->ESP->Main->Name", oxui::object_checkbox );
 	OPTION( bool, team, "Sesame->C->ESP->Targets->Team", oxui::object_checkbox );
 	OPTION( bool, enemy, "Sesame->C->ESP->Targets->Enemy", oxui::object_checkbox );
-	OPTION( bool, local, "Sesame->C->ESP->Targets->Local", oxui::object_checkbox );
+	OPTION ( bool, local, "Sesame->C->ESP->Targets->Local", oxui::object_checkbox );
+	OPTION( double, esp_fade_time, "Sesame->C->ESP->Main->ESP Fade Time", oxui::object_slider );
 
 	if ( !g::local )
 		return;
@@ -214,7 +247,7 @@ void features::esp::render( ) {
 
 		if ( !team
 			&& e->team ( ) == g::local->team ( )
-			/*&& e != g::local*/ ) {
+			&& e != g::local ) {
 			esp_data [ e->idx ( ) ].m_pl = nullptr;
 			continue;
 		}
@@ -342,7 +375,7 @@ void features::esp::render( ) {
 			esp_data [ e->idx ( ) ].m_first_seen = 0.0f;
 		}
 
-		auto dormant_time = std::max< float > ( 7.0f, 0.1f );
+		auto dormant_time = std::max< float > ( esp_fade_time, 0.1f );
 
 		if ( esp_data [ e->idx ( ) ].m_pl && std::fabsf( csgo::i::globals->m_curtime - esp_data [ e->idx ( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
@@ -357,12 +390,10 @@ void features::esp::render( ) {
 			player_info_t info;
 			csgo::i::engine->get_player_info ( e->idx ( ), &info );
 
-			std::string cname = info.m_name;
-			std::wstring wname = std::wstring( cname.begin( ), cname.end( ) );
-
-			//if ( MultiByteToWideChar ( CP_UTF8, 0, info.m_name, -1, buffer, 36 ) > 0 )
-			//	for ( auto& character : buffer )
-			//		wname.push_back ( ( character >= 65 && character <= 90 ) ? std::tolower ( character ) : character );
+			wchar_t buf [ 36 ] { '\0' };
+			std::wstring wname = _ ( L"" );
+			if ( MultiByteToWideChar ( CP_UTF8, 0, info.m_name, -1, buf, 36 ) > 0 )
+				wname = buf;
 
 			if ( box )
 				draw_esp_box ( left, top, right - left, bottom - top, esp_data [ e->idx ( ) ].m_dormant );

@@ -55,8 +55,10 @@ namespace animations {
 			uint32_t m_clr;
 		};
 
+		float get_confidence ( int pl_idx );
 		float get_dmg ( player_t* pl, int side );
 		bool jittering( player_t* pl );
+		void process_blood ( const effect_data_t& effect_data );
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );

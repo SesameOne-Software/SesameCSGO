@@ -31,8 +31,6 @@ namespace aa {
 }
 
 void features::antiaim::simulate_lby( ) {
-	OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
-
 	lby::tick_before_update = false;
 	lby::in_update = false;
 	lby::balance_update = false;
@@ -47,7 +45,7 @@ void features::antiaim::simulate_lby( ) {
 		return;
 
 	if ( g::local->spawn_time( ) != lby::spawn_time ) {
-		if ( static_cast< int >( tickbase_shift_amount ) )
+		if ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ) )
 			g::shifted_tickbase = g::ucmd->m_cmdnum;
 
 		lby::spawn_time = g::local->spawn_time( );
@@ -108,8 +106,6 @@ int find_freestand_side ( player_t* pl ) {
 }
 
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
-	OPTION ( double, tickbase_shift_amount, "Sesame->A->Rage Aimbot->Main->Maximum Doubletap Ticks", oxui::object_slider );
-
 	/* toggle */
 	OPTION( bool, air, "Sesame->B->Air->Base->In Air", oxui::object_checkbox );
 	OPTION( bool, move, "Sesame->B->Moving->Base->On Moving", oxui::object_checkbox );
@@ -139,10 +135,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( double, lag_send_slow_walk, "Sesame->B->Other->Fakelag->Slow Walk Send Ticks", oxui::object_slider );
 
 	/* pitch */
-	OPTION( double, pitch_air, "Sesame->B->Air->Base->Base Pitch", oxui::object_slider );
-	OPTION( double, pitch_move, "Sesame->B->Moving->Base->Base Pitch", oxui::object_slider );
-	OPTION ( double, pitch_stand, "Sesame->B->Standing->Base->Base Pitch", oxui::object_slider );
-	OPTION( double, pitch_slow_walk, "Sesame->B->Slow Walk->Base->Base Pitch", oxui::object_slider );
+	OPTION( int, pitch_air, "Sesame->B->Air->Base->Pitch", oxui::object_dropdown );
+	OPTION( int, pitch_move, "Sesame->B->Moving->Base->Pitch", oxui::object_dropdown );
+	OPTION ( int, pitch_stand, "Sesame->B->Standing->Base->Pitch", oxui::object_dropdown );
+	OPTION( int, pitch_slow_walk, "Sesame->B->Slow Walk->Base->Pitch", oxui::object_dropdown );
 
 	/* base yaw */
 	OPTION( double, yaw_offset_air, "Sesame->B->Air->Base->Yaw Offset", oxui::object_slider );
@@ -189,8 +185,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( bool, center_real_stand, "Sesame->B->Standing->Desync->Center Real", oxui::object_checkbox );
 	OPTION ( bool, center_real_slow_walk, "Sesame->B->Slow Walk->Desync->Center Real", oxui::object_checkbox );
 
-	KEYBIND ( tickbase_key, "Sesame->A->Rage Aimbot->Main->Doubletap Key" );
-
 	OPTION ( bool, anti_bruteforce_air, "Sesame->B->Air->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
 	OPTION ( bool, anti_bruteforce_move, "Sesame->B->Moving->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
 	OPTION ( bool, anti_bruteforce_stand, "Sesame->B->Standing->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
@@ -207,6 +201,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( int, base_yaw_slow_walk, "Sesame->B->Slow Walk->Base->Base Yaw", oxui::object_dropdown );
 
 	security_handler::update ( );
+
+	const auto choke_limit = csgo::is_valve_server ( ) ? 8 : 16;
 
 	if ( MAKE_KEYBIND ( left_key )->key == -1 && side == 1 )
 		side = 0;
@@ -260,6 +256,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			max_send = lag_send_move;
 		else if ( stand )
 			max_send = lag_send_stand;
+		
+		max_lag = std::clamp ( max_lag, 0, choke_limit );
+		max_send = std::clamp ( max_send, 0, choke_limit );
 
 		if ( aa::old_lag_air != static_cast< int >( lag_air ) ) {
 			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_air );
@@ -283,12 +282,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		/* make up for lost frames */
 		if ( csgo::i::globals->m_frametime > csgo::i::globals->m_ipt )
-			g::shifted_tickbase = ucmd->m_cmdnum + csgo::time2ticks( csgo::i::globals->m_frametime );
+			g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( csgo::time2ticks ( csgo::i::globals->m_frametime ), 0, choke_limit );
 
 		static auto last_final_shift_amount = 0;
-		auto final_shift_amount_max = static_cast< int >( tickbase_shift_amount );
+		auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
 
-		if ( !tickbase_key )
+		if ( !features::ragebot::active_config.dt_key )
 			final_shift_amount_max = 0;
 
 		/* dont shift tickbase with revolver */
@@ -296,11 +295,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			final_shift_amount_max = 0;
 
 		if ( final_shift_amount_max && !last_final_shift_amount )
-			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( tickbase_shift_amount );
+			g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ), 0, choke_limit );
 
 		last_final_shift_amount = final_shift_amount_max;
 
-		max_lag = std::clamp< int > ( max_lag, 1, 17 - final_shift_amount_max );
+		max_lag = std::clamp< int > ( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
 		max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
 
 		if ( aa::choke_counter < max_lag ) {
@@ -319,11 +318,15 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		if ( fd_key && fd_mode ) {
 			aa::was_fd = true;
-			g::send_packet = csgo::i::client_state->choked ( ) >= 16;
-			ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
+			g::send_packet = csgo::i::client_state->choked ( ) >= choke_limit;
+			
+			if ( csgo::is_valve_server ( ) )
+				ucmd->m_buttons = ( ( csgo::i::client_state->choked ( ) > 3 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
+			else
+				ucmd->m_buttons = ( ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
 		}
 		else if ( aa::was_fd ) {
-			g::shifted_tickbase = ucmd->m_cmdnum + 16;
+			g::shifted_tickbase = ucmd->m_cmdnum + choke_limit;
 			aa::was_fd = false;
 		}
 
@@ -427,7 +430,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				ucmd->m_angs.y += yaw_offset_air;
-				ucmd->m_angs.x = pitch_air;
+
+				switch ( pitch_air ) {
+				case 0: break;
+				case 1: ucmd->m_angs.x = 89.0f; break;
+				case 2: ucmd->m_angs.x = -89.0f; break;
+				case 3: ucmd->m_angs.x = 0.0f; break;
+				}
 
 				if ( target_player && anti_freestand_prediction_air ) {
 					const auto desync_side = find_freestand_side ( target_player );
@@ -465,7 +474,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				ucmd->m_angs.y += yaw_offset_slow_walk;
-				ucmd->m_angs.x = pitch_slow_walk;
+				
+				switch ( pitch_slow_walk ) {
+				case 0: break;
+				case 1: ucmd->m_angs.x = 89.0f; break;
+				case 2: ucmd->m_angs.x = -89.0f; break;
+				case 3: ucmd->m_angs.x = 0.0f; break;
+				}
 
 				if ( target_player && anti_freestand_prediction_slow_walk ) {
 					const auto desync_side = find_freestand_side ( target_player );
@@ -501,7 +516,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				ucmd->m_angs.y += yaw_offset_move;
-				ucmd->m_angs.x = pitch_move;
+				
+				switch ( pitch_move ) {
+				case 0: break;
+				case 1: ucmd->m_angs.x = 89.0f; break;
+				case 2: ucmd->m_angs.x = -89.0f; break;
+				case 3: ucmd->m_angs.x = 0.0f; break;
+				}
 
 				if ( target_player && anti_freestand_prediction_move ) {
 					const auto desync_side = find_freestand_side ( target_player );
@@ -538,7 +559,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 
 			ucmd->m_angs.y += yaw_offset_stand;
-			ucmd->m_angs.x = pitch_stand;
+			
+			switch ( pitch_stand ) {
+			case 0: break;
+			case 1: ucmd->m_angs.x = 89.0f; break;
+			case 2: ucmd->m_angs.x = -89.0f; break;
+			case 3: ucmd->m_angs.x = 0.0f; break;
+			}
 
 			if ( target_player && anti_freestand_prediction_stand ) {
 				const auto desync_side = find_freestand_side ( target_player );

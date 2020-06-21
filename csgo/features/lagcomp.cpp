@@ -6,6 +6,7 @@
 #include "../animations/animations.hpp"
 #include "prediction.hpp"
 #include "../animations/resolver.hpp"
+#include "ragebot.hpp"
 
 namespace features::lagcomp::data {
 	std::array< int, 65 > shot_count { 0 };
@@ -41,6 +42,37 @@ const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get
 	return { data::shot_records [ pl->idx( ) ], data::shot_records [ pl->idx ( ) ].m_pl };
 }
 
+bool features::lagcomp::lag_record_t::store ( player_t* pl, const vec3_t& last_origin, bool simulated ) {
+	m_pl = pl;
+
+	if ( !pl->layers ( ) || !pl->bone_cache ( ) || !pl->animstate ( ) || !g::local )
+		return false;
+
+	m_priority = 0;
+	m_extrapolated = false;
+	m_needs_matrix_construction = false;
+	m_tick = csgo::time2ticks ( prediction::predicted_curtime );
+	m_simtime = pl->simtime ( );
+	m_flags = pl->flags ( );
+	m_ang = pl->angles ( );
+	m_origin = pl->origin ( );
+	m_min = pl->mins ( );
+	m_max = pl->maxs ( );
+	m_vel = pl->vel ( );
+	m_lc = pl->origin ( ).dist_to_sqr ( last_origin ) <= 4096.0f;
+	m_failed_resolves = features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve;
+	m_lby = pl->lby ( );
+	m_abs_yaw = pl->abs_angles ( ).y;
+	m_unresolved_abs = animations::data::old_abs [ pl->idx ( ) ];
+
+	std::memcpy ( m_layers, pl->layers ( ), sizeof animlayer_t * 15 );
+	std::memcpy ( m_bones, pl->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof matrix3x4_t * pl->bone_count ( ) );
+	std::memcpy ( &m_state, pl->animstate ( ), sizeof ( animstate_t ) );
+	std::memcpy ( m_poses, &pl->poses ( ), sizeof ( float ) * 24 );
+
+	return true;
+}
+
 bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, bool shot ) {
 	static auto player_rsc_ptr = pattern::search ( _ ( "client.dll" ), _ ( "8B 3D ? ? ? ? 85 FF 0F 84 ? ? ? ? 81 C7" ) ).add ( 2 ).deref ( ).get< uintptr_t > ( );
 
@@ -50,8 +82,15 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 		|| data::all_records [ pl->idx( ) ].empty( )
 		|| pl->dormant( )
 		|| !pl->animstate( ) 
-		|| !pl->bone_cache( ) 
-		|| !pl->layers( ) )
+		|| !pl->bone_accessor ( ).get_bone_arr_for_write ( )
+		|| !pl->layers( )
+		|| data::all_records [ pl->idx ( ) ].size ( ) < 2 )
+		return false;
+
+	const auto simulation_tick_delta = std::clamp( csgo::time2ticks ( pl->simtime( ) - pl->old_simtime( ) ), 0, 17 );
+	auto delta_ticks = ( std::clamp ( csgo::time2ticks( nci->get_latency ( 1 ) + nci->get_latency ( 0 ) ) + csgo::time2ticks( prediction::predicted_curtime ) - csgo::time2ticks ( pl->simtime ( ) + lerp ( ) ), 0, 100 ) ) - simulation_tick_delta;
+
+	if ( delta_ticks <= 0 || simulation_tick_delta <= 0 || data::all_records [ pl->idx ( ) ].size ( ) < 2 )
 		return false;
 
 	const auto extrapolate = [ & ] ( player_t* player, vec3_t& origin, vec3_t& velocity, int& flags, bool on_ground ) -> void {
@@ -130,6 +169,9 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 		for ( auto& bone : rec.m_bones )
 			bone.set_origin ( bone.origin ( ) - old_origin + rec.m_origin );
 
+		rec.m_tick += dtick;
+		rec.m_simtime += dt;
+
 		return false;
 	}
 
@@ -160,7 +202,6 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 		vel_ang = csgo::normalize( vel_deg - csgo::vec_angle( second_vel ).y );
 
 	auto vel_ang_per_tick = vel_ang / ( extrap_rec.m_simtime - previous_rec.m_simtime );
-	auto last_flags = rec.m_flags;
 	auto pred_vel_magnitude = vel_per;
 	auto cur_vel = vel;
 
@@ -175,22 +216,30 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 
 	auto cur_magnitude = vel.length_2d( );
 
-	for ( auto tick = 0; tick < dtick; tick++ ) {
-		const auto extrap_vel_yaw = vel_deg + vel_ang_per_tick * csgo::ticks2time ( 1 );
+	for ( ; delta_ticks >= 0; delta_ticks -= simulation_tick_delta ) {
+		auto ticks_left = simulation_tick_delta;
 
-		if ( rec.m_flags & 1 && pl->flags( ) & 1 )
-			cur_magnitude += magnitude_delta * csgo::ticks2time ( 1 );
-		else if (!( pl->flags ( ) & 1 ))
-			cur_magnitude += predicted_accel.length_2d( ) * csgo::ticks2time ( 1 );
+		do {
+			const auto extrap_vel_yaw = vel_deg + vel_ang_per_tick * csgo::ticks2time ( 1 );
 
-		rec.m_vel.x = std::cosf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
-		rec.m_vel.y = std::sinf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
+			if ( rec.m_flags & 1 && pl->flags ( ) & 1 )
+				cur_magnitude += magnitude_delta * csgo::ticks2time ( 1 );
+			else if ( !( pl->flags ( ) & 1 ) )
+				cur_magnitude += predicted_accel.length_2d ( ) * csgo::ticks2time ( 1 );
 
-		extrapolate ( pl, rec.m_origin, rec.m_vel, rec.m_flags, last_flags & 1 );
+			rec.m_vel.x = std::cosf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
+			rec.m_vel.y = std::sinf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
 
-		last_flags = rec.m_flags;
-		vel_deg = extrap_vel_yaw;
-		cur_magnitude = rec.m_vel.length_2d ( );
+			extrapolate ( pl, rec.m_origin, rec.m_vel, rec.m_flags, pl->flags ( ) & 1 );
+
+			vel_deg = extrap_vel_yaw;
+			cur_magnitude = rec.m_vel.length_2d ( );
+
+			rec.m_tick += 1;
+			rec.m_simtime += csgo::i::globals->m_ipt;
+
+			--ticks_left;
+		} while ( ticks_left );
 	}
 
 	for ( auto& bone : rec.m_bones )
@@ -198,8 +247,6 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 
 	const auto estimated_tick = csgo::time2ticks ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + prediction::predicted_curtime ) - dtick;
 
-	rec.m_tick = estimated_tick;
-	rec.m_simtime = csgo::ticks2time( estimated_tick );
 	rec.m_lc = true;
 	rec.m_extrapolated = true;
 
@@ -213,7 +260,7 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 void features::lagcomp::cache_shot( event_t* event ) {
 	auto shooter = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_player_for_userid( event->get_int( _( "userid" ) ) ) );
 
-	if ( !shooter->valid( ) || shooter == g::local || data::all_records [ shooter->idx( ) ].empty( ) || !g::local->alive( ) || !shooter->layers( ) || !shooter->animstate( ) || !shooter->bone_cache( ) )
+	if ( !shooter->valid( ) || shooter == g::local || data::all_records [ shooter->idx( ) ].empty( ) || !g::local->alive( ) || !shooter->layers( ) || !shooter->animstate( ) || !shooter->bone_accessor ( ).get_bone_arr_for_write ( ) )
 		return;
 
 	auto angle_to = csgo::calc_angle( shooter->origin( ) + shooter->view_offset( ), g::local->origin( ) + g::local->view_offset( ) );
@@ -247,33 +294,33 @@ void features::lagcomp::cache( player_t* pl ) {
 		return;
 
 	/* store simulated information seperately */
-	if ( !data::all_records [ pl->idx ( ) ].empty( ) ) {
-		lag_record_t rec_simulated = data::all_records [ pl->idx ( ) ][ 0 ];
-	
-		if ( extrapolate_record ( pl, rec_simulated ) )
-			data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
-	}
+	//if ( !data::all_records [ pl->idx ( ) ].empty( ) ) {
+	//	lag_record_t rec_simulated = data::all_records [ pl->idx ( ) ][ 0 ];
+	//
+	//	if ( extrapolate_record ( pl, rec_simulated ) )
+	//		data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
+	//}
 
-	OPTION ( bool, fix_fakelag, "Sesame->A->Rage Aimbot->Accuracy->Fix Fakelag", oxui::object_checkbox );
+	OPTION ( bool, fix_fakelag, "Sesame->A->Default->Accuracy->Fix Fakelag", oxui::object_checkbox );
 
-	/* interpolate between records */ {
-		const auto nci = csgo::i::engine->get_net_channel_info ( );
-	
-		if ( nci && data::records [ pl->idx ( ) ].size ( ) >= 2 ) {
-			data::cham_records [ pl->idx ( ) ] = data::records [ pl->idx ( ) ].back ( );
-
-			const auto& current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 1 ];
-			const auto& last_to_current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 2 ];
-			const auto delta_pos = last_to_current.m_origin - current.m_origin;
-			const auto delta_time = last_to_current.m_simtime - current.m_simtime;
-			const auto delta_lag = csgo::i::globals->m_curtime - pl->simtime ( );
-			const auto lerp_time = std::clamp ( delta_lag / delta_time, 0.0f, 1.0f );
-			const auto lerped_delta_pos = delta_pos * lerp_time;
-
-			for ( auto& bone : data::cham_records [ pl->idx ( ) ].m_bones )
-				bone.set_origin ( bone.origin ( ) + lerped_delta_pos );
-		}
-	}
+	///* interpolate between records */ {
+	//	const auto nci = csgo::i::engine->get_net_channel_info ( );
+	//
+	//	if ( nci && data::records [ pl->idx ( ) ].size ( ) >= 2 ) {
+	//		data::cham_records [ pl->idx ( ) ] = data::records [ pl->idx ( ) ].back ( );
+	//
+	//		const auto& current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 1 ];
+	//		const auto& last_to_current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 2 ];
+	//		const auto delta_pos = last_to_current.m_origin - current.m_origin;
+	//		const auto delta_time = last_to_current.m_simtime - current.m_simtime;
+	//		const auto delta_lag = csgo::i::globals->m_curtime - pl->simtime ( );
+	//		const auto lerp_time = std::clamp ( delta_lag / delta_time, 0.0f, 1.0f );
+	//		const auto lerped_delta_pos = delta_pos * lerp_time;
+	//
+	//		for ( auto& bone : data::cham_records [ pl->idx ( ) ].m_bones )
+	//			bone.set_origin ( bone.origin ( ) + lerped_delta_pos );
+	//	}
+	//}
 
 	if ( pl->simtime ( ) <= pl->old_simtime ( ) && fix_fakelag )
 		return;

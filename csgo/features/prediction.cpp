@@ -181,8 +181,8 @@ namespace prediction_util {
 		csgo::i::move_helper->set_host( nullptr );
 		csgo::i::move->reset ( );
 
-		if ( csgo::i::globals->m_frametime > 0.0f )
-			local->tick_base ( )++;
+		//if ( csgo::i::globals->m_frametime > 0.0f )
+		//	local->tick_base ( )++;
 
 		csgo::i::globals->m_curtime = curtime;
 		csgo::i::globals->m_frametime = frametime;

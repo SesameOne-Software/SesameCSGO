@@ -37,10 +37,10 @@ namespace oxui {
 		}
 
 		void reset( ) {
-			binds::create_font ( OSTR ( "Arial" ), 10, false, fonts [ OSTR ( "watermark" ) ] );
-			binds::create_font( OSTR( "Arial" ), 16, false, fonts [ OSTR( "title" ) ] );
-			binds::create_font( OSTR( "Arial" ), 16, false, fonts [ OSTR( "object" ) ] );
-			binds::create_font ( OSTR ( "Arial" ), 16, true, fonts [ OSTR ( "group" ) ] );
+			binds::create_font ( OSTR ( "Segoe UI" ), 10, false, fonts [ OSTR ( "watermark" ) ] );
+			binds::create_font( OSTR( "Segoe UI" ), 18, false, fonts [ OSTR( "title" ) ] );
+			binds::create_font( OSTR( "Segoe UI" ), 18, false, fonts [ OSTR( "object" ) ] );
+			binds::create_font ( OSTR ( "Segoe UI" ), 18, true, fonts [ OSTR ( "group" ) ] );
 
 			D3DXCreateFontW ( csgo::i::dev, 13, 0, FW_NORMAL, 0, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, _ ( L"sesame" ), reinterpret_cast< LPD3DXFONT* > ( &fonts [ OSTR ( "check" ) ] ) );
 			D3DXCreateFontW ( csgo::i::dev, 21, 0, FW_NORMAL, 0, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, _ ( L"sesame" ), reinterpret_cast< LPD3DXFONT* > ( &fonts [ OSTR ( "tab" ) ] ) );

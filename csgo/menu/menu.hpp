@@ -6,6 +6,7 @@
 namespace menu {
 	long __stdcall wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam );
 
+	void draw_watermark ( );
 	bool open( );
 	void* find_obj ( const oxui::str& item, oxui::object_type otype );
 

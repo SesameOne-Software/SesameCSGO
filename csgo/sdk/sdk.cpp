@@ -265,6 +265,11 @@ void csgo::rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, cons
 	ucmd->m_smove = std::sinf ( csgo::deg2rad ( dv ) ) * old_fmove + std::sinf ( csgo::deg2rad ( dv + 90.0f ) ) * old_smove;
 }
 
+bool csgo::is_valve_server ( ) {
+	static auto cs_game_rules = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 74 38" ) ).add ( 1 ).deref( ).get< void* > ( );
+	return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x75 );
+}
+
 bool csgo::init( ) {
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? F3 0F 10 8F ? ? ? ? F3 0F 10 05 ? ? ? ? ? ? ? ? ? 0F 2F C1 0F 86" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );

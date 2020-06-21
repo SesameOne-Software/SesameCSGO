@@ -54,7 +54,8 @@ public:
 	NETVAR( float, postpone_fire_time, "DT_BaseCombatWeapon->m_flPostponeFireReadyTime" );
 	NETVAR( std::uint64_t, world_model_handle, "DT_BaseCombatWeapon->m_hWeaponWorldModel" );
 	NETVAR( float, throw_time, "DT_BaseCSGrenade->m_fThrowTime" );
-	NETVAR( bool, pin_pulled, "DT_BaseCSGrenade->m_bPinPulled" );
+	NETVAR ( bool, pin_pulled, "DT_BaseCSGrenade->m_bPinPulled" );
+	NETVAR( float, throw_strength, "DT_BaseCSGrenade->m_flThrowStrength" );
 	NETVAR( std::uint64_t, original_owner_xuid, "DT_BaseAttributableItem->m_OriginalOwnerXuidLow" );
 	NETVAR( std::uint32_t, original_owner_xuid_low, "DT_BaseAttributableItem->m_OriginalOwnerXuidLow" );
 	NETVAR( std::uint32_t, original_owner_xuid_high, "DT_BaseAttributableItem->m_OriginalOwnerXuidHigh" );
@@ -73,7 +74,7 @@ public:
 
 	void update_accuracy( ) {
 		using fn = void( __thiscall* )( void* );
-		vfunc< fn >( this, 479 )( this );
+		vfunc< fn >( this, 483 )( this );
 	}
 
 	float inaccuracy( );

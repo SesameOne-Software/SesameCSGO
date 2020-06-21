@@ -1,4 +1,4 @@
-#include "../menu/menu.hpp"
+﻿#include "../menu/menu.hpp"
 #include "clantag.hpp"
 
 int iter = 0;
@@ -69,6 +69,11 @@ void features::clantag::run( ucmd_t* ucmd ) {
 			if ( iter < tag.length ( ) ) dynamic_tag [ iter ] = std::toupper ( dynamic_tag [ iter ] );
 			if ( last_tag != dynamic_tag ) { change_clantag ( dynamic_tag.data ( ), dynamic_tag.data ( ) ); }
 			last_tag = dynamic_tag;
+		} break;
+		case 3: {
+			const std::string tag = !( iter % 4 ) ? _ ( "\xE2\x9D\xA4" ) : _ ( "\xE2\x99\xA1" );
+			if ( tag != last_tag ) { change_clantag ( tag.data ( ), tag.data ( ) ); }
+			last_tag = tag;
 		} break;
 		}
 	}

@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <algorithm>
 #include "../globals.hpp"
+#include "../features/esp.hpp"
+#include "../features/ragebot.hpp"
 
 std::shared_ptr< oxui::panel > panel;
 std::shared_ptr< oxui::window > window;
@@ -125,6 +127,132 @@ void refresh_config_list ( ) {
 	}
 }
 
+const oxui::str& get_keybind_mode_name ( oxui::keybind* kb ) {
+	static oxui::str mode_hold = _ ( L"Hold - " );
+	static oxui::str mode_toggle = _ ( L"Toggle - " );
+	static oxui::str mode_always = _ ( L"Always - " );
+
+	switch ( kb->mode ) {
+	case oxui::keybind_mode::hold: return mode_hold; break;
+	case oxui::keybind_mode::toggle: return mode_toggle; break;
+	case oxui::keybind_mode::always: return mode_always; break;
+	}
+
+	return mode_hold;
+};
+
+void menu::draw_watermark ( ) {
+	OPTION ( oxui::color, accent_color, "Sesame->C->Other->GUI->Accent Color", oxui::object_colorpicker );
+	OPTION ( oxui::color, secondary_accent_color, "Sesame->C->Other->GUI->Secondary Accent Color", oxui::object_colorpicker );
+	OPTION ( bool, watermark_enabled, "Sesame->C->Other->GUI->Watermark", oxui::object_checkbox );
+	OPTION ( bool, keybind_list_enabled, "Sesame->C->Other->GUI->Keybind List", oxui::object_checkbox );
+
+	oxui::theme.main = oxui::theme.title_bar = accent_color;
+	oxui::theme.title_bar_low = secondary_accent_color;
+	oxui::theme.main.a = oxui::theme.title_bar.a = oxui::theme.title_bar_low.a = 255;
+
+	auto cur_popups_y = 24;
+
+	int w = 0, h = 0;
+	render::screen_size ( w, h );
+
+	const auto dim = oxui::rect { 0, 0, 330, 35 };
+
+	if ( watermark_enabled ) {
+		const auto bounds = oxui::rect { w - dim.w - 24, cur_popups_y, dim.w, dim.h };
+
+		render::rounded_rect ( bounds.x, bounds.y, dim.h, dim.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.main.r, oxui::theme.main.g, oxui::theme.main.b, oxui::theme.main.a ), false );
+		render::rounded_rect ( bounds.x + dim.h + 12, bounds.y, dim.w - ( dim.h + 12 ), dim.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.bg.r, oxui::theme.bg.g, oxui::theme.bg.b, oxui::theme.bg.a ), false );
+		render::rounded_rect ( bounds.x + dim.h + 12, bounds.y, dim.w - ( dim.h + 12 ), dim.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.container_bg.r, oxui::theme.container_bg.g, oxui::theme.container_bg.b, oxui::theme.container_bg.a ), true );
+
+		const auto target_logo_dim = oxui::pos { static_cast < int > ( ( 565.5 / 6 ) / 3 ),static_cast < int > ( 500.25 / 20 ) };
+		const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 541.0f;
+		const auto logo_dim = oxui::pos { static_cast < int > ( 761.0f * logo_scale ), static_cast < int > ( 541.0f * logo_scale ) };
+
+		render::texture ( panel->sprite, panel->tex, ( bounds.x + dim.h / 2 ) - logo_dim.x + logo_dim.x / 3, ( bounds.y + dim.h / 2 - 4 ) - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 0.70f );
+
+		static float last_counter_update = 0.0f;
+		static int last_framerate = 0;
+
+		if ( std::fabs ( csgo::i::globals->m_curtime - last_counter_update ) > 1.0f ) {
+			last_framerate = static_cast< int >( 1.0f / csgo::i::globals->m_abs_frametime );
+			last_counter_update = csgo::i::globals->m_curtime;
+		}
+
+		const auto framerate_str = std::to_wstring ( std::clamp ( last_framerate, 0, 999 ) );
+
+		/* fps counter */
+		render::dim fps_dim;
+		render::dim fps_dim1;
+		render::dim key_dim;
+
+		render::text_size ( features::esp::watermark_font, framerate_str, fps_dim );
+		render::text_size ( features::esp::watermark_font, _ ( L"FPS" ), fps_dim1 );
+		render::text_size ( reinterpret_cast < void* >( panel->fonts [ OSTR ( "tab" ) ] ), _ ( L"O" ), key_dim );
+
+		render::text ( bounds.x + dim.h + 12 + 12, bounds.y + dim.h / 2 - fps_dim.h / 2, ( last_framerate < 64 ) ? D3DCOLOR_RGBA ( 235, 64, 52, 255 ) : D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::watermark_font, std::to_wstring ( last_framerate ), true );
+		const auto fps_w = fps_dim.w;
+		render::text_size ( features::esp::watermark_font, _ ( L"FPS" ), fps_dim );
+		render::text ( bounds.x + dim.h + 12 + 12 + fps_w + 6, bounds.y + dim.h / 2 - fps_dim.h / 2, ( last_framerate < 64 ) ? D3DCOLOR_RGBA ( 235, 64, 52, 255 ) : D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::watermark_font, _ ( L"FPS" ), true );
+		
+		/* server information */
+		render::dim info_str;
+		render::text_size ( features::esp::dbg_font, csgo::is_valve_server ( ) ? _ ( L"VALVE DS" ) : _ ( L"COMMUNITY" ), info_str );
+		render::text ( bounds.x + dim.h + 12 + 12 + 75, bounds.y + dim.h / 2 - key_dim.h / 2, csgo::is_valve_server ( ) ? D3DCOLOR_RGBA ( 98, 235, 70, 255 ) : D3DCOLOR_RGBA ( 235, 64, 52, 255 ), reinterpret_cast < void* >( panel->fonts [ OSTR ( "check" ) ] ), _ ( L"O" ), true );
+		render::text ( bounds.x + dim.h + 12 + 12 + 75 + key_dim.w / 2 - info_str.w / 2, bounds.y + dim.h / 2 + 3, csgo::is_valve_server ( ) ? D3DCOLOR_RGBA ( 98, 235, 70, 255 ) : D3DCOLOR_RGBA ( 235, 64, 52, 255 ), features::esp::dbg_font, csgo::is_valve_server ( ) ? _ ( L"VALVE DS" ) : _ ( L"COMMUNITY" ), true );
+
+		/* clock */
+		std::time_t t = std::time ( nullptr );
+		wchar_t wstr [ 100 ];
+
+		if ( std::wcsftime ( wstr, 100, L"%c", std::localtime ( &t ) ) ) {
+			render::dim date_dim;
+			render::text_size ( features::esp::watermark_font, wstr, date_dim );
+			render::text ( w - date_dim.w - 12 - 12 - 6, bounds.y + dim.h / 2 - fps_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::watermark_font, wstr, true );
+		}
+
+		cur_popups_y += bounds.h + 24;
+	}
+
+	/* active binds */
+	KEYBIND ( safe_point_key, "Sesame->A->Default->Accuracy->Safe Point Key" );
+	KEYBIND ( tickbase_key, "Sesame->A->Default->Main->Doubletap Key" );
+	KEYBIND ( slow_walk_key, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Key" );
+	KEYBIND ( fakeduck_key, "Sesame->B->Other->Other->Fakeduck Key" );
+	KEYBIND ( inverter_key, "Sesame->B->Other->Other->Desync Flip Key" );
+	KEYBIND ( third_person_key, "Sesame->E->Effects->Main->Third Person Key" );
+
+	if ( keybind_list_enabled ) {
+		std::vector < std::pair< oxui::keybind_mode /* keybind mode */, oxui::str /* keybind string */ > > active_binds { };
+
+		if ( features::ragebot::active_config.dt_key ) active_binds.push_back ( { keybind_obj_tickbase_key->mode, get_keybind_mode_name ( keybind_obj_tickbase_key ) + keybind_obj_tickbase_key->label.substr ( 0, keybind_obj_tickbase_key->label.find ( _ ( L" Key" ) ) ) } );
+		if ( slow_walk_key ) active_binds.push_back ( { keybind_obj_slow_walk_key->mode,get_keybind_mode_name ( keybind_obj_slow_walk_key ) + keybind_obj_slow_walk_key->label.substr ( 0, keybind_obj_slow_walk_key->label.find ( _ ( L" Key" ) ) ) } );
+		if ( fakeduck_key ) active_binds.push_back ( { keybind_obj_fakeduck_key->mode, get_keybind_mode_name ( keybind_obj_fakeduck_key ) + keybind_obj_fakeduck_key->label.substr ( 0, keybind_obj_fakeduck_key->label.find ( _ ( L" Key" ) ) ) } );
+		if ( inverter_key ) active_binds.push_back ( { keybind_obj_inverter_key->mode, get_keybind_mode_name ( keybind_obj_inverter_key ) + keybind_obj_inverter_key->label.substr ( 0, keybind_obj_inverter_key->label.find ( _ ( L" Key" ) ) ) } );
+		if ( third_person_key ) active_binds.push_back ( { keybind_obj_third_person_key->mode, get_keybind_mode_name ( keybind_obj_third_person_key ) + keybind_obj_third_person_key->label.substr ( 0, keybind_obj_third_person_key->label.find ( _ ( L" Key" ) ) ) } );
+		if ( safe_point_key ) active_binds.push_back ( { keybind_obj_safe_point_key->mode, get_keybind_mode_name ( keybind_obj_safe_point_key ) + keybind_obj_safe_point_key->label.substr ( 0, keybind_obj_safe_point_key->label.find ( _ ( L" Key" ) ) ) } );
+
+		std::sort ( active_binds.begin ( ), active_binds.end ( ), [ ] ( const std::pair< oxui::keybind_mode /* keybind mode */, oxui::str /* keybind string */ >& lhs, const std::pair< oxui::keybind_mode /* keybind mode */, oxui::str /* keybind string */ >& rhs ) {
+			return static_cast < int > ( lhs.first ) > static_cast < int > ( rhs.first );
+		} );
+
+		const auto keybinds_bounds = oxui::rect { w - dim.w - 24, cur_popups_y, dim.w, ( 18 + 4 ) * static_cast < int > ( active_binds.size ( ) ) + 12 * 2 };
+
+		render::rounded_rect ( keybinds_bounds.x, keybinds_bounds.y, keybinds_bounds.w, keybinds_bounds.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.bg.r, oxui::theme.bg.g, oxui::theme.bg.b, oxui::theme.bg.a ), false );
+		render::rounded_rect ( keybinds_bounds.x, keybinds_bounds.y, keybinds_bounds.w, keybinds_bounds.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.container_bg.r, oxui::theme.container_bg.g, oxui::theme.container_bg.b, oxui::theme.container_bg.a ), true );
+
+		auto cur_y_pos = keybinds_bounds.y + 12;
+
+		for ( auto& bind_entry : active_binds ) {
+			render::dim bind_label_dim;
+			render::text_size ( features::esp::watermark_font, bind_entry.second, bind_label_dim );
+			render::text ( keybinds_bounds.x + keybinds_bounds.w / 2 - bind_label_dim.w / 2, cur_y_pos + 18 / 2 - bind_label_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::watermark_font, bind_entry.second, true );
+
+			cur_y_pos += 18 + 4;
+		}
+	}
+}
+
 bool menu::open( ) {
 	return window->open;
 }
@@ -178,39 +306,40 @@ void menu::init( ) {
 			window->bind_key( VK_INSERT );
 
 			auto aimbot = std::make_shared< oxui::tab > ( OSTR ( "A" ) ); {
-				auto legit_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Legit Aimbot" ) ); {
-					aimbot->add_element ( legit_aimbot );
+				auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 1.0f, 0.2f } ); {
+					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fix Fakelag" ) ) );
+					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolve Desync" ) ) );
+					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Safe Point" ) ) );
+					accuracy->add_element ( std::make_shared< oxui::keybind > ( OSTR ( "Safe Point Key" ) ) );
 				}
 
-				auto rage_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Rage Aimbot" ) ); {
+				auto main_switch = std::make_shared< oxui::checkbox > ( OSTR ( "Main Switch" ) );
+				auto knife_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Knife Bot" ) );
+				auto zeus_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Zeus Bot" ) );
+				auto dt_key = std::make_shared< oxui::keybind > ( OSTR ( "Doubletap Key" ) );
+
+				auto default_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Default" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Main Switch" ) ) );
+						main->add_element ( main_switch );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Revolver" ) ) );
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Knife Bot" ) ) );
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Zeus Bot" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
-						main->add_element ( std::make_shared< oxui::keybind > ( OSTR ( "Doubletap Key" ) ) );
+						main->add_element ( dt_key );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
 
-						rage_aimbot->add_element ( main );
+						default_aimbot->add_element ( main );
 					}
 
-					auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 1.0f, 0.2f } ); {
-						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fix Fakelag" ) ) );
-						//accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Predict Fakelag" ) ) );
-						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolve Desync" ) ) );
-						//accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Beta Resolver" ) ) );
-						accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Safe Point" ) ) );
-
-						rage_aimbot->add_element ( accuracy );
-					}
+					default_aimbot->add_element ( accuracy );
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -219,7 +348,7 @@ void menu::init( ) {
 						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
 						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
 
-						rage_aimbot->add_element ( target_selection );
+						default_aimbot->add_element ( target_selection );
 					}
 
 					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
@@ -231,10 +360,293 @@ void menu::init( ) {
 						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
 						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
 
-						rage_aimbot->add_element ( hitscan );
+						default_aimbot->add_element ( hitscan );
 					}
 
-					aimbot->add_element ( rage_aimbot );
+					aimbot->add_element ( default_aimbot );
+				}
+
+				auto pistol_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Pistol" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
+						main->add_element ( dt_key );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
+
+						pistol_aimbot->add_element ( main );
+					}
+
+					pistol_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						pistol_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						pistol_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( pistol_aimbot );
+				}
+
+				auto revolver_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Revolver" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Revolver" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+
+						revolver_aimbot->add_element ( main );
+					}
+
+					revolver_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						revolver_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						revolver_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( revolver_aimbot );
+				}
+
+				auto rifle_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Rifle" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
+						main->add_element ( dt_key );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+
+						rifle_aimbot->add_element ( main );
+					}
+
+					rifle_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						rifle_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						rifle_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( rifle_aimbot );
+				}
+
+				auto awp_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "AWP" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+
+						awp_aimbot->add_element ( main );
+					}
+
+					awp_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						awp_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						awp_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( awp_aimbot );
+				}
+
+				auto auto_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Auto" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
+						main->add_element ( dt_key );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
+
+						auto_aimbot->add_element ( main );
+					}
+
+					auto_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						auto_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						auto_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( auto_aimbot );
+				}
+
+				auto scout_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Scout" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+						main->add_element ( main_switch );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Shoot" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Scope" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
+						main->add_element ( knife_bot );
+						main->add_element ( zeus_bot );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+
+						scout_aimbot->add_element ( main );
+					}
+
+					scout_aimbot->add_element ( accuracy );
+
+					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If In Air" ) ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim After X Misses" ), 0.0, 0.0, 4.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Head Pointscale" ), 0.0, 0.0, 100.0 ) );
+						target_selection->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Body Pointscale" ), 0.0, 0.0, 100.0 ) );
+
+						scout_aimbot->add_element ( target_selection );
+					}
+
+					auto hitscan = std::make_shared< oxui::group > ( OSTR ( "Hitboxes" ), std::vector< float > { 0.5f, 0.6f, 0.5f, 0.4f }, true ); {
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Head" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Neck" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chest" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Pelvis" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Arms" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legs" ) ) );
+						hitscan->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Feet" ) ) );
+
+						scout_aimbot->add_element ( hitscan );
+					}
+
+					aimbot->add_element ( scout_aimbot );
 				}
 
 				window->add_tab ( aimbot );
@@ -244,7 +656,7 @@ void menu::init( ) {
 				auto air_aa = std::make_shared< oxui::subtab > ( OSTR ( "Air" ) ); {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "In Air" ) ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Pitch" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Down" ), OSTR ( "Up" ), OSTR ( "Zero" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
@@ -276,7 +688,7 @@ void menu::init( ) {
 				auto moving_aa = std::make_shared< oxui::subtab > ( OSTR ( "Moving" ) ); {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Moving" ) ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Pitch" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Down" ), OSTR ( "Up" ), OSTR ( "Zero" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
@@ -308,7 +720,7 @@ void menu::init( ) {
 				auto slowwalk_aa = std::make_shared< oxui::subtab > ( OSTR ( "Slow Walk" ) ); {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Slow Walk" ) ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Pitch" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Down" ), OSTR ( "Up" ), OSTR ( "Zero" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
@@ -347,7 +759,7 @@ void menu::init( ) {
 				auto ground_aa = std::make_shared< oxui::subtab > ( OSTR ( "Standing" ) ); {
 					auto base = std::make_shared< oxui::group > ( OSTR ( "Base" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						base->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "On Standing" ) ) );
-						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Base Pitch" ), 0.0, -89.0, 89.0 ) );
+						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Pitch" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Down" ), OSTR ( "Up" ), OSTR ( "Zero" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
@@ -414,8 +826,13 @@ void menu::init( ) {
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Box" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Health Bar" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Name" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolver Confidence" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Weapon" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Desync Bar" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Reloading Flag" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fakeduck Flag" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fatal Baim Flag" ) ) );
+						settings->add_element ( std::make_shared< oxui::slider > ( OSTR ( "ESP Fade Time" ), 0.0, 0.0, 16.0 ) );
 
 						esp->add_element ( settings );
 					}
@@ -448,6 +865,8 @@ void menu::init( ) {
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Flat" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "XQZ" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Backtrack" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Hit Matrix" ) ) );
+						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fake Matrix" ) ) );
 
 						chams->add_element ( settings );
 					}
@@ -462,6 +881,7 @@ void menu::init( ) {
 
 					auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
 						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 255, 232, 45 ) ) );
+						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 155, 255, 232, 45 ) ) );
 						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "XQZ" ), oxui::color ( 155, 163, 255, 45 ) ) );
 						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 255 ) ) );
 						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Fake" ), oxui::color ( 255, 0, 119, 45 ) ) );
@@ -501,7 +921,7 @@ void menu::init( ) {
 				}
 
 				auto other = std::make_shared< oxui::subtab > ( OSTR ( "Other" ) ); {
-					auto settings = std::make_shared< oxui::group > ( OSTR ( "Removals" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
+					auto settings = std::make_shared< oxui::group > ( OSTR ( "Removals" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "No Smoke" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "No Flash" ) ) );
 						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "No Scope" ) ) );
@@ -517,11 +937,36 @@ void menu::init( ) {
 						other->add_element ( settings );
 					}
 
-					auto colors = std::make_shared< oxui::group > ( OSTR ( "World" ), std::vector< float > { 0.0f, 0.5f, 1.0f, 0.5f } ); {
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "World Color" ), oxui::color ( 255, 255, 255, 255 ) ) );
-						colors->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Prop Alpha" ), 255.0, 0.0, 255.0 ) );
+					auto world = std::make_shared< oxui::group > ( OSTR ( "World" ), std::vector< float > { 0.0f, 0.333f, 1.0f, 0.333f } ); {
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Bullet Tracers" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Bullet Impacts" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Shot Logs" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Trajectories" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Bounces" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Radii" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Spread Circle" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Gradient Spread Circle" ) ) );
+						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ) } ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Tracer" ), oxui::color ( 161, 66, 245, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Impact" ), oxui::color ( 201, 145, 250, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Grenade Trajectory" ), oxui::color ( 161, 66, 245, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Grenade Bounce" ), oxui::color ( 201, 145, 250, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Grenade Radius" ), oxui::color ( 245, 20, 20, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Spread Circle Color" ), oxui::color ( 245, 20, 20, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "World Color" ), oxui::color ( 255, 255, 255, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Prop Color" ), oxui::color ( 255, 255, 255, 255 ) ) );
+						world->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Nade Path Fade Time" ), 0.0, 0.0, 20.0 ) );
 
-						other->add_element ( colors );
+						other->add_element ( world );
+					}
+
+					auto menu = std::make_shared< oxui::group > ( OSTR ( "GUI" ), std::vector< float > { 0.0f, 0.666f, 1.0f, 0.333f } ); {
+						menu->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Watermark" ) ) );
+						menu->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Keybind List" ) ) );
+						menu->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Accent Color" ), oxui::theme.main ) );
+						menu->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Secondary Accent Color" ), oxui::theme.title_bar_low ) );
+
+						other->add_element ( menu );
 					}
 
 					visuals->add_element ( other );
@@ -579,7 +1024,9 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Ragdoll Force" ), 1.0, 0.0, 25.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Clantag" ) ) );
 						main->add_element ( std::make_shared< oxui::textbox > ( OSTR ( "Clantag Text" ), OSTR ( "sesame.one" ) ) );
-						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Clantag Animation" ), std::vector< oxui::str > { OSTR ( "Static" ), OSTR ( "Marquee" ), OSTR ( "Capitalize" ) } ) );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Clantag Animation" ), std::vector< oxui::str > { OSTR ( "Static" ), OSTR ( "Marquee" ), OSTR ( "Capitalize" ), OSTR ( "Heart" ) } ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Revolver Cock Volume" ), 1.0, 0.0, 1.0 ) ); /* Weapon_Revolver.Prepare */
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Weapon Volume" ), 1.0, 0.0, 1.0 ) ); /* Weapon_ */
 
 						effects->add_element ( main );
 					}

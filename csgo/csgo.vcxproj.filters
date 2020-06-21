@@ -332,6 +332,15 @@
     <ClInclude Include="security\erase.hpp">
       <Filter>Header Files\security</Filter>
     </ClInclude>
+    <ClInclude Include="features\nade_prediction.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\effects.hpp">
+      <Filter>Header Files\sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="features\other_visuals.hpp">
+      <Filter>Header Files\features</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -456,6 +465,12 @@
     </ClCompile>
     <ClCompile Include="oxui\objects\subtab.cpp">
       <Filter>Source Files\oxui\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="features\nade_prediction.cpp">
+      <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="features\other_visuals.cpp">
+      <Filter>Source Files\features</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

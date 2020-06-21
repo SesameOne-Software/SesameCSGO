@@ -1,6 +1,7 @@
 #include <array>
 #include "player.hpp"
 #include "sdk.hpp"
+#include "../hooks.hpp"
 
 void animstate_pose_param_cache_t::set_value( player_t* e, float val ) {
 	if ( m_idx >= 0 )
@@ -79,13 +80,17 @@ animstate_t* player_t::animstate( ) {
 }
 
 vec3_t player_t::eyes( ) {
-	using weapon_shootpos_fn = float* ( __thiscall* )( void*, vec3_t* );
-	static auto fn = pattern::search( _( "client.dll" ), _( "55 8B EC 56 8B 75 08 57 8B F9 56 8B 07 FF 90" ) ).get< weapon_shootpos_fn >( );
+	static auto modify_eye_position = pattern::search ( _ ( "client.dll" ), _ ( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 1 ).resolve_rip ( ).get<void*> ( );
 
-	vec3_t ret;
-	fn( this, &ret );
+	vec3_t pos = vec3_t( 0.0f, 0.0f, 0.0f );
 
-	return ret;
+	/* eye position */
+	vfunc< void ( __thiscall* )( player_t*, vec3_t& ) > ( this, 168 ) ( this, pos );
+
+	if ( *reinterpret_cast< uint8_t* > ( uintptr_t ( this ) + 0x3AB4 ) && animstate ( ) )
+		hooks::modify_eye_pos_hk ( animstate ( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
+
+	return pos;
 }
 
 std::uint32_t& player_t::bone_count( ) {

@@ -143,7 +143,7 @@ void features::glow::cache_entities( ) {
 
 		if ( !team
 			&& entity->team ( ) == g::local->team ( )
-			/*&& e != g::local*/ )
+			&& entity != g::local )
 			continue;
 
 		if ( !local

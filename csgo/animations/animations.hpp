@@ -18,9 +18,11 @@ namespace animations {
 		extern std::array< vec3_t, 65 > origin;
 		extern std::array< vec3_t, 65 > old_origin;
 		extern std::array< std::array< matrix3x4_t, 128 >, 65 > bones;
+		extern std::array< std::array< matrix3x4_t, 128 >, 65 > fixed_bones;
 		extern std::array< std::array< float, 24 >, 65 > poses;
 		extern std::array< int, 65 > last_animation_frame;
 		extern std::array< int, 65 > old_tick;
+		extern std::array< float, 65 > old_eye_yaw;
 		extern std::array< float, 65 > old_abs;
 		extern std::array< float, 65 > body_yaw;
 		extern std::array< std::array< animlayer_t, 15 >, 65 > overlays;

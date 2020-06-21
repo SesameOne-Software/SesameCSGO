@@ -4,6 +4,43 @@
 
 namespace features {
 	namespace ragebot {
+		struct weapon_config_t {
+			bool main_switch,
+				choke_on_shot,
+				silent,
+				auto_shoot,
+				auto_scope,
+				auto_slow,
+				auto_revolver,
+				knife_bot,
+				zeus_bot,
+				dt_teleport,
+				baim_lethal,
+				baim_air,
+				scan_head,
+				scan_neck,
+				scan_chest,
+				scan_pelvis,
+				scan_arms,
+				scan_legs,
+				scan_feet,
+				safe_point;
+
+			double min_dmg,
+				hit_chance,
+				dt_hit_chance,
+				max_dt_ticks,
+				baim_after_misses,
+				head_pointscale,
+				body_pointscale,
+				baim_if_resolver_confidence_less_than;
+
+			int inherit_from,
+				dt_key;
+		};
+		
+		extern weapon_config_t active_config;
+
 		struct misses_t {
 			int spread = 0;
 			int bad_resolve = 0;
@@ -13,6 +50,7 @@ namespace features {
 		static bool revolver_firing = false;
 		static bool revolver_cocking = false;
 
+		void get_weapon_config ( weapon_config_t& const config );
 		lagcomp::lag_record_t& get_lag_rec ( int pl );
 		int& get_target_idx ( );
 		player_t*& get_target ( );

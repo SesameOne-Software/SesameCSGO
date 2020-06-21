@@ -1,5 +1,23 @@
 #include "autowall.hpp"
 
+void clip_trace_to_players_fast ( player_t* pl, const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
+	trace_t trace;
+	ray_t ray;
+
+	ray.init ( start, end );
+
+	if ( !pl || !pl->alive ( ) || pl->dormant ( ) )
+		return;
+
+	if ( filter && !filter->should_hit_ent ( pl, mask ) )
+		return;
+
+	csgo::i::trace->clip_ray_to_entity ( ray, mask | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
+
+	if ( trace.m_fraction < tr->m_fraction )
+		*tr = trace;
+}
+
 void autowall::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace ) {
 	static auto clip_trace_to_players_add = pattern::search( "client.dll", "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ).get<void*>( );
 
@@ -74,7 +92,8 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 	if ( !weapon_data )
 		return false;
 
-	auto trace_len = data.src.dist_to ( end_pos );
+	// auto trace_len = data.src.dist_to ( end_pos );
+	auto trace_len = weapon_data->m_range;
 	auto enter_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 	auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
 
@@ -90,7 +109,7 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 			auto end = data.direction * data.trace_length_remaining + data.src;
 
 			csgo::util_traceline( data.src, end, 0x4600400B, entity, &data.enter_trace );
-			clip_trace_to_players( data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
+			clip_trace_to_players_fast ( dst_entity, data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
 
 			if ( data.enter_trace.m_fraction == 1.0f && hitgroup != -1 ) {
 				scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );

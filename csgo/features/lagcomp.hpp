@@ -12,64 +12,20 @@ namespace features {
 		struct lag_record_t {
 			player_t* m_pl;
 			int m_tick, m_flags, m_priority;
-			float m_simtime;
+			float m_simtime, m_lby, m_abs_yaw, m_unresolved_abs;
 			bool m_lc, m_needs_matrix_construction, m_extrapolated;
 			vec3_t m_min, m_max, m_vel, m_origin, m_ang;
 			animlayer_t m_layers [ 15 ];
 			animstate_t m_state;
 			matrix3x4_t m_bones [ 128 ];
 			float m_poses [ 24 ];
+			int m_failed_resolves;
 
 			bool operator==( const lag_record_t& otr ) {
 				return m_tick == otr.m_tick;
 			}
 
-			bool store( player_t* pl, const vec3_t& last_origin, bool simulated = false ) {
-				if ( simulated ) {
-					m_pl = pl;
-					m_needs_matrix_construction = false;
-					m_tick = csgo::time2ticks( prediction::predicted_curtime );
-					m_simtime = animations::data::simulated::animtimes [ pl->idx ( ) ];
-					m_flags = animations::data::simulated::flags [ pl->idx ( ) ];
-					m_ang = pl->angles ( );
-					m_origin = animations::data::simulated::origins [ pl->idx ( ) ];
-					m_min = pl->mins ( );
-					m_max = pl->maxs ( );
-					m_vel = animations::data::simulated::velocities [ pl->idx ( ) ];
-					m_lc = true;
-					
-					std::memcpy ( &m_state, &animations::data::simulated::animstates [ pl->idx ( ) ], sizeof ( animstate_t ) );
-					std::memcpy ( m_layers, animations::data::simulated::overlays [ pl->idx ( ) ], sizeof ( animlayer_t [ 15 ] ) );
-					std::memcpy ( m_bones, animations::data::simulated::bones [ pl->idx ( ) ], sizeof ( matrix3x4_t [ 128 ] ) );
-					std::memcpy ( m_poses, animations::data::simulated::poses [ pl->idx ( ) ], sizeof ( float [ 24 ] ) );
-
-					return true;
-				}
-
-				m_pl = pl;
-
-				if ( !pl->layers( ) || !pl->bone_cache( ) || !pl->animstate( ) || !g::local )
-					return false;
-
-				m_priority = 0;
-				m_needs_matrix_construction = false;
-				m_tick = csgo::time2ticks ( prediction::predicted_curtime );
-				m_simtime = pl->simtime( );
-				m_flags = pl->flags( );
-				m_ang = pl->angles( );
-				m_origin = pl->origin( );
-				m_min = pl->mins( );
-				m_max = pl->maxs( );
-				m_vel = pl->vel( );
-				m_lc = pl->origin( ).dist_to_sqr( last_origin ) <= 4096.0f;
-
-				std::memcpy( m_layers, pl->layers( ), sizeof animlayer_t * 15 );
-				std::memcpy ( m_bones, pl->bone_cache ( ), sizeof matrix3x4_t * pl->bone_count( ) );
-				std::memcpy ( &m_state, pl->animstate( ), sizeof ( animstate_t ) );
-				std::memcpy( m_poses, &pl->poses( ), sizeof( float ) * 24 );
-
-				return true;
-			}
+			bool store ( player_t* pl, const vec3_t& last_origin, bool simulated = false );
 
 			bool valid( ) {
 				const auto nci = csgo::i::engine->get_net_channel_info ( );
@@ -84,7 +40,10 @@ namespace features {
 			}
 
 			void backtrack( ucmd_t* ucmd ) {
-				ucmd->m_tickcount = csgo::time2ticks ( m_simtime + lerp ( ) );
+			//	if ( !m_extrapolated )
+					ucmd->m_tickcount = csgo::time2ticks ( m_simtime + lerp ( ) );
+				//else
+				//	ucmd->m_tickcount = csgo::time2ticks ( prediction::predicted_curtime + lerp ( ) );
 			}
 
 			void extrapolate( ) {
