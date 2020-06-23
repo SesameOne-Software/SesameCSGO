@@ -16,7 +16,8 @@ namespace oxui {
 	*	USAGE: const auto main_panel = std::make_shared< oxui::panel >( oxui::rect( 0, 0, screen.w, screen.h ) );
 	*/
 	class window : public obj {
-		pos click_offset = pos( );
+		pos click_offset = pos ( );
+		pos not_clicked_offset = pos( );
 		str title;
 		int toggle_bind = 0;
 		std::vector < std::function< void ( ) > > overlay_func;

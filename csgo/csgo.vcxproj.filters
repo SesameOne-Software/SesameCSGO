@@ -341,6 +341,9 @@
     <ClInclude Include="features\other_visuals.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
+    <ClInclude Include="hitsounds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">

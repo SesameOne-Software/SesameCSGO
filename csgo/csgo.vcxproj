@@ -79,6 +79,7 @@
     <ClInclude Include="features\prediction.hpp" />
     <ClInclude Include="features\ragebot.hpp" />
     <ClInclude Include="globals.hpp" />
+    <ClInclude Include="hitsounds.h" />
     <ClInclude Include="hooks.hpp" />
     <ClInclude Include="menu\menu.hpp" />
     <ClInclude Include="minhook\minhook.h" />

@@ -15,6 +15,7 @@ std::array< vec3_t, 65 > shot_pos { vec3_t( ) };
 std::array< int, 65 > hits { 0 };
 std::array< int, 65 > shots { 0 };
 std::array< int, 65 > hitbox { 0 };
+std::array< float, 65 > features::ragebot::hitchances { 0.0f };
 std::array< features::lagcomp::lag_record_t, 65 > cur_lag_rec { 0 };
 features::ragebot::weapon_config_t features::ragebot::active_config;
 
@@ -533,6 +534,57 @@ int& features::ragebot::get_hitbox ( int pl ) {
 	return hitbox [ pl ];
 }
 
+bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays ) {
+	auto weapon = g::local->weapon ( );
+
+	if ( !weapon || !weapon->data ( ) ) {
+		features::ragebot::hitchances [ pl->idx ( ) ] = 0.0f;
+		return false;
+	}
+
+	auto src = g::local->eyes ( );
+	csgo::clamp ( ang );
+	auto forward = csgo::angle_vec ( ang );
+	auto right = csgo::angle_vec ( ang + vec3_t ( 0.0f, 90.0f, 0.0f ) );
+	auto up = csgo::angle_vec ( ang + vec3_t ( 90.0f, 0.0f, 0.0f ) );
+
+	forward.normalize ( );
+	right.normalize ( );
+	up.normalize ( );
+
+	auto hits = 0;
+	auto needed_hits = static_cast< int >( static_cast< float > ( rays )* ( features::ragebot::active_config.hit_chance / 100.0f ) );
+
+	weapon->update_accuracy ( );
+
+	auto weap_spread = weapon->inaccuracy ( ) + weapon->spread ( );
+
+	for ( auto i = 0; i < rays; i++ ) {
+		const auto spread_x = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
+		const auto spread_y = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
+		const auto spread_z = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
+		const auto final_pos = src + ( ( forward + vec3_t ( spread_x, spread_y, spread_z ) ) * weapon->data ( )->m_range );
+
+		trace_t tr;
+		ray_t ray;
+
+		ray.init ( src, final_pos );
+		csgo::i::trace->clip_ray_to_entity ( ray, mask_shot, pl, &tr );
+
+		// dbg_print( "%3.f\n", dst );
+
+		if ( tr.m_hit_entity == pl )
+			hits++;
+
+		//if ( ray_intersects_sphere( src, final_pos, point, 5.0f ) )
+		//	hits++;
+	}
+
+	const auto calculated_chance = ( static_cast< float >( hits ) / static_cast< float > ( rays ) ) * 100.0f;
+	features::ragebot::hitchances [ pl->idx ( ) ] = calculated_chance;
+	return calculated_chance >= ( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance );
+}
+
 void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out ) {
 	OPTION ( bool, safe_point, "Sesame->A->Default->Accuracy->Safe Point", oxui::object_checkbox );
 	KEYBIND ( safe_point_key, "Sesame->A->Default->Accuracy->Safe Point Key" );
@@ -692,7 +744,7 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	//		} );
 	//	}
 	//}
-	
+
 	if ( shot.second ) {
 		rebuild_record ( shot.first );
 		best_recs.push_back ( shot.first );
@@ -705,28 +757,35 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 			rebuild_record ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 			best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 		}
-		else*/ {
-			rebuild_record ( recs.first.front ( ) );
-			best_recs.push_back ( recs.first.front ( ) );
+		else*/
+		if ( recs.first.size ( ) >= 2 ) {
+			rebuild_record ( recs.first.back ( ) );
+			best_recs.push_back ( recs.first.back ( ) );
 		}
 
-		rebuild_record ( recs.first.back ( ) );
-		best_recs.push_back ( recs.first.back ( ) );
+		rebuild_record ( recs.first.front ( ) );
+		best_recs.push_back ( recs.first.front ( ) );
 	}
 
-	//const auto dmg_old = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 8 ].origin ( ), 0 ) );
-	//const auto dmg_new = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 8 ].origin ( ), 0 ) );
-	//
-	///* ghetto optimization */
-	//if ( !dmg_new && !dmg_old )
-	//	best_recs.clear ( );
-	//else if ( dmg_new && !dmg_old )
-	//	best_recs.pop_back ( );
-	//else if ( !dmg_new && dmg_old )
-	//	best_recs.pop_front ( );
+	if ( best_recs.size ( ) >= 2 ) {
+		const auto dmg_old = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 8 ].origin ( ), 0 ) );
+		const auto dmg_new = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 8 ].origin ( ), 0 ) );
+
+		/* ghetto record scanning optimization */
+		if ( dmg_new && !dmg_old )
+			best_recs.pop_back ( );
+		else if ( !dmg_new && dmg_old )
+			best_recs.pop_front ( );
+	}
 
 	if ( best_recs.empty( ) )
 		return;
+
+	/* remove records we PROBABLY won't hit (not completely accurate) */
+	//auto hc = run_hitchance ( csgo::calc_angle ( g::local->eyes ( ), best_recs.front ( ).m_bones [ 6 ].origin ( ) ), pl, best_recs.front ( ).m_bones [ 6 ].origin ( ), 50 );
+	//
+	//if ( !hc )
+	//	return;
 
 	lagcomp::lag_record_t now_rec;
 
@@ -1340,59 +1399,6 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		return d >= FLT_EPSILON;
 	};
 
-	static const auto run_hitchance = [ & ] ( vec3_t ang, player_t* pl, vec3_t point ) {
-		auto weapon = g::local->weapon( );
-
-		if ( !weapon || !weapon->data ( ) )
-			return false;
-
-		auto src = g::local->eyes( );
-		csgo::clamp( ang );
-		auto forward = csgo::angle_vec( ang );
-		auto right = csgo::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
-		auto up = csgo::angle_vec ( ang + vec3_t ( 90.0f, 0.0f, 0.0f ) );
-
-		forward.normalize ( );
-		right.normalize ( );
-		up.normalize ( );
-
-		auto hits = 0;
-		auto needed_hits = static_cast< int >( 150.0f * ( active_config.hit_chance / 100.0f ) );
-
-		weapon->update_accuracy ( );
-
-		auto weap_spread = weapon->inaccuracy ( ) + weapon->spread ( );
-
-		for ( auto i = 0; i < 150; i++ ) {
-			const auto spread_x = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
-			const auto spread_y = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
-			const auto spread_z = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
-			const auto final_pos = src + ( ( forward + vec3_t ( spread_x, spread_y, spread_z ) ) * weapon->data()->m_range );
-
-			trace_t tr;
-			ray_t ray;
-			
-			ray.init ( src, final_pos );
-			csgo::i::trace->clip_ray_to_entity ( ray, mask_shot, pl, &tr );
-			
-			// dbg_print( "%3.f\n", dst );
-			
-			if ( tr.m_hit_entity == pl )
-				hits++;
-
-			//if ( ray_intersects_sphere( src, final_pos, point, 5.0f ) )
-			//	hits++;
-
-			if ( ( static_cast< float >( hits ) / 150.0f ) * 100.0f >= ( g::next_tickbase_shot ? active_config.dt_hit_chance : active_config.hit_chance ) )
-				return true;
-
-			if ( ( 150 - i + hits ) < needed_hits )
-				return false;
-		}
-
-		return false;
-	};
-
 	lagcomp::lag_record_t best_rec;
 	player_t* best_pl = nullptr;
 	auto best_ang = vec3_t( );
@@ -1431,7 +1437,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		ucmd->m_buttons &= ~1;
 	}
 	else if ( can_shoot( ) ) {
-		auto hc = run_hitchance ( best_ang, best_pl, best_point );
+		auto hc = run_hitchance ( best_ang, best_pl, best_point, 150 );
 		auto should_aim = best_dmg > 0.0f && hc;
 
 		/* TODO: EXTRAPOLATE POSITION TO SLOW DOWN EXACTLY WHEN WE SHOOT */

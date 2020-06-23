@@ -54,14 +54,14 @@ void features::clantag::run( ucmd_t* ucmd ) {
 	else {
 		switch ( type ) {
 		case 0: {
-			if ( last_tag != tag ) { change_clantag ( tag.data ( ), tag.data ( ) ); }
-			last_tag = tag;
-		} break;
-		case 1: {
 			auto marquee_tag = tag + _ ( "    " );
 			std::rotate ( marquee_tag.rbegin ( ), marquee_tag.rbegin ( ) + ( iter % ( tag.length ( ) - 1 + 4 ) ), marquee_tag.rend ( ) );
 			if ( last_tag != marquee_tag ) { change_clantag ( marquee_tag.data ( ), marquee_tag.data ( ) ); }
 			last_tag = marquee_tag;
+		} break;
+		case 1: {
+			if ( last_tag != tag ) { change_clantag ( tag.data ( ), tag.data ( ) ); }
+			last_tag = tag;
 		} break;
 		case 2: {
 			auto dynamic_tag = tag;

@@ -302,13 +302,14 @@ const wchar_t* cur_date( ) {
 
 void menu::init( ) {
 	panel = std::make_shared< oxui::panel >( ); {
-		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 650 * 0.87, 575 * 0.87 ), OSTR( "Sesame" ) /* + oxui::str( cur_date( ) ) */ ); {
+		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 565, 500 ), OSTR( "Sesame" ) /* + oxui::str( cur_date( ) ) */ ); {
 			window->bind_key( VK_INSERT );
 
 			auto aimbot = std::make_shared< oxui::tab > ( OSTR ( "A" ) ); {
 				auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 1.0f, 0.2f } ); {
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fix Fakelag" ) ) );
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolve Desync" ) ) );
+					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Crash If Miss Due To Resolve" ) ) );
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Safe Point" ) ) );
 					accuracy->add_element ( std::make_shared< oxui::keybind > ( OSTR ( "Safe Point Key" ) ) );
 				}
@@ -946,7 +947,7 @@ void menu::init( ) {
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Radii" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Spread Circle" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Gradient Spread Circle" ) ) );
-						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ) } ) );
+						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ), OSTR ( "Bell" ), OSTR ( "COD" ), OSTR ( "Rattle" ) } ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Tracer" ), oxui::color ( 161, 66, 245, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Impact" ), oxui::color ( 201, 145, 250, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Grenade Trajectory" ), oxui::color ( 161, 66, 245, 255 ) ) );
@@ -1024,7 +1025,7 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Ragdoll Force" ), 1.0, 0.0, 25.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Clantag" ) ) );
 						main->add_element ( std::make_shared< oxui::textbox > ( OSTR ( "Clantag Text" ), OSTR ( "sesame.one" ) ) );
-						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Clantag Animation" ), std::vector< oxui::str > { OSTR ( "Static" ), OSTR ( "Marquee" ), OSTR ( "Capitalize" ), OSTR ( "Heart" ) } ) );
+						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Clantag Animation" ), std::vector< oxui::str > { OSTR ( "Marquee" ), OSTR ( "Static" ), OSTR ( "Capitalize" ), OSTR ( "Heart" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Revolver Cock Volume" ), 1.0, 0.0, 1.0 ) ); /* Weapon_Revolver.Prepare */
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Weapon Volume" ), 1.0, 0.0, 1.0 ) ); /* Weapon_ */
 

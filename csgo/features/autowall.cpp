@@ -12,7 +12,7 @@ void clip_trace_to_players_fast ( player_t* pl, const vec3_t& start, const vec3_
 	if ( filter && !filter->should_hit_ent ( pl, mask ) )
 		return;
 
-	csgo::i::trace->clip_ray_to_entity ( ray, mask | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
+	csgo::i::trace->clip_ray_to_entity ( ray, mask_shot_hull | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
 
 	if ( trace.m_fraction < tr->m_fraction )
 		*tr = trace;
@@ -108,7 +108,9 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 
 			auto end = data.direction * data.trace_length_remaining + data.src;
 
-			csgo::util_traceline( data.src, end, 0x4600400B, entity, &data.enter_trace );
+			ray_t ray;
+			ray.init ( data.src, end );
+			csgo::i::trace->trace_ray ( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 			clip_trace_to_players_fast ( dst_entity, data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
 
 			if ( data.enter_trace.m_fraction == 1.0f && hitgroup != -1 ) {
@@ -277,20 +279,22 @@ bool autowall::trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, v
 		dist += 4.0f;
 		start = start + dir * dist;
 
-		if ( !first_contents )
-			first_contents = csgo::i::trace->get_point_contents( start, 0x4600400B, nullptr );
+		const auto point_contents = csgo::i::trace->get_point_contents ( start, mask_shot_hull | contents_hitbox, nullptr );
 
-		const auto point_contents = csgo::i::trace->get_point_contents( start, 0x4600400B, nullptr );
-
-		if ( point_contents & 0x600400B && ( !( point_contents & 0x40000000 ) || first_contents == point_contents ) )
+		if ( point_contents & mask_shot_hull && !( point_contents & contents_hitbox ) )
 			continue;
 
 		end = start - ( dir * 4.0f );
 
-		csgo::util_traceline( start, end, 0x4600400B, nullptr, exit_tr );
+		ray_t ray;
+		ray.init ( start, end );
+		csgo::i::trace->trace_ray ( ray, mask_shot_hull | contents_hitbox, nullptr, exit_tr );
 
-		if ( exit_tr->m_startsolid && exit_tr->m_surface.m_flags & 0x8000 ) {
-			csgo::util_traceline( start, end, 0x600400B, dst_entity, exit_tr );
+		if ( exit_tr->m_startsolid && exit_tr->m_surface.m_flags & surf_hitbox ) {
+			ray_t ray;
+			ray.init ( start, end );
+			trace_filter_t filter ( exit_tr->m_hit_entity );
+			csgo::i::trace->trace_ray ( ray, mask_shot_hull, nullptr, exit_tr );
 
 			if ( exit_tr->did_hit( ) && !exit_tr->m_startsolid ) {
 				start = exit_tr->m_endpos;
@@ -320,7 +324,7 @@ bool autowall::trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, v
 			continue;
 		}
 
-		if ( exit_tr->m_surface.m_flags >> 7 & 0x1 && !( tr->m_surface.m_flags >> 7 & 0x1 ) )
+		if ( exit_tr->m_surface.m_flags >> 7 & surf_light && !( tr->m_surface.m_flags >> 7 & surf_light ) )
 			continue;
 
 		if ( exit_tr->m_plane.m_normal.dot_product ( dir ) <= 1.0f ) {

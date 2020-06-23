@@ -50,6 +50,8 @@ namespace features {
 		static bool revolver_firing = false;
 		static bool revolver_cocking = false;
 
+		extern std::array< float, 65 > hitchances;
+
 		void get_weapon_config ( weapon_config_t& const config );
 		lagcomp::lag_record_t& get_lag_rec ( int pl );
 		int& get_target_idx ( );

@@ -329,6 +329,15 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 		disable_sounds = false;
 	}
 
+	if ( g::local && g::local->weapon ( ) ) {
+		const auto weapon = g::local->weapon ( );
+		weapon->update_accuracy ( );
+		features::spread_circle::total_spread = weapon->inaccuracy ( ) + weapon->spread ( );
+	}
+	else {
+		features::spread_circle::total_spread = 0.0f;
+	}
+
 	features::esp::handle_dynamic_updates ( );
 
 	auto ret = createmove( REG_OUT, sampletime, ucmd );
@@ -349,7 +358,7 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 		static auto reloading_offset = pattern::search ( _ ( "client.dll" ), _ ( "C6 87 ? ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 2 ).deref ( ).get < uint32_t > ( );
 
 		features::esp::esp_data [ pl->idx ( ) ].m_fakeducking = pl->crouch_speed ( ) == 8.0f && pl->crouch_amount ( ) > 0.1f && pl->crouch_amount ( ) < 0.9f;
-		features::esp::esp_data [ pl->idx ( ) ].m_reloading= pl->weapon ( ) ? false : *reinterpret_cast< bool* >( uintptr_t ( pl->weapon ( ) ) + reloading_offset );
+ 		features::esp::esp_data [ pl->idx ( ) ].m_reloading = pl->weapon ( ) ? *reinterpret_cast< bool* >( uintptr_t ( pl->weapon ( ) ) + reloading_offset ) : false;
 
 		if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
 			auto dmg_out = static_cast< float >( g::local->weapon ( )->data ( )->m_dmg );
@@ -1084,7 +1093,7 @@ long __stdcall hooks::wndproc( HWND hwnd, std::uint32_t msg, std::uintptr_t wpar
 
 	menu::wndproc ( hwnd, msg, wparam, lparam );
 
-	if ( menu::open( ) && ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) )
+	if ( menu::open( ) && ( ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) || ( msg == WM_MOUSEWHEEL ) ) )
 		return true;
 
 	return CallWindowProcA( o_wndproc, hwnd, msg, wparam, lparam );

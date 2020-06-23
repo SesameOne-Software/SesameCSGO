@@ -144,6 +144,7 @@ void update_animations ( player_t* pl ) {
 }
 
 int animations::fake::simulate ( ) {
+	static int curtick = 0;
 	if ( !g::local || !g::local->alive ( ) || !g::local->layers ( ) || !g::local->renderable ( ) ) {
 		local_data::fake::should_reset = true;
 	return 0;
@@ -155,7 +156,8 @@ if ( local_data::fake::should_reset || local_data::fake::spawn_time != g::local-
 	local_data::fake::should_reset = false;
 }
 
-if ( g::local->simtime ( ) != g::local->old_simtime ( ) ) {
+if ( g::send_packet && curtick != csgo::i::globals->m_tickcount ) {
+	curtick = csgo::i::globals->m_tickcount;
 	*reinterpret_cast< int* >( uintptr_t ( g::local ) + 0xA68 ) = 0;
 
 	std::array< animlayer_t, 15 > backup_overlays;
@@ -293,25 +295,33 @@ int animations::fix_local ( ) {
 	*reinterpret_cast< int* >( uintptr_t ( g::local ) + 0xA68 ) = 0;
 	const auto backup_flags = g::local->flags ( );
 
-	if ( local_data::old_tick != csgo::i::globals->m_tickcount ) {
-		local_data::old_tick = csgo::i::globals->m_tickcount;
-		
-		//if ( g::local->flags ( ) & 1 )
-		//	local_data::hit_ground_time = csgo::i::globals->m_curtime;
-		//
+	if ( g::local->flags ( ) & 1 )
+		local_data::hit_ground_time = csgo::i::globals->m_curtime;
+
+	if ( g::send_packet ) {
 		//if ( g::local->layers ( ) )
 		//	g::local->layers ( ) [ 12 ].m_weight = 0.0f;
-		//
-		//if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
-		//	g::local->layers ( ) [ 6 ].m_weight = 0.0f;
-		//
+
+		if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
+			g::local->layers ( ) [ 6 ].m_weight = 0.0f;
+
 		//if ( !( g::local->flags ( ) & 1 ) )
 		//	g::local->layers ( ) [ 4 ].m_cycle = std::fabsf ( csgo::i::globals->m_curtime - local_data::hit_ground_time );
+		//
+		//std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
+		//std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
+	}
+
+	if ( local_data::old_tick != csgo::i::globals->m_tickcount ) {
+		local_data::old_tick = csgo::i::globals->m_tickcount;
 
 		std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 		std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 
 		update_animations( g::local );
+
+		if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
+			state->m_ground_fraction = 0.0f;
 
 		rebuilt::poses::calculate ( g::local );
 
@@ -690,6 +700,7 @@ int animations::run( int stage ) {
 
 		switch ( stage ) {
 		case 5: { /* fix local anims */
+			animations::fake::simulate ( );
 			fix_local( );
 
 				//auto util_playerbyindex = [ ] ( int idx ) {
@@ -725,8 +736,6 @@ int animations::run( int stage ) {
 			} break;
 		case 4: {
 			security_handler::update ( );
-
-			animations::fake::simulate ( );
 
 			for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 				const auto pl = csgo::i::ent_list->get< player_t* > ( i );

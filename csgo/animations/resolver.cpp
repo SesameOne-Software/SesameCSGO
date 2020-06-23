@@ -11,6 +11,7 @@
 #include "../menu/menu.hpp"
 #include "../features/esp.hpp"
 #include "../features/autowall.hpp"
+#include "../hitsounds.h"
 
 struct cached_resolve_t {
 	vec3_t m_origin;
@@ -197,6 +198,9 @@ void animations::resolver::process_hurt( event_t* event ) {
 	case 4: csgo::i::engine->client_cmd_unrestricted ( _ ( "play player\\neck_snap_01" ) ); break;
 	case 5: csgo::i::engine->client_cmd_unrestricted ( _ ( "play buttons\\light_power_on_switch_01" ) ); break;
 	case 6: csgo::i::engine->client_cmd_unrestricted ( _ ( "play physics\\glass\\glass_impact_bullet4" ) ); break;
+	case 7: LI_FN( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_bell ), nullptr, SND_MEMORY | SND_ASYNC ); break;
+	case 8: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_cod ), nullptr, SND_MEMORY | SND_ASYNC ); break;
+	case 9: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_rattle ), nullptr, SND_MEMORY | SND_ASYNC ); break;
 	default: break;
 	}
 
@@ -230,6 +234,7 @@ void print_console ( const oxui::color& clr, const char* fmt, args_t ...args ) {
 
 void animations::resolver::process_event_buffer( int pl_idx ) {
 	OPTION ( bool, shot_logs, "Sesame->C->Other->World->Shot Logs", oxui::object_checkbox );
+	OPTION ( bool, crash_when_miss, "Sesame->A->Default->Accuracy->Crash If Miss Due To Resolve", oxui::object_checkbox );
 
 	if ( !g::local || !g::local->weapon( ) || !g::local->weapon( )->data( ) )
 		return;
@@ -255,10 +260,10 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"spread ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).spread ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
 			
 			if ( shot_logs ) {
-				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
-				//print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to spread ( %d )\n" ), features::ragebot::get_misses ( pl_idx ).spread );
-				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), ( char* ) _ ( u8"【ごま】" ) );
-				print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"不正確によるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).spread );
+				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to spread ( hitchance: %d%, confidence: %d% )\n" ), static_cast< int >( features::ragebot::hitchances [ pl_idx ] ), static_cast< int >( get_confidence ( pl_idx ) ) );
+				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), ( char* ) _ ( u8"【ごま】" ) );
+				//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"不正確によるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).spread );
 			}
 		}
 		else {
@@ -269,11 +274,14 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			fix_cached_resolves ( pl_idx );
 
 			if ( shot_logs ) {
-				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
-				//print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to bad resolve ( %d )\n" ), features::ragebot::get_misses ( pl_idx ).bad_resolve );
-				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
-				print_console ( oxui::color ( 255, 255, 255, 255 ), (char*)_ ( u8"悪いresolveによるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).bad_resolve );
+				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to bad resolve ( hitchance: %d%, confidence: %d% )\n" ), static_cast< int >( features::ragebot::hitchances [ pl_idx ] ), static_cast< int >( get_confidence ( pl_idx ) ) );
+				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
+				//print_console ( oxui::color ( 255, 255, 255, 255 ), (char*)_ ( u8"悪いresolveによるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).bad_resolve );
 			}
+
+			if ( crash_when_miss )
+				abort ( );
 		}
 
 		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
@@ -295,43 +303,43 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		csgo::i::engine->get_player_info ( pl_idx, &pl_info );
 
 		if ( shot_logs ) {
-			//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
-			//print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Hit %s in the " ), pl_info.m_name );
-			//
-			//switch ( hit_hitgroup [ pl_idx ] ) {
-			//case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "generic" ) ); break;
-			//case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "head" ) ); break;
-			//case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "chest" ) ); break;
-			//case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "stomach" ) ); break;
-			//case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left arm" ) ); break;
-			//case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right arm" ) ); break;
-			//case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left leg" ) ); break;
-			//case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right leg" ) ); break;
-			//case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "gear" ) ); break;
-			//default: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "unknown" ) ); break;
-			//}
-			//
-			//print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " for " ) );
-			//print_console ( oxui::color ( 255, 86, 86, 255 ), _ ( "%d\n" ), rdata::player_dmg [ pl_idx ] );
-
-			print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
+			print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Hit %s in the " ), pl_info.m_name );
 			
 			switch ( hit_hitgroup [ pl_idx ] ) {
-			case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"ジェネリック" ) ); break;
-			case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"頭" ) ); break;
-			case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胸" ) ); break;
-			case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胃" ) ); break;
-			case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左腕" ) ); break;
-			case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右腕" ) ); break;
-			case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左脚" ) ); break;
-			case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右脚" ) ); break;
-			case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"装置" ) ); break;
-			default: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"不明" ) ); break;
+			case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "generic" ) ); break;
+			case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "head" ) ); break;
+			case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "chest" ) ); break;
+			case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "stomach" ) ); break;
+			case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left arm" ) ); break;
+			case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right arm" ) ); break;
+			case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left leg" ) ); break;
+			case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right leg" ) ); break;
+			case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "gear" ) ); break;
+			default: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "unknown" ) ); break;
 			}
 			
-			print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"に%を打ちます（" ), pl_info.m_name );
-			print_console ( oxui::color ( 255, 86, 86, 255 ), ( char* ) _ ( u8"%d" ), rdata::player_dmg [ pl_idx ] );
-			print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"）\n" ) );
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " for " ) );
+			print_console ( oxui::color ( 255, 86, 86, 255 ), _ ( "%d\n" ), rdata::player_dmg [ pl_idx ] );
+
+			//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
+			//
+			//switch ( hit_hitgroup [ pl_idx ] ) {
+			//case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"ジェネリック" ) ); break;
+			//case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"頭" ) ); break;
+			//case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胸" ) ); break;
+			//case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胃" ) ); break;
+			//case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左腕" ) ); break;
+			//case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右腕" ) ); break;
+			//case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左脚" ) ); break;
+			//case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右脚" ) ); break;
+			//case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"装置" ) ); break;
+			//default: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"不明" ) ); break;
+			//}
+			//
+			//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"に%を打ちます（" ), pl_info.m_name );
+			//print_console ( oxui::color ( 255, 86, 86, 255 ), ( char* ) _ ( u8"%d" ), rdata::player_dmg [ pl_idx ] );
+			//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"）\n" ) );
 		}
 
 		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
@@ -588,7 +596,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 
 	const auto in_shot = animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( );
 	const auto using_micro_movements = animations::data::overlays [ pl->idx ( ) ][ 6 ].m_weight < 0.1f && pl->vel ( ).length_2d ( ) > 0.0f && pl->vel ( ).length_2d ( ) < 5.0f;
-	const auto eye_feet_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( pl->lby ( ) ) );
+	const auto eye_feet_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( pl->abs_angles ( ).y ) );
 	const auto avg_yaw = calc_avg_yaw ( pl, avg_yaw_delta );
 	const auto jitter_delta = csgo::normalize ( csgo::normalize ( pl->angles ( ).y ) - csgo::normalize ( avg_yaw ) );
 	const auto is_legit = std::fabsf ( pl->angles ( ).x ) < 45.0f;
@@ -606,7 +614,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 				initial_fake_side [ pl->idx ( ) ] = -1;
 			}
 
-			if ( last_vel_rate2 [ pl->idx ( ) ] > 10.0f && pl->vel ( ).length_2d ( ) < 5.0f && std::fabsf ( eye_feet_delta ) > 45.0f ) {
+			if ( last_vel_rate2 [ pl->idx ( ) ] > 10.0f && pl->vel ( ).length_2d ( ) < 5.0f && std::fabsf ( eye_feet_delta ) > 50.0f ) {
 				approached_angle [ pl->idx ( ) ] = pl->angles ( ).y;
 				initial_fake_side [ pl->idx ( ) ] = ( csgo::normalize ( csgo::normalize ( last_approached_angle [ pl->idx ( ) ] ) - csgo::normalize ( approached_angle [ pl->idx ( ) ] ) ) < 0.0f ) ? 0 : 1;
 			}
@@ -633,13 +641,12 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 	const auto initial_max_shots = ( particle_predicted_desync_offset [ pl->idx ( ) ] != FLT_MAX ) ? 2 : 1;
 
 	/* jitter resolver */
-	/*if ( avg_yaw_delta >= pl->desync_amount() ) {
+	if ( avg_yaw_delta >= pl->desync_amount() ) {
 		auto switch_delta = ( ( jitter_delta > 0.0f ) ? pl->desync_amount ( ) : -pl->desync_amount ( ) ) * 2.0f;
 		switch_delta = ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
 		yaw += switch_delta;
 	}
-	else */
-	if ( resolve_cached ( pl->idx( ), yaw ) ) {
+	else if ( resolve_cached ( pl->idx( ), yaw ) ) {
 		record_correction = false;
 	}
 	else {
@@ -653,7 +660,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 			yaw += correction_amount;
 		}
 		else {
-			if ( ( /*using_micro_movements || has_slow_walk ||*/ std::fabsf ( eye_feet_delta ) < 45.0f ) /*&& !is_legit*/ ) {
+			if ( ( /*using_micro_movements || has_slow_walk ||*/ std::fabsf ( eye_feet_delta ) < 50.0f ) /*&& !is_legit*/ ) {
 				if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < initial_max_shots && initial_fake_side [ pl->idx ( ) ] != -1 && ( ( !rdata::r_dmg [ pl->idx ( ) ] && !rdata::l_dmg [ pl->idx ( ) ] ) || ( rdata::r_dmg [ pl->idx ( ) ] > 0.0f && rdata::l_dmg [ pl->idx ( ) ] > 0.0f ) ) ) {
 					if ( rdata::queued_hit [ pl->idx ( ) ] )
 						rdata::forced_side [ pl->idx ( ) ] = initial_fake_side [ pl->idx ( ) ] + 1;
@@ -709,7 +716,7 @@ void animations::resolver::resolve_smart_v2 ( player_t* pl, float& yaw ) {
 			else /*if ( !is_legit )*/ {
 				const auto yaw1 = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) ).y;
 				//const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( yaw1 ) - csgo::normalize ( pl->lby ( ) ) ) );
-				const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( pl->angles().y ) - csgo::normalize ( pl->lby ( ) ) ) );
+				const auto max_delta5 = std::fabsf ( csgo::normalize ( csgo::normalize ( pl->angles().y ) - csgo::normalize ( pl->abs_angles ( ).y ) ) );
 
 				/*if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve < 1 && initial_fake_side [ pl->idx ( ) ] != -1 ) {
 					if ( rdata::queued_hit [ pl->idx ( ) ] )
@@ -797,12 +804,12 @@ void animations::resolver::resolve( player_t* pl, float& yaw ) {
 	auto state = pl->animstate( );
 
 	if ( !state || !pl->layers ( ) || !resolver || !pl->weapon ( ) ) {
-		last_recorded_resolve [ pl->idx ( ) ] = FLT_MAX;
-		rdata::player_hurt [ pl->idx( ) ] = false;
-		rdata::queued_hit [ pl->idx ( ) ] = false;
-		rdata::tried_side [ pl->idx ( ) ] = 0;
-		rdata::forced_side [ pl->idx ( ) ] = 0;
-		features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve = 0;
+		//last_recorded_resolve [ pl->idx ( ) ] = FLT_MAX;
+		//rdata::player_hurt [ pl->idx( ) ] = false;
+		//rdata::queued_hit [ pl->idx ( ) ] = false;
+		//rdata::tried_side [ pl->idx ( ) ] = 0;
+		//rdata::forced_side [ pl->idx ( ) ] = 0;
+		//features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve = 0;
 		return;
 	}
 
@@ -894,27 +901,27 @@ void animations::resolver::render_impacts ( ) {
 	if ( !impact_recs.empty ( ) && ( !bullet_tracers && !bullet_impacts ) )
 		impact_recs.clear ( );
 
-	for ( auto i = 0; i < 65; i++ ) {
-		const auto ent = csgo::i::ent_list->get< player_t* > ( i );
-
-		if ( !ent->valid ( ) )
-			continue;
-
-		for ( auto& cached_resolve : cached_resolves [ i ] ) {
-			if ( !cached_resolve.within ( i ) )
-				continue;
-
-			vec3_t screen;
-	
-			if ( csgo::render::world_to_screen ( screen, cached_resolve.m_origin ) ) {
-				const auto correction_amount = std::to_wstring ( static_cast< int > ( cached_resolve.m_correction ) );
-				render::dim dim;
-				render::text_size ( features::esp::esp_font, correction_amount, dim );
-				render::text ( screen.x - dim.w / 2, screen.y - dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::esp_font, correction_amount, true );
-				render::circle3d ( cached_resolve.m_origin, 90, 26, D3DCOLOR_RGBA ( 193, 108, 230, 255 ), true );
-			}
-		}
-	}
+	//for ( auto i = 0; i < 65; i++ ) {
+	//	const auto ent = csgo::i::ent_list->get< player_t* > ( i );
+	//
+	//	if ( !ent->valid ( ) )
+	//		continue;
+	//
+	//	for ( auto& cached_resolve : cached_resolves [ i ] ) {
+	//		if ( !cached_resolve.within ( i ) )
+	//			continue;
+	//
+	//		vec3_t screen;
+	//
+	//		if ( csgo::render::world_to_screen ( screen, cached_resolve.m_origin ) ) {
+	//			const auto correction_amount = std::to_wstring ( static_cast< int > ( cached_resolve.m_correction ) );
+	//			render::dim dim;
+	//			render::text_size ( features::esp::esp_font, correction_amount, dim );
+	//			render::text ( screen.x - dim.w / 2, screen.y - dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::esp_font, correction_amount, true );
+	//			render::circle3d ( cached_resolve.m_origin, 90, 26, D3DCOLOR_RGBA ( 193, 108, 230, 255 ), true );
+	//		}
+	//	}
+	//}
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
 		const auto dormant_time = 10.0f;

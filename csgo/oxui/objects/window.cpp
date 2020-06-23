@@ -448,6 +448,9 @@ void oxui::window::load_state( const str& file ) {
 }
 
 void oxui::window::think( ) {
+	if ( utils::key_state ( VK_LBUTTON ) )
+		binds::mouse_pos ( not_clicked_offset );
+
 	if ( !pressing_move_key && utils::key_state( VK_LBUTTON ) && shapes::hovering( rect( area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6, area.w / 6 ) ) ) {
 		pressing_move_key = true;
 		pos mouse_mpos;
@@ -480,6 +483,8 @@ void oxui::window::think( ) {
 
 	if ( ( area.y + area.h ) > screen_size.h )
 		area.y = screen_size.h - area.h;
+
+	//shapes::hovering ( area, true );
 }
 
 void oxui::window::draw( ) {
@@ -521,7 +526,7 @@ void oxui::window::draw( ) {
 	cursor_pos = pos( area.x + theme.spacing, area.y + theme.spacing );
 
 	/* draw window rect */
-	binds::rounded_rect ( { area.x, area.y, area.w + 3, area.h + 3 }, 16, 16, color( 0, 0, 0, 65 ), false );
+	//binds::rounded_rect ( { area.x, area.y, area.w + 3, area.h + 3 }, 16, 16, color( 0, 0, 0, 65 ), false );
 	binds::rounded_rect( area, 16, 16, theme.bg, false );
 
 	///* draw tab bar */
@@ -529,7 +534,7 @@ void oxui::window::draw( ) {
 
 	/* TODO: un-ghetto this pls */
 	/* round gradient tab bar (not radial) (so fucking ghetto) (pls fix)*/
-	binds::rounded_rect ( { area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6 + 3, area.h + 3 }, 16, 16, color ( 0, 0, 0, 65 ), false );
+	//binds::rounded_rect ( { area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6 + 3, area.h + 3 }, 16, 16, color ( 0, 0, 0, 65 ), false );
 	binds::rounded_rect ( { area.x - area.w / 6 - theme.spacing / 2, area.y, area.w / 6, area.h / 2 }, 16, 16, theme.title_bar, false );
 	binds::rounded_rect ( { area.x - area.w / 6 - theme.spacing / 2, area.y + area.h / 2, area.w / 6, area.h / 2 }, 16, 16, theme.title_bar_low, false );
 	binds::gradient_rect ( { area.x - area.w / 6 - theme.spacing / 2 - 1, area.y + 16, area.w / 6 + 1, area.h - 16 * 2 }, theme.title_bar, theme.title_bar_low, false );
@@ -653,9 +658,9 @@ void oxui::window::draw( ) {
 		binds::text_bounds ( parent_panel.fonts [ OSTR ( "tab" ) ], OSTR ( "N" ), bounds );
 		binds::text ( { center_w - bounds.w / 2 + 1, area.y + area.h - 32 - bounds.h / 2 }, parent_panel.fonts [ OSTR ( "tab" ) ], OSTR ( "N" ), color ( 0, 0, 0, 150 ), false );
 
-		/* watermark text */
-		binds::text_bounds ( parent_panel.fonts [ OSTR ( "watermark" ) ], OSTR ( "sesame.one - 2020" ), bounds );
-		binds::text ( { center_w - bounds.w / 2 + 1, area.y + area.h - 9 - bounds.h / 2 }, parent_panel.fonts [ OSTR ( "watermark" ) ], OSTR ( "sesame.one - 2020" ), color ( 0xcc, 0x76, 0xef, 255 ), false );
+		///* watermark text */
+		//binds::text_bounds ( parent_panel.fonts [ OSTR ( "watermark" ) ], OSTR ( "sesame.one - 2020" ), bounds );
+		//binds::text ( { center_w - bounds.w / 2 + 1, area.y + area.h - 9 - bounds.h / 2 }, parent_panel.fonts [ OSTR ( "watermark" ) ], OSTR ( "sesame.one - 2020" ), color ( 0xcc, 0x76, 0xef, 255 ), false );
 	}
 
 	///* title bar */

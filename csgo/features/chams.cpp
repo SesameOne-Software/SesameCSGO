@@ -215,6 +215,7 @@ void features::chams::update_mats( ) {
 }
 
 std::array < mdlrender_info_t, 65 > mdl_render_info;
+long long refresh_time = 0;
 
 void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_info_t& info, matrix3x4_t* bone_to_world ) {
 	OPTION( bool, glow, "Sesame->C->Glow->Main->Glow", oxui::object_checkbox );
@@ -242,7 +243,12 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 		vfunc< void ( __thiscall* )( void*, float, float, float ) > ( var, 11 )( var, x, y, z );
 	};
 
-	update_mats( );
+	/* don't kill our cpu */
+	const auto time = std::chrono::system_clock::now ( ).time_since_epoch ( ).count ( );
+	if ( time != refresh_time ) {
+		update_mats ( );
+		refresh_time = time;
+	}
 
 	auto e = csgo::i::ent_list->get< player_t* >( info.m_entity_index );
 

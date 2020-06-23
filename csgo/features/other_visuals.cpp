@@ -5,6 +5,8 @@
 #include <deque>
 #include <mutex>
 
+float features::spread_circle::total_spread = 0.0f;
+
 void features::spread_circle::draw ( ) {
 	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
 	OPTION ( oxui::color, spread_circle_clr, "Sesame->C->Other->World->Spread Circle Color", oxui::object_colorpicker );
@@ -14,13 +16,11 @@ void features::spread_circle::draw ( ) {
 	int w = 0, h = 0;
 	render::screen_size ( w, h );
 
-	if ( !g::local || !g::local->alive() || !g::local->weapon ( ) || !spread_circle )
+	if ( !g::local || !g::local->alive() || !g::local->weapon ( ) || !spread_circle || !total_spread )
 		return;
 
 	const auto weapon = g::local->weapon ( );
-
-	weapon->update_accuracy ( );
-	const auto radius = ( ( weapon->inaccuracy ( ) + weapon->spread ( ) ) * 320.0f ) / std::tanf ( csgo::deg2rad( custom_fov ) * 0.5f );
+	const auto radius = ( total_spread * 320.0f ) / std::tanf ( csgo::deg2rad( custom_fov ) * 0.5f );
 
 	if ( gradient_spread_circle ) {
 		auto x = w / 2;
