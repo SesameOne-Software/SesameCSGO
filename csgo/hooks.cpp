@@ -205,7 +205,7 @@ void __fastcall hooks::sceneend_hk( REG ) {
 	if ( !g::local || !g::local->alive ( ) )
 		hit_matrix_rec.clear ( );
 
-	if ( g::local && g::local->alive ( ) && g::local->simtime( ) != g::local->old_simtime( ) )
+	if ( g::local && g::local->alive ( ) && g::send_packet )
 		features::chams::old_origin = g::local->origin ( );
 
 	if ( g::local ) {
@@ -768,6 +768,10 @@ bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int 
 	return setupbones( REG_OUT, out, max_bones, mask, curtime );
 }
 
+namespace lby {
+	extern bool in_update;
+}
+
 vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 	auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
@@ -780,7 +784,7 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 	if ( ( std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_pitch
 		|| std::uintptr_t( _ReturnAddress( ) ) == ret_to_thirdperson_yaw )
 		&& !no_update )
-		return g::ucmd ? &g::angles : &local->angles( );
+		return lby::in_update ? &g::sent_cmd.m_angs : &g::angles;
 
 	return get_eye_angles( REG_OUT );
 }

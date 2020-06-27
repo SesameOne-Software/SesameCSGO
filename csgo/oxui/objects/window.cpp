@@ -669,7 +669,7 @@ void oxui::window::draw( ) {
 	const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 107.0f;
 	const auto logo_dim = pos { static_cast < int > ( 150.0f * logo_scale ), static_cast < int > ( 107.0f * logo_scale ) };
 
-	render::texture ( parent_panel.sprite, parent_panel.tex, center_w - logo_dim.x * 0.9f, area.y + area.h / 14 - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 1.333f );
+	render::texture ( parent_panel.sprite, parent_panel.tex, center_w - logo_dim.x * 0.9f, area.y + area.h / 14 - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 1.333f, D3DCOLOR_RGBA( theme.logo.r, theme.logo.g, theme.logo.b, theme.logo.a ) );
 
 	const auto separator_y = area.y + area.h / 14 + logo_dim.y / 2 + area.h / 20;
 

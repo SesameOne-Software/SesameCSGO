@@ -981,15 +981,15 @@ void animations::resolver::render_impacts ( ) {
 			render::text ( scrn_dst.x - dim.w / 2, scrn_dst.y - 16, D3DCOLOR_RGBA ( 145, 255, 0, alpha2 ), features::esp::esp_font, impact.m_msg, true, false );
 			//render::cube ( impact.m_dst, 4, D3DCOLOR_RGBA ( clr_bullet_impact.r, clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
 
-			render::line ( scrn_dst.x + 3, scrn_dst.y + 3, scrn_dst.x + 8, scrn_dst.y + 8, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) );
-			render::line ( scrn_dst.x + 3, scrn_dst.y - 3, scrn_dst.x + 8, scrn_dst.y - 8, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) );
-			render::line ( scrn_dst.x - 3, scrn_dst.y + 3, scrn_dst.x - 8, scrn_dst.y + 8, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) );
-			render::line ( scrn_dst.x - 3, scrn_dst.y - 3, scrn_dst.x - 8, scrn_dst.y - 8, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) );
+			render::line ( scrn_dst.x + 3, scrn_dst.y + 3, scrn_dst.x + 8, scrn_dst.y + 8, D3DCOLOR_RGBA ( clr_bullet_impact.r , clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
+			render::line ( scrn_dst.x + 3, scrn_dst.y - 3, scrn_dst.x + 8, scrn_dst.y - 8, D3DCOLOR_RGBA ( clr_bullet_impact.r , clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
+			render::line ( scrn_dst.x - 3, scrn_dst.y + 3, scrn_dst.x - 8, scrn_dst.y + 8, D3DCOLOR_RGBA ( clr_bullet_impact.r , clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
+			render::line ( scrn_dst.x - 3, scrn_dst.y - 3, scrn_dst.x - 8, scrn_dst.y - 8, D3DCOLOR_RGBA ( clr_bullet_impact.r , clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
 
-			render::line ( scrn_dst.x + 3, scrn_dst.y + 3 + 1, scrn_dst.x + 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, 100 ) );
-			render::line ( scrn_dst.x + 3, scrn_dst.y - 3 + 1, scrn_dst.x + 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, 100 ) );
-			render::line ( scrn_dst.x - 3, scrn_dst.y + 3 + 1, scrn_dst.x - 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, 100 ) );
-			render::line ( scrn_dst.x - 3, scrn_dst.y - 3 + 1, scrn_dst.x - 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, 100 ) );
+			render::line ( scrn_dst.x + 3, scrn_dst.y + 3 + 1, scrn_dst.x + 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, alpha1 ) );
+			render::line ( scrn_dst.x + 3, scrn_dst.y - 3 + 1, scrn_dst.x + 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, alpha1 ) );
+			render::line ( scrn_dst.x - 3, scrn_dst.y + 3 + 1, scrn_dst.x - 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, alpha1 ) );
+			render::line ( scrn_dst.x - 3, scrn_dst.y - 3 + 1, scrn_dst.x - 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA ( 0, 0, 0, alpha1 ) );
 		}
 		else {
 			//render::text ( scrn_dst.x - dim.w / 2, scrn_dst.y - 16, D3DCOLOR_RGBA ( 255, 62, 59, alpha ), features::esp::esp_font, impact.m_msg, true, false );

@@ -309,9 +309,6 @@ int animations::fix_local ( ) {
 	*reinterpret_cast< int* >( uintptr_t ( g::local ) + 0xA68 ) = 0;
 	const auto backup_flags = g::local->flags ( );
 
-	if ( g::local->flags ( ) & 1 )
-		local_data::hit_ground_time = csgo::i::globals->m_curtime;
-
 	if ( g::send_packet ) {
 		//if ( g::local->layers ( ) )
 		//	g::local->layers ( ) [ 12 ].m_weight = 0.0f;
@@ -325,6 +322,9 @@ int animations::fix_local ( ) {
 		//std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 		//std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 	}
+
+	if ( g::local->flags ( ) & 1 )
+		local_data::was_on_ground = true;
 
 	// if ( csgo::i::globals->m_tickcount > local_data::old_tick ) {
 	if ( csgo::i::globals->m_tickcount > local_data::old_tick ) {
@@ -347,6 +347,11 @@ int animations::fix_local ( ) {
 		rebuilt::poses::calculate ( g::local );
 
 		if ( g::send_packet ) {
+			if ( local_data::was_on_ground ) {
+				local_data::was_on_ground = false;
+				local_data::hit_ground_time = csgo::i::globals->m_curtime;
+			}
+
 			last_vel2d = g::local->vel ( ).length_2d ( );
 			last_update_time = csgo::i::globals->m_curtime;
 
@@ -361,8 +366,6 @@ int animations::fix_local ( ) {
 			g::hold_aim = false;
 		}
 	}
-
-	local_data::was_on_ground = g::local->flags( ) & 1;
 
 	g::local->set_abs_angles( vec3_t( N( 0 ), local_data::abs, N( 0 ) ) );
 

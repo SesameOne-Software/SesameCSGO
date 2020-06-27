@@ -144,11 +144,13 @@ const oxui::str& get_keybind_mode_name ( oxui::keybind* kb ) {
 void menu::draw_watermark ( ) {
 	OPTION ( oxui::color, accent_color, "Sesame->C->Other->GUI->Accent Color", oxui::object_colorpicker );
 	OPTION ( oxui::color, secondary_accent_color, "Sesame->C->Other->GUI->Secondary Accent Color", oxui::object_colorpicker );
+	OPTION ( oxui::color, logo_color, "Sesame->C->Other->GUI->Logo Color", oxui::object_colorpicker );
 	OPTION ( bool, watermark_enabled, "Sesame->C->Other->GUI->Watermark", oxui::object_checkbox );
 	OPTION ( bool, keybind_list_enabled, "Sesame->C->Other->GUI->Keybind List", oxui::object_checkbox );
 
 	oxui::theme.main = oxui::theme.title_bar = accent_color;
 	oxui::theme.title_bar_low = secondary_accent_color;
+	oxui::theme.logo = logo_color;
 	oxui::theme.main.a = oxui::theme.title_bar.a = oxui::theme.title_bar_low.a = 255;
 
 	auto cur_popups_y = 24;
@@ -169,7 +171,7 @@ void menu::draw_watermark ( ) {
 		const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 107.0f;
 		const auto logo_dim = oxui::pos { static_cast < int > ( 150.0f * logo_scale ), static_cast < int > ( 107.0f * logo_scale ) };
 
-		render::texture ( panel->sprite, panel->tex, ( bounds.x + dim.h / 2 ) - logo_dim.x + logo_dim.x / 3, ( bounds.y + dim.h / 2 - 4 ) - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale * 0.8f, logo_scale * 1.333f * 0.8f );
+		render::texture ( panel->sprite, panel->tex, ( bounds.x + dim.h / 2 ) - logo_dim.x + logo_dim.x / 3, ( bounds.y + dim.h / 2 - 4 ) - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale * 0.8f, logo_scale * 1.333f * 0.8f, D3DCOLOR_RGBA ( oxui::theme.logo.r, oxui::theme.logo.g, oxui::theme.logo.b, oxui::theme.logo.a ) );
 
 		static float last_counter_update = 0.0f;
 		static int last_framerate = 0;
@@ -1121,6 +1123,7 @@ void menu::init( ) {
 						menu->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Keybind List" ) ) );
 						menu->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Accent Color" ), oxui::theme.main ) );
 						menu->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Secondary Accent Color" ), oxui::theme.title_bar_low ) );
+						menu->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Logo Color" ), oxui::theme.logo ) );
 
 						other->add_element ( menu );
 					}

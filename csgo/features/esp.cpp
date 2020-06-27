@@ -32,7 +32,7 @@ auto cur_offset_bottom = 4;
 auto cur_offset_top = 4;
 
 void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widget, bool dormant, double value, double max, const std::wstring_view& to_print = _ (L"") ) {
-	uint32_t clr1 = D3DCOLOR_RGBA ( 0, 0, 0, std::clamp< int > ( static_cast< float >( esp_widget.picker->clr.a ) / 2, 0, 60 ) );
+	uint32_t clr1 = D3DCOLOR_RGBA ( 0, 0, 0, std::clamp< int > ( static_cast< float >( esp_widget.picker->clr.a ) / 2, 0, 125 ) );
 	uint32_t clr = D3DCOLOR_RGBA ( esp_widget.picker->clr.r, esp_widget.picker->clr.g, esp_widget.picker->clr.b, esp_widget.picker->clr.a );
 
 	if ( dormant )
@@ -40,41 +40,46 @@ void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widg
 
 	switch ( esp_widget.type ) {
 	case oxui::esp_widget_type_t::info_type_bar: {
+		const auto sval = std::to_wstring ( static_cast< int >( value ) );
+
+		render::dim text_dim;
+		render::text_size ( features::esp::dbg_font, sval, text_dim );
+
 		const auto fraction = std::clamp( value / max, 0.0, 1.0 );
 		const auto calc_height = fraction * box.h;
 
 		switch ( esp_widget.location ) {
 		case oxui::esp_widget_pos_t::pos_left:
-			render::outline ( box.x - cur_offset_left - 4, box.y, 4, box.h, clr1 );
-			render::rectangle ( box.x - cur_offset_left - 4 + 1, box.y + ( box.h - calc_height ) + 1, 4 - 1, calc_height, clr );
+			render::rounded_rect ( box.x - cur_offset_left - 5 + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
+			render::rounded_rect ( box.x - cur_offset_left - 5, box.y, 5, box.h, 2, 4, clr1, true );
 
 			if ( visuals->show_value )
-			render::text ( box.x - cur_offset_left - 4 + 1, box.y + ( box.h - calc_height ) + 1, D3DCOLOR_RGBA( 255, 255, 255, 255), features::esp::dbg_font, std::to_wstring(static_cast<int>( value )), false, true );
-			cur_offset_left += 6;
+			render::text ( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255), features::esp::dbg_font, sval, false, true );
+			cur_offset_left += 7;
 			break;
 		case oxui::esp_widget_pos_t::pos_right:
-			render::outline ( box.x + box.w + cur_offset_right, box.y, 4, box.h, clr1 );
-			render::rectangle ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, 4 - 1, calc_height, clr );
+			render::rounded_rect ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
+			render::rounded_rect ( box.x + box.w + cur_offset_right, box.y, 5, box.h, 2, 4, clr1, true );
 
 			if ( visuals->show_value )
-			render::text ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
-			cur_offset_right += 6;
+			render::text ( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+			cur_offset_right += 7;
 			break;
 		case oxui::esp_widget_pos_t::pos_bottom:
-			render::outline ( box.x, box.y + box.h + cur_offset_bottom, box.w, 4, clr1 );
-			render::rectangle ( box.x + 1, box.y + box.h + cur_offset_bottom + 1, static_cast< float >( box.w )* fraction + 1, 4 - 1, clr );
+			render::rounded_rect ( box.x + 1, box.y + box.h + cur_offset_bottom + 1, static_cast< float >( box.w )* fraction + 1, 5 - 1, 2, 4, clr, false );
+			render::rounded_rect ( box.x, box.y + box.h + cur_offset_bottom, box.w, 5, 2, 4, clr1, true );
 
 			if ( visuals->show_value )
-			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1, box.y + box.h + cur_offset_bottom + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
-			cur_offset_bottom += 6;
+			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1 - text_dim.w / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+			cur_offset_bottom += 7;
 			break;
 		case oxui::esp_widget_pos_t::pos_top:
-			render::outline ( box.x, box.y - cur_offset_top - 4, box.w, 4, clr1 );
-			render::rectangle ( box.x + 1, box.y - cur_offset_top - 4 + 1, static_cast< float >( box.w )* fraction + 1, 4 - 1, clr );
+			render::rounded_rect ( box.x + 1, box.y - cur_offset_top - 5 + 1, static_cast< float >( box.w )* fraction + 1, 5 - 1, 2, 4, clr, false );
+			render::rounded_rect ( box.x, box.y - cur_offset_top - 5, box.w, 5, 2, 4, clr1, true );
 
 			if ( visuals->show_value )
-			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1, box.y - cur_offset_top - 4 + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
-			cur_offset_top += 6;
+			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1 - text_dim.w / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+			cur_offset_top += 7;
 			break;
 		}
 	} break;
@@ -85,19 +90,19 @@ void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widg
 		switch ( esp_widget.location ) {
 		case oxui::esp_widget_pos_t::pos_left:
 			render::text ( box.x - cur_offset_left - text_dim.w, box.y + cur_offset_left_height, clr, features::esp::esp_font, to_print, true );
-			cur_offset_left_height += text_dim.h + 4;
+			cur_offset_left_height += text_dim.h + 2;
 			break;
 		case oxui::esp_widget_pos_t::pos_right:
 			render::text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, clr, features::esp::esp_font, to_print, true );
-			cur_offset_right_height += text_dim.h + 4;
+			cur_offset_right_height += text_dim.h + 2;
 			break;
 		case oxui::esp_widget_pos_t::pos_bottom:
 			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y + box.h + cur_offset_bottom, clr, features::esp::esp_font, to_print, true );
-			cur_offset_bottom += text_dim.h + 4;
+			cur_offset_bottom += text_dim.h + 2;
 			break;
 		case oxui::esp_widget_pos_t::pos_top:
 			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y - cur_offset_top - text_dim.h, clr, features::esp::esp_font, to_print, true );
-			cur_offset_top += text_dim.h + 4;
+			cur_offset_top += text_dim.h + 2;
 			break;
 		}
 	} break;

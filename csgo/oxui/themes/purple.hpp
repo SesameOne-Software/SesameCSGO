@@ -28,6 +28,7 @@ namespace oxui {
 		color main = color( 0xd8, 0x50, 0xd4, 255 );
 		color title_bar = color ( 0xd8, 0x50, 0xd4, 255 );
 		color title_bar_low = color( 193, 83, 237, 255 );
+		color logo = color ( 255, 255, 255, 255 );
 	};
 
 	extern _theme theme;
