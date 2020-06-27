@@ -128,6 +128,21 @@ int __stdcall init_proxy ( uintptr_t mod ) {
 	erase::erase_func ( init );
 	security_handler::store_text_section_hash ( mod );
 
+	//while ( !GetAsyncKeyState ( VK_END ) )
+	//	std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
+	//
+	//LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( _ ( "Valve001" ), nullptr ), GWLP_WNDPROC, long ( hooks::o_wndproc ) );
+	//
+	//MH_RemoveHook ( MH_ALL_HOOKS );
+	//MH_Uninitialize ( );
+	//
+	//std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 200 ) ) );
+	//
+	//if ( g::local )
+	//	g::local->animate ( ) = true;
+	//
+	//FreeLibraryAndExitThread ( HMODULE ( mod ), 0 );
+
 	return 0;
 }
 

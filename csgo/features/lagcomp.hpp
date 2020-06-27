@@ -27,14 +27,14 @@ namespace features {
 
 			bool store ( player_t* pl, const vec3_t& last_origin, bool simulated = false );
 
-			bool valid( ) {
+			bool valid( bool use_tick = false ) {
 				const auto nci = csgo::i::engine->get_net_channel_info ( );
 
 				if ( !nci || !g::local )
 					return false;
 				
 				const auto correct = std::clamp( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp ( ), 0.0f, 0.2f );
-				const auto dt = correct - ( prediction::predicted_curtime - m_simtime );
+				const auto dt = correct - ( prediction::predicted_curtime - ( use_tick ? csgo::ticks2time ( m_tick ) : m_simtime ) );
 
 				return std::abs ( dt ) < 0.2f;
 			}

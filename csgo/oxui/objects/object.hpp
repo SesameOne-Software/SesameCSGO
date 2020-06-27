@@ -21,7 +21,8 @@ namespace oxui {
 		object_colorpicker,
 		object_keybind,
 		object_label,
-		object_subtab
+		object_subtab,
+		object_visual_editor
 	};
 
 	/* deactivating input for objects of lower order */

@@ -36,7 +36,8 @@ namespace features {
 				baim_if_resolver_confidence_less_than;
 
 			int inherit_from,
-				dt_key;
+				dt_key,
+				optimization;
 		};
 		
 		extern weapon_config_t active_config;

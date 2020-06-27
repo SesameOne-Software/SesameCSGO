@@ -156,7 +156,7 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 		vb->Release( );
 }
 
-void render::texture( ID3DXSprite* sprite, IDirect3DTexture9* tex, int x, int y, int width, int height, float scalex, float scaley ) {
+void render::texture( ID3DXSprite* sprite, IDirect3DTexture9* tex, int x, int y, int width, int height, float scalex, float scaley, uint32_t clr ) {
 	D3DXVECTOR2 center = D3DXVECTOR2( width / 2, height / 2 );
 	D3DXVECTOR2 trans = D3DXVECTOR2( x, y );
 	D3DXMATRIX mat;
@@ -170,7 +170,7 @@ void render::texture( ID3DXSprite* sprite, IDirect3DTexture9* tex, int x, int y,
 
 	sprite->Begin( 0 );
 	sprite->SetTransform( &mat );
-	sprite->Draw( tex, nullptr, nullptr, nullptr, 0xFFFFFFFF );
+	sprite->Draw( tex, nullptr, nullptr, nullptr, clr );
 	sprite->End( );
 }
 

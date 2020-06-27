@@ -167,7 +167,21 @@ void csgo::sin_cos( float radians, float* sine, float* cosine ) {
 }
 
 vec3_t csgo::calc_angle( const vec3_t& from, const vec3_t& to ) {
-	return csgo::vec_angle( to - from );
+	const auto delta = from - to;
+	const auto hyp = delta.length_2d();
+	auto out = vec3_t (
+		rad2deg ( -atan2f ( -delta.z, hyp ) ),
+		rad2deg ( atan2f ( delta.y, delta.x ) ),
+		0.0f );
+
+	if ( out.y > 90.0f )
+		out.y -= 180.0f;
+	else if ( out.y < 90.0f )
+		out.y += 180.0f;
+	else if ( out.y == 90.0f )
+		out.y = 0.0f;
+
+	return out;
 }
 
 vec3_t csgo::vec_angle( vec3_t vec ) {

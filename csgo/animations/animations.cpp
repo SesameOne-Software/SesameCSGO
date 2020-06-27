@@ -47,6 +47,8 @@ namespace animations {
 		std::array< std::array< float, 24 >, 65 > poses { };
 		std::array< int, 65 > last_animation_frame { 0 };
 		std::array< int, 65 > old_tick { 0 };
+		std::array< int, 65 > choke { 0 };
+		std::array< float, 65 > old_simtime { 0.0f };
 		std::array< float, 65 > old_eye_yaw { 0.0f };
 		std::array< float, 65 > old_abs { 0.0f };
 		std::array< float, 65 > body_yaw { 0.0f };
@@ -127,7 +129,8 @@ std::array< matrix3x4_t, 128 >& animations::fake::matrix( ) {
 }
 
 void update_animations ( player_t* pl ) {
-	pl->animstate()->m_last_clientside_anim_framecount = 0;
+	if ( pl->animstate ( )->m_last_clientside_anim_framecount == csgo::i::globals->m_framecount )
+		pl->animstate ( )->m_last_clientside_anim_framecount--;
 
 	const auto backup_frametime = csgo::i::globals->m_frametime;
 	const auto backup_interp = csgo::i::globals->m_interp;
@@ -147,6 +150,7 @@ int animations::fake::simulate ( ) {
 	static int curtick = 0;
 	if ( !g::local || !g::local->alive ( ) || !g::local->layers ( ) || !g::local->renderable ( ) ) {
 		local_data::fake::should_reset = true;
+		curtick = 0;
 	return 0;
 }
 
@@ -154,9 +158,10 @@ if ( local_data::fake::should_reset || local_data::fake::spawn_time != g::local-
 	local_data::fake::spawn_time = g::local->spawn_time ( );
 	g::local->create_animstate ( &fake_state );
 	local_data::fake::should_reset = false;
+	curtick = 0;
 }
 
-if ( g::send_packet && curtick != csgo::i::globals->m_tickcount ) {
+if ( g::send_packet && csgo::i::globals->m_tickcount > curtick ) {
 	curtick = csgo::i::globals->m_tickcount;
 	*reinterpret_cast< int* >( uintptr_t ( g::local ) + 0xA68 ) = 0;
 
@@ -168,9 +173,13 @@ if ( g::send_packet && curtick != csgo::i::globals->m_tickcount ) {
 	const auto backup_poses = g::local->poses ( );
 	auto backup_abs_angles = g::local->abs_angles ( );
 
+	fake_state.m_feet_yaw_rate = 0.0f;
+	fake_state.m_unk_feet_speed_ratio = 0.0f;
 	csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
 	fake_state.update ( g::sent_cmd.m_angs );
 	csgo::i::globals->m_frametime = backup_frametime;
+	fake_state.m_feet_yaw_rate = 0.0f;
+	fake_state.m_unk_feet_speed_ratio = 0.0f;
 
 	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
@@ -263,6 +272,9 @@ bool animations::build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, in
 	return ret;
 }
 
+auto last_vel2d = 0.0f;
+auto last_update_time = 0.0f;
+
 int animations::fix_local ( ) {
 	/* update viewmodel manually */ {
 		using update_all_viewmodel_addons_t = int ( __fastcall* )( void* );
@@ -273,6 +285,8 @@ int animations::fix_local ( ) {
 	}
 
 	if ( !g::local->valid ( ) || !g::local->animstate ( ) || !g::local->layers ( ) || !g::ucmd ) {
+		local_data::old_tick = 0;
+
 		if ( g::local ) {
 			data::origin [ g::local->idx ( ) ] = vec3_t ( FLT_MAX, FLT_MAX, FLT_MAX );
 			data::old_origin [ g::local->idx ( ) ] = vec3_t ( FLT_MAX, FLT_MAX, FLT_MAX );
@@ -302,8 +316,8 @@ int animations::fix_local ( ) {
 		//if ( g::local->layers ( ) )
 		//	g::local->layers ( ) [ 12 ].m_weight = 0.0f;
 
-		if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
-			g::local->layers ( ) [ 6 ].m_weight = 0.0f;
+		//if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
+		//	g::local->layers ( ) [ 6 ].m_weight = 0.0f;
 
 		//if ( !( g::local->flags ( ) & 1 ) )
 		//	g::local->layers ( ) [ 4 ].m_cycle = std::fabsf ( csgo::i::globals->m_curtime - local_data::hit_ground_time );
@@ -312,20 +326,30 @@ int animations::fix_local ( ) {
 		//std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 	}
 
-	if ( local_data::old_tick != csgo::i::globals->m_tickcount ) {
+	// if ( csgo::i::globals->m_tickcount > local_data::old_tick ) {
+	if ( csgo::i::globals->m_tickcount > local_data::old_tick ) {
 		local_data::old_tick = csgo::i::globals->m_tickcount;
+
+		g::local->layers ( ) [ 12 ].m_weight = 0.0f;
+		g::local->layers ( ) [ 4 ].m_cycle = std::fabsf ( last_update_time - local_data::hit_ground_time );
 
 		std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 		std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 
+		state->m_feet_yaw_rate = 0.0f;
+		state->m_unk_feet_speed_ratio = 0.0f;
+
 		update_animations( g::local );
 
-		if ( g::local->vel ( ).length_2d ( ) < 5.0f && g::local->flags ( ) & 1 )
-			state->m_ground_fraction = 0.0f;
+		state->m_feet_yaw_rate = 0.0f;
+		state->m_unk_feet_speed_ratio = 0.0f;
 
 		rebuilt::poses::calculate ( g::local );
 
 		if ( g::send_packet ) {
+			last_vel2d = g::local->vel ( ).length_2d ( );
+			last_update_time = csgo::i::globals->m_curtime;
+
 			local_data::abs = state->m_abs_yaw;
 			local_data::poses = g::local->poses ( );
 			local_data::old_update = features::prediction::predicted_curtime;
@@ -348,14 +372,14 @@ int animations::fix_local ( ) {
 
 	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
 
-	//if ( !csgo::i::input->m_camera_in_thirdperson ) {
-	//	state->m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
-	//	state->m_unk_feet_speed_ratio = g::local->crouch_speed ( );
-	//}
+	if ( !csgo::i::input->m_camera_in_thirdperson ) {
+		state->m_duck_amount = fd_key ? 0.0f : g::local->crouch_amount ( );
+		state->m_unk_feet_speed_ratio = g::local->crouch_speed ( );
+	}
 
 	const auto backup_framecount = csgo::i::globals->m_framecount;
 	csgo::i::globals->m_framecount = INT_MAX;
-	animations::build_matrix( g::local, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
+	animations::build_matrix( g::local, nullptr, N( 128 ), N( 0x7ff00 ), g::local->simtime( ) );
 	csgo::i::globals->m_framecount = backup_framecount;
 
 	if ( g::local->bone_accessor ( ).get_bone_arr_for_write ( ) )
@@ -588,6 +612,9 @@ int animations::fix_pl ( player_t* pl ) {
 	//}
 
 	if ( pl->simtime ( ) != pl->old_simtime ( ) ) {
+		data::choke [ pl->idx ( ) ] = csgo::time2ticks ( pl->simtime ( ) - data::old_simtime [ pl->idx ( ) ] ) - 1;
+		data::old_simtime [ pl->idx ( ) ] = pl->simtime ( );
+
 		if ( pl->layers ( ) )
 			pl->layers ( ) [ 12 ].m_weight = 0.0f;
 
@@ -703,36 +730,36 @@ int animations::run( int stage ) {
 			animations::fake::simulate ( );
 			fix_local( );
 
-				//auto util_playerbyindex = [ ] ( int idx ) {
-				//	using player_by_index_fn = player_t * ( __fastcall* )( int );
-				//	static auto fn = pattern::search( _( "server.dll" ), _( "85 C9 7E 2A A1" ) ).get< player_by_index_fn >( );
-				//	return fn( idx );
-				//};
-				//
-				//static auto draw_hitboxes = pattern::search( _( "server.dll" ), _( "55 8B EC 81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 8B D9 57 8B CE" ) ).get< std::uintptr_t >( );
-				//
-				//const auto dur = -1.f;
-				//
-				//for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
-				//	auto e_local = csgo::i::ent_list->get< player_t* >( i );
-				//
-				//	if ( !e_local )
-				//		continue;
-				//
-				//	auto e = util_playerbyindex( e_local->idx( ) );
-				//
-				//	if ( !e )
-				//		continue;
-				//
-				//	__asm {
-				//		pushad
-				//		movss xmm1, dur
-				//		push 0
-				//		mov ecx, e
-				//		call draw_hitboxes
-				//		popad
-				//	}
-				//}
+			//auto util_playerbyindex = [ ] ( int idx ) {
+			//	using player_by_index_fn = player_t * ( __fastcall* )( int );
+			//	static auto fn = pattern::search( _( "server.dll" ), _( "85 C9 7E 2A A1" ) ).get< player_by_index_fn >( );
+			//	return fn( idx );
+			//};
+			//
+			//static auto draw_hitboxes = pattern::search( _( "server.dll" ), _( "55 8B EC 81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 8B D9 57 8B CE" ) ).get< std::uintptr_t >( );
+			//
+			//const auto dur = -1.f;
+			//
+			//for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
+			//	auto e_local = csgo::i::ent_list->get< player_t* >( i );
+			//
+			//	if ( !e_local )
+			//		continue;
+			//
+			//	auto e = util_playerbyindex( e_local->idx( ) );
+			//
+			//	if ( !e )
+			//		continue;
+			//
+			//	__asm {
+			//		pushad
+			//		movss xmm1, dur
+			//		push 0
+			//		mov ecx, e
+			//		call draw_hitboxes
+			//		popad
+			//	}
+			//}
 			} break;
 		case 4: {
 			security_handler::update ( );
@@ -742,8 +769,26 @@ int animations::run( int stage ) {
 
 				resolver::process_event_buffer ( i );
 
-				if ( !pl || !pl->is_player ( ) || pl == g::local )
+				if ( !pl || !pl->is_player ( ) || pl == g::local || pl->team ( ) == g::local->team( ) ) {
+					if ( pl ) {
+						auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
+						auto var_map_list_count = *reinterpret_cast< int* >( var_map + 20 );
+
+						for ( auto index = 0; index < var_map_list_count; index++ )
+							*reinterpret_cast< uint16_t* >( *reinterpret_cast< uintptr_t* >( var_map ) + index * 12 ) = 1;
+					}
+
+					if ( pl && pl != g::local )
+						pl->animate ( ) = true;
+
 					continue;
+				}
+
+				auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
+				auto var_map_list_count = *reinterpret_cast< int* >( var_map + 20 );
+
+				for ( auto index = 0; index < var_map_list_count; index++ )
+					*reinterpret_cast< uint16_t* >( *reinterpret_cast< uintptr_t* >( var_map ) + index * 12 ) = 0;
 
 				fix_pl ( pl );
 			}

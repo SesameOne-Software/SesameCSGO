@@ -344,6 +344,12 @@
     <ClInclude Include="hitsounds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="player_images.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="oxui\objects\visual_editor.hpp">
+      <Filter>Header Files\oxui\objects</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -474,6 +480,9 @@
     </ClCompile>
     <ClCompile Include="features\other_visuals.cpp">
       <Filter>Source Files\features</Filter>
+    </ClCompile>
+    <ClCompile Include="oxui\objects\visual_editor.cpp">
+      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

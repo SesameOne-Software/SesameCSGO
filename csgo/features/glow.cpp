@@ -3,6 +3,7 @@
 #include "../hooks.hpp"
 #include "../oxui/themes/purple.hpp"
 #include "../globals.hpp"
+#include "other_visuals.hpp"
 
 enum stencil_operation_t {
 	stencil_operation_keep = 1,
@@ -108,17 +109,10 @@ public:
 c_glow_obj_mgr* glow_obj_mgr = nullptr;
 
 void features::glow::cache_entities( ) {
-	OPTION ( bool, glow, "Sesame->C->Glow->Main->Glow", oxui::object_checkbox );
-	OPTION ( oxui::color, outline_clr, "Sesame->C->Glow->Colors->Glow", oxui::object_colorpicker );
-
-	OPTION ( bool, team, "Sesame->C->Glow->Targets->Team", oxui::object_checkbox );
-	OPTION ( bool, enemy, "Sesame->C->Glow->Targets->Enemy", oxui::object_checkbox );
-	OPTION ( bool, local, "Sesame->C->Glow->Targets->Local", oxui::object_checkbox );
-
 	if ( !glow_obj_mgr )
 		glow_obj_mgr = pattern::search( _( "client.dll" ), _( "0F 11 05 ? ? ? ? 83 C8 01" ) ).add( 3 ).deref( ).get< c_glow_obj_mgr* >( );
 
-	if ( !g::local || !glow )
+	if ( !g::local )
 		return;
 
 	for ( auto i = 0; i < glow_obj_mgr->m_size; i++ ) {
@@ -137,21 +131,11 @@ void features::glow::cache_entities( ) {
 		if ( !client_class )
 			continue;
 
-		if ( !enemy
-			&& entity->team ( ) != g::local->team ( ) )
+		oxui::visual_editor::settings_t* visuals;
+		if ( !get_visuals ( entity, &visuals ) )
 			continue;
 
-		if ( !team
-			&& entity->team ( ) == g::local->team ( )
-			&& entity != g::local )
-			continue;
-
-		if ( !local
-			&& entity == g::local )
-			continue;
-
-		if ( ( enemy || team )
-			&& !entity->alive ( ) )
+		if ( !visuals->glow )
 			continue;
 
 		/*if ( client_class->m_class_id == 1 || ( client_class->m_class_id >= 231 && client_class->m_class_id <= 272 ) )
@@ -160,7 +144,7 @@ void features::glow::cache_entities( ) {
 			if ( !entity->valid( ) )
 				continue;
 
-			glow_object.set( static_cast< float >( outline_clr.r ) / 255.0f, static_cast< float >( outline_clr.g ) / 255.0f, static_cast< float >( outline_clr.b ) / 255.0f, static_cast< float >( outline_clr.a ) / 255.0f );
+			glow_object.set( static_cast< float >( visuals->glow_picker->clr.r ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.g ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.b ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.a ) / 255.0f );
 		}
 		/*else if ( client_class->m_class_id == 8
 			|| client_class->m_class_id == 9

@@ -166,10 +166,10 @@ void menu::draw_watermark ( ) {
 		render::rounded_rect ( bounds.x + dim.h + 12, bounds.y, dim.w - ( dim.h + 12 ), dim.h, 8, 4, D3DCOLOR_RGBA ( oxui::theme.container_bg.r, oxui::theme.container_bg.g, oxui::theme.container_bg.b, oxui::theme.container_bg.a ), true );
 
 		const auto target_logo_dim = oxui::pos { static_cast < int > ( ( 565.5 / 6 ) / 3 ),static_cast < int > ( 500.25 / 20 ) };
-		const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 541.0f;
-		const auto logo_dim = oxui::pos { static_cast < int > ( 761.0f * logo_scale ), static_cast < int > ( 541.0f * logo_scale ) };
+		const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 107.0f;
+		const auto logo_dim = oxui::pos { static_cast < int > ( 150.0f * logo_scale ), static_cast < int > ( 107.0f * logo_scale ) };
 
-		render::texture ( panel->sprite, panel->tex, ( bounds.x + dim.h / 2 ) - logo_dim.x + logo_dim.x / 3, ( bounds.y + dim.h / 2 - 4 ) - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 0.70f );
+		render::texture ( panel->sprite, panel->tex, ( bounds.x + dim.h / 2 ) - logo_dim.x + logo_dim.x / 3, ( bounds.y + dim.h / 2 - 4 ) - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale * 0.8f, logo_scale * 1.333f * 0.8f );
 
 		static float last_counter_update = 0.0f;
 		static int last_framerate = 0;
@@ -315,6 +315,7 @@ void menu::init( ) {
 				}
 
 				auto main_switch = std::make_shared< oxui::checkbox > ( OSTR ( "Main Switch" ) );
+				auto optimization = std::make_shared< oxui::dropdown > ( OSTR ( "Optimization" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Low" ), OSTR ( "Medium" ), OSTR ( "High" ) } );
 				auto knife_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Knife Bot" ) );
 				auto zeus_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Zeus Bot" ) );
 				auto dt_key = std::make_shared< oxui::keybind > ( OSTR ( "Doubletap Key" ) );
@@ -322,6 +323,7 @@ void menu::init( ) {
 				auto default_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Default" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -370,6 +372,7 @@ void menu::init( ) {
 				auto pistol_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Pistol" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -419,6 +422,7 @@ void menu::init( ) {
 				auto revolver_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Revolver" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -465,6 +469,7 @@ void menu::init( ) {
 				auto rifle_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Rifle" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -514,6 +519,7 @@ void menu::init( ) {
 				auto awp_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "AWP" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -559,6 +565,7 @@ void menu::init( ) {
 				auto auto_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Auto" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -608,6 +615,7 @@ void menu::init( ) {
 				auto scout_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Scout" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
 						main->add_element ( main_switch );
+						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -661,6 +669,7 @@ void menu::init( ) {
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Range" ), 0.0, 0.0, 64.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						air_aa->add_element ( base );
@@ -693,6 +702,7 @@ void menu::init( ) {
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Range" ), 0.0, 0.0, 64.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						moving_aa->add_element ( base );
@@ -725,6 +735,7 @@ void menu::init( ) {
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Range" ), 0.0, 0.0, 64.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						slowwalk_aa->add_element ( base );
@@ -764,6 +775,7 @@ void menu::init( ) {
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Yaw Offset" ), 0.0, 0.0, 360.0 ) );
 						base->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Base Yaw" ), std::vector< oxui::str > { OSTR ( "Relative" ), OSTR ( "Absolute" ), OSTR ( "At Target" ), OSTR ( "Auto Direction" ) } ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Amount" ), 0.0, 0.0, 360.0 ) );
+						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Auto Direction Range" ), 0.0, 0.0, 64.0 ) );
 						base->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Jitter Range" ), 0.0, 0.0, 180.0 ) );
 
 						ground_aa->add_element ( base );
@@ -821,105 +833,248 @@ void menu::init( ) {
 			}
 
 			auto visuals = std::make_shared< oxui::tab > ( OSTR ( "C" ) ); {
-				auto esp = std::make_shared< oxui::subtab > ( OSTR ( "ESP" ) ); {
-					auto settings = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "ESP" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Box" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Health Bar" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Name" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolver Confidence" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Weapon" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Desync Bar" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Reloading Flag" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fakeduck Flag" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fatal Baim Flag" ) ) );
-						settings->add_element ( std::make_shared< oxui::slider > ( OSTR ( "ESP Fade Time" ), 0.0, 0.0, 16.0 ) );
+				auto local_visuals = std::make_shared< oxui::subtab > ( OSTR ( "Local" ) ); {
+					const auto chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 217, 249, 255 ) );
+					const auto xqz_chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "XQZ Chams" ), oxui::color ( 246, 155, 249, 255 ) );
+					const auto backtrack_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 50 ) );
+					const auto hit_matrix_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 190, 255, 156, 100 ) );
+					const auto glow_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Glow" ), oxui::color ( 197, 104, 237, 121 ) );
+					const auto rimlight_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight" ), oxui::color ( 255, 255, 255, 150 ) );
+					const auto box_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Box" ), oxui::color ( 255, 255, 255, 162 ) );
+					const auto health_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Health Bar" ), oxui::color ( 129, 255, 56, 118 ) );
+					const auto ammo_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Ammo Bar" ), oxui::color ( 125, 233, 255, 118 ) );
+					const auto desync_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Desync Bar" ), oxui::color ( 221, 110, 255, 132 ) );
+					const auto name_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Name" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto weapon_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Weapon" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto reflectivity = std::make_shared< oxui::slider > ( OSTR ( "Reflectivity" ), 0.0, 0.0, 100.0 );
+					const auto phong = std::make_shared< oxui::slider > ( OSTR ( "Phong" ), 0.0, 0.0, 100.0 );
 
-						esp->add_element ( settings );
+					auto designer = std::make_shared< oxui::group > ( OSTR ( "Visual Editor" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
+						designer->add_element ( std::make_shared< oxui::visual_editor > (
+							chams_picker,
+							reflectivity,
+							phong,
+							backtrack_picker,
+							hit_matrix_picker,
+							xqz_chams_picker,
+							glow_picker,
+							rimlight_picker,
+							box_picker,
+							health_bar_picker,
+							ammo_bar_picker,
+							desync_bar_picker,
+							name_picker,
+							weapon_picker
+							) );
+
+						local_visuals->add_element ( designer );
 					}
 
-					auto targets = std::make_shared< oxui::group > ( OSTR ( "Targets" ), std::vector< float > { 0.0f, 0.5f, 0.5f, 0.5f } ); {
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Team" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Enemy" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Local" ) ) );
+					auto colors = std::make_shared< oxui::group > ( OSTR ( "Options" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 1.0f } ); {
+						colors->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Show Fakelag On Desync Chams" ) ) );
+						colors->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Desync Chams" ) ) );
+						colors->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Rimlight Desync Chams" ) ) );
+						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Desync Chams Color" ), oxui::color ( 149, 245, 242, 255 ) ) );
+						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight Desync Color" ), oxui::color ( 221, 113, 245, 255 ) ) );
+						colors->add_element ( reflectivity );
+						colors->add_element ( phong );
+						colors->add_element ( chams_picker );
+						colors->add_element ( xqz_chams_picker );
+						colors->add_element ( backtrack_picker );
+						colors->add_element ( hit_matrix_picker );
+						colors->add_element ( glow_picker );
+						colors->add_element ( rimlight_picker );
+						colors->add_element ( box_picker );
+						colors->add_element ( health_bar_picker );
+						colors->add_element ( ammo_bar_picker );
+						colors->add_element ( desync_bar_picker );
+						colors->add_element ( name_picker );
+						colors->add_element ( weapon_picker );
 
-						esp->add_element ( targets );
+						local_visuals->add_element ( colors );
 					}
 
-					auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Box" ), oxui::color ( 156, 155, 255, 80 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Name" ), oxui::color ( 255, 255, 255, 255 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Health Bar" ), oxui::color ( 98, 255, 0, 255 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Desync Bar" ), oxui::color ( 79, 20, 255, 255 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Flag On" ), oxui::color ( 115, 0, 255, 65 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Flag Off" ), oxui::color ( 115, 0, 255, 65 ) ) );
-
-						esp->add_element ( colors );
-					}
-
-					visuals->add_element ( esp );
+					visuals->add_element ( local_visuals );
 				}
 
-				auto chams = std::make_shared< oxui::subtab > ( OSTR ( "Chams" ) ); {
-					auto settings = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chams" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Flat" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "XQZ" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Backtrack" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Hit Matrix" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fake Matrix" ) ) );
+				auto enemy_visuals = std::make_shared< oxui::subtab > ( OSTR ( "Enemy" ) ); {
+					const auto chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 217, 249, 255 ) );
+					const auto xqz_chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "XQZ Chams" ), oxui::color ( 246, 155, 249, 255 ) );
+					const auto backtrack_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 50 ) );
+					const auto hit_matrix_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 190, 255, 156, 100 ) );
+					const auto glow_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Glow" ), oxui::color ( 197, 104, 237, 121 ) );
+					const auto rimlight_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight" ), oxui::color ( 255, 255, 255, 150 ) );
+					const auto box_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Box" ), oxui::color ( 255, 255, 255, 162 ) );
+					const auto health_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Health Bar" ), oxui::color ( 129, 255, 56, 118 ) );
+					const auto ammo_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Ammo Bar" ), oxui::color ( 125, 233, 255, 118 ) );
+					const auto desync_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Desync Bar" ), oxui::color ( 221, 110, 255, 132 ) );
+					const auto name_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Name" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto weapon_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Weapon" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto reflectivity = std::make_shared< oxui::slider > ( OSTR ( "Reflectivity" ), 0.0, 0.0, 100.0 );
+					const auto phong = std::make_shared< oxui::slider > ( OSTR ( "Phong" ), 0.0, 0.0, 100.0 );
 
-						chams->add_element ( settings );
+					auto designer = std::make_shared< oxui::group > ( OSTR ( "Visual Editor" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
+						designer->add_element ( std::make_shared< oxui::visual_editor > (
+							chams_picker,
+							reflectivity,
+							phong,
+							backtrack_picker,
+							hit_matrix_picker,
+							xqz_chams_picker,
+							glow_picker,
+							rimlight_picker,
+							box_picker,
+							health_bar_picker,
+							ammo_bar_picker,
+							desync_bar_picker,
+							name_picker,
+							weapon_picker
+							) );
+
+						enemy_visuals->add_element ( designer );
 					}
 
-					auto targets = std::make_shared< oxui::group > ( OSTR ( "Targets" ), std::vector< float > { 0.0f, 0.5f, 0.5f, 0.5f } ); {
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Team" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Enemy" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Local" ) ) );
+					auto colors = std::make_shared< oxui::group > ( OSTR ( "Options" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 1.0f } ); {
+						colors->add_element ( reflectivity );
+						colors->add_element ( phong );
+						colors->add_element ( chams_picker );
+						colors->add_element ( xqz_chams_picker );
+						colors->add_element ( backtrack_picker );
+						colors->add_element ( hit_matrix_picker );
+						colors->add_element ( glow_picker );
+						colors->add_element ( rimlight_picker );
+						colors->add_element ( box_picker );
+						colors->add_element ( health_bar_picker );
+						colors->add_element ( ammo_bar_picker );
+						colors->add_element ( desync_bar_picker );
+						colors->add_element ( name_picker );
+						colors->add_element ( weapon_picker );
 
-						chams->add_element ( targets );
+						enemy_visuals->add_element ( colors );
 					}
 
-					auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 255, 232, 45 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 155, 255, 232, 45 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "XQZ" ), oxui::color ( 155, 163, 255, 45 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 255 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Fake" ), oxui::color ( 255, 0, 119, 45 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Reflected" ), oxui::color ( 255, 168, 5, 65 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Phong" ), oxui::color ( 255, 168, 5, 65 ) ) );
-
-						chams->add_element ( colors );
-					}
-
-					visuals->add_element ( chams );
+					visuals->add_element ( enemy_visuals );
 				}
 
-				auto glow = std::make_shared< oxui::subtab > ( OSTR ( "Glow" ) ); {
-					auto settings = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Rimlight" ) ) );
-						settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Glow" ) ) );
+				auto team_visuals = std::make_shared< oxui::subtab > ( OSTR ( "Team" ) ); {
+					const auto chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 217, 249, 255 ) );
+					const auto xqz_chams_picker = std::make_shared< oxui::color_picker > ( OSTR ( "XQZ Chams" ), oxui::color ( 246, 155, 249, 255 ) );
+					const auto backtrack_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 50 ) );
+					const auto hit_matrix_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 190, 255, 156, 100 ) );
+					const auto glow_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Glow" ), oxui::color ( 197, 104, 237, 121 ) );
+					const auto rimlight_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight" ), oxui::color ( 255, 255, 255, 150 ) );
+					const auto box_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Box" ), oxui::color ( 255, 255, 255, 162 ) );
+					const auto health_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Health Bar" ), oxui::color ( 129, 255, 56, 118 ) );
+					const auto ammo_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Ammo Bar" ), oxui::color ( 125, 233, 255, 118 ) );
+					const auto desync_bar_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Desync Bar" ), oxui::color ( 221, 110, 255, 132 ) );
+					const auto name_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Name" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto weapon_picker = std::make_shared< oxui::color_picker > ( OSTR ( "Weapon" ), oxui::color ( 255, 255, 255, 200 ) );
+					const auto reflectivity = std::make_shared< oxui::slider > ( OSTR ( "Reflectivity" ), 0.0, 0.0, 100.0 );
+					const auto phong = std::make_shared< oxui::slider > ( OSTR ( "Phong" ), 0.0, 0.0, 100.0 );
 
-						glow->add_element ( settings );
+					auto designer = std::make_shared< oxui::group > ( OSTR ( "Visual Editor" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
+						designer->add_element ( std::make_shared< oxui::visual_editor > (
+							chams_picker,
+							reflectivity,
+							phong,
+							backtrack_picker,
+							hit_matrix_picker,
+							xqz_chams_picker,
+							glow_picker,
+							rimlight_picker,
+							box_picker,
+							health_bar_picker,
+							ammo_bar_picker,
+							desync_bar_picker,
+							name_picker,
+							weapon_picker
+							) );
+
+						team_visuals->add_element ( designer );
 					}
 
-					auto targets = std::make_shared< oxui::group > ( OSTR ( "Targets" ), std::vector< float > { 0.0f, 0.5f, 0.5f, 0.5f } ); {
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Team" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Enemy" ) ) );
-						targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Local" ) ) );
+					auto colors = std::make_shared< oxui::group > ( OSTR ( "Options" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 1.0f } ); {
+						colors->add_element ( reflectivity );
+						colors->add_element ( phong );
+						colors->add_element ( chams_picker );
+						colors->add_element ( xqz_chams_picker );
+						colors->add_element ( backtrack_picker );
+						colors->add_element ( hit_matrix_picker );
+						colors->add_element ( glow_picker );
+						colors->add_element ( rimlight_picker );
+						colors->add_element ( box_picker );
+						colors->add_element ( health_bar_picker );
+						colors->add_element ( ammo_bar_picker );
+						colors->add_element ( desync_bar_picker );
+						colors->add_element ( name_picker );
+						colors->add_element ( weapon_picker );
 
-						glow->add_element ( targets );
+						team_visuals->add_element ( colors );
 					}
 
-					auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight" ), oxui::color ( 132, 0, 255, 80 ) ) );
-						colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Glow" ), oxui::color ( 115, 0, 255, 65 ) ) );
-
-						glow->add_element ( colors );
-					}
-
-					visuals->add_element ( glow );
+					visuals->add_element ( team_visuals );
 				}
+
+				//auto chams = std::make_shared< oxui::subtab > ( OSTR ( "Chams" ) ); {
+				//	auto settings = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Chams" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Flat" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "XQZ" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Backtrack" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Hit Matrix" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fake Matrix" ) ) );
+				//
+				//		chams->add_element ( settings );
+				//	}
+				//
+				//	auto targets = std::make_shared< oxui::group > ( OSTR ( "Targets" ), std::vector< float > { 0.0f, 0.5f, 0.5f, 0.5f } ); {
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Team" ) ) );
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Enemy" ) ) );
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Local" ) ) );
+				//
+				//		chams->add_element ( targets );
+				//	}
+				//
+				//	auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Chams" ), oxui::color ( 155, 255, 232, 45 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Hit Matrix" ), oxui::color ( 155, 255, 232, 45 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "XQZ" ), oxui::color ( 155, 163, 255, 45 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Backtrack" ), oxui::color ( 255, 255, 255, 255 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Fake" ), oxui::color ( 255, 0, 119, 45 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Reflected" ), oxui::color ( 255, 168, 5, 65 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Phong" ), oxui::color ( 255, 168, 5, 65 ) ) );
+				//
+				//		chams->add_element ( colors );
+				//	}
+				//
+				//	visuals->add_element ( chams );
+				//}
+
+				//auto glow = std::make_shared< oxui::subtab > ( OSTR ( "Glow" ) ); {
+				//	auto settings = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.5f } ); {
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Rimlight" ) ) );
+				//		settings->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Glow" ) ) );
+				//
+				//		glow->add_element ( settings );
+				//	}
+				//
+				//	auto targets = std::make_shared< oxui::group > ( OSTR ( "Targets" ), std::vector< float > { 0.0f, 0.5f, 0.5f, 0.5f } ); {
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Team" ) ) );
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Enemy" ) ) );
+				//		targets->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Local" ) ) );
+				//
+				//		glow->add_element ( targets );
+				//	}
+				//
+				//	auto colors = std::make_shared< oxui::group > ( OSTR ( "Colors" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Rimlight" ), oxui::color ( 132, 0, 255, 80 ) ) );
+				//		colors->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Glow" ), oxui::color ( 115, 0, 255, 65 ) ) );
+				//
+				//		glow->add_element ( colors );
+				//	}
+				//
+				//	visuals->add_element ( glow );
+				//}
 
 				auto other = std::make_shared< oxui::subtab > ( OSTR ( "Other" ) ); {
 					auto settings = std::make_shared< oxui::group > ( OSTR ( "Removals" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.333f } ); {
@@ -1008,8 +1163,9 @@ void menu::init( ) {
 				auto movement = std::make_shared< oxui::subtab > ( OSTR ( "Movement" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 1.0f } ); {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Bunnyhop" ) ) );
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Autostrafer" ) ) );
-						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Omni-Directional Autostrafer" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Forward" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Strafer" ) ) );
+						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Omni-Directional Auto Strafer" ) ) );
 
 						movement->add_element ( main );
 					}
@@ -1199,12 +1355,12 @@ void menu::draw( ) {
 
 	refresh_player_list ( );
 
-	/* darken the screen */
-	if ( window->open ) {
-		int w, h;
-		render::screen_size ( w, h );
-		render::rectangle ( -2, -2, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, 166 ) );
-	}
+	///* darken the screen */
+	//if ( window->open ) {
+	//	int w, h;
+	//	render::screen_size ( w, h );
+	//	render::rectangle ( -2, -2, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, 166 ) );
+	//}
 
 	security_handler::update ( );
 

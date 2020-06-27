@@ -18,5 +18,6 @@
 #include "objects/colorpicker.hpp"
 #include "objects/label.hpp"
 #include "objects/subtab.hpp"
+#include "objects/visual_editor.hpp"
 
 #endif // OXUI_HPP

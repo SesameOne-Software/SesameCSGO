@@ -4,6 +4,7 @@
 #include "../animations/animations.hpp"
 #include "ragebot.hpp"
 #include "../animations/resolver.hpp"
+#include "other_visuals.hpp"
 #include "autowall.hpp"
 #include <locale>
 
@@ -13,129 +14,101 @@ ID3DXFont* features::esp::esp_font = nullptr;
 ID3DXFont* features::esp::dbg_font = nullptr;
 float box_alpha = 0.0f;
 
+oxui::visual_editor::settings_t* visuals;
+
 std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
 std::array< features::esp::esp_data_t, 65 > features::esp::esp_data;
 
-void features::esp::draw_esp_box( int x, int y, int w, int h, bool dormant ) {
-	OPTION ( oxui::color, esp_clr, "Sesame->C->ESP->Colors->Box", oxui::object_colorpicker );
-
+void draw_esp_box( int x, int y, int w, int h, bool dormant, oxui::visual_editor::settings_t* visuals ) {
 	render::outline( x - 1, y - 1, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( box_alpha * 60.0f, 0, 60 ) ) );
-	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( esp_clr.a ) * box_alpha ) ) : D3DCOLOR_RGBA ( esp_clr.r, esp_clr.g, esp_clr.b, static_cast< int >( static_cast< float >( esp_clr.a )* box_alpha ) ) );
+	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( visuals->esp_box.picker->clr.a ) * box_alpha ) ) : D3DCOLOR_RGBA ( visuals->esp_box.picker->clr.r, visuals->esp_box.picker->clr.g, visuals->esp_box.picker->clr.b, static_cast< int >( static_cast< float >( visuals->esp_box.picker->clr.a )* box_alpha ) ) );
 }
 
-void features::esp::draw_nametag( int x, int y, int w, int h, const std::wstring_view& name, bool dormant ) {
-	OPTION ( oxui::color, esp_clr, "Sesame->C->ESP->Colors->Name", oxui::object_colorpicker );
+auto cur_offset_left_height = 0;
+auto cur_offset_right_height = 0;
+auto cur_offset_left = 4;
+auto cur_offset_right = 4;
+auto cur_offset_bottom = 4;
+auto cur_offset_top = 4;
 
-	const auto name_tag_dim = 16;
+void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widget, bool dormant, double value, double max, const std::wstring_view& to_print = _ (L"") ) {
+	uint32_t clr1 = D3DCOLOR_RGBA ( 0, 0, 0, std::clamp< int > ( static_cast< float >( esp_widget.picker->clr.a ) / 2, 0, 60 ) );
+	uint32_t clr = D3DCOLOR_RGBA ( esp_widget.picker->clr.r, esp_widget.picker->clr.g, esp_widget.picker->clr.b, esp_widget.picker->clr.a );
 
-	//render::dim dim;
-	//render::text_size( esp_font, name, dim );
-	//const auto box_w = w < ( dim.w + name_tag_dim ) ? ( dim.w + name_tag_dim ) : w;
-	//
-	//render::rectangle( w < ( dim.w + name_tag_dim ) ? ( x - ( dim.w - w + name_tag_dim ) / 2 ) : x, y - name_tag_dim - 4, box_w, name_tag_dim, D3DCOLOR_RGBA( 0, 0, 0, 28 ) );
-	//render::rectangle( w < ( dim.w + name_tag_dim ) ? ( x - ( dim.w - w + name_tag_dim ) / 2 ) : x + 1, y - name_tag_dim - 4 + 1, box_w - 1, 2, D3DCOLOR_RGBA( esp_clr.r, esp_clr.g, esp_clr.b, esp_clr.a ) );
-	//render::text( x + w / 2 - dim.w / 2, y - name_tag_dim - 4 + name_tag_dim / 2 - dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), esp_font, name.data( ) );
+	if ( dormant )
+		clr = D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( esp_widget.picker->clr.a ) * box_alpha ) );
 
-	render::dim dim;
-	render::text_size ( esp_font, name, dim );
-	render::text ( x + w / 2 - dim.w / 2, y - 2 - dim.h, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( esp_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( esp_clr.r, esp_clr.g, esp_clr.b, static_cast< int >( static_cast< float >( esp_clr.a )* box_alpha ) ), esp_font, name.data ( ), true );
-}
+	switch ( esp_widget.type ) {
+	case oxui::esp_widget_type_t::info_type_bar: {
+		const auto fraction = std::clamp( value / max, 0.0, 1.0 );
+		const auto calc_height = fraction * box.h;
 
-uint32_t features::esp::color_variable_weight( float val, float cieling ) {
-	const auto clamped = std::clamp( val, 0.0f, cieling );
-	const auto scaled = static_cast< int >( clamped * ( 255.0f / cieling ) );
+		switch ( esp_widget.location ) {
+		case oxui::esp_widget_pos_t::pos_left:
+			render::outline ( box.x - cur_offset_left - 4, box.y, 4, box.h, clr1 );
+			render::rectangle ( box.x - cur_offset_left - 4 + 1, box.y + ( box.h - calc_height ) + 1, 4 - 1, calc_height, clr );
 
-	return D3DCOLOR_RGBA( scaled, 255 - scaled, 0, 255 );
-}
+			if ( visuals->show_value )
+			render::text ( box.x - cur_offset_left - 4 + 1, box.y + ( box.h - calc_height ) + 1, D3DCOLOR_RGBA( 255, 255, 255, 255), features::esp::dbg_font, std::to_wstring(static_cast<int>( value )), false, true );
+			cur_offset_left += 6;
+			break;
+		case oxui::esp_widget_pos_t::pos_right:
+			render::outline ( box.x + box.w + cur_offset_right, box.y, 4, box.h, clr1 );
+			render::rectangle ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, 4 - 1, calc_height, clr );
 
-void features::esp::draw_bars( int x, int y, int w, int h, int health_amount, float desync_amount, player_t* pl, bool dormant ) {
-	//OPTION( bool, lc, "Sesame->C->ESP->Main->Box", oxui::object_checkbox );
-	OPTION( bool, health, "Sesame->C->ESP->Main->Health Bar", oxui::object_checkbox );
-	OPTION( bool, desync, "Sesame->C->ESP->Main->Desync Bar", oxui::object_checkbox );
-	OPTION( bool, weapon, "Sesame->C->ESP->Main->Weapon", oxui::object_checkbox );
-	OPTION ( bool, resolver_confidence, "Sesame->C->ESP->Main->Resolver Confidence", oxui::object_checkbox );
-	OPTION ( bool, reloading_flag, "Sesame->C->ESP->Main->Reloading Flag", oxui::object_checkbox );
-	OPTION ( bool, fakeduck_flag, "Sesame->C->ESP->Main->Fakeduck Flag", oxui::object_checkbox );
-	OPTION ( bool, fatal_baim_flag, "Sesame->C->ESP->Main->Fatal Baim Flag", oxui::object_checkbox );
+			if ( visuals->show_value )
+			render::text ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
+			cur_offset_right += 6;
+			break;
+		case oxui::esp_widget_pos_t::pos_bottom:
+			render::outline ( box.x, box.y + box.h + cur_offset_bottom, box.w, 4, clr1 );
+			render::rectangle ( box.x + 1, box.y + box.h + cur_offset_bottom + 1, static_cast< float >( box.w )* fraction + 1, 4 - 1, clr );
 
-	OPTION ( oxui::color, name_clr, "Sesame->C->ESP->Colors->Name", oxui::object_colorpicker );
-	OPTION ( oxui::color, indicator_on_clr, "Sesame->C->ESP->Colors->Flag On", oxui::object_colorpicker );
-	OPTION ( oxui::color, indicator_off_clr, "Sesame->C->ESP->Colors->Flag Off", oxui::object_colorpicker );
-	OPTION ( oxui::color, health_clr, "Sesame->C->ESP->Colors->Health Bar", oxui::object_colorpicker );
-	OPTION ( oxui::color, desync_clr, "Sesame->C->ESP->Colors->Desync Bar", oxui::object_colorpicker );
+			if ( visuals->show_value )
+			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1, box.y + box.h + cur_offset_bottom + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
+			cur_offset_bottom += 6;
+			break;
+		case oxui::esp_widget_pos_t::pos_top:
+			render::outline ( box.x, box.y - cur_offset_top - 4, box.w, 4, clr1 );
+			render::rectangle ( box.x + 1, box.y - cur_offset_top - 4 + 1, static_cast< float >( box.w )* fraction + 1, 4 - 1, clr );
 
-	const int desync_clamped = std::clamp( desync_amount, 0.0f, 58.0f );
-	const int health_clamped = std::clamp( health_amount, 0, 100 );
+			if ( visuals->show_value )
+			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1, box.y - cur_offset_top - 4 + 1, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, std::to_wstring ( static_cast< int >( value ) ), false, true );
+			cur_offset_top += 6;
+			break;
+		}
+	} break;
+	case oxui::esp_widget_type_t::info_type_text: {
+		render::dim text_dim;
+		render::text_size ( features::esp::esp_font, to_print, text_dim );
 
-	auto cur_y = y + h + 4;
-	auto cur_y_side = y;
+		switch ( esp_widget.location ) {
+		case oxui::esp_widget_pos_t::pos_left:
+			render::text ( box.x - cur_offset_left - text_dim.w, box.y + cur_offset_left_height, clr, features::esp::esp_font, to_print, true );
+			cur_offset_left_height += text_dim.h + 4;
+			break;
+		case oxui::esp_widget_pos_t::pos_right:
+			render::text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, clr, features::esp::esp_font, to_print, true );
+			cur_offset_right_height += text_dim.h + 4;
+			break;
+		case oxui::esp_widget_pos_t::pos_bottom:
+			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y + box.h + cur_offset_bottom, clr, features::esp::esp_font, to_print, true );
+			cur_offset_bottom += text_dim.h + 4;
+			break;
+		case oxui::esp_widget_pos_t::pos_top:
+			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y - cur_offset_top - text_dim.h, clr, features::esp::esp_font, to_print, true );
+			cur_offset_top += text_dim.h + 4;
+			break;
+		}
+	} break;
+	case oxui::esp_widget_type_t::info_type_number: {
 
-	/* lag-comp break indicator */
-	//if ( lc
-	//	&& animations::data::old_origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX )
-	//	&& animations::data::origin [ pl->idx( ) ] != vec3_t( FLT_MAX, FLT_MAX, FLT_MAX ) ) {
-	//	render::text( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( lagcomp::breaking_lc ( pl ) ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _( L"LC" ), true, false );
-	//	cur_y_side += 16;
-	//}
+	} break;
+	case oxui::esp_widget_type_t::info_type_flag: {
 
-	if ( resolver_confidence ) {
-		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( ( animations::resolver::get_confidence ( pl->idx ( ) ) > 55.0f ) ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, std::to_wstring ( static_cast < int > ( animations::resolver::get_confidence ( pl->idx ( ) ) ) ) + _ ( L"%" ), true, false );
-		cur_y_side += 16;
+	} break;
+	default: break;
 	}
-
-	//C6 87 ? ? ? ? ? 8B 06 8B CE FF 90
-
-	if ( reloading_flag && esp_data [ pl->idx ( ) ].m_reloading ) {
-		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"RELOADING" ), true, false );
-		cur_y_side += 16;
-	}
-
-	if ( fakeduck_flag && esp_data [ pl->idx ( ) ].m_fakeducking ) {
-		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"FAKEDUCK" ), true, false );
-		cur_y_side += 16;
-	}
-
-	if ( fatal_baim_flag && esp_data [ pl->idx ( ) ].m_fatal ) {
-		render::text ( x + w + 6, cur_y_side, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) : ( true ? D3DCOLOR_RGBA ( indicator_on_clr.r, indicator_on_clr.g, indicator_on_clr.b, static_cast< int >( static_cast< float >( indicator_on_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( indicator_off_clr.r, indicator_off_clr.g, indicator_off_clr.b, static_cast< int >( static_cast< float >( indicator_off_clr.a )* box_alpha ) ) ), indicator_font, _ ( L"BAIM FATAL" ), true, false );
-		cur_y_side += 16;
-	}
-
-	/* health bar */
-	if ( health ) {
-		render::outline( x, cur_y, w, 4, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) );
-		render::rectangle ( x + 1, cur_y + 1, static_cast< float >( w )* ( static_cast< float >( health_clamped ) / 100.0f ) - 1, 4 - 1, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( health_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( health_clr.r, health_clr.g, health_clr.b, static_cast< int >( static_cast< float >( health_clr.a )* box_alpha ) ) );
-
-		cur_y += 6;
-	}
-
-	/* desync bar */
-	if ( desync ) {
-		render::outline( x, cur_y, w, 4, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int > ( box_alpha * 60.0f, 0, 60 ) ) );
-		render::rectangle ( x + 1, cur_y + 1, static_cast< float >( w )* ( static_cast< float >( desync_clamped ) / 58.0f ) - 1, 4 - 1, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( desync_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA ( desync_clr.r, desync_clr.g, desync_clr.b, static_cast< int >( static_cast< float >( desync_clr.a )* box_alpha ) ) );
-		
-		cur_y += 6;
-	}
-
-	if ( weapon ) {
-		render::dim dim;
-		render::text_size( esp_font, esp_data [ pl->idx ( ) ].m_weapon_name, dim );
-		render::text( x + w / 2 - dim.w / 2, cur_y + 2, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( name_clr.a )* box_alpha ) ) : D3DCOLOR_RGBA( name_clr.r, name_clr.g, name_clr.b, static_cast< int >( static_cast< float >( name_clr.a )* box_alpha ) ), esp_font, esp_data [ pl->idx ( ) ].m_weapon_name, true );
-
-		cur_y += dim.h + 6;
-	}
-
-	//int overlay_log_count = 6;
-	//
-	//auto get_overlay_log = [ & ] ( ) {
-	//	const auto ret = std::to_wstring( overlay_log_count ) + _(L" : ") + std::to_wstring ( animations::data::overlays [ pl->idx ( ) ][ overlay_log_count ].m_weight ) + _ ( L", " ) + std::to_wstring ( animations::data::overlays [ pl->idx ( ) ][ overlay_log_count ].m_playback_rate ) + _ ( L", " ) + std::to_wstring ( animations::data::overlays [ pl->idx ( ) ][ overlay_log_count ].m_cycle ) + _ ( L", " ) + std::to_wstring ( animations::data::overlays [ pl->idx ( ) ][ overlay_log_count ].m_sequence );
-	//	overlay_log_count++;
-	//	return ret;
-	//};
-	//
-	//for ( auto i = 6; i < 7; i++ ) {
-	//	render::text ( x + w + 6, cur_y_side, D3DCOLOR_RGBA( 255, 255, 255, 255 ), indicator_font, get_overlay_log ( ), true, false );
-	//	cur_y_side += 16;
-	//}
 }
 
 struct snd_info_t {
@@ -203,14 +176,6 @@ void features::esp::handle_dynamic_updates ( ) {
 }
 
 void features::esp::render( ) {
-	OPTION( bool, esp, "Sesame->C->ESP->Main->ESP", oxui::object_checkbox );
-	OPTION( bool, box, "Sesame->C->ESP->Main->Box", oxui::object_checkbox );
-	OPTION ( bool, name, "Sesame->C->ESP->Main->Name", oxui::object_checkbox );
-	OPTION( bool, team, "Sesame->C->ESP->Targets->Team", oxui::object_checkbox );
-	OPTION( bool, enemy, "Sesame->C->ESP->Targets->Enemy", oxui::object_checkbox );
-	OPTION ( bool, local, "Sesame->C->ESP->Targets->Local", oxui::object_checkbox );
-	OPTION( double, esp_fade_time, "Sesame->C->ESP->Main->ESP Fade Time", oxui::object_slider );
-
 	if ( !g::local )
 		return;
 
@@ -228,9 +193,6 @@ void features::esp::render( ) {
 		return;
 	}
 
-	if ( !esp )
-		return;
-
 	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 		auto e = csgo::i::ent_list->get< player_t* >( i );
 
@@ -239,28 +201,8 @@ void features::esp::render( ) {
 			continue;
 		}
 
-		if ( !enemy
-			&& e->team ( ) != g::local->team ( ) ) {
-			esp_data [ e->idx ( ) ].m_pl = nullptr;
-			continue;
-		}
-
-		if ( !team
-			&& e->team ( ) == g::local->team ( )
-			&& e != g::local ) {
-			esp_data [ e->idx ( ) ].m_pl = nullptr;
-			continue;
-		}
-
-		if ( !local
-			&& e == g::local ) {
-			esp_data [ e->idx ( ) ].m_pl = nullptr;
-			continue;
-		}
-
-		if ( ( enemy || team )
-			&& !e->alive ( ) ) {
-			esp_data [ e->idx ( ) ].m_pl = nullptr;
+		if ( !get_visuals ( e, &visuals ) ) {
+			esp_data [ i ].m_pl = nullptr;
 			continue;
 		}
 
@@ -375,7 +317,7 @@ void features::esp::render( ) {
 			esp_data [ e->idx ( ) ].m_first_seen = 0.0f;
 		}
 
-		auto dormant_time = std::max< float > ( esp_fade_time, 0.1f );
+		auto dormant_time = std::max< float > ( 7.0f/*esp_fade_time*/, 0.1f );
 
 		if ( esp_data [ e->idx ( ) ].m_pl && std::fabsf( csgo::i::globals->m_curtime - esp_data [ e->idx ( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
@@ -395,13 +337,32 @@ void features::esp::render( ) {
 			if ( MultiByteToWideChar ( CP_UTF8, 0, info.m_name, -1, buf, 36 ) > 0 )
 				wname = buf;
 
-			if ( box )
-				draw_esp_box ( left, top, right - left, bottom - top, esp_data [ e->idx ( ) ].m_dormant );
+			if ( visuals->esp_box.enabled )
+				draw_esp_box ( left, top, right - left, bottom - top, esp_data [ e->idx ( ) ].m_dormant, visuals );
 
-			if ( name )
-				draw_nametag ( left, top, right - left, bottom - top, wname, esp_data [ e->idx ( ) ].m_dormant );
+			cur_offset_left_height = 0;
+			cur_offset_right_height = 0;
+			cur_offset_left = 4;
+			cur_offset_right = 4;
+			cur_offset_bottom = 4;
+			cur_offset_top = 4;
 
-			draw_bars ( left, top, right - left, bottom - top, e->health ( ), e->desync_amount ( ), e, esp_data [ e->idx ( ) ].m_dormant );
+			oxui::rect esp_rect { static_cast<int>( left ), static_cast< int >(top), static_cast< int >(right - left), static_cast< int >(bottom - top) };
+
+			if ( visuals->health_bar.enabled )
+				draw_esp_widget ( esp_rect, visuals->health_bar, esp_data [ e->idx ( ) ].m_dormant, e->health ( ), 100.0 );
+
+			if ( visuals->ammo_bar.enabled && e->weapon ( ) && e->weapon ( )->data ( ) )
+				draw_esp_widget ( esp_rect, visuals->ammo_bar, esp_data [ e->idx ( ) ].m_dormant, e->weapon ( )->ammo( ), e->weapon ( )->data ( )->m_max_clip );
+
+			if ( visuals->desync_bar.enabled )
+				draw_esp_widget ( esp_rect, visuals->desync_bar, esp_data [ e->idx ( ) ].m_dormant, e->desync_amount( ), 58.0 );
+
+			if ( visuals->esp_name.enabled )
+				draw_esp_widget ( esp_rect, visuals->esp_name, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, wname );
+
+			if ( visuals->esp_weapon.enabled )
+				draw_esp_widget ( esp_rect, visuals->esp_weapon, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx ( ) ].m_weapon_name );
 		}
 	}
 }

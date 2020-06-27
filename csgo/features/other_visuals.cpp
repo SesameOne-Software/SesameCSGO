@@ -1,11 +1,32 @@
 ﻿#include "other_visuals.hpp"
-#include "../menu/menu.hpp"
 #include "../hooks.hpp"
 #include "../globals.hpp"
 #include <deque>
 #include <mutex>
 
 float features::spread_circle::total_spread = 0.0f;
+
+bool features::get_visuals ( player_t* pl, oxui::visual_editor::settings_t** out ) {
+	OPTION ( oxui::visual_editor::settings_t, vis_local, "Sesame->C->Local->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
+	OPTION ( oxui::visual_editor::settings_t, vis_enemy, "Sesame->C->Enemy->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
+	OPTION ( oxui::visual_editor::settings_t, vis_team, "Sesame->C->Team->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
+
+	if ( !pl || !pl->alive( ) || !pl->idx( ) || pl->idx( ) > csgo::i::globals->m_max_clients )
+		return false;
+
+	if ( pl == g::local ) {
+		*out = &vis_local;
+		return true;
+	}
+
+	if ( g::local->team ( ) != pl->team ( ) ) {
+		*out = &vis_enemy;
+		return true;
+	}
+
+	*out = &vis_team;
+	return true;
+}
 
 void features::spread_circle::draw ( ) {
 	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );

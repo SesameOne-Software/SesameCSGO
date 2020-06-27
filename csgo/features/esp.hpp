@@ -22,10 +22,6 @@ namespace features {
 
 		extern std::array< esp_data_t, 65 > esp_data;
 
-		void draw_esp_box( int x, int y, int w, int h, bool dormant );
-		void draw_nametag( int x, int y, int w, int h, const std::wstring_view& name, bool dormant );
-		uint32_t color_variable_weight( float val, float cieling );
-		void draw_bars( int x, int y, int w, int h, int health_amount, float desync_amount, player_t* pl, bool dormant );
 		void render( );
 		void handle_dynamic_updates ( );
 	}

@@ -188,43 +188,12 @@ void oxui::keybind::think ( ) {
 
 	if ( searching ) {
 		for ( int i = 0; i < 255; i++ ) {
-			if ( utils::key_state ( i ) ) {
-
+			if ( GetAsyncKeyState ( i ) ) {
 				/* we can't bind left/right click */
-				if ( i == VK_LBUTTON || i == VK_RBUTTON ) {
-					return;
-				}
+				if ( i == VK_LBUTTON || i == VK_RBUTTON ) 
+					continue;
 
-				/* bind other mouse binds */
-				if ( i == VK_MBUTTON ) {
-					key = VK_MBUTTON;
-					shapes::finished_input_frame = searching = false;
-					return;
-				}
-
-				if ( i == VK_XBUTTON1 ) {
-					key = VK_XBUTTON1;
-					shapes::finished_input_frame = searching = false;
-					return;
-				}
-
-				if ( i == VK_XBUTTON2 ) {
-					key = VK_XBUTTON2;
-					shapes::finished_input_frame = searching = false;
-					return;
-				}
-
-				/* bind */
-				key = i;
-
-				/* invalidate if pressing ESCAPE */
-				if ( i == VK_ESCAPE ) {
-					key = -1;
-					shapes::finished_input_frame = searching = false;
-					return;
-				}
-
-				/* stop searching */
+				key = ( i == VK_ESCAPE ) ? -1 : i;
 				shapes::finished_input_frame = searching = false;
 			}
 		}

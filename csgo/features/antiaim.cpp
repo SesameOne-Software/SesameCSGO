@@ -90,14 +90,14 @@ player_t* looking_at ( ) {
 	return ret;
 }
 
-int find_freestand_side ( player_t* pl ) {
+int find_freestand_side ( player_t* pl, float range ) {
 	const auto cross = csgo::angle_vec ( csgo::calc_angle ( g::local->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f ), pl->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f ) ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 
 	const auto src = g::local->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin ( ) + pl->vel ( ) * ( csgo::i::globals->m_curtime - pl->simtime ( ) ) + vec3_t ( 0.0f, 0.0f, 64.0f );
 
-	const auto l_dmg = autowall::dmg ( g::local, pl, src + cross * 45.0f, dst + cross * 45.0f, 0 );
-	const auto r_dmg = autowall::dmg ( g::local, pl, src - cross * 45.0f, dst - cross * 45.0f, 0 );
+	const auto l_dmg = autowall::dmg ( g::local, pl, src + cross * range, dst + cross * range, 0 );
+	const auto r_dmg = autowall::dmg ( g::local, pl, src - cross * range, dst - cross * range, 0 );
 
 	if ( l_dmg == r_dmg )
 		return -1;
@@ -171,6 +171,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	OPTION ( double, auto_direction_amount_move, "Sesame->B->Moving->Base->Auto Direction Amount", oxui::object_slider );
 	OPTION ( double, auto_direction_amount_stand, "Sesame->B->Standing->Base->Auto Direction Amount", oxui::object_slider );
 	OPTION ( double, auto_direction_amount_slow_walk, "Sesame->B->Slow Walk->Base->Auto Direction Amount", oxui::object_slider );
+
+	OPTION ( double, auto_direction_range_air, "Sesame->B->Air->Base->Auto Direction Range", oxui::object_slider );
+	OPTION ( double, auto_direction_range_move, "Sesame->B->Moving->Base->Auto Direction Range", oxui::object_slider );
+	OPTION ( double, auto_direction_range_stand, "Sesame->B->Standing->Base->Auto Direction Range", oxui::object_slider );
+	OPTION ( double, auto_direction_range_slow_walk, "Sesame->B->Slow Walk->Base->Auto Direction Range", oxui::object_slider );
 
 	KEYBIND ( left_key, "Sesame->B->Other->Other->Left Side Key" );
 	KEYBIND ( back_key, "Sesame->B->Other->Other->Back Side Key" );
@@ -363,6 +368,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		|| ucmd->m_buttons & 32
 		|| !g::local->weapon ( )
 		|| !g::local->weapon ( )->data ( )
+		|| ( g::local->weapon ( )->data ( )->m_type == 0 && ucmd->m_buttons & 2048 )
 		//|| g::local->weapon( )->data( )->m_type == 0
 		|| g::round == round_t::starting )
 		return;
@@ -374,7 +380,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	//update_anti_bruteforce ( );
 	auto desync_amnt = ( desync_side || desync_side == -1 ) ? 120.0f : -120.0f;
 
-	auto process_base_yaw = [ & ] ( int base_yaw, float auto_dir_amount ) {
+	auto process_base_yaw = [ & ] ( int base_yaw, float auto_dir_amount, float auto_dir_range ) {
 		switch ( base_yaw ) {
 		case 0: {
 			vec3_t ang;
@@ -397,7 +403,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		} break;
 		case 3: {
 			if ( target_player ) {
-				const auto desync_side = find_freestand_side ( target_player );
+				const auto desync_side = find_freestand_side ( target_player, auto_dir_range );
 
 				if ( desync_side != -1 ) {
 					ucmd->m_angs.y += desync_side ? -auto_dir_amount : auto_dir_amount;
@@ -419,7 +425,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	/* manage antiaim */ {
 		if ( !( g::local->flags( ) & 1 ) ) {
 			if ( air ) {
-				process_base_yaw ( base_yaw_air, auto_direction_amount_air );
+				process_base_yaw ( base_yaw_air, auto_direction_amount_air, auto_direction_range_air );
 
 				if ( side != -1 ) {
 					switch ( side ) {
@@ -439,7 +445,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( target_player && anti_freestand_prediction_air ) {
-					const auto desync_side = find_freestand_side ( target_player );
+					const auto desync_side = find_freestand_side ( target_player, auto_direction_range_air );
 
 					if ( desync_side != -1 )
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
@@ -463,7 +469,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
 			if ( slowwalk_key && slow_walk ) {
-				process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk );
+				process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
 
 				if ( side != -1 ) {
 					switch ( side ) {
@@ -483,7 +489,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( target_player && anti_freestand_prediction_slow_walk ) {
-					const auto desync_side = find_freestand_side ( target_player );
+					const auto desync_side = find_freestand_side ( target_player, auto_direction_range_slow_walk );
 
 					if ( desync_side != -1 )
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
@@ -505,7 +511,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_slow_walk : jitter_amount_slow_walk;
 			}
 			else if ( move ) {
-				process_base_yaw ( base_yaw_move, auto_direction_amount_move );
+				process_base_yaw ( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
 
 				if ( side != -1 ) {
 					switch ( side ) {
@@ -525,7 +531,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( target_player && anti_freestand_prediction_move ) {
-					const auto desync_side = find_freestand_side ( target_player );
+					const auto desync_side = find_freestand_side ( target_player, auto_direction_range_move );
 
 					if ( desync_side != -1 )
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
@@ -548,7 +554,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		}
 		else if ( stand ) {
-			process_base_yaw ( base_yaw_stand, auto_direction_amount_stand );
+			process_base_yaw ( base_yaw_stand, auto_direction_amount_stand, auto_direction_range_stand );
 
 			if ( side != -1 ) {
 				switch ( side ) {
@@ -568,7 +574,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 
 			if ( target_player && anti_freestand_prediction_stand ) {
-				const auto desync_side = find_freestand_side ( target_player );
+				const auto desync_side = find_freestand_side ( target_player, auto_direction_range_stand );
 
 				if ( desync_side != -1 )
 					desync_amnt = !desync_side ? 120.0f : -120.0f;

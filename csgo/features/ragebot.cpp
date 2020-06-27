@@ -19,10 +19,36 @@ std::array< float, 65 > features::ragebot::hitchances { 0.0f };
 std::array< features::lagcomp::lag_record_t, 65 > cur_lag_rec { 0 };
 features::ragebot::weapon_config_t features::ragebot::active_config;
 
+struct recorded_scans_t {
+	recorded_scans_t ( const features::lagcomp::lag_record_t& rec, const vec3_t& target, float dmg, int tick, int hitbox, int priority ) {
+		m_rec = rec;
+		m_target = target;
+		m_dmg = dmg;
+		m_tick = tick;
+		m_hitbox = hitbox;
+		m_priority = priority;
+	}
+
+	~recorded_scans_t ( ) {
+
+	}
+
+	features::lagcomp::lag_record_t m_rec;
+	vec3_t m_target;
+	float m_dmg;
+	int m_tick, m_hitbox, m_priority;
+};
+
+std::array< std::vector< recorded_scans_t >, 65 > previous_scanned_records { { } };
+
 void features::ragebot::get_weapon_config ( weapon_config_t& const config ) {
 	if ( !g::local || !g::local->alive( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
 
+	OPTION ( bool, knife_bot, "Sesame->A->Default->Main->Knife Bot", oxui::object_checkbox );
+	OPTION ( bool, zeus_bot, "Sesame->A->Default->Main->Zeus Bot", oxui::object_checkbox );
+	OPTION ( bool, ragebot, "Sesame->A->Default->Main->Main Switch", oxui::object_checkbox );
+	OPTION ( int, optimization, "Sesame->A->Default->Main->Optimization", oxui::object_dropdown );
 	KEYBIND ( tickbase_key, "Sesame->A->Auto->Main->Doubletap Key" );
 	OPTION ( int, pistol_inherit_from, "Sesame->A->Pistol->Main->Inherit From", oxui::object_dropdown );
 	OPTION ( int, revolver_inherit_from, "Sesame->A->Revolver->Main->Inherit From", oxui::object_dropdown );
@@ -53,12 +79,17 @@ void features::ragebot::get_weapon_config ( weapon_config_t& const config ) {
 		else if ( g::local->weapon ( )->item_definition_index ( ) == 40 )
 			config_type = 6;
 	}
-	else {
-		memset ( &config, 0, sizeof config );
-		return;
-	}
+	//else {
+	//	memset ( &config, 0, sizeof config );
+	//	config.main_switch = ragebot;
+	//	config.knife_bot = knife_bot;
+	//	config.zeus_bot = zeus_bot;
+	//	return;
+	//}
 
+	config.main_switch = ragebot;
 	config.dt_key = tickbase_key;
+	config.optimization = optimization;
 
 reevaluate_weapon_class:
 
@@ -80,9 +111,6 @@ reevaluate_weapon_class:
 		OPTION ( double, tickbase_shift_amount, "Sesame->A->Default->Main->Maximum Doubletap Ticks", oxui::object_slider );
 		OPTION ( bool, silent, "Sesame->A->Default->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Default->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, knife_bot, "Sesame->A->Default->Main->Knife Bot", oxui::object_checkbox );
-		OPTION ( bool, zeus_bot, "Sesame->A->Default->Main->Zeus Bot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Default->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, dt_hitchance, "Sesame->A->Default->Main->Doubletap Hit Chance", oxui::object_slider );
 		OPTION ( double, hitchance, "Sesame->A->Default->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Default->Main->Auto Scope", oxui::object_checkbox );
@@ -116,7 +144,6 @@ reevaluate_weapon_class:
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
 			if ( !config.knife_bot ) config.knife_bot = knife_bot;
 			if ( !config.zeus_bot ) config.zeus_bot = zeus_bot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.dt_hit_chance ) config.dt_hit_chance = dt_hitchance;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
@@ -143,7 +170,6 @@ reevaluate_weapon_class:
 		OPTION ( bool, safe_point, "Sesame->A->Revolver->Accuracy->Safe Point", oxui::object_checkbox );
 		OPTION ( bool, silent, "Sesame->A->Revolver->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Revolver->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Revolver->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, hitchance, "Sesame->A->Revolver->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Revolver->Main->Auto Scope", oxui::object_checkbox );
 		OPTION ( bool, auto_revolver, "Sesame->A->Revolver->Main->Auto Revolver", oxui::object_checkbox );
@@ -173,7 +199,6 @@ reevaluate_weapon_class:
 			if ( !config.safe_point ) config.safe_point = safe_point;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
@@ -205,7 +230,6 @@ reevaluate_weapon_class:
 		OPTION ( double, tickbase_shift_amount, "Sesame->A->Pistol->Main->Maximum Doubletap Ticks", oxui::object_slider );
 		OPTION ( bool, silent, "Sesame->A->Pistol->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Pistol->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Pistol->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, dt_hitchance, "Sesame->A->Pistol->Main->Doubletap Hit Chance", oxui::object_slider );
 		OPTION ( double, hitchance, "Sesame->A->Pistol->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Pistol->Main->Auto Scope", oxui::object_checkbox );
@@ -237,7 +261,6 @@ reevaluate_weapon_class:
 			if ( !config.max_dt_ticks ) config.max_dt_ticks = tickbase_shift_amount;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.dt_hit_chance ) config.dt_hit_chance = dt_hitchance;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
@@ -269,7 +292,6 @@ reevaluate_weapon_class:
 		OPTION ( double, tickbase_shift_amount, "Sesame->A->Rifle->Main->Maximum Doubletap Ticks", oxui::object_slider );
 		OPTION ( bool, silent, "Sesame->A->Rifle->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Rifle->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Rifle->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, dt_hitchance, "Sesame->A->Rifle->Main->Doubletap Hit Chance", oxui::object_slider );
 		OPTION ( double, hitchance, "Sesame->A->Rifle->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Rifle->Main->Auto Scope", oxui::object_checkbox );
@@ -301,7 +323,6 @@ reevaluate_weapon_class:
 			if ( !config.max_dt_ticks ) config.max_dt_ticks = tickbase_shift_amount;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.dt_hit_chance ) config.dt_hit_chance = dt_hitchance;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
@@ -332,7 +353,6 @@ reevaluate_weapon_class:
 		OPTION ( bool, safe_point, "Sesame->A->AWP->Accuracy->Safe Point", oxui::object_checkbox );
 		OPTION ( bool, silent, "Sesame->A->AWP->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->AWP->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->AWP->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, hitchance, "Sesame->A->AWP->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->AWP->Main->Auto Scope", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->AWP->Main->Choke On Shot", oxui::object_checkbox );
@@ -360,7 +380,6 @@ reevaluate_weapon_class:
 			if ( !config.safe_point ) config.safe_point = safe_point;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
@@ -392,7 +411,6 @@ reevaluate_weapon_class:
 		OPTION ( double, tickbase_shift_amount, "Sesame->A->Auto->Main->Maximum Doubletap Ticks", oxui::object_slider );
 		OPTION ( bool, silent, "Sesame->A->Auto->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Auto->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Auto->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, dt_hitchance, "Sesame->A->Auto->Main->Doubletap Hit Chance", oxui::object_slider );
 		OPTION ( double, hitchance, "Sesame->A->Auto->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Auto->Main->Auto Scope", oxui::object_checkbox );
@@ -425,7 +443,6 @@ reevaluate_weapon_class:
 			if ( !config.safe_point ) config.safe_point = safe_point;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
@@ -455,7 +472,6 @@ reevaluate_weapon_class:
 		OPTION ( bool, safe_point, "Sesame->A->Scout->Accuracy->Safe Point", oxui::object_checkbox );
 		OPTION ( bool, silent, "Sesame->A->Scout->Main->Silent", oxui::object_checkbox );
 		OPTION ( bool, autoshoot, "Sesame->A->Scout->Main->Auto Shoot", oxui::object_checkbox );
-		OPTION ( bool, ragebot, "Sesame->A->Scout->Main->Main Switch", oxui::object_checkbox );
 		OPTION ( double, hitchance, "Sesame->A->Scout->Main->Hit Chance", oxui::object_slider );
 		OPTION ( bool, autoscope, "Sesame->A->Scout->Main->Auto Scope", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Scout->Main->Choke On Shot", oxui::object_checkbox );
@@ -483,7 +499,6 @@ reevaluate_weapon_class:
 			if ( !config.safe_point ) config.safe_point = safe_point;
 			if ( !config.silent ) config.silent = silent;
 			if ( !config.auto_shoot ) config.auto_shoot = autoshoot;
-			if ( !config.main_switch ) config.main_switch = ragebot;
 			if ( !config.hit_chance ) config.hit_chance = hitchance;
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
@@ -585,7 +600,7 @@ bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays ) {
 	return calculated_chance >= ( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance );
 }
 
-void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out ) {
+void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out) {
 	OPTION ( bool, safe_point, "Sesame->A->Default->Accuracy->Safe Point", oxui::object_checkbox );
 	KEYBIND ( safe_point_key, "Sesame->A->Default->Accuracy->Safe Point Key" );
 	//OPTION ( bool, predict_fakelag, "Sesame->A->Rage Aimbot->Accuracy->Predict Fakelag", oxui::object_checkbox );
@@ -781,43 +796,7 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	if ( best_recs.empty( ) )
 		return;
 
-	/* remove records we PROBABLY won't hit (not completely accurate) */
-	//auto hc = run_hitchance ( csgo::calc_angle ( g::local->eyes ( ), best_recs.front ( ).m_bones [ 6 ].origin ( ) ), pl, best_recs.front ( ).m_bones [ 6 ].origin ( ), 50 );
-	//
-	//if ( !hc )
-	//	return;
-
 	lagcomp::lag_record_t now_rec;
-
-	///* execute selected lagfix */ {
-	//	/* allow all records */
-	//	if ( mode == 2 ) {
-	//
-	//	}
-	//	/* remove records and only allow latest, without lagfix */
-	//	else if ( mode == 0 ) {
-	//		best_recs.clear( );
-	//
-	//		now_rec.store( pl, pl->origin( ) );
-	//		now_rec.m_tick = csgo::time2ticks( csgo::i::globals->m_curtime );
-	//		best_recs.push_back( now_rec );
-	//
-	//		if ( shot.second ) {
-	//			shot.first.m_priority = 2;
-	//			best_recs.push_back( shot.first );
-	//		}
-	//	}
-	//	/* allow only delayed lag records*/
-	//	else if ( mode == 1 ) {
-	//		auto backup_best_recs = best_recs;
-	//		best_recs.clear( );
-	//
-	//		std::for_each( backup_best_recs.begin( ), backup_best_recs.end( ), [ & ] ( lagcomp::lag_record_t& rec ) {
-	//			if ( rec.m_priority == 2 || rec.m_priority == 1 )
-	//				best_recs.push_back( rec );
-	//		} );
-	//	}
-	//}
 
 	std::deque< int > hitboxes { };
 
@@ -897,10 +876,80 @@ retry_without_safe_points:
 	lagcomp::lag_record_t best_rec;
 	int best_hitbox = 0;
 
+	/* only keep previous scan records which are still valid */
+	if ( !previous_scanned_records [ pl->idx ( ) ].empty ( ) ) {
+		int cur_scan_record = 0;
+
+		for ( auto& previous_scans : previous_scanned_records [ pl->idx ( ) ] ) {
+			if ( !previous_scans.m_rec.valid( ) ) {
+				previous_scanned_records [ pl->idx ( ) ].erase ( previous_scanned_records [ pl->idx ( ) ].begin ( ) + cur_scan_record );
+				continue;
+			}
+
+			cur_scan_record++;
+		}
+	}
+
+	auto is_similar_scan = [ ] ( const recorded_scans_t& scan_record, const lagcomp::lag_record_t& lag_rec ) {
+		if ( active_config.optimization == 1 /* optimization low */ )
+			return ( scan_record.m_tick == lag_rec.m_tick ) || scan_record.m_rec.m_origin.dist_to ( lag_rec.m_origin ) < 10.0f;
+		else if ( active_config.optimization == 2 /* optimization medium */ )
+			return std::abs ( scan_record.m_tick - lag_rec.m_tick ) <= 1 || scan_record.m_rec.m_origin.dist_to ( lag_rec.m_origin ) < 10.0f;
+
+		/* optimization high */
+		return std::abs ( scan_record.m_tick - lag_rec.m_tick ) <= 2 || scan_record.m_rec.m_origin.dist_to ( lag_rec.m_origin ) < 10.0f;
+	};
+
 	/* find best record */
 	for ( auto& rec_it : best_recs ) {
 		if ( rec_it.m_needs_matrix_construction || rec_it.m_priority < best_priority )
 			continue;
+
+		/* if we already scanned this before, or is within close proximity of another record we scanned, let's consider it the same record for now */
+		/* this should drastically speed up the ragebot */
+		auto record_existed = false;
+
+		if ( !previous_scanned_records [ pl->idx ( ) ].empty( ) && active_config.optimization != 0 /* optimization is not disabled */ ) {
+			recorded_scans_t* similar_scan = nullptr;
+
+			for ( auto& scan_record : previous_scanned_records [ pl->idx ( ) ] ) {
+				if ( is_similar_scan ( scan_record, rec_it ) ) {
+					similar_scan = &scan_record;
+					break;
+				}
+			}			
+
+			if ( similar_scan ) {
+				if ( /* double check validity i guess */ similar_scan->m_rec.valid( )
+					/* make sure overwriting this record is worth it, would probably be a good thing */ && similar_scan->m_dmg > best_dmg
+					/* if the shot is fatal, it doesn't matter */ || best_dmg >= pl->health ( ) ) {
+					best_dmg = similar_scan->m_dmg;
+					best_point = similar_scan->m_target;
+					best_rec = similar_scan->m_rec;
+					best_hitbox = similar_scan->m_hitbox;
+					best_priority = similar_scan->m_priority;
+					record_existed = true;
+				}
+
+				if ( best_dmg >= pl->health ( ) ) {
+					pl->mins ( ) = backup_min;
+					pl->maxs ( ) = backup_max;
+					pl->origin ( ) = backup_origin;
+					pl->set_abs_origin ( backup_abs_origin );
+					std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), backup_bones, sizeof matrix3x4_t * pl->bone_count ( ) );
+
+					point = best_point;
+					dmg = best_dmg;
+					rec_out = best_rec;
+					hitbox_out = best_hitbox;
+
+					return;
+				}
+				else {
+					continue;
+				}
+			}
+		}
 
 		auto safe_point_bones = animations::data::bones [ pl->idx ( ) ];
 
@@ -916,6 +965,10 @@ retry_without_safe_points:
 		pl->origin ( ) = rec_it.m_origin;
 		pl->set_abs_origin ( rec_it.m_origin );
 		std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), rec_it.m_bones, sizeof matrix3x4_t * pl->bone_count ( ) );
+
+		auto best_hitbox_this_rec = 0;
+		auto best_dmg_this_rec = 0.0f;
+		auto best_point_this_rec = vec3_t ( 0.0f, 0.0f, 0.0f );
 
 		/* find best point on best hitbox */
 		for ( auto& hb : hitboxes ) {
@@ -974,77 +1027,7 @@ retry_without_safe_points:
 				pointscale = static_cast< float >( active_config.body_pointscale ) / 100.0f;
 
 			auto rad_coeff = pointscale * hitbox->m_radius;
-
 			auto can_tickbase = false;
-
-			//auto can_shoot = [ & ] ( ) {
-			//	return g::local && g::local->weapon ( ) && g::local->weapon ( )->next_primary_attack ( ) <= csgo::i::globals->m_curtime && g::local->weapon ( )->ammo ( );
-			//};
-			//
-			///* tickbase manip controller */
-			//FIND ( double, tickbase_shift_amount, "rage", "aimbot", "tickbase shift amount", oxui::object_slider );
-			//
-			//const auto tickbase_as_int = static_cast< int >( tickbase_shift_amount );
-			////
-			/////* baim if we can tickbase */
-			//if ( tickbase_as_int && std::abs ( g::ucmd->m_tickcount - g::dt_recharge_time ) >= tickbase_as_int && !g::dt_ticks_to_shift )
-			//	can_tickbase = true;
-
-			//auto tmp_point = get_hitbox_pos ( );
-			//auto hitbox_visible = csgo::is_visible ( tmp_point );
-			//
-			///* scan priority hitbox first, to see if fatal */
-			//if ( ( priority && hitbox_visible && ( ( priority == 1 && hb == 0 ) || ( priority == 2 && hb == 1 ) || ( priority == 3 && hb == 1 ) ) ) || ( baim_after_misses != 0 && misses [ pl->idx ( ) ].bad_resolve > baim_after_misses ) ) {
-			//	if ( misses [ pl->idx ( ) ].bad_resolve != 0 && misses [ pl->idx ( ) ].bad_resolve > baim_after_misses )
-			//		hitbox = s->hitbox ( 2 );
-			//	
-			//	auto body = get_hitbox_pos( );
-			//	
-			//	auto body_top = body + top * rad_coeff;
-			//	auto body_left = body + left * rad_coeff;
-			//	auto body_right = body + right * rad_coeff;
-			//
-			//	auto new_hb = ( misses [ pl->idx ( ) ].bad_resolve != 0 && misses [ pl->idx ( ) ].bad_resolve > baim_after_misses ) ? 2 : hb;
-			//
-			//	auto dmg1 = 0.0f;
-			//	auto dmg2 = autowall::dmg( g::local, pl, g::local->eyes( ), body_left, new_hb );
-			//	auto dmg3 = autowall::dmg( g::local, pl, g::local->eyes( ), body_right, new_hb );
-			//
-			//	if ( hb == 0 )
-			//		autowall::dmg( g::local, pl, g::local->eyes( ), body_top, new_hb );
-			//	else
-			//		autowall::dmg( g::local, pl, g::local->eyes( ), body, new_hb );
-			//
-			//	if ( dmg1 > best_dmg || dmg2 > best_dmg || dmg3 > best_dmg ) {
-			//		if ( dmg1 > dmg2 && dmg1 > dmg3 || ( dmg1 == dmg2 && dmg1 == dmg3 ) ) {
-			//			best_dmg = dmg1;
-			//			best_point = body;
-			//		}
-			//		else if ( dmg2 > dmg1 && dmg2 > dmg3 ) {
-			//			best_dmg = dmg2;
-			//			best_point = body_left;
-			//		}
-			//		else if ( dmg3 > dmg1 && dmg3 > dmg2 ) {
-			//			best_dmg = dmg3;
-			//			best_point = body_right;
-			//		}
-			//	}
-			//
-			//	if ( best_dmg > 0.0f && ( ( baim_air && !( rec_it.m_flags & 1 ) ) || ( baim_lethal && best_dmg >= pl->health( ) ) || ( ( hb != 2 && hb != 5 ) && best_dmg > damage ) ) ) {
-			//		hitbox_out = new_hb;
-			//		point = best_point;
-			//		dmg = best_dmg;
-			//		rec_out = rec_it;
-			//
-			//		pl->mins( ) = backup_min;
-			//		pl->maxs( ) = backup_max;
-			//		pl->origin( ) = backup_origin;
-			//		std::memcpy ( pl->bone_accessor( ).get_bone_arr_for_write( ), backup_bones, sizeof matrix3x4_t * pl->bone_count ( ) );
-			//		pl->set_abs_origin( backup_abs_origin );
-			//
-			//		return;
-			//	}
-			//}
 
 			/* try to baim */
 			if ( hb == 2 ) {
@@ -1079,7 +1062,7 @@ retry_without_safe_points:
 					}
 				}
 
-				if ( best_dmg >= pl->health ( ) || ( ( should_baim || misses [ pl->idx ( ) ].bad_resolve >= active_config.baim_after_misses ) && ( best_dmg * 1.75f >= active_config.min_dmg || best_dmg * 1.75f >= pl->health ( ) ) ) ) {
+				if ( best_dmg >= pl->health ( ) || ( ( should_baim || misses [ pl->idx ( ) ].bad_resolve >= active_config.baim_after_misses ) && ( best_dmg * 1.666f >= active_config.min_dmg || best_dmg * 1.666f >= pl->health ( ) ) ) ) {
 					pl->mins ( ) = backup_min;
 					pl->maxs ( ) = backup_max;
 					pl->origin ( ) = backup_origin;
@@ -1090,6 +1073,9 @@ retry_without_safe_points:
 					dmg = best_dmg;
 					rec_out = best_rec;
 					hitbox_out = best_hitbox;
+
+					if ( !record_existed )
+						previous_scanned_records [ pl->idx ( ) ].push_back ( recorded_scans_t( best_rec, best_point, best_dmg, best_rec.m_tick, best_hitbox, rec_it.m_priority ) );
 
 					return;
 				}
@@ -1121,6 +1107,19 @@ retry_without_safe_points:
 					}
 				}
 
+				if ( dmg1 > best_dmg_this_rec || dmg2 > best_dmg_this_rec ) {
+					if ( dmg2 > dmg1 ) {
+						best_point_this_rec = head_top;
+						best_dmg_this_rec = dmg2;
+					}
+					else {
+						best_point_this_rec = head;
+						best_dmg_this_rec = dmg1;
+					}
+
+					best_hitbox_this_rec = hb;
+				}
+
 				/* prefer safe point on head if available, else fall back to normal point */
 				if ( safe_point && safe_point_key && scan_safe_points ) {
 					auto head = get_hitbox_pos ( true );
@@ -1143,6 +1142,19 @@ retry_without_safe_points:
 							best_hitbox = hb;
 							best_priority = rec_it.m_priority;
 						}
+					}
+
+					if ( dmg1 >= best_dmg_this_rec || dmg2 >= best_dmg_this_rec ) {
+						if ( dmg2 > dmg1 ) {
+							best_point_this_rec = head_top;
+							best_dmg_this_rec = dmg2;
+						}
+						else {
+							best_point_this_rec = head;
+							best_dmg_this_rec = dmg1;
+						}
+
+						best_hitbox_this_rec = hb;
 					}
 				}
 			} break;
@@ -1182,6 +1194,23 @@ retry_without_safe_points:
 						best_priority = rec_it.m_priority;
 					}
 				}
+
+				if ( dmg1 > best_dmg_this_rec || dmg2 > best_dmg_this_rec || dmg3 > best_dmg_this_rec ) {
+					if ( dmg3 > dmg1 && dmg3 > dmg2 ) {
+						best_point_this_rec = body_right;
+						best_dmg_this_rec = dmg3;
+					}
+					else if ( dmg2 > dmg1 && dmg2 > dmg3 ) {
+						best_point_this_rec = body_left;
+						best_dmg_this_rec = dmg2;
+					}
+					else {
+						best_point_this_rec = body;
+						best_dmg_this_rec = dmg1;
+					}
+
+					best_hitbox_this_rec = hb;
+				}
 			} break;
 				// no need to test multiple points on these
 			case 9:
@@ -1198,9 +1227,18 @@ retry_without_safe_points:
 					best_hitbox = hb;
 					best_priority = rec_it.m_priority;
 				}
+
+				if ( dmg > best_dmg_this_rec ) {
+					best_point_this_rec = hitbox_pos;
+					best_dmg_this_rec = dmg;
+					best_hitbox_this_rec = hb;
+				}
 			} break;
 			}
 		}
+
+		if ( !record_existed )
+			previous_scanned_records [ pl->idx ( ) ].push_back ( recorded_scans_t( rec_it, best_point_this_rec, best_dmg_this_rec, rec_it.m_tick, best_hitbox_this_rec, rec_it.m_priority ) );
 	}
 
 	pl->mins( ) = backup_min;
@@ -1407,28 +1445,33 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 	auto best_dmg = 0.0f;
 	auto best_hitbox = 0;
 
-	csgo::for_each_player( [ & ] ( player_t* pl ) {
-		if ( pl->team( ) == g::local->team( ) || pl->immune( ) )
-			return;
+	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
+		auto entity = csgo::i::ent_list->get< player_t* > ( i );
+
+		if ( !entity->valid ( ) )
+			continue;
+
+		if ( entity->team ( ) == g::local->team ( ) || entity->immune ( ) )
+			continue;
 
 		vec3_t point;
 		float dmg = 0.0f;
 
-		hitscan( pl, point, dmg, best_rec, best_hitbox );
+		hitscan ( entity, point, dmg, best_rec, best_hitbox );
 
-		auto ang = csgo::calc_angle( g::local->eyes( ), point );
-		csgo::clamp( ang );
+		auto ang = csgo::calc_angle ( g::local->eyes ( ), point );
+		csgo::clamp ( ang );
 
-		const auto fov = csgo::normalize( ang.dist_to ( engine_ang ) );
+		const auto fov = csgo::normalize ( ang.dist_to ( engine_ang ) );
 
 		if ( dmg > 0.0f && dmg > best_dmg && fov < best_fov ) {
-			best_pl = pl;
+			best_pl = entity;
 			best_dmg = dmg;
 			best_fov = fov;
 			best_ang = ang;
 			best_point = point;
 		}
-		} );
+	}
 
 	if ( !best_pl )
 		return;

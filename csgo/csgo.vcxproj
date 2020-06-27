@@ -51,6 +51,7 @@
     <ClCompile Include="oxui\objects\subtab.cpp" />
     <ClCompile Include="oxui\objects\tab.cpp" />
     <ClCompile Include="oxui\objects\textbox.cpp" />
+    <ClCompile Include="oxui\objects\visual_editor.cpp" />
     <ClCompile Include="oxui\objects\window.cpp" />
     <ClCompile Include="oxui\panels\panel.cpp" />
     <ClCompile Include="oxui\themes\theme.cpp" />
@@ -98,12 +99,14 @@
     <ClInclude Include="oxui\objects\subtab.hpp" />
     <ClInclude Include="oxui\objects\tab.hpp" />
     <ClInclude Include="oxui\objects\textbox.hpp" />
+    <ClInclude Include="oxui\objects\visual_editor.hpp" />
     <ClInclude Include="oxui\objects\window.hpp" />
     <ClInclude Include="oxui\oxui.hpp" />
     <ClInclude Include="oxui\panels\panel.hpp" />
     <ClInclude Include="oxui\themes\pink.hpp" />
     <ClInclude Include="oxui\themes\purple.hpp" />
     <ClInclude Include="oxui\types\types.hpp" />
+    <ClInclude Include="player_images.h" />
     <ClInclude Include="renderer\d3d9.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sdk\client.hpp" />
@@ -245,7 +248,7 @@
       <ControlFlowGuard>false</ControlFlowGuard>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

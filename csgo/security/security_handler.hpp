@@ -36,7 +36,7 @@ namespace security_handler {
 		OBF_BEGIN
 		/* text section was patched */
 		IF( !anti_patch::g_text_section_hash || anti_patch::g_text_section_hash != anti_patch::HashSection( ) )
-			//handle_tampering( );
+			handle_tampering( );
 		ENDIF
 			OBF_END
 	}
@@ -46,10 +46,10 @@ namespace security_handler {
 
 		OBF_BEGIN
 			/* check if text section was patched */
-		if ( abs ( time ( nullptr ) - last_check_time ) > 5 ) {
-			verify_text_section_integrity ( );
-			last_check_time = time ( nullptr );
-		}
+		//if ( abs ( time ( nullptr ) - last_check_time ) > 5 ) {
+		//	verify_text_section_integrity ( );
+		//	last_check_time = time ( nullptr );
+		//}
 
 		/* check if csgo hooks, or current thread is being tampered with */
 		//IF( int( security::check_security( ) ) != N( int( security::internal::debug_results::none ) ) )

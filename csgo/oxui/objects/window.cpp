@@ -15,6 +15,7 @@
 #include "keybind.hpp"
 #include "colorpicker.hpp"
 #include "subtab.hpp"
+#include "visual_editor.hpp"
 #include <ShlObj.h>
 #include <sstream>
 
@@ -111,6 +112,12 @@ void* oxui::window::find_obj( const str& option, object_type type ) {
 
 										break;
 									}
+									case object_visual_editor: {
+										auto as_visual_editor = std::static_pointer_cast< visual_editor >( _control );
+
+										return &as_visual_editor->settings;
+										break;
+									}
 									}
 								}
 							}
@@ -125,6 +132,16 @@ void* oxui::window::find_obj( const str& option, object_type type ) {
 }
 
 void oxui::window::save_state( const str& file ) {
+	auto save_esp_widget = [ ] ( cJSON* editor, const esp_widget_t& widget, const char* widget_name ) {
+		const auto jwidget = cJSON_CreateObject ( );
+
+		cJSON_AddItemToObject ( jwidget, _ ( "Queued Location" ), cJSON_CreateNumber ( static_cast< int > ( widget.queued_location ) ) );
+		cJSON_AddItemToObject ( jwidget, _ ( "Location" ), cJSON_CreateNumber ( static_cast< int > ( widget.location ) ) );
+		cJSON_AddItemToObject ( jwidget, _ ( "Type" ), cJSON_CreateNumber ( static_cast< int > ( widget.type ) ) );
+		cJSON_AddItemToObject ( jwidget, _ ( "Enabled" ), cJSON_CreateBool( widget.enabled ) );
+		cJSON_AddItemToObject ( editor, widget_name, jwidget );
+	};
+
 	const auto json = cJSON_CreateObject ( );
 
 	auto window_str = std::string( title.begin( ), title.end( ) );
@@ -195,6 +212,29 @@ void oxui::window::save_state( const str& file ) {
 						cJSON_AddItemToObject ( jgroup, obj_str.c_str ( ), clr_arr );
 						break;
 					}
+					case object_visual_editor: {
+						const auto jvisual_editor = cJSON_CreateObject ( );
+						auto as_visual_editor = ( ( std::shared_ptr< visual_editor >& ) object );
+
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Model Type" ), cJSON_CreateNumber ( static_cast< int >( as_visual_editor->settings.model_type ) ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "XQZ Chams" ), cJSON_CreateBool ( as_visual_editor->settings.xqz ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Glow" ), cJSON_CreateBool ( as_visual_editor->settings.glow ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Rimlight Overlay" ), cJSON_CreateBool ( as_visual_editor->settings.rimlight ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Backtrack Chams" ), cJSON_CreateBool ( as_visual_editor->settings.backtrack ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Hit Matrix" ), cJSON_CreateBool ( as_visual_editor->settings.hit_matrix ) );
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Show Value" ), cJSON_CreateBool ( as_visual_editor->settings.show_value ) );
+
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_box, _ ( "ESP Box" ) );
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.health_bar, _ ( "Health Bar" ) );
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.ammo_bar, _ ( "Ammo Bar" ) );
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.desync_bar, _ ( "Desync Bar" ) );
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_name, _ ( "Name ESP" ) );
+						save_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_weapon, _ ( "Weapon ESP" ) );
+
+						cJSON_AddItemToObject ( jgroup, _ ( "Visual Editor Data" ), jvisual_editor );
+
+						break;
+					}
 					}
 				} );
 
@@ -229,6 +269,33 @@ void oxui::window::save_state( const str& file ) {
 }
 
 void oxui::window::load_state( const str& file ) {
+	auto load_esp_widget = [ ] ( cJSON* visual_editor, esp_widget_t& widget, const char* widget_name ) {
+		const auto jwidget = cJSON_GetObjectItemCaseSensitive ( visual_editor, widget_name );
+
+		if ( !jwidget || !cJSON_IsObject ( jwidget ) ) {
+			dbg_print ( _ ( "Error while parsing visual editor: Failed to find widget \"%s\".\n" ), widget_name );
+			return;
+		}
+
+		const auto jqueued_location = cJSON_GetObjectItemCaseSensitive ( jwidget, _ ( "Queued Location" ) );
+		const auto jlocation = cJSON_GetObjectItemCaseSensitive ( jwidget, _ ( "Location" ) );
+		const auto jtype = cJSON_GetObjectItemCaseSensitive ( jwidget, _ ( "Type" ) );
+		const auto jenabled = cJSON_GetObjectItemCaseSensitive ( jwidget, _ ( "Enabled" ) );
+
+		if ( !jqueued_location || !cJSON_IsNumber ( jqueued_location )
+			|| !jlocation || !cJSON_IsNumber ( jlocation )
+			|| !jtype || !cJSON_IsNumber ( jtype )
+			|| !jenabled || !cJSON_IsBool ( jenabled ) ) {
+			dbg_print ( _ ( "Error while parsing visual editor: Failed to find widget \"%s\"'s properties.\n" ), widget_name );
+			return;
+		}
+
+		widget.enabled = jenabled->valueint;
+		widget.queued_location = static_cast < esp_widget_pos_t >( jqueued_location->valueint );
+		widget.location = static_cast < esp_widget_pos_t >( jlocation->valueint );
+		widget.type = static_cast < esp_widget_type_t > ( jtype->valueint );
+	};
+
 	std::string dump;
 
 	wchar_t appdata [ MAX_PATH ];
@@ -438,6 +505,64 @@ void oxui::window::load_state( const str& file ) {
 
 						break;
 					}
+					case object_visual_editor: {
+						auto as_visual_editor = ( visual_editor* ) object.get ( );
+
+						const auto jvisual_editor = cJSON_GetObjectItemCaseSensitive ( jgroup, _ ( "Visual Editor Data" ) );
+
+						if ( !jvisual_editor || !cJSON_IsObject ( jvisual_editor ) ) {
+							dbg_print ( _ ( "Error while parsing visual editor: Failed to find object.\n" ) );
+							return;
+						}
+
+						const auto jmodel_type = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Model Type" ) );
+
+						if ( !jmodel_type || !cJSON_IsNumber ( jmodel_type ) ) {
+							dbg_print ( _ ( "Error while parsing visual editor: Failed to find model type.\n" ) );
+							return;
+						}
+
+						as_visual_editor->settings.model_type = static_cast< model_type_t > ( jmodel_type->valueint );
+
+						/*
+						
+						cJSON_AddItemToObject ( jvisual_editor, _ ( "Show Value" ), cJSON_CreateBool ( as_visual_editor->settings.show_value ) );
+						*/
+
+						const auto jxqz_chams = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "XQZ Chams" ) );
+						const auto jglow = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Glow" ) );
+						const auto jrimlight_overlay = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Rimlight Overlay" ) );
+						const auto jbacktrack_chams = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Backtrack Chams" ) );
+						const auto jhit_matrix = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Hit Matrix" ) );
+						const auto jshow_value = cJSON_GetObjectItemCaseSensitive ( jvisual_editor, _ ( "Show Value" ) );
+
+						if ( jxqz_chams && cJSON_IsBool ( jxqz_chams ) )
+							as_visual_editor->settings.xqz = jxqz_chams->valueint;
+
+						if ( jglow && cJSON_IsBool ( jglow ) )
+							as_visual_editor->settings.glow = jglow->valueint;
+
+						if ( jrimlight_overlay && cJSON_IsBool ( jrimlight_overlay ) )
+							as_visual_editor->settings.rimlight = jrimlight_overlay->valueint;
+
+						if ( jbacktrack_chams && cJSON_IsBool ( jbacktrack_chams ) )
+							as_visual_editor->settings.backtrack = jbacktrack_chams->valueint;
+
+						if ( jhit_matrix && cJSON_IsBool ( jhit_matrix ) )
+							as_visual_editor->settings.hit_matrix = jhit_matrix->valueint;
+
+						if ( jshow_value && cJSON_IsBool ( jshow_value ) )
+							as_visual_editor->settings.show_value = jshow_value->valueint;
+
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_box, _ ( "ESP Box" ) );
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.health_bar, _ ( "Health Bar" ) );
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.ammo_bar, _ ( "Ammo Bar" ) );
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.desync_bar, _ ( "Desync Bar" ) );
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_name, _ ( "Name ESP" ) );
+						load_esp_widget ( jvisual_editor, as_visual_editor->settings.esp_weapon, _ ( "Weapon ESP" ) );
+
+						break;
+					}
 					}
 				} );
 			} );
@@ -541,10 +666,10 @@ void oxui::window::draw( ) {
 
 	const auto center_w = area.x - area.w / 6 - theme.spacing / 2 + ( area.w / 6 ) / 2;
 	const auto target_logo_dim = pos { ( area.w / 6 ) / 3, area.h / 20 };
-	const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 541.0f;
-	const auto logo_dim = pos { static_cast < int > ( 761.0f * logo_scale ), static_cast < int > ( 541.0f * logo_scale ) };
+	const auto logo_scale = static_cast< float > ( target_logo_dim.y ) / 107.0f;
+	const auto logo_dim = pos { static_cast < int > ( 150.0f * logo_scale ), static_cast < int > ( 107.0f * logo_scale ) };
 
-	render::texture ( parent_panel.sprite, parent_panel.tex, center_w - logo_dim.x + logo_dim.x / 3, area.y + area.h / 14 - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 0.70f );
+	render::texture ( parent_panel.sprite, parent_panel.tex, center_w - logo_dim.x * 0.9f, area.y + area.h / 14 - logo_dim.y / 2, target_logo_dim.x, target_logo_dim.y, logo_scale, logo_scale * 1.333f );
 
 	const auto separator_y = area.y + area.h / 14 + logo_dim.y / 2 + area.h / 20;
 

@@ -205,6 +205,9 @@ void __fastcall hooks::sceneend_hk( REG ) {
 	if ( !g::local || !g::local->alive ( ) )
 		hit_matrix_rec.clear ( );
 
+	if ( g::local && g::local->alive ( ) && g::local->simtime( ) != g::local->old_simtime( ) )
+		features::chams::old_origin = g::local->origin ( );
+
 	if ( g::local ) {
 		for ( auto i = 1; i <= 200; i++ ) {
 			const auto ent = csgo::i::ent_list->get < entity_t* > ( i );
@@ -307,26 +310,26 @@ bool __fastcall hooks::createmove_hk( REG, float sampletime, ucmd_t* ucmd ) {
 
 	security_handler::update ( );
 
-	const auto refresh_tickbase = g::shifted_tickbase > ucmd->m_cmdnum && g::local && g::local->alive ( );
+	/* thanks chambers */
+	if ( csgo::i::client_state->choked ( ) ) {
+		disable_sounds = true;
+
+		csgo::i::pred->update (
+			csgo::i::client_state->delta_tick ( ),
+			csgo::i::client_state->delta_tick ( ) > 0,
+			csgo::i::client_state->last_command_ack ( ),
+			csgo::i::client_state->last_outgoing_cmd ( ) + csgo::i::client_state->choked ( ) );
+
+		disable_sounds = false;
+	}
+
+	const auto refresh_tickbase = g::shifted_tickbase - 1 > ucmd->m_cmdnum && g::local && g::local->alive ( );
 
 	if ( refresh_tickbase && !csgo::is_valve_server( ) ) {
 		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
 		ucmd->m_tickcount = INT_MAX;
 		in_cm = false;
 		return false;
-	}
-
-	/* thanks chambers */
-	if ( csgo::i::client_state->choked ( ) ) {
-		disable_sounds = true;
-
-		csgo::i::pred->update (
-			csgo::i::client_state->delta_tick( ),
-			csgo::i::client_state->delta_tick( ) > 0,
-			csgo::i::client_state->last_command_ack( ),
-			csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( ) );
-
-		disable_sounds = false;
 	}
 
 	if ( g::local && g::local->weapon ( ) ) {
@@ -706,52 +709,61 @@ void __fastcall hooks::doextraboneprocessing_hk( REG, int a2, int a3, int a4, in
 }
 
 bool __fastcall hooks::setupbones_hk( REG, matrix3x4_t* out, int max_bones, int mask, float curtime ) {
-	const auto pl = reinterpret_cast< player_t* >( uintptr_t( ecx ) - 4 );
+	static auto ccsplayer_setup_bones_ret_addr = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 5E 5D C2 10 00 32 C0" ) ).add ( 5 ).get< int* > ( );
 
-	if ( g::local && pl && pl->client_class ( ) && pl->client_class ( )->m_class_id == 40 && pl != g::local ) {
-		const auto backup_effects = *reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) );
+	const auto pl = reinterpret_cast< player_t* >( uintptr_t ( ecx ) - 4 );
 
-		const auto backup_curtime = csgo::i::globals->m_curtime;
-		const auto backup_realtime = csgo::i::globals->m_realtime;
-		const auto backup_frametime = csgo::i::globals->m_frametime;
-		const auto backup_abs_frametime = csgo::i::globals->m_abs_frametime;
-		const auto backup_abs_framestarttimestddev = csgo::i::globals->m_abs_framestarttimestddev;
-		const auto backup_interp = csgo::i::globals->m_interp;
-		const auto backup_framecount = csgo::i::globals->m_framecount;
-		const auto backup_tickcount = csgo::i::globals->m_tickcount;
-
-		csgo::i::globals->m_curtime = pl->simtime ( );
-		csgo::i::globals->m_realtime = pl->simtime ( );
-		csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
-		csgo::i::globals->m_abs_frametime = csgo::i::globals->m_ipt;
-		csgo::i::globals->m_abs_framestarttimestddev = pl->simtime ( ) - csgo::i::globals->m_ipt;
-		csgo::i::globals->m_interp = 0.0f;
-		csgo::i::globals->m_framecount = INT_MAX;
-		csgo::i::globals->m_tickcount = csgo::time2ticks ( pl->simtime ( ) );
-
-		*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) |= N ( 8 );
-
-		const auto ret = setupbones ( REG_OUT, out, max_bones, mask, curtime );
-
-		csgo::i::globals->m_curtime = backup_curtime;
-		csgo::i::globals->m_realtime = backup_realtime;
-		csgo::i::globals->m_frametime = backup_frametime;
-		csgo::i::globals->m_abs_frametime = backup_abs_frametime;
-		csgo::i::globals->m_abs_framestarttimestddev = backup_abs_framestarttimestddev;
-		csgo::i::globals->m_interp = backup_interp;
-		csgo::i::globals->m_framecount = backup_framecount;
-		csgo::i::globals->m_tickcount = backup_tickcount;
-
-		*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) = backup_effects;
-
-		if ( out )
-			std::memcpy ( out, &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
-		
+	if ( _ReturnAddress ( ) == ccsplayer_setup_bones_ret_addr && g::local && pl && pl->team( ) != g::local->team( ) ) {
 		//if ( pl->bone_accessor ( ).get_bone_arr_for_write ( ) )
 		//	std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 
-		return ret;
+		return false;
 	}
+
+	//if ( g::local && pl && pl->client_class ( ) && pl->client_class ( )->m_class_id == 40 ) {
+	//	const auto backup_effects = *reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) );
+	//
+	//	const auto backup_curtime = csgo::i::globals->m_curtime;
+	//	const auto backup_realtime = csgo::i::globals->m_realtime;
+	//	const auto backup_frametime = csgo::i::globals->m_frametime;
+	//	const auto backup_abs_frametime = csgo::i::globals->m_abs_frametime;
+	//	const auto backup_abs_framestarttimestddev = csgo::i::globals->m_abs_framestarttimestddev;
+	//	const auto backup_interp = csgo::i::globals->m_interp;
+	//	const auto backup_framecount = csgo::i::globals->m_framecount;
+	//	const auto backup_tickcount = csgo::i::globals->m_tickcount;
+	//
+	//	csgo::i::globals->m_curtime = pl->simtime ( );
+	//	csgo::i::globals->m_realtime = pl->simtime ( );
+	//	csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
+	//	csgo::i::globals->m_abs_frametime = csgo::i::globals->m_ipt;
+	//	csgo::i::globals->m_abs_framestarttimestddev = pl->simtime ( ) - csgo::i::globals->m_ipt;
+	//	csgo::i::globals->m_interp = 0.0f;
+	//	csgo::i::globals->m_framecount = INT_MAX;
+	//	csgo::i::globals->m_tickcount = csgo::time2ticks ( pl->simtime ( ) );
+	//
+	//	*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) |= N ( 8 );
+	//
+	//	const auto ret = setupbones ( REG_OUT, out, max_bones, mask, curtime );
+	//
+	//	csgo::i::globals->m_curtime = backup_curtime;
+	//	csgo::i::globals->m_realtime = backup_realtime;
+	//	csgo::i::globals->m_frametime = backup_frametime;
+	//	csgo::i::globals->m_abs_frametime = backup_abs_frametime;
+	//	csgo::i::globals->m_abs_framestarttimestddev = backup_abs_framestarttimestddev;
+	//	csgo::i::globals->m_interp = backup_interp;
+	//	csgo::i::globals->m_framecount = backup_framecount;
+	//	csgo::i::globals->m_tickcount = backup_tickcount;
+	//
+	//	*reinterpret_cast< int* >( uintptr_t ( pl ) + N ( 0xf0 ) ) = backup_effects;
+	//
+	//	if ( out )
+	//		std::memcpy ( out, &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+	//	
+	//	//if ( pl->bone_accessor ( ).get_bone_arr_for_write ( ) )
+	//	//	std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &animations::data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+	//
+	//	return ret;
+	//}
 
 	return setupbones( REG_OUT, out, max_bones, mask, curtime );
 }
@@ -774,17 +786,17 @@ vec3_t* __fastcall hooks::get_eye_angles_hk( REG ) {
 }
 
 bool __fastcall hooks::get_bool_hk( REG ) {
-	static auto cl_interpolate = pattern::search( _( "client.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< void* >( );
+	//static auto cl_interpolate = pattern::search( _( "client.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< void* >( );
 	static auto cam_think = pattern::search( _( "client.dll" ), _( "85 C0 75 30 38 86" ) ).get< void* >( );
-	static auto hermite_fix = pattern::search( _( "client.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< void* >( );
-	static auto cl_extrapolate = pattern::search ( _ ( "client.dll" ), _ ( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* > ( );
-	static auto color_static_props = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 0F 84 ? ? ? ? 8D 4B 32" ) ).get< void* > ( );
-	static auto color_static_props1 = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 75 74 8B 0D" ) ).get< void* > ( );
+	//static auto hermite_fix = pattern::search( _( "client.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< void* >( );
+	//static auto cl_extrapolate = pattern::search ( _ ( "client.dll" ), _ ( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* > ( );
+	//static auto color_static_props = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 0F 84 ? ? ? ? 8D 4B 32" ) ).get< void* > ( );
+	//static auto color_static_props1 = pattern::search ( _ ( "engine.dll" ), _ ( "85 C0 75 74 8B 0D" ) ).get< void* > ( );
 
 	if ( !ecx )
 		return false;
 
-	if ( _ReturnAddress ( ) == cam_think || _ReturnAddress ( ) == hermite_fix || _ReturnAddress ( ) == cl_extrapolate )
+	if ( _ReturnAddress ( ) == cam_think /*|| _ReturnAddress ( ) == hermite_fix || _ReturnAddress ( ) == hermite_fix || _ReturnAddress ( ) == cl_extrapolate*/ )
 		return true;
 
 	return get_bool( REG_OUT );

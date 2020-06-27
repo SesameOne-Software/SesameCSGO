@@ -22,6 +22,8 @@ namespace animations {
 		extern std::array< std::array< float, 24 >, 65 > poses;
 		extern std::array< int, 65 > last_animation_frame;
 		extern std::array< int, 65 > old_tick;
+		extern std::array< int, 65 > choke;
+		extern std::array< float, 65 > old_simtime;
 		extern std::array< float, 65 > old_eye_yaw;
 		extern std::array< float, 65 > old_abs;
 		extern std::array< float, 65 > body_yaw;

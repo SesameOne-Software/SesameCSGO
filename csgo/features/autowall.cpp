@@ -93,7 +93,7 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 		return false;
 
 	// auto trace_len = data.src.dist_to ( end_pos );
-	auto trace_len = weapon_data->m_range;
+	auto trace_len = ( hitgroup != -1 ) ? data.src.dist_to ( end_pos ) : weapon_data->m_range;
 	auto enter_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 	auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
 
