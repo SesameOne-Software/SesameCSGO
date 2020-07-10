@@ -206,6 +206,84 @@ if ( g::send_packet && csgo::i::globals->m_tickcount > curtick ) {
 }
 }
 
+/*
+@CBRS
+
+bool setup_bones( player_t *target, mat3x4_t *mat, int mask, vec_t rotation, vec_t origin, float time ) {
+		auto cstudio = ( c_studio_hdr * ) target->cstudio( );
+		if ( !cstudio )
+			return false;
+
+		//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
+		mat3x4a_t used[128];
+
+		//	output shit
+		byte bone_computed[0x100] = { 0 };
+
+		//	needs to be aligned
+		alignas( 16 ) mat3x4_t base_matrix;
+		math::angle_matrix( rotation, origin, base_matrix );
+
+		//	store shit
+		auto old_bones = target->bones( );
+		auto iks = target->iks( );
+		target->effects( ) |= 8;
+
+		//	clear iks & re-create them
+		if ( iks ) {
+			if ( *( DWORD * ) ( uintptr_t( iks ) + 0xFF0 ) > 0 ) {
+				int v1 = 0;
+				auto v62 = ( DWORD * ) ( uintptr_t( iks ) + 0xD0 );
+				do {
+					*v62 = -9999;
+					v62 += 0x55;
+					++v1;
+				} while ( v1 < *( DWORD * ) ( uintptr_t( iks ) + 0xFF0 ));
+			}
+
+			typedef void ( __thiscall *init_iks_fn )( void *, c_studio_hdr *, vec_t &, vec_t &, float, int, int );
+			static auto init_iks = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ).cast< init_iks_fn >( );
+			init_iks( iks, cstudio, rotation, origin, time, cs::globals->frame_count, 0x1000 );
+		}
+
+		vec_t pos[128];
+		ZeroMemory ( pos, sizeof( vec_t[128] ));
+		quaternion_t q[128];
+		ZeroMemory ( q, sizeof( quaternion_t[128] ));
+
+		//	set flags and bones
+		target->bones( ) = used;
+
+		//	build some shit
+		target->standard_blending_rules( cstudio, pos, q, time, mask );
+
+		//	set iks
+		if ( iks ) {
+			typedef void ( __thiscall *fn )( void *, vec_t *, quaternion_t *, void *, byte * );
+			static auto update_targets = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ).cast< fn >( );
+			static auto solve_dependencies = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ).cast< fn >( );
+
+			target->update_ik_locks( time );
+			update_targets( iks, pos, q, target->bones( ), bone_computed );
+			target->calculate_ik_locks( time );
+			solve_dependencies( iks, pos, q, target->bones( ), bone_computed );
+		}
+
+		//	build the matrix
+		target->build_transformations( cstudio, pos, q, base_matrix, mask, bone_computed );
+
+		//	restore flags and bones
+		target->effects( ) &= ~8;
+		target->bones( ) = old_bones;
+
+		//  and pop out our new matrix
+		memcpy( mat, used, sizeof( mat3x4_t ) * 128 );
+
+		return true;
+	}
+
+*/
+
 bool animations::build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, int mask, float seed ) {
 	const auto backup_mask_1 = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0x269C ) );
 	const auto backup_mask_2 = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0x26B0 ) );
@@ -287,6 +365,15 @@ auto recalc_weight = 0.0f;
 auto recalc_cycle = 0.0f;
 
 int animations::fix_local ( ) {
+	/*
+	@CBRS
+		here's a tidbit. guess where animations get ran? post frame.
+		what's that mean?
+		after run command is called
+		so just update animations for each usrcmd parsed in run command
+
+	*/
+
 	/* update viewmodel manually */ {
 		using update_all_viewmodel_addons_t = int ( __fastcall* )( void* );
 		static auto update_all_viewmodel_addons = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t > ( );
@@ -435,6 +522,16 @@ void animations::simulate_command( player_t* pl ) {
 //}
 
 void animations::simulate ( player_t* pl, bool updated ) {
+	/*
+	@CBRS
+		this is fairly spaghetti so i won't look through the entire thing, but here's a animation rundown
+		make animation states update for every position and angle a player is at on the server since you last saw them. make sure the client-only shit is not ran, and ur done
+		yay
+		you can do dumb airtime fixes (i.e. this layer4.weight < last layer4.weight = they hit ground some time), or you can simulate each command the player would have made, 
+		which will in turn correctly set airtime when ~raytracing~ occurs
+		easy enough, yeah?
+	*/
+
 	if ( updated && pl->animstate ( ) && pl->layers ( ) && pl->bone_accessor ( ).get_bone_arr_for_write ( ) ) {
 		data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( );
 		data::simulated::flags [ pl->idx ( ) ] = pl->flags ( );
@@ -795,6 +892,13 @@ int animations::run( int stage ) {
 
 				resolver::process_event_buffer ( i );
 
+				/*
+				@CBRS
+					ew
+					reevaluateanimlod is fixeable with a hook... and you already have the hook
+					hint: is_hltv, 84 C0 0F 85 ? ? ? ? A1 ? ? ? ? 8B B7
+				*/
+
 				if ( !pl || !pl->is_player ( ) || pl == g::local || pl->team ( ) == g::local->team( ) ) {
 					if ( pl ) {
 						auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
@@ -809,7 +913,6 @@ int animations::run( int stage ) {
 
 					continue;
 				}
-
 				auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
 				auto var_map_list_count = *reinterpret_cast< int* >( var_map + 20 );
 

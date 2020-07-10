@@ -110,6 +110,14 @@ namespace prediction_util {
 		frametime = csgo::i::globals->m_frametime;
 		tickcount = csgo::i::globals->m_tickcount;
 
+		/*
+		@CBRS
+			so here's the thing... 
+			a) tickbase is never modified in any of these called functions, so why are you backing it up and restoring it?
+			b) you should predict what your tickbase will be (i.e. after shifting back due to doubletap) and set it here so that you don't try to exploit + fire at a time when you actually can't,
+			thus causing ghost-shots on the server
+		*/
+
 		const int old_tickbase = local->tick_base( );
 		const bool old_in_prediction = csgo::i::pred->m_in_prediction;
 		const bool old_first_prediction = csgo::i::pred->m_is_first_time_predicted;

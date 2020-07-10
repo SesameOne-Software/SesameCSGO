@@ -134,6 +134,9 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 	return false;
 }
 
+/*
+	@CBRS this is public code in the csgo source leak, i would recommend going and taking a look at that. it helps in reversing a more updated autowall immensely
+*/
 bool autowall::hbp( player_t* entity, player_t* dst_entity, weapon_info_t* wpn_data, fire_bullet_data_t& data ) {
 	if ( !entity->valid( ) || !wpn_data )
 		return false;
