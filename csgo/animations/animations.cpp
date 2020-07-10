@@ -1,7 +1,6 @@
 #include <array>
 #include "animations.hpp"
 #include "../globals.hpp"
-#include "../hooks.hpp"
 #include "../security/security_handler.hpp"
 #include "../features/lagcomp.hpp"
 #include "resolver.hpp"
@@ -252,7 +251,16 @@ bool animations::build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, in
 	//if ( !out )
 		pl->inval_bone_cache ( );
 
+	const auto backup_curtime = csgo::i::globals->m_curtime;
+	const auto backup_frametime = csgo::i::globals->m_frametime;
+
+	csgo::i::globals->m_curtime = pl->simtime ( );
+	csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
+
 	const auto ret = pl->setup_bones( *( std::array< matrix3x4_t, 128 >* ) out, max_bones, mask, seed );
+
+	csgo::i::globals->m_curtime = backup_curtime;
+	csgo::i::globals->m_frametime = backup_frametime;
 
 	//*reinterpret_cast< void** > ( uintptr_t ( pl ) + N ( 0x2670 ) ) = ik;
 	//
@@ -274,6 +282,9 @@ bool animations::build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, in
 
 auto last_vel2d = 0.0f;
 auto last_update_time = 0.0f;
+auto updated_tick = 0;
+auto recalc_weight = 0.0f;
+auto recalc_cycle = 0.0f;
 
 int animations::fix_local ( ) {
 	/* update viewmodel manually */ {
@@ -330,23 +341,25 @@ int animations::fix_local ( ) {
 	if ( csgo::i::globals->m_tickcount > local_data::old_tick ) {
 		local_data::old_tick = csgo::i::globals->m_tickcount;
 
+		const auto run_fraction = g::local->vel ( ).length_2d ( ) / ( ( g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( )->m_max_speed : 260.0f );
+
 		g::local->layers ( ) [ 12 ].m_weight = 0.0f;
-		g::local->layers ( ) [ 4 ].m_cycle = std::fabsf ( last_update_time - local_data::hit_ground_time );
+		//g::local->layers ( ) [ 6 ].m_weight = recalc_weight;
+		g::local->layers ( ) [ 4 ].m_cycle = recalc_cycle;
 
 		std::memcpy ( &local_data::overlays, g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 		std::memcpy ( &data::overlays [ g::local->idx ( ) ], g::local->layers ( ), N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 
-		state->m_feet_yaw_rate = 0.0f;
-		state->m_unk_feet_speed_ratio = 0.0f;
-
 		update_animations( g::local );
-
-		state->m_feet_yaw_rate = 0.0f;
-		state->m_unk_feet_speed_ratio = 0.0f;
 
 		rebuilt::poses::calculate ( g::local );
 
-		if ( g::send_packet ) {
+		if ( g::send_packet && updated_tick != csgo::i::globals->m_tickcount ) {
+			recalc_weight = ( g::local->flags ( ) & 1 ) ? run_fraction : 0.0f;
+			recalc_cycle = std::fabsf ( last_update_time - local_data::hit_ground_time );
+
+			updated_tick = csgo::i::globals->m_tickcount;
+
 			if ( local_data::was_on_ground ) {
 				local_data::was_on_ground = false;
 				local_data::hit_ground_time = csgo::i::globals->m_curtime;
@@ -369,6 +382,9 @@ int animations::fix_local ( ) {
 
 	g::local->set_abs_angles( vec3_t( N( 0 ), local_data::abs, N( 0 ) ) );
 
+	state->m_feet_yaw_rate = 0.0f;
+	state->m_unk_feet_speed_ratio = 0.0f;
+
 	std::memcpy( g::local->layers( ), &local_data::overlays, N( sizeof animlayer_t ) * g::local->num_overlays( ) );
 	g::local->poses( ) = local_data::poses;
 	//g::local->flags ( ) = backup_flags;
@@ -382,7 +398,7 @@ int animations::fix_local ( ) {
 
 	const auto backup_framecount = csgo::i::globals->m_framecount;
 	csgo::i::globals->m_framecount = INT_MAX;
-	animations::build_matrix( g::local, nullptr, N( 128 ), N( 0x7ff00 ), g::local->simtime( ) );
+	animations::build_matrix( g::local, nullptr, N( 128 ), N( 0x7ff00 ), csgo::i::globals->m_curtime );
 	csgo::i::globals->m_framecount = backup_framecount;
 
 	if ( g::local->bone_accessor ( ).get_bone_arr_for_write ( ) )
@@ -730,8 +746,15 @@ int animations::run( int stage ) {
 
 		switch ( stage ) {
 		case 5: { /* fix local anims */
-			animations::fake::simulate ( );
-			fix_local( );
+			RUN_SAFE (	
+				"animations::fake::simulate",
+				animations::fake::simulate ( );
+			);
+
+			RUN_SAFE (
+				"animations::fix_local",
+				fix_local ( );
+			);
 
 			//auto util_playerbyindex = [ ] ( int idx ) {
 			//	using player_by_index_fn = player_t * ( __fastcall* )( int );
@@ -793,7 +816,10 @@ int animations::run( int stage ) {
 				for ( auto index = 0; index < var_map_list_count; index++ )
 					*reinterpret_cast< uint16_t* >( *reinterpret_cast< uintptr_t* >( var_map ) + index * 12 ) = 0;
 
-				fix_pl ( pl );
+				RUN_SAFE (
+					"animations::fix_pl",
+					fix_pl ( pl );
+				);
 			}
 		} break;
 		case 2: /* store incoming data */ {

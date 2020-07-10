@@ -1,6 +1,5 @@
 ﻿#include "glow.hpp"
 #include "../menu/menu.hpp"
-#include "../hooks.hpp"
 #include "../oxui/themes/purple.hpp"
 #include "../globals.hpp"
 #include "other_visuals.hpp"

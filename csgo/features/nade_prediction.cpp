@@ -1,6 +1,5 @@
 ﻿#include "nade_prediction.hpp"
 #include "../menu/menu.hpp"
-#include "../hooks.hpp"
 #include "../oxui/themes/purple.hpp"
 #include "../globals.hpp"
 #include <deque>
@@ -100,7 +99,7 @@ void features::nade_prediction::predict ( ucmd_t* ucmd ) {
 	thrown_direction = csgo::angle_vec ( thrown );
 
 	start = eye_origin + vec3_t( 0.0f, 0.0f, ( throw_strength * 12.f ) - 12.f );
-	thrown_direction = ( thrown_direction * new_velocity ) + g::local->vel ( );
+	thrown_direction = ( thrown_direction * new_velocity ) + ( g::local->vel ( ).length_2d( ) < 5.0f ? vec3_t( 0.0f, 0.0f, 0.0f ) : g::local->vel ( ) );
 
 	cur_nade_track.clear ( );
 

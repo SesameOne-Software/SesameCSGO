@@ -105,6 +105,8 @@ int find_freestand_side ( player_t* pl, float range ) {
 	return l_dmg > r_dmg ? 0 : 1;
 }
 
+int ducked_ticks = 0;
+
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
 	/* toggle */
 	OPTION( bool, air, "Sesame->B->Air->Base->In Air", oxui::object_checkbox );
@@ -324,13 +326,25 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( fd_key && fd_mode ) {
 			aa::was_fd = true;
 			g::send_packet = csgo::i::client_state->choked ( ) >= choke_limit;
-			
-			if ( csgo::is_valve_server ( ) )
-				ucmd->m_buttons = ( ( csgo::i::client_state->choked ( ) > 3 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
-			else
-				ucmd->m_buttons = ( ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 ) ) | 0x400000;
+
+			if ( csgo::is_valve_server ( ) ) {
+				if ( ducked_ticks <= 9 ) {
+					ucmd->m_buttons |= 4;
+					g::send_packet = true;
+				}
+				else
+					ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > 3 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
+				
+				ducked_ticks++;
+			}
+			else {
+				ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
+			}
+
+			ucmd->m_buttons |= 0x400000;
 		}
 		else if ( aa::was_fd ) {
+			ducked_ticks = 0;
 			g::shifted_tickbase = ucmd->m_cmdnum + choke_limit;
 			aa::was_fd = false;
 		}
@@ -592,18 +606,18 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				if ( desync_amount_stand > 50.0 ) {
 					if ( jitter_stand ) {
 						/* go 180 from update location to trigger 979 activity */
-						if ( ( lby::in_update || lby::balance_update ) || !g::send_packet ) {
+						if ( lby::in_update || !g::send_packet ) {
 							ucmd->m_angs.y += aa::flip ? 120.0f : -120.0f;
 							g::send_packet = false;
 						}
 					}
 					else {
-						if ( lby::in_update /*|| lby::balance_update*/ ) {
-							ucmd->m_angs.y -= std::copysignf ( desync_side_stand ? desync_amnt : -desync_amnt, 120.0f );
+						if ( lby::in_update ) {
+							ucmd->m_angs.y -= std::copysignf ( desync_side_stand ? -desync_amnt : desync_amnt, 120.0f );
 							g::send_packet = false;
 						}
 						else if ( !g::send_packet )
-							ucmd->m_angs.y += std::copysignf( desync_side_stand ? desync_amnt : -desync_amnt, 30.0f + 30.0f * ( ( desync_amount_stand - 50.0f ) / 50.0f ) );
+							ucmd->m_angs.y += std::copysignf( desync_side_stand ? -desync_amnt : desync_amnt, 30.0f + 30.0f * ( ( desync_amount_stand - 50.0f ) / 50.0f ) );
 					}
 				}
 				else {

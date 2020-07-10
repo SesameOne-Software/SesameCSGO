@@ -7,11 +7,14 @@
 #include "../globals.hpp"
 #include "../features/esp.hpp"
 #include "../features/ragebot.hpp"
+#include "../javascript/js_api.hpp"
 
 std::shared_ptr< oxui::panel > panel;
 std::shared_ptr< oxui::window > window;
 std::shared_ptr< oxui::group > config_list;
+std::shared_ptr< oxui::group > script_list;
 std::shared_ptr< oxui::group > player_list;
+std::shared_ptr< oxui::group > option_list;
 
 int current_plist_player = 0;
 extern int player_to_steal_tag_from;
@@ -103,7 +106,7 @@ void refresh_config_list ( ) {
 		LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame" ) ).data ( ), nullptr );
 		LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame\\configs" ) ).data ( ), nullptr );
 	}
-	
+
 	auto sanitize_name = [ ] ( const std::wstring& dir ) {
 		const auto dot = dir.find_last_of ( _ ( L"." ) );
 		return dir.substr ( N ( 0 ), dot );
@@ -119,6 +122,66 @@ void refresh_config_list ( ) {
 				config_list->add_element ( std::make_shared< oxui::button > ( sanitized, [ = ] ( ) {
 					OPTION ( oxui::str, cfg_name, "Sesame->Customization->Configs->Actions->Config Name", oxui::object_textbox );
 					cfg_name = sanitized;
+				} ) );
+			}
+	}
+	catch ( const std::exception & ex ) {
+		dbg_print ( ex.what ( ) );
+	}
+}
+
+void refresh_script_list ( ) {
+	///* create default / fallback rendering font */
+	//struct font_data_t {
+	//	std::string family;
+	//	int size;
+	//	bool bold;
+	//	ID3DXFont* font;
+	//};
+	//
+	//extern std::map < std::string, font_data_t > cached_fonts;
+	//
+	//if ( cached_fonts.empty() || cached_fonts.find( _ ( "default" ) ) == cached_fonts.end() ) {
+	//	font_data_t font_data;
+	//	font_data.family = _ ( "Segoe UI" );
+	//	font_data.size = 18;
+	//	font_data.bold = false;
+	//
+	//	ID3DXFont* font_out = nullptr;
+	//	LI_FN ( D3DXCreateFontA )( csgo::i::dev, font_data.size, 0, font_data.bold ? FW_BOLD : FW_NORMAL, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, font_data.family.c_str ( ), & font_data.font );
+	//
+	//	cached_fonts.emplace ( _ ( "default" ), font_data );
+	//}
+	
+	js::reset ( );
+
+	wchar_t appdata [ MAX_PATH ];
+
+	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathW )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+		LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame" ) ).data ( ), nullptr );
+		LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame\\js" ) ).data ( ), nullptr );
+		LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame\\global" ) ).data ( ), nullptr );
+	}
+
+	auto sanitize_name = [ ] ( const std::wstring& dir ) {
+		const auto dot = dir.find_last_of ( _ ( L"." ) );
+		return dir.substr ( N ( 0 ), dot );
+	};
+
+	script_list->objects.clear ( );
+
+	try {
+		for ( const auto& dir : std::filesystem::recursive_directory_iterator ( std::wstring ( appdata ) + _ ( L"\\sesame\\js" ) ) )
+			if ( dir.exists ( ) && dir.is_regular_file ( ) && dir.path ( ).extension ( ).wstring ( ) == _ ( L".js" ) ) {
+				const auto sanitized = sanitize_name ( dir.path ( ).filename ( ).wstring ( ) );
+
+				js::load ( sanitized );
+
+				script_list->add_element ( std::make_shared< oxui::button > ( sanitized, [ = ] ( ) {
+					OPTION ( oxui::str, cfg_name, "Sesame->Customization->Scripts->Actions->Script Name", oxui::object_textbox );
+					cfg_name = sanitized;
+					/* keep options list for scripts up to date */
+					js::reload_script_option_list ( );
 				} ) );
 			}
 	}
@@ -308,7 +371,7 @@ void menu::init( ) {
 			window->bind_key( VK_INSERT );
 
 			auto aimbot = std::make_shared< oxui::tab > ( OSTR ( "A" ) ); {
-				auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 1.0f, 0.2f } ); {
+				auto accuracy = std::make_shared< oxui::group > ( OSTR ( "Accuracy" ), std::vector< float > { 0.0f, 0.4f, 0.5f, 0.2f } ); {
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fix Fakelag" ) ) );
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Resolve Desync" ) ) );
 					accuracy->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Crash If Miss Due To Resolve" ) ) );
@@ -321,12 +384,13 @@ void menu::init( ) {
 				auto knife_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Knife Bot" ) );
 				auto zeus_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Zeus Bot" ) );
 				auto dt_key = std::make_shared< oxui::keybind > ( OSTR ( "Doubletap Key" ) );
+				auto triggerbot_key = std::make_shared< oxui::keybind > ( OSTR ( "Triggerbot Key" ) );
 
 				auto default_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Default" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
@@ -336,7 +400,7 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
 						main->add_element ( dt_key );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
@@ -345,6 +409,14 @@ void menu::init( ) {
 					}
 
 					default_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						default_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -372,11 +444,11 @@ void menu::init( ) {
 				}
 
 				auto pistol_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Pistol" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
@@ -386,7 +458,7 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
 						main->add_element ( dt_key );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
@@ -395,6 +467,14 @@ void menu::init( ) {
 					}
 
 					pistol_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						pistol_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -422,11 +502,11 @@ void menu::init( ) {
 				}
 
 				auto revolver_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Revolver" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
@@ -436,12 +516,20 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Revolver" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 
 						revolver_aimbot->add_element ( main );
 					}
 
 					revolver_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						revolver_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -469,11 +557,11 @@ void menu::init( ) {
 				}
 
 				auto rifle_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Rifle" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
@@ -486,12 +574,20 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
 						main->add_element ( dt_key );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 
 						rifle_aimbot->add_element ( main );
 					}
 
 					rifle_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						rifle_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -519,11 +615,11 @@ void menu::init( ) {
 				}
 
 				auto awp_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "AWP" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
@@ -532,12 +628,20 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 
 						awp_aimbot->add_element ( main );
 					}
 
 					awp_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						awp_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -565,11 +669,11 @@ void menu::init( ) {
 				}
 
 				auto auto_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Auto" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
@@ -579,7 +683,7 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Maximum Doubletap Ticks" ), 0.0, 0.0, 16.0 ) );
 						main->add_element ( dt_key );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Doubletap Teleport" ) ) );
@@ -588,6 +692,14 @@ void menu::init( ) {
 					}
 
 					auto_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						auto_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -615,11 +727,11 @@ void menu::init( ) {
 				}
 
 				auto scout_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Scout" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 0.4f } ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
 						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 100.0 ) );
+						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Choke On Shot" ) ) );
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Silent" ) ) );
@@ -628,12 +740,20 @@ void menu::init( ) {
 						main->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Auto Slow" ) ) );
 						main->add_element ( knife_bot );
 						main->add_element ( zeus_bot );
-						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
+						//main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Baim If Resolver Confidence Less Than" ), 0.0, 0.0, 100.0 ) );
 
 						scout_aimbot->add_element ( main );
 					}
 
 					scout_aimbot->add_element ( accuracy );
+
+					auto legit = std::make_shared< oxui::group > ( OSTR ( "Legit" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.6f } ); {
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Legit Mode" ) ) );
+						legit->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Triggerbot" ) ) );
+						legit->add_element ( triggerbot_key );
+
+						scout_aimbot->add_element ( legit );
+					}
 
 					auto target_selection = std::make_shared< oxui::group > ( OSTR ( "Hitscan" ), std::vector< float > { 0.0f, 0.6f, 0.5f, 0.4f }, false, true ); {
 						target_selection->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Baim If Lethal" ) ) );
@@ -1104,7 +1224,7 @@ void menu::init( ) {
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Radii" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Spread Circle" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Gradient Spread Circle" ) ) );
-						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ), OSTR ( "Bell" ), OSTR ( "COD" ), OSTR ( "Rattle" ) } ) );
+						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ), OSTR ( "Bell" ), OSTR ( "COD" ), OSTR ( "Rattle" ), OSTR ( "Sesame" ) } ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Tracer" ), oxui::color ( 161, 66, 245, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Impact" ), oxui::color ( 201, 145, 250, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Grenade Trajectory" ), oxui::color ( 161, 66, 245, 255 ) ) );
@@ -1224,6 +1344,18 @@ void menu::init( ) {
 			}
 
 			auto customization = std::make_shared< oxui::tab > ( OSTR ( "Customization" ) ); {
+				auto cheat = std::make_shared< oxui::subtab > ( OSTR ( "Cheat" ) ); {
+					auto main = std::make_shared< oxui::group > ( OSTR ( "Cheat" ), std::vector< float > { 0.0f, 0.0f, 1.0f, 1.0f } ); {
+						main->add_element ( std::make_shared< oxui::button > ( OSTR ( "Unload" ), [ & ] ( ) {
+							g::unload = true;
+						} ) );
+
+						cheat->add_element ( main );
+					}
+
+					customization->add_element ( cheat );
+				}
+
 				auto configs = std::make_shared< oxui::subtab > ( OSTR ( "Configs" ) ); {
 					config_list = std::make_shared< oxui::group > ( OSTR ( "Config List" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
 						refresh_config_list ( );
@@ -1275,9 +1407,9 @@ void menu::init( ) {
 							refresh_config_list ( );
 						} ) );
 
-						actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Load Testing Settings" ), [ & ] ( ) {
-							csgo::i::engine->client_cmd_unrestricted ( _ ( "sv_cheats 1; bot_kick; bot_add_ct; mp_warmuptime 999999999; mp_warmup_start; give weapon_scar20; bot_add_ct; weapon_accuracy_nospread 1; bot_mimic 1; sv_showlagcompensation 1; sv_showimpacts 1" ) );
-						} ) );
+						//actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Load Testing Settings" ), [ & ] ( ) {
+						//	csgo::i::engine->client_cmd_unrestricted ( _ ( "sv_cheats 1; bot_kick; bot_add_ct; mp_warmuptime 999999999; mp_warmup_start; give weapon_scar20; bot_add_ct; weapon_accuracy_nospread 1; bot_mimic 1; sv_showlagcompensation 1; sv_showimpacts 1" ) );
+						//} ) );
 
 						configs->add_element ( actions );
 					}
@@ -1285,19 +1417,64 @@ void menu::init( ) {
 					customization->add_element ( configs );
 				}
 
-				auto lua = std::make_shared< oxui::subtab > ( OSTR ( "LUA Scripts" ) ); {
-					auto main = std::make_shared< oxui::group > ( OSTR ( "LUA Script List" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
-						
-						lua->add_element ( main );
+				auto scripts = std::make_shared< oxui::subtab > ( OSTR ( "Scripts" ) ); {
+					script_list = std::make_shared< oxui::group > ( OSTR ( "Script List" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 1.0f } ); {
+						refresh_script_list ( );
+
+						scripts->add_element ( script_list );
 					}
 
-					auto actions = std::make_shared< oxui::group > ( OSTR ( "Actions" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 1.0f } ); {
-						
+					auto actions = std::make_shared< oxui::group > ( OSTR ( "Actions" ), std::vector< float > { 0.5f, 0.0f, 0.5f, 0.5f } ); {
+						actions->add_element ( std::make_shared< oxui::textbox > ( OSTR ( "Script Name" ), OSTR ( "" ) ) );
 
-						lua->add_element ( actions );
+						actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Reload" ), [ & ] ( ) {
+							OPTION ( oxui::str, cfg_name, "Sesame->Customization->Scripts->Actions->Script Name", oxui::object_textbox );
+
+							if ( !cfg_name.length ( ) )
+								return;
+
+							js::load ( cfg_name );
+							js::reload_script_option_list ( true );
+						} ) );
+
+						actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Refresh" ), [ & ] ( ) {
+							refresh_script_list ( );
+							js::reload_script_option_list ( true );
+						} ) );
+
+						actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Delete" ), [ & ] ( ) {
+							OPTION ( oxui::str, cfg_name, "Sesame->Customization->Scripts->Actions->Script Name", oxui::object_textbox );
+
+							if ( !cfg_name.length ( ) )
+								return;
+
+							wchar_t appdata [ MAX_PATH ];
+
+							if ( SUCCEEDED ( LI_FN ( SHGetFolderPathW )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+								LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame" ) ).data ( ), nullptr );
+								LI_FN ( CreateDirectoryW )( ( std::wstring ( appdata ) + _ ( L"\\sesame\\js" ) ).data ( ), nullptr );
+							}
+
+							_wremove ( ( std::wstring ( appdata ) + _ ( L"\\sesame\\js\\" ) + cfg_name + OSTR ( ".js" ) ).data ( ) );
+
+							refresh_script_list ( );
+							js::reload_script_option_list ( true );
+						} ) );
+
+						//actions->add_element ( std::make_shared< oxui::button > ( OSTR ( "Load Testing Settings" ), [ & ] ( ) {
+						//	csgo::i::engine->client_cmd_unrestricted ( _ ( "sv_cheats 1; bot_kick; bot_add_ct; mp_warmuptime 999999999; mp_warmup_start; give weapon_scar20; bot_add_ct; weapon_accuracy_nospread 1; bot_mimic 1; sv_showlagcompensation 1; sv_showimpacts 1" ) );
+						//} ) );
+
+						scripts->add_element ( actions );
 					}
 
-					customization->add_element ( lua );
+					option_list = std::make_shared< oxui::group > ( OSTR ( "Options" ), std::vector< float > { 0.5f, 0.5f, 0.5f, 0.5f } ); {
+
+
+						scripts->add_element ( option_list );
+					}
+
+					customization->add_element ( scripts );
 				}
 
 				window->add_tab ( customization );
@@ -1368,4 +1545,6 @@ void menu::draw( ) {
 	security_handler::update ( );
 
 	panel->render( static_cast< double > ( std::chrono::duration_cast< std::chrono::milliseconds > ( std::chrono::system_clock::now ( ).time_since_epoch ( ) ).count( ) ) / 1000.0 );
+
+	js::save_script_options ( );
 }

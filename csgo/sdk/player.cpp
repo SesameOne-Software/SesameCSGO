@@ -1,7 +1,7 @@
 #include <array>
 #include "player.hpp"
 #include "sdk.hpp"
-#include "../hooks.hpp"
+#include "../hooks/modify_eye_pos.hpp"
 
 void animstate_pose_param_cache_t::set_value( player_t* e, float val ) {
 	if ( m_idx >= 0 )
@@ -88,7 +88,7 @@ vec3_t player_t::eyes( ) {
 	vfunc< void ( __thiscall* )( player_t*, vec3_t& ) > ( this, 168 ) ( this, pos );
 
 	if ( *reinterpret_cast< uint8_t* > ( uintptr_t ( this ) + 0x3AB4 ) && animstate ( ) )
-		hooks::modify_eye_pos_hk ( animstate ( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
+		hooks::modify_eye_pos ( animstate ( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
 
 	return pos;
 }

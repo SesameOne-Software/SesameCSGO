@@ -24,7 +24,9 @@ namespace features {
 				scan_arms,
 				scan_legs,
 				scan_feet,
-				safe_point;
+				safe_point,
+				legit_mode,
+				triggerbot;
 
 			double min_dmg,
 				hit_chance,
@@ -37,7 +39,8 @@ namespace features {
 
 			int inherit_from,
 				dt_key,
-				optimization;
+				optimization,
+				triggerbot_key;
 		};
 		
 		extern weapon_config_t active_config;

@@ -1,6 +1,8 @@
 #include "globals.hpp"
 #include "sdk/sdk.hpp"
 
+bool g::unload = false;
+
 round_t g::round = round_t::in_progress;
 player_t* g::local = nullptr;
 ucmd_t* g::ucmd = nullptr;

@@ -90,7 +90,7 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 	const auto simulation_tick_delta = std::clamp( csgo::time2ticks ( pl->simtime( ) - pl->old_simtime( ) ), 0, 17 );
 	auto delta_ticks = ( std::clamp ( csgo::time2ticks( nci->get_latency ( 1 ) + nci->get_latency ( 0 ) ) + csgo::time2ticks( prediction::predicted_curtime ) - csgo::time2ticks ( pl->simtime ( ) + lerp ( ) ), 0, 100 ) ) - simulation_tick_delta;
 
-	if ( delta_ticks <= 0 || simulation_tick_delta <= 0 || data::all_records [ pl->idx ( ) ].size ( ) < 2 )
+	if ( /*delta_ticks <= 0 || simulation_tick_delta <= 0 ||*/ data::all_records [ pl->idx ( ) ].size ( ) < 2 )
 		return false;
 
 	const auto extrapolate = [ & ] ( player_t* player, vec3_t& origin, vec3_t& velocity, int& flags, bool on_ground ) -> void {
@@ -216,30 +216,24 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 
 	auto cur_magnitude = vel.length_2d( );
 
-	for ( ; delta_ticks >= 0; delta_ticks -= simulation_tick_delta ) {
-		auto ticks_left = simulation_tick_delta;
+	for ( auto tick = 0; tick < dtick; tick++ ) {
+		const auto extrap_vel_yaw = vel_deg + vel_ang_per_tick * csgo::ticks2time ( 1 );
 
-		do {
-			const auto extrap_vel_yaw = vel_deg + vel_ang_per_tick * csgo::ticks2time ( 1 );
+		if ( rec.m_flags & 1 && pl->flags ( ) & 1 )
+			cur_magnitude += magnitude_delta * csgo::ticks2time ( 1 );
+		else if ( !( pl->flags ( ) & 1 ) )
+			cur_magnitude += predicted_accel.length_2d ( ) * csgo::ticks2time ( 1 );
 
-			if ( rec.m_flags & 1 && pl->flags ( ) & 1 )
-				cur_magnitude += magnitude_delta * csgo::ticks2time ( 1 );
-			else if ( !( pl->flags ( ) & 1 ) )
-				cur_magnitude += predicted_accel.length_2d ( ) * csgo::ticks2time ( 1 );
+		rec.m_vel.x = std::cosf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
+		rec.m_vel.y = std::sinf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
 
-			rec.m_vel.x = std::cosf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
-			rec.m_vel.y = std::sinf ( csgo::deg2rad ( extrap_vel_yaw ) ) * cur_magnitude;
+		extrapolate ( pl, rec.m_origin, rec.m_vel, rec.m_flags, pl->flags ( ) & 1 );
 
-			extrapolate ( pl, rec.m_origin, rec.m_vel, rec.m_flags, pl->flags ( ) & 1 );
+		vel_deg = extrap_vel_yaw;
+		cur_magnitude = rec.m_vel.length_2d ( );
 
-			vel_deg = extrap_vel_yaw;
-			cur_magnitude = rec.m_vel.length_2d ( );
-
-			rec.m_tick += 1;
-			rec.m_simtime += csgo::i::globals->m_ipt;
-
-			--ticks_left;
-		} while ( ticks_left );
+		rec.m_tick += 1;
+		rec.m_simtime += csgo::i::globals->m_ipt;
 	}
 
 	for ( auto& bone : rec.m_bones )
@@ -294,12 +288,12 @@ void features::lagcomp::cache( player_t* pl ) {
 		return;
 
 	/* store simulated information seperately */
-	//if ( !data::all_records [ pl->idx ( ) ].empty( ) ) {
-	//	lag_record_t rec_simulated = data::all_records [ pl->idx ( ) ][ 0 ];
-	//
-	//	if ( extrapolate_record ( pl, rec_simulated ) )
-	//		data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
-	//}
+	if ( !data::all_records [ pl->idx ( ) ].empty( ) ) {
+		lag_record_t rec_simulated = data::all_records [ pl->idx ( ) ][ 0 ];
+	
+		if ( extrapolate_record ( pl, rec_simulated ) )
+			data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
+	}
 
 	OPTION ( bool, fix_fakelag, "Sesame->A->Default->Accuracy->Fix Fakelag", oxui::object_checkbox );
 

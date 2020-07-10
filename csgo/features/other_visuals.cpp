@@ -1,5 +1,4 @@
 ﻿#include "other_visuals.hpp"
-#include "../hooks.hpp"
 #include "../globals.hpp"
 #include <deque>
 #include <mutex>

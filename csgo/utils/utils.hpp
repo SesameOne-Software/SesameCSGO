@@ -36,3 +36,14 @@ static void dbg_print( const char* msg, ... ) {
 	va_end( list );
 	msg_fn( buffer, list );
 }
+
+#define _CALL_SAFE_TO_STR( s ) __CALL_SAFE_TO_STR( s )
+#define __CALL_SAFE_TO_STR( s ) #s
+
+#define RUN_SAFE( label, code ) \
+	try { \
+		code \
+	} \
+	catch ( const std::exception & ex ) { \
+		dbg_print( _( "Caught exception in %s: %s" ), _( label ), ex.what( ) ); \
+	}

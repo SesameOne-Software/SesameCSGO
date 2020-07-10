@@ -92,7 +92,7 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 	if ( !weapon_data )
 		return false;
 
-	// auto trace_len = data.src.dist_to ( end_pos );
+	//auto trace_len = weapon_data->m_range;
 	auto trace_len = ( hitgroup != -1 ) ? data.src.dist_to ( end_pos ) : weapon_data->m_range;
 	auto enter_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 	auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
@@ -113,7 +113,7 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 			csgo::i::trace->trace_ray ( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 			clip_trace_to_players_fast ( dst_entity, data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
 
-			if ( data.enter_trace.m_fraction == 1.0f && hitgroup != -1 ) {
+			if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
 				scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
 				return true;
 			}

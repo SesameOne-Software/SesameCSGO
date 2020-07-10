@@ -87,6 +87,8 @@ void features::ragebot::get_weapon_config ( weapon_config_t& const config ) {
 	//	return;
 	//}
 
+	memset ( &config, 0, sizeof config );
+
 	config.main_switch = ragebot;
 	config.dt_key = tickbase_key;
 	config.optimization = optimization;
@@ -117,7 +119,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoslow, "Sesame->A->Default->Main->Auto Slow", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Default->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, dt_teleport, "Sesame->A->Default->Main->Doubletap Teleport", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Default->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Default->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Default->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Default->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Default->Legit->Triggerbot Key" );
 
 		if ( !config_type ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -149,7 +154,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 		}
 	}
 
@@ -175,7 +183,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, auto_revolver, "Sesame->A->Revolver->Main->Auto Revolver", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Revolver->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, autoslow, "Sesame->A->Revolver->Main->Auto Slow", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Revolver->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Revolver->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Revolver->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Revolver->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Revolver->Legit->Triggerbot Key" );
 
 		if ( config_type == 2 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -203,7 +214,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			config.dt_key = 0;
 			if ( revolver_inherit_from && revolver_inherit_from - 1 != config_type ) {
 				config_type = revolver_inherit_from - 1;
@@ -236,7 +250,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoslow, "Sesame->A->Pistol->Main->Auto Slow", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Pistol->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, dt_teleport, "Sesame->A->Pistol->Main->Doubletap Teleport", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Pistol->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Pistol->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Pistol->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Pistol->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Pistol->Legit->Triggerbot Key" );
 
 		if ( config_type == 1 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -266,7 +283,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			if ( pistol_inherit_from && pistol_inherit_from - 1 != config_type ) {
 				config_type = pistol_inherit_from - 1;
 				goto reevaluate_weapon_class;
@@ -298,7 +318,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoslow, "Sesame->A->Rifle->Main->Auto Slow", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Rifle->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, dt_teleport, "Sesame->A->Rifle->Main->Doubletap Teleport", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Rifle->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Rifle->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Rifle->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Rifle->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Rifle->Legit->Triggerbot Key" );
 
 		if ( config_type == 3 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -328,7 +351,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+		//	if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			if ( rifle_inherit_from && rifle_inherit_from - 1 != config_type ) {
 				config_type = rifle_inherit_from - 1;
 				goto reevaluate_weapon_class;
@@ -357,7 +383,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoscope, "Sesame->A->AWP->Main->Auto Scope", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->AWP->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, autoslow, "Sesame->A->AWP->Main->Auto Slow", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->AWP->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->AWP->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->AWP->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->AWP->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->AWP->Legit->Triggerbot Key" );
 
 		if ( config_type == 4 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -384,7 +413,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			config.dt_key = 0;
 			if ( awp_inherit_from && awp_inherit_from - 1 != config_type ) {
 				config_type = awp_inherit_from - 1;
@@ -417,7 +449,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoslow, "Sesame->A->Auto->Main->Auto Slow", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Auto->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, dt_teleport, "Sesame->A->Auto->Main->Doubletap Teleport", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Auto->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Auto->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Auto->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Auto->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Auto->Legit->Triggerbot Key" );
 
 		if ( config_type == 5 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -447,7 +482,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			if ( auto_inherit_from && auto_inherit_from - 1 != config_type ) {
 				config_type = auto_inherit_from - 1;
 				goto reevaluate_weapon_class;
@@ -476,7 +514,10 @@ reevaluate_weapon_class:
 		OPTION ( bool, autoscope, "Sesame->A->Scout->Main->Auto Scope", oxui::object_checkbox );
 		OPTION ( bool, choke_on_shot, "Sesame->A->Scout->Main->Choke On Shot", oxui::object_checkbox );
 		OPTION ( bool, autoslow, "Sesame->A->Scout->Main->Auto Slow", oxui::object_checkbox );
-		OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Scout->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		//OPTION ( double, baim_if_resolver_confidence_less_than, "Sesame->A->Scout->Main->Baim If Resolver Confidence Less Than", oxui::object_slider );
+		OPTION ( bool, legit_mode, "Sesame->A->Scout->Legit->Legit Mode", oxui::object_checkbox );
+		OPTION ( bool, triggerbot, "Sesame->A->Scout->Legit->Triggerbot", oxui::object_checkbox );
+		KEYBIND ( triggerbot_key, "Sesame->A->Scout->Legit->Triggerbot Key" );
 
 		if ( config_type == 6 ) {
 			if ( !ignore_newer_hitboxes && ( head || neck || chest || pelvis || arms || legs || feet ) ) {
@@ -503,7 +544,10 @@ reevaluate_weapon_class:
 			if ( !config.auto_scope ) config.auto_scope = autoscope;
 			if ( !config.auto_slow ) config.auto_slow = autoslow;
 			if ( !config.choke_on_shot ) config.choke_on_shot = choke_on_shot;
-			if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			//if ( !config.baim_if_resolver_confidence_less_than )config.baim_if_resolver_confidence_less_than = baim_if_resolver_confidence_less_than;
+			if ( !config.legit_mode ) config.legit_mode;
+			if ( !config.triggerbot ) config.triggerbot;
+			if ( !config.triggerbot_key ) config.triggerbot_key;
 			config.dt_key = 0;
 			if ( scout_inherit_from && scout_inherit_from - 1 != config_type ) {
 				config_type = scout_inherit_from - 1;
@@ -549,7 +593,7 @@ int& features::ragebot::get_hitbox ( int pl ) {
 	return hitbox [ pl ];
 }
 
-bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays ) {
+bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox ) {
 	auto weapon = g::local->weapon ( );
 
 	if ( !weapon || !weapon->data ( ) ) {
@@ -574,6 +618,8 @@ bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays ) {
 
 	auto weap_spread = weapon->inaccuracy ( ) + weapon->spread ( );
 
+	const auto as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
+
 	for ( auto i = 0; i < rays; i++ ) {
 		const auto spread_x = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
 		const auto spread_y = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
@@ -588,7 +634,7 @@ bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays ) {
 
 		// dbg_print( "%3.f\n", dst );
 
-		if ( tr.m_hit_entity == pl )
+		if ( tr.m_hit_entity == pl && tr.m_hitgroup == as_hitgroup )
 			hits++;
 
 		//if ( ray_intersects_sphere( src, final_pos, point, 5.0f ) )
@@ -763,35 +809,34 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	if ( shot.second ) {
 		rebuild_record ( shot.first );
 		best_recs.push_back ( shot.first );
-		rebuild_record ( recs.first.back ( ) );
-		best_recs.push_back ( recs.first.back ( ) );
+		//rebuild_record ( recs.first.back ( ) );
+		//best_recs.push_back ( recs.first.back ( ) );
 		head_only = true;
 	}
-	else if ( recs.second ) {
-		/*if ( !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) > 2 ) {
+	else {
+		/*if ( !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) > 2 && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) < 7 ) {
 			rebuild_record ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 			best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 		}
-		else*/
-		if ( recs.first.size ( ) >= 2 ) {
+		else*/ if ( recs.first.size ( ) >= 2 ) {
 			rebuild_record ( recs.first.back ( ) );
 			best_recs.push_back ( recs.first.back ( ) );
 		}
-
+		
 		rebuild_record ( recs.first.front ( ) );
 		best_recs.push_back ( recs.first.front ( ) );
 	}
 
-	if ( best_recs.size ( ) >= 2 ) {
-		const auto dmg_old = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 8 ].origin ( ), 0 ) );
-		const auto dmg_new = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 8 ].origin ( ), 0 ) );
-
-		/* ghetto record scanning optimization */
-		if ( dmg_new && !dmg_old )
-			best_recs.pop_back ( );
-		else if ( !dmg_new && dmg_old )
-			best_recs.pop_front ( );
-	}
+	//if ( best_recs.size ( ) >= 2 ) {
+	//	const auto dmg_old = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 1 ].m_bones [ 8 ].origin ( ), 0 ) );
+	//	const auto dmg_new = std::max< float > ( autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 0 ].origin ( ), 0 ), autowall::dmg ( g::local, pl, g::local->eyes ( ), best_recs [ 0 ].m_bones [ 8 ].origin ( ), 0 ) );
+	//
+	//	/* ghetto record scanning optimization */
+	//	if ( dmg_new && !dmg_old )
+	//		best_recs.pop_back ( );
+	//	else if ( !dmg_new && dmg_old )
+	//		best_recs.pop_front ( );
+	//}
 
 	if ( best_recs.empty( ) )
 		return;
@@ -862,8 +907,8 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 		}
 	}
 
-	if ( animations::resolver::get_confidence ( pl->idx ( ) ) < active_config.baim_if_resolver_confidence_less_than )
-		should_baim = true;
+	//if ( animations::resolver::get_confidence ( pl->idx ( ) ) < active_config.baim_if_resolver_confidence_less_than )
+	//	should_baim = true;
 
 	auto scan_safe_points = true;
 
@@ -1480,8 +1525,27 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		ucmd->m_buttons &= ~1;
 	}
 	else if ( can_shoot( ) ) {
-		auto hc = run_hitchance ( best_ang, best_pl, best_point, 150 );
+		const auto backup_origin = best_pl->origin ( );
+		auto backup_abs_origin = best_pl->abs_origin ( );
+		const auto backup_min = best_pl->mins ( );
+		const auto backup_max = best_pl->maxs ( );
+		matrix3x4_t backup_bones [ 128 ];
+		std::memcpy ( backup_bones, best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof matrix3x4_t * best_pl->bone_count ( ) );
+
+		best_pl->mins ( ) = best_rec.m_min;
+		best_pl->maxs ( ) = best_rec.m_max;
+		best_pl->origin ( ) = best_rec.m_origin;
+		best_pl->set_abs_origin ( best_rec.m_origin );
+		std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), best_rec.m_bones, sizeof matrix3x4_t * best_pl->bone_count ( ) );
+
+		auto hc = run_hitchance ( best_ang, best_pl, best_point, 150, best_hitbox );
 		auto should_aim = best_dmg > 0.0f && hc;
+
+		best_pl->mins ( ) = backup_min;
+		best_pl->maxs ( ) = backup_max;
+		best_pl->origin ( ) = backup_origin;
+		best_pl->set_abs_origin ( backup_abs_origin );
+		std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), backup_bones, sizeof matrix3x4_t * best_pl->bone_count ( ) );
 
 		/* TODO: EXTRAPOLATE POSITION TO SLOW DOWN EXACTLY WHEN WE SHOOT */
 		if ( active_config.auto_slow && best_dmg > 0.0f && !hc && g::local->vel ( ).length_2d ( ) > 0.1f ) {

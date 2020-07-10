@@ -11,6 +11,8 @@ enum class round_t : int {
 };
 
 namespace g {
+	extern bool unload;
+
 	extern player_t* local;
 	extern ucmd_t* ucmd;
 	extern ucmd_t sent_cmd;

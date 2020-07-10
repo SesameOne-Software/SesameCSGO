@@ -34,7 +34,35 @@
     <ClCompile Include="features\prediction.cpp" />
     <ClCompile Include="features\ragebot.cpp" />
     <ClCompile Include="globals.cpp" />
-    <ClCompile Include="hooks.cpp" />
+    <ClCompile Include="hooks\create_move.cpp" />
+    <ClCompile Include="hooks\cs_blood_spray_callback.cpp" />
+    <ClCompile Include="hooks\do_extra_bone_processing.cpp" />
+    <ClCompile Include="hooks\draw_model_execute.cpp" />
+    <ClCompile Include="hooks\emit_sound.cpp" />
+    <ClCompile Include="hooks\end_scene.cpp" />
+    <ClCompile Include="hooks\events.cpp" />
+    <ClCompile Include="hooks\frame_stage_notify.cpp" />
+    <ClCompile Include="hooks\get_bool.cpp" />
+    <ClCompile Include="hooks\get_eye_angles.cpp" />
+    <ClCompile Include="hooks\get_viewmodel_fov.cpp" />
+    <ClCompile Include="hooks\hooks.cpp" />
+    <ClCompile Include="hooks\in_prediction.cpp" />
+    <ClCompile Include="hooks\is_hltv.cpp" />
+    <ClCompile Include="hooks\list_leaves_in_box.cpp" />
+    <ClCompile Include="hooks\lock_cursor.cpp" />
+    <ClCompile Include="hooks\modify_eye_pos.cpp" />
+    <ClCompile Include="hooks\override_view.cpp" />
+    <ClCompile Include="hooks\paint_traverse.cpp" />
+    <ClCompile Include="hooks\reset.cpp" />
+    <ClCompile Include="hooks\scene_end.cpp" />
+    <ClCompile Include="hooks\send_datagram.cpp" />
+    <ClCompile Include="hooks\send_net_msg.cpp" />
+    <ClCompile Include="hooks\setup_bones.cpp" />
+    <ClCompile Include="hooks\should_skip_anim_frame.cpp" />
+    <ClCompile Include="hooks\wnd_proc.cpp" />
+    <ClCompile Include="hooks\write_usercmd_delta_to_buffer.cpp" />
+    <ClCompile Include="javascript\duktape.c" />
+    <ClCompile Include="javascript\js_api.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu\menu.cpp" />
     <ClCompile Include="oxui\json\cJSON.c" />
@@ -81,7 +109,36 @@
     <ClInclude Include="features\ragebot.hpp" />
     <ClInclude Include="globals.hpp" />
     <ClInclude Include="hitsounds.h" />
-    <ClInclude Include="hooks.hpp" />
+    <ClInclude Include="hooks\create_move.hpp" />
+    <ClInclude Include="hooks\cs_blood_spray_callback.hpp" />
+    <ClInclude Include="hooks\do_extra_bone_processing.hpp" />
+    <ClInclude Include="hooks\draw_model_execute.hpp" />
+    <ClInclude Include="hooks\emit_sound.hpp" />
+    <ClInclude Include="hooks\end_scene.hpp" />
+    <ClInclude Include="hooks\events.hpp" />
+    <ClInclude Include="hooks\frame_stage_notify.hpp" />
+    <ClInclude Include="hooks\get_bool.hpp" />
+    <ClInclude Include="hooks\get_eye_angles.hpp" />
+    <ClInclude Include="hooks\get_viewmodel_fov.hpp" />
+    <ClInclude Include="hooks\hooks.hpp" />
+    <ClInclude Include="hooks\in_prediction.hpp" />
+    <ClInclude Include="hooks\is_hltv.hpp" />
+    <ClInclude Include="hooks\list_leaves_in_box.hpp" />
+    <ClInclude Include="hooks\lock_cursor.hpp" />
+    <ClInclude Include="hooks\modify_eye_pos.hpp" />
+    <ClInclude Include="hooks\override_view.hpp" />
+    <ClInclude Include="hooks\paint_traverse.hpp" />
+    <ClInclude Include="hooks\reset.hpp" />
+    <ClInclude Include="hooks\scene_end.hpp" />
+    <ClInclude Include="hooks\send_datagram.hpp" />
+    <ClInclude Include="hooks\send_net_msg.hpp" />
+    <ClInclude Include="hooks\setup_bones.hpp" />
+    <ClInclude Include="hooks\should_skip_anim_frame.hpp" />
+    <ClInclude Include="hooks\wnd_proc.hpp" />
+    <ClInclude Include="hooks\write_usercmd_delta_to_buffer.hpp" />
+    <ClInclude Include="javascript\duktape.h" />
+    <ClInclude Include="javascript\duk_config.h" />
+    <ClInclude Include="javascript\js_api.hpp" />
     <ClInclude Include="menu\menu.hpp" />
     <ClInclude Include="minhook\minhook.h" />
     <ClInclude Include="oxui\bindings\bindings.hpp" />
@@ -246,7 +303,7 @@
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>false</ControlFlowGuard>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -258,6 +315,8 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
+      <IgnoreEmbeddedIDL>false</IgnoreEmbeddedIDL>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
