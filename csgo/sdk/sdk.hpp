@@ -85,6 +85,8 @@ namespace csgo {
 	void util_tracehull( const vec3_t& start, const vec3_t& end, const vec3_t& mins, const vec3_t& maxs, unsigned int mask, const void* ignore, trace_t* tr );
 	void util_traceline( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr );
 	void rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, const vec3_t& old_angs );
+	void angle_matrix ( const vec3_t& angles, const vec3_t& position, matrix3x4_t& matrix );
+	void angle_matrix ( const vec3_t& angles, matrix3x4_t& matrix );
 	bool is_visible( const vec3_t& point );
 	bool is_valve_server ( );
 

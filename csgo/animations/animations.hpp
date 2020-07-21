@@ -19,6 +19,8 @@ namespace animations {
 		extern std::array< vec3_t, 65 > old_origin;
 		extern std::array< std::array< matrix3x4_t, 128 >, 65 > bones;
 		extern std::array< std::array< matrix3x4_t, 128 >, 65 > fixed_bones;
+		extern std::array< std::array< matrix3x4_t, 128 >, 65 > fixed_bones1;
+		extern std::array< std::array< matrix3x4_t, 128 >, 65 > fixed_bones2;
 		extern std::array< std::array< float, 24 >, 65 > poses;
 		extern std::array< int, 65 > last_animation_frame;
 		extern std::array< int, 65 > old_tick;
@@ -48,11 +50,9 @@ namespace animations {
 	}
 
 	void estimate_vel ( player_t* pl, vec3_t& out );
-	bool build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, int mask, float seed );
-	int fix_local( );
-	void simulate_movement( player_t* pl, vec3_t& origin );
-	void simulate_command( player_t* pl );
+	bool setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
+	int store_local ( );
+	int restore_local( );
 	int fix_pl( player_t* pl );
-	void simulate ( player_t* pl, bool updated = false );
 	int run( int stage );
 }

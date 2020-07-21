@@ -198,6 +198,7 @@
     <ClInclude Include="security\security_handler.hpp" />
     <ClInclude Include="security\text_section_hasher.hpp" />
     <ClInclude Include="security\xorstr.hpp" />
+    <ClInclude Include="segoeui.h" />
     <ClInclude Include="sesame_font.h" />
     <ClInclude Include="sesame_logo.h" />
     <ClInclude Include="utils\base64.hpp" />

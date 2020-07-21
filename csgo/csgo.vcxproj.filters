@@ -449,6 +449,9 @@
     <ClInclude Include="hooks\setup_bones.hpp">
       <Filter>Header Files\hooks</Filter>
     </ClInclude>
+    <ClInclude Include="segoeui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">

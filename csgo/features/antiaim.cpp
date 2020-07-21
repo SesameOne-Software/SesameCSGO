@@ -150,6 +150,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 	/* slow walk settings */
 	OPTION ( double, slow_walk_speed, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Speed", oxui::object_slider );
+	OPTION ( bool, fakewalk, "Sesame->B->Slow Walk->Slow Walk->Fakewalk", oxui::object_checkbox );
 
 	/* jitter desync */
 	OPTION( bool, jitter_air, "Sesame->B->Air->Desync->Jitter Desync Side", oxui::object_checkbox );
@@ -241,7 +242,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			shot_count = 0;
 
 	/* manage fakelag */
-	if ( g::local->valid ( ) ) {
+	auto force_standing_antiaim = false;
+
+	if ( g::local->valid ( ) && g::round != round_t::starting ) {
 		auto max_lag = 1;
 
 		if ( air && !( g::local->flags ( ) & 1 ) )
@@ -309,6 +312,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		max_lag = std::clamp< int > ( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
 		max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
 
+		if ( fakewalk && slowwalk_key ) {
+			max_lag = 6;
+			max_send = 0;
+		}
+
 		if ( aa::choke_counter < max_lag ) {
 			g::send_packet = !( aa::choke_counter >= max_send );
 			aa::choke_counter++;
@@ -354,18 +362,51 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			aa::move_flip = !aa::move_flip;
 		}
 
-		/* tiny slowwalk */
-		if ( slow_walk_speed > 0.0f && slowwalk_key && g::local->valid ( ) && g::local->flags ( ) & 1 && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
+		auto approach_speed = [ & ] ( float target_speed ) {
 			const auto vec_move = vec3_t ( old_fmove, old_smove, ucmd->m_umove );
 			const auto magnitude = vec_move.length_2d ( );
 			const auto max_speed = g::local->weapon ( )->data ( )->m_max_speed;
 			const auto move_to_button_ratio = 250.0f / 450.0f;
-			const auto speed_ratio = ( max_speed * 0.34f ) * ( slow_walk_speed / 100.0f );
-			const auto move_ratio = speed_ratio * move_to_button_ratio;
+			const auto move_ratio = target_speed * move_to_button_ratio;
 
-			if ( std::fabsf ( old_fmove ) > 3.0f || std::fabsf ( old_smove ) > 3.0f ) {
+			if ( !target_speed ) {
+				if ( magnitude <= 13.0f ) {
+					old_fmove = old_smove = 0.0f;
+				}
+				else {
+					old_fmove = ( old_fmove / magnitude ) * move_ratio;
+					old_smove = ( old_smove / magnitude ) * move_ratio;
+				}
+			}
+			else if ( std::fabsf ( old_fmove ) > 3.0f || std::fabsf ( old_smove ) > 3.0f ) {
 				old_fmove = ( old_fmove / magnitude ) * move_ratio;
 				old_smove = ( old_smove / magnitude ) * move_ratio;
+			}
+		};
+
+		if ( slowwalk_key ) {
+			if ( fakewalk ) {
+				force_standing_antiaim = true;
+
+				/* force lby flick, will update when we stand still and send packet... */
+				if ( !aa::choke_counter ) {
+					approach_speed ( 0.0f );
+				}
+				else {
+					if ( aa::choke_counter == 6 )
+						approach_speed ( 0.0f );
+					else {
+						approach_speed ( 23.0f );
+
+						if ( aa::choke_counter == 5 )
+							lby::in_update = true;
+					}
+				}
+			}
+			else {
+				/* tiny slowwalk */
+				if ( std::fabsf ( old_fmove ) > 3.3f || std::fabsf ( old_smove ) > 3.3f )
+					approach_speed ( ( g::local->weapon ( )->data ( )->m_max_speed * 0.34f ) * ( slow_walk_speed / 100.0f ) );
 			}
 		}
 	}
@@ -481,7 +522,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_air : jitter_amount_air;
 			}
 		}
-		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
+		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
 			if ( slowwalk_key && slow_walk ) {
 				process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
 
@@ -613,7 +654,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 					else {
 						if ( lby::in_update ) {
-							ucmd->m_angs.y -= std::copysignf ( desync_side_stand ? -desync_amnt : desync_amnt, 120.0f );
+							ucmd->m_angs.y -= /*std::copysignf ( desync_side_stand ? -desync_amnt : desync_amnt, 120.0f )*/ 180.0f;
 							g::send_packet = false;
 						}
 						else if ( !g::send_packet )

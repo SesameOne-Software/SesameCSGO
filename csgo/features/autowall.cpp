@@ -1,4 +1,5 @@
 #include "autowall.hpp"
+#include "../globals.hpp"
 
 void clip_trace_to_players_fast ( player_t* pl, const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
 	trace_t trace;
@@ -121,7 +122,13 @@ bool autowall::simulate_fire_bullet( player_t* entity, player_t* dst_entity, fir
 			data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
 			data.current_damage *= weapon_data->m_range_modifier;
 
-			if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && data.enter_trace.m_hit_entity == dst_entity ) {
+			//if ( data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) ) {
+			//	data.enter_trace.m_hitgroup = hitgroup;
+			//	data.current_damage = 0.0f;
+			//	return true;
+			//}
+
+			if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && data.enter_trace.m_hit_entity == dst_entity && hitgroup == -1 ) {
 				scale_dmg( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
 				return true;
 			}

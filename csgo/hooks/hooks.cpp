@@ -36,9 +36,12 @@
 /* features */
 #include "../features/esp.hpp"
 
+#include "../segoeui.h"
+
 void hooks::init ( ) {
 	unsigned long font_count = 0;
 	LI_FN ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( sesame_segoe_ui, sizeof sesame_segoe_ui, nullptr, &font_count );
 
 	menu::init ( );
 	erase::erase_func ( menu::init );

@@ -660,76 +660,6 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	if ( !g::local || !g::local->weapon ( ) || !pl->valid( ) || !pl->weapon( ) || !pl->weapon( )->data( ) || !pl->bone_accessor ( ).get_bone_arr_for_write ( ) || !pl->layers ( ) || !pl->animstate( ) || ( !recs.second && !shot.second ) )
 		return;
 
-	auto rebuild_record = [ pl ] ( lagcomp::lag_record_t& rec ) {
-		/* if we have a bad resolve when aiming at an older record, resolve them again with new information before targeting */
-		if ( rec.m_failed_resolves != get_misses ( pl->idx ( ) ).bad_resolve ) {
-			/* backup current information */
-			const auto backup_angles = pl->angles ( );
-			const auto backup_origin = pl->origin ( );
-			auto backup_abs_origin = pl->abs_origin ( );
-			const auto backup_min = pl->mins ( );
-			const auto backup_max = pl->maxs ( );
-			const auto backup_flags = pl->flags ( );
-			animlayer_t backup_overlays [ 15 ];
-			float backup_poses [ 24 ];
-			animstate_t backup_animstate = *pl->animstate ( );
-			const auto backup_lby = pl->lby ( );
-			const auto backup_abs_yaw = pl->abs_angles ( ).y;
-
-			std::memcpy ( backup_overlays, pl->layers ( ), sizeof backup_overlays );
-			std::memcpy ( backup_poses, &pl->poses ( ), sizeof backup_poses );
-
-			/* restore record information */
-			pl->mins ( ) = rec.m_min;
-			pl->maxs ( ) = rec.m_max;
-			pl->origin ( ) = rec.m_origin;
-			pl->flags ( ) = rec.m_flags;
-			pl->abs_origin ( ) = rec.m_origin;
-			*pl->animstate ( ) = rec.m_state;
-			pl->angles ( ) = rec.m_ang;
-			pl->lby ( ) = rec.m_lby;
-			pl->set_abs_angles ( vec3_t( 0.0f, rec.m_abs_yaw, 0.0f ) );
-
-			std::memcpy ( pl->layers ( ), rec.m_layers, sizeof backup_overlays );
-			std::memcpy ( &pl->poses ( ), rec.m_poses, sizeof backup_poses );
-
-			/* resolving current record and resetting data */ {
-				/* resolve current record */
-				pl->animstate ( )->m_abs_yaw = rec.m_unresolved_abs;
-				animations::resolver::resolve ( pl, pl->animstate ( )->m_abs_yaw );
-				pl->animstate ( )->m_feet_yaw_rate = 0.0f;
-				pl->animstate ( )->m_feet_yaw = pl->animstate ( )->m_abs_yaw;
-
-				/* recalculate poses with resolved information */
-				animations::rebuilt::poses::calculate ( pl );
-
-				/* save newly resolved data if we need to access it again later */
-				rec.m_state = *pl->animstate ( );
-				std::memcpy ( rec.m_poses, &pl->poses ( ), sizeof pl->poses ( ) );
-			}
-
-			/* build matrix with new data */
-			animations::build_matrix ( pl, rec.m_bones, N ( 128 ), N ( 0x7ff00 ), rec.m_simtime );
-
-			/* restore original record information */
-			pl->mins ( ) = backup_min;
-			pl->maxs ( ) = backup_max;
-			pl->origin ( ) = backup_origin;
-			pl->flags ( ) = backup_flags;
-			pl->abs_origin ( ) = backup_abs_origin;
-			*pl->animstate ( ) = backup_animstate;
-			pl->angles ( ) = backup_angles;
-			pl->lby ( ) = backup_lby;
-			pl->set_abs_angles ( vec3_t ( 0.0f, backup_abs_yaw, 0.0f ) );
-
-			std::memcpy ( pl->layers ( ), backup_overlays, sizeof backup_overlays );
-			std::memcpy ( &pl->poses ( ), backup_poses, sizeof backup_poses );
-
-			rec.m_needs_matrix_construction = false;
-			rec.m_failed_resolves = get_misses ( pl->idx ( ) ).bad_resolve;
-		}
-	};
-
 	//build_record_bones ( extrapolated.first );
 	//build_record_bones ( shot.first );
 
@@ -807,23 +737,18 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	//}
 
 	if ( shot.second ) {
-		rebuild_record ( shot.first );
 		best_recs.push_back ( shot.first );
-		//rebuild_record ( recs.first.back ( ) );
-		//best_recs.push_back ( recs.first.back ( ) );
+		best_recs.push_back ( recs.first.back ( ) );
 		head_only = true;
 	}
 	else {
 		/*if ( !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) > 2 && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) < 7 ) {
-			rebuild_record ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 			best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
 		}
 		else*/ if ( recs.first.size ( ) >= 2 ) {
-			rebuild_record ( recs.first.back ( ) );
 			best_recs.push_back ( recs.first.back ( ) );
 		}
 		
-		rebuild_record ( recs.first.front ( ) );
 		best_recs.push_back ( recs.first.front ( ) );
 	}
 
@@ -996,20 +921,32 @@ retry_without_safe_points:
 			}
 		}
 
-		auto safe_point_bones = animations::data::bones [ pl->idx ( ) ];
+		std::array< matrix3x4_t, 128 > safe_point_bones;
 
 		/* for safe point scanning */
 		/* override aim matrix with safe point matrix so we scan safe points from safe point matrix on current aim matrix */
 		if ( safe_point && safe_point_key && scan_safe_points ) {
-			for ( auto& bone : safe_point_bones )
-				bone.set_origin ( bone.origin ( ) + rec_it.m_origin );
+			const auto next_resolve = get_misses ( pl->idx ( ) ).bad_resolve + 1;
+
+			if ( next_resolve % 3 == 0 )
+				std::memcpy ( &safe_point_bones, rec_it.m_bones1, sizeof matrix3x4_t * pl->bone_count ( ) );
+			else if ( next_resolve % 3 == 1 )
+				std::memcpy ( &safe_point_bones, rec_it.m_bones2, sizeof matrix3x4_t * pl->bone_count ( ) );
+			else
+				std::memcpy ( &safe_point_bones, rec_it.m_bones3, sizeof matrix3x4_t * pl->bone_count ( ) );
 		}
 
 		pl->mins ( ) = rec_it.m_min;
 		pl->maxs ( ) = rec_it.m_max;
 		pl->origin ( ) = rec_it.m_origin;
 		pl->set_abs_origin ( rec_it.m_origin );
-		std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), rec_it.m_bones, sizeof matrix3x4_t * pl->bone_count ( ) );
+
+		if ( get_misses ( pl->idx() ).bad_resolve % 3 == 0 )
+			std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), rec_it.m_bones1, sizeof matrix3x4_t * pl->bone_count ( ) );
+		else if ( get_misses ( pl->idx ( ) ).bad_resolve % 3 == 1 )
+			std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), rec_it.m_bones2, sizeof matrix3x4_t * pl->bone_count ( ) );
+		else
+			std::memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), rec_it.m_bones3, sizeof matrix3x4_t * pl->bone_count ( ) );
 
 		auto best_hitbox_this_rec = 0;
 		auto best_dmg_this_rec = 0.0f;
@@ -1358,8 +1295,19 @@ void meleebot ( ucmd_t* ucmd ) {
 
 		auto get_hitbox_pos = [ & ] ( ) {
 			vec3_t vmin, vmax;
-			VEC_TRANSFORM ( hitbox->m_bbmin, rec.first [ 0 ].m_bones [ hitbox->m_bone ], vmin );
-			VEC_TRANSFORM ( hitbox->m_bbmax, rec.first [ 0 ].m_bones [ hitbox->m_bone ], vmax );
+			
+			if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 == 0 ) {
+				VEC_TRANSFORM ( hitbox->m_bbmin, rec.first [ 0 ].m_bones1 [ hitbox->m_bone ], vmin );
+				VEC_TRANSFORM ( hitbox->m_bbmax, rec.first [ 0 ].m_bones1 [ hitbox->m_bone ], vmax );
+			}
+			else if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 == 1 ) {
+				VEC_TRANSFORM ( hitbox->m_bbmin, rec.first [ 0 ].m_bones2 [ hitbox->m_bone ], vmin );
+				VEC_TRANSFORM ( hitbox->m_bbmax, rec.first [ 0 ].m_bones2 [ hitbox->m_bone ], vmax );
+			}
+			else {
+				VEC_TRANSFORM ( hitbox->m_bbmin, rec.first [ 0 ].m_bones3 [ hitbox->m_bone ], vmin );
+				VEC_TRANSFORM ( hitbox->m_bbmax, rec.first [ 0 ].m_bones3 [ hitbox->m_bone ], vmax );
+			}
 
 			auto pos = ( vmin + vmax ) * 0.5f;
 
@@ -1536,7 +1484,13 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		best_pl->maxs ( ) = best_rec.m_max;
 		best_pl->origin ( ) = best_rec.m_origin;
 		best_pl->set_abs_origin ( best_rec.m_origin );
-		std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), best_rec.m_bones, sizeof matrix3x4_t * best_pl->bone_count ( ) );
+		
+		if ( get_misses ( best_pl->idx ( ) ).bad_resolve % 3 == 0 )
+			std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), best_rec.m_bones1, sizeof matrix3x4_t * best_pl->bone_count ( ) );
+		else if ( get_misses ( best_pl->idx ( ) ).bad_resolve % 3 == 1 )
+			std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), best_rec.m_bones2, sizeof matrix3x4_t * best_pl->bone_count ( ) );
+		else
+			std::memcpy ( best_pl->bone_accessor ( ).get_bone_arr_for_write ( ), best_rec.m_bones3, sizeof matrix3x4_t * best_pl->bone_count ( ) );
 
 		auto hc = run_hitchance ( best_ang, best_pl, best_point, 150, best_hitbox );
 		auto should_aim = best_dmg > 0.0f && hc;
@@ -1644,7 +1598,7 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	auto tickbase_as_int = std::clamp< int > ( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server ( ) ? 8 : 16 ) );
+	auto tickbase_as_int = std::clamp< int > ( csgo::time2ticks( fire_rate ) /*- 1*/, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server ( ) ? 8 : 16 ) );
 
 	if ( !active_config.dt_key )
 		tickbase_as_int = 0;

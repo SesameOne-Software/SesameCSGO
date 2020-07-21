@@ -167,21 +167,7 @@ void csgo::sin_cos( float radians, float* sine, float* cosine ) {
 }
 
 vec3_t csgo::calc_angle( const vec3_t& from, const vec3_t& to ) {
-	const auto delta = from - to;
-	const auto hyp = delta.length_2d();
-	auto out = vec3_t (
-		rad2deg ( -atan2f ( -delta.z, hyp ) ),
-		rad2deg ( atan2f ( delta.y, delta.x ) ),
-		0.0f );
-
-	if ( out.y > 90.0f )
-		out.y -= 180.0f;
-	else if ( out.y < 90.0f )
-		out.y += 180.0f;
-	else if ( out.y == 90.0f )
-		out.y = 0.0f;
-
-	return out;
+	return vec_angle( to - from );
 }
 
 vec3_t csgo::vec_angle( vec3_t vec ) {
@@ -277,6 +263,41 @@ void csgo::rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, cons
 
 	ucmd->m_fmove = std::cosf ( csgo::deg2rad ( dv ) ) * old_fmove + std::cosf ( csgo::deg2rad ( dv + 90.0f ) ) * old_smove;
 	ucmd->m_smove = std::sinf ( csgo::deg2rad ( dv ) ) * old_fmove + std::sinf ( csgo::deg2rad ( dv + 90.0f ) ) * old_smove;
+}
+
+void csgo::angle_matrix ( const vec3_t& angles, const vec3_t& position, matrix3x4_t& matrix ) {
+	angle_matrix ( angles, matrix );
+	matrix.set_origin ( position );
+}
+
+void csgo::angle_matrix ( const vec3_t& angles, matrix3x4_t& matrix ) {
+	float sr, sp, sy, cr, cp, cy;
+
+	sin_cos ( deg2rad ( angles.y ), &sy, &cy );
+	sin_cos ( deg2rad ( angles.x ), &sp, &cp );
+	sin_cos ( deg2rad ( angles.z ), &sr, &cr );
+
+	// matrix = (YAW * PITCH) * ROLL
+	matrix [ 0 ][ 0 ] = cp * cy;
+	matrix [ 1 ][ 0 ] = cp * sy;
+	matrix [ 2 ][ 0 ] = -sp;
+
+	float crcy = cr * cy;
+	float crsy = cr * sy;
+	float srcy = sr * cy;
+	float srsy = sr * sy;
+
+	matrix [ 0 ][ 1 ] = sp * srcy - crsy;
+	matrix [ 1 ][ 1 ] = sp * srsy + crcy;
+	matrix [ 2 ][ 1 ] = sr * cp;
+
+	matrix [ 0 ][ 2 ] = ( sp * crcy + srsy );
+	matrix [ 1 ][ 2 ] = ( sp * crsy - srcy );
+	matrix [ 2 ][ 2 ] = cr * cp;
+
+	matrix [ 0 ][ 3 ] = 0.0f;
+	matrix [ 1 ][ 3 ] = 0.0f;
+	matrix [ 2 ][ 3 ] = 0.0f;
 }
 
 bool csgo::is_valve_server ( ) {

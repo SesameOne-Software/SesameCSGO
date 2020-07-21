@@ -11,7 +11,8 @@ public:
 	OFFSET( bool, dormant, 0xED );
 	POFFSET( void*, renderable, 0x4 );
 	POFFSET( void*, networkable, 0x8 );
-	NETVAR( vec3_t, origin, "DT_BaseEntity->m_vecOrigin" );
+	NETVAR ( vec3_t, origin, "DT_BaseEntity->m_vecOrigin" );
+	NETVAR( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 	NETVAR( std::uint32_t, team, "DT_BaseEntity->m_iTeamNum" );
 	NETVAR( std::uint32_t, highlight_r, "DT_BaseAnimating->m_nHighlightColorR" );
 	NETVAR( std::uint32_t, highlight_g, "DT_BaseAnimating->m_nHighlightColorG" );

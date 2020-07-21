@@ -17,7 +17,9 @@ namespace features {
 			vec3_t m_min, m_max, m_vel, m_origin, m_ang;
 			animlayer_t m_layers [ 15 ];
 			animstate_t m_state;
-			matrix3x4_t m_bones [ 128 ];
+			matrix3x4_t m_bones1 [ 128 ];
+			matrix3x4_t m_bones2 [ 128 ];
+			matrix3x4_t m_bones3 [ 128 ];
 			float m_poses [ 24 ];
 			int m_failed_resolves;
 
@@ -79,7 +81,7 @@ namespace features {
 		const std::pair< lag_record_t&, bool > get_extrapolated( player_t* pl );
 		const std::pair< lag_record_t&, bool > get_shot( player_t* pl );
 		void pop( player_t* pl );
-		bool extrapolate_record( player_t* pl, lag_record_t& rec, bool shot = false );
+		//bool extrapolate_record( player_t* pl, lag_record_t& rec, bool shot = false );
 		void cache_shot( event_t* event );
 		void cache( player_t* pl );
 		bool breaking_lc( player_t* pl );

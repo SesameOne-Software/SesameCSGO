@@ -365,6 +365,13 @@ const wchar_t* cur_date( ) {
 	return result;
 }
 
+/*
+text is unnecessary (text including useless information nearby similar options can be removed)
+spacing too small and groups are too small
+resizing (hurts eyes and everyone asks for resizing feature)
+multi-combobox to save space
+*/
+
 void menu::init( ) {
 	panel = std::make_shared< oxui::panel >( ); {
 		window = std::make_shared< oxui::window >( oxui::rect( 200, 200, 565, 500 ), OSTR( "Sesame" ) /* + oxui::str( cur_date( ) ) */ ); {
@@ -881,6 +888,7 @@ void menu::init( ) {
 					}
 
 					auto slow_walk = std::make_shared< oxui::group > ( OSTR ( "Slow Walk" ), std::vector< float > { 0.5f, 0.666f, 0.5f, 0.333f } ); {
+						slow_walk->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Fakewalk" ) ) );
 						slow_walk->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Slow Walk Speed" ), 0.0, 0.0, 100.0 ) );
 						slow_walk->add_element ( std::make_shared< oxui::keybind > ( OSTR ( "Slow Walk Key" ) ) );
 

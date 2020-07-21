@@ -8,6 +8,7 @@
 #include "glow.hpp"
 #include "../animations/resolver.hpp"
 #include "other_visuals.hpp"
+#include "ragebot.hpp"
 
 material_t* m_mat = nullptr,
 * m_matflat = nullptr,
@@ -222,7 +223,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	if ( csgo::i::mdl_render->is_forced_mat_override ( ) ) {
 		//csgo::i::render_view->set_color ( 255, 255, 255 );
 		//csgo::i::render_view->set_alpha ( 255 );
-		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 		return;
 	}
 
@@ -287,7 +288,14 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					mat->set_material_var_flag ( 0x8000, true );
 					mat->set_material_var_flag ( 0x1000, visuals->model_type == oxui::model_type_t::model_flat );
 					csgo::i::mdl_render->force_mat ( mat );
-					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back( ).m_bones );
+
+					if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 0 )
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones1 );
+					else if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 1 )
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones2 );
+					else
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones3 );
+
 					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 
@@ -345,7 +353,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 						mat->set_material_var_flag ( 0x8000, true );
 						mat->set_material_var_flag ( 0x1000, visuals->model_type == oxui::model_type_t::model_flat );
 						csgo::i::mdl_render->force_mat ( mat );
-						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 						csgo::i::mdl_render->force_mat ( nullptr );
 					}
 
@@ -367,7 +375,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					}
 
 
-					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 				else {
@@ -378,7 +386,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					if ( ( g::local && e == g::local ) && g::local->scoped ( ) )
 						csgo::i::render_view->set_alpha ( 22 );
 
-					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 				}
 
 				/* glow overlay */
@@ -390,7 +398,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					m_mat_glow->set_material_var_flag ( 0x8000, true );
 					m_mat_glow->set_material_var_flag ( 0x1000, visuals->model_type == oxui::model_type_t::model_flat );
 					csgo::i::mdl_render->force_mat ( m_mat_glow );
-					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 			}
@@ -399,19 +407,19 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 			if ( e == g::local ) {
 				csgo::i::render_view->set_alpha( ( g::local && g::local->scoped( ) ) ? 50 : 255 );
 				csgo::i::render_view->set_color( 255, 255, 255 );
-				hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+				hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 			}
 			else {
 				csgo::i::render_view->set_alpha( 255 );
 				csgo::i::render_view->set_color( 255, 255, 255 );
-				hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+				hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 			}
 		}
 	}
 	else {
 		csgo::i::render_view->set_alpha( 255 );
 		csgo::i::render_view->set_color( 255, 255, 255 );
-		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, recs.second ? recs.first [ 0 ].m_bones : bone_to_world );
+		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 	}
 
 	csgo::i::render_view->set_alpha( 255 );
