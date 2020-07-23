@@ -65,6 +65,13 @@ bool features::lagcomp::lag_record_t::store ( player_t* pl, const vec3_t& last_o
 	m_abs_yaw = pl->abs_angles ( ).y;
 	m_unresolved_abs = animations::data::old_abs [ pl->idx ( ) ];
 
+	/*
+	@CBRs
+		So here's something to think about. Besides all the storage you do for resolving & animation fixing stuff, in reality you only need to store 5 things.
+		Mins, Maxs, Origin, player time, and bone data
+		Oh also, cached bone data is a cutlvector and the length is set to the model's bonecount. it never changes, so you never have to store bone count (and you don't where many do, yay!)
+	*/
+
 	std::memcpy ( m_layers, pl->layers ( ), sizeof animlayer_t * 15 );
 	std::memcpy ( m_bones1, &animations::data::fixed_bones [ pl->idx ( ) ], sizeof matrix3x4_t * 128 );
 	std::memcpy ( m_bones2, &animations::data::fixed_bones1 [ pl->idx ( ) ], sizeof matrix3x4_t * 128 );
@@ -318,6 +325,9 @@ void features::lagcomp::cache( player_t* pl ) {
 	//	}
 	//}
 
+	/*
+		@CBRS Great, you won't shoot at bad records!
+	*/
 	if ( pl->simtime ( ) <= pl->old_simtime ( ) && fix_fakelag )
 		return;
 
@@ -332,6 +342,26 @@ void features::lagcomp::cache( player_t* pl ) {
 		//	for ( auto& bone : rec.m_bones )
 		//		bone.set_origin ( bone.origin ( ) - backup_origin + rec.m_origin );
 		//}
+
+
+		/*
+			@CBRS Ok, so here's the thing: csgo only pops lag records when new player data has arrived, and thus we should only actually pop records in here.
+			additionally, they cast the "is it dead yet" to an integer, which means some pretty funky stuff happens
+
+			if the record arrived @ time 15.19, then technically all records between time 14-15.19 are stored on the server
+			but if it arrives at 15.21, then only between 15-15.21 are stored. whack, right?
+
+			anyways, here's some code for popping records correctly.
+
+			static auto max_unlag = cs::cvars->find_var( "sv_maxunlag" );
+			int dead_time = player->sim( ) - max_unlag->get_float( );
+			while ( track.size( ) > 1 ) {	//	technically this isn't proper, but it's so there's always a record for me to shoot @
+				if ( track.back( ).sim >= dead_time )
+					break;
+
+				track.pop_back( );
+			}
+		*/
 
 		if ( std::fabsf( pl->angles ( ).x ) < 50.0f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
 		//if ( animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
@@ -349,6 +379,12 @@ void features::lagcomp::cache( player_t* pl ) {
 }
 
 void features::lagcomp::pop( player_t* pl ) {
+	/*
+	@CBRs
+		this is bad. you should not pop from the main deque, but rather pop from a copy of it during create move - otherwise, you'll be popping off valid records that you may be able to shoot at if you were to modify
+		tickbase. basically, you can get ~14 more ticks of backtrack assuming you have desync on and you toggle on hide shots or doubletap.
+	*/
+
 	if ( !pl->valid ( ) ) {
 		if ( !data::records [ pl->idx ( ) ].empty ( ) )
 			data::records [ pl->idx ( ) ].clear ( );
@@ -385,6 +421,15 @@ void features::lagcomp::pop( player_t* pl ) {
 bool features::lagcomp::breaking_lc( player_t* pl ) {
 	if ( !pl->valid( ) )
 		return false;
+
+	/*
+	@CBRs
+		walk every event in the deque (this is a big reason why we need to pop correctly) and check if the origin difference .lengthsqr is > 64^2
+		if so, we can't backtrack
+		so therefore, we have to shoot at where the server last set their bones up, otherwise we miss.
+		technically, extrapolation works. but if ur smart and the player has low ping, then just only shoot soon after receiving data - aka, their data is correct because
+		the server won't have received another batch of clcmsgmove packets
+	*/
 
 	const auto& recs = get( pl );
 

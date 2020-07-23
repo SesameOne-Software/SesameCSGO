@@ -208,6 +208,7 @@ if ( g::send_packet && csgo::i::globals->m_tickcount > curtick ) {
 }
 }
 
+<<<<<<< HEAD
 bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
 	const auto backup_mask_1 = *reinterpret_cast< int* >( uintptr_t ( target ) + N ( 0x269C ) );
 	const auto backup_mask_2 = *reinterpret_cast< int* >( uintptr_t ( target ) + N ( 0x26B0 ) );
@@ -216,6 +217,93 @@ bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec
 	const auto backup_use_pred_time = *reinterpret_cast< int* >( uintptr_t ( target ) + N ( 0x2ee ) );
 	auto backup_abs_origin = target->abs_origin ( );
 	auto backup_abs_angle = target->abs_angles ( );
+=======
+/*
+@CBRS
+
+bool setup_bones( player_t *target, mat3x4_t *mat, int mask, vec_t rotation, vec_t origin, float time ) {
+		auto cstudio = ( c_studio_hdr * ) target->cstudio( );
+		if ( !cstudio )
+			return false;
+
+		//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
+		mat3x4a_t used[128];
+
+		//	output shit
+		byte bone_computed[0x100] = { 0 };
+
+		//	needs to be aligned
+		alignas( 16 ) mat3x4_t base_matrix;
+		math::angle_matrix( rotation, origin, base_matrix );
+
+		//	store shit
+		auto old_bones = target->bones( );
+		auto iks = target->iks( );
+		target->effects( ) |= 8;
+
+		//	clear iks & re-create them
+		if ( iks ) {
+			if ( *( DWORD * ) ( uintptr_t( iks ) + 0xFF0 ) > 0 ) {
+				int v1 = 0;
+				auto v62 = ( DWORD * ) ( uintptr_t( iks ) + 0xD0 );
+				do {
+					*v62 = -9999;
+					v62 += 0x55;
+					++v1;
+				} while ( v1 < *( DWORD * ) ( uintptr_t( iks ) + 0xFF0 ));
+			}
+
+			typedef void ( __thiscall *init_iks_fn )( void *, c_studio_hdr *, vec_t &, vec_t &, float, int, int );
+			static auto init_iks = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ).cast< init_iks_fn >( );
+			init_iks( iks, cstudio, rotation, origin, time, cs::globals->frame_count, 0x1000 );
+		}
+
+		vec_t pos[128];
+		ZeroMemory ( pos, sizeof( vec_t[128] ));
+		quaternion_t q[128];
+		ZeroMemory ( q, sizeof( quaternion_t[128] ));
+
+		//	set flags and bones
+		target->bones( ) = used;
+
+		//	build some shit
+		target->standard_blending_rules( cstudio, pos, q, time, mask );
+
+		//	set iks
+		if ( iks ) {
+			typedef void ( __thiscall *fn )( void *, vec_t *, quaternion_t *, void *, byte * );
+			static auto update_targets = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ).cast< fn >( );
+			static auto solve_dependencies = backend::memory::pattern( backend::memory::files.client, "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ).cast< fn >( );
+
+			target->update_ik_locks( time );
+			update_targets( iks, pos, q, target->bones( ), bone_computed );
+			target->calculate_ik_locks( time );
+			solve_dependencies( iks, pos, q, target->bones( ), bone_computed );
+		}
+
+		//	build the matrix
+		target->build_transformations( cstudio, pos, q, base_matrix, mask, bone_computed );
+
+		//	restore flags and bones
+		target->effects( ) &= ~8;
+		target->bones( ) = old_bones;
+
+		//  and pop out our new matrix
+		memcpy( mat, used, sizeof( mat3x4_t ) * 128 );
+
+		return true;
+	}
+
+*/
+
+bool animations::build_matrix( player_t* pl, matrix3x4_t* out, int max_bones, int mask, float seed ) {
+	const auto backup_mask_1 = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0x269C ) );
+	const auto backup_mask_2 = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0x26B0 ) );
+	const auto backup_flags = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0xe8 ) );
+	const auto backup_effects = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0xf0 ) );
+	const auto backup_use_pred_time = *reinterpret_cast< int* >( uintptr_t( pl ) + N( 0x2ee ) );
+	auto backup_abs_origin = pl->abs_origin( );
+>>>>>>> b3ebc1ec849f3f15140c954ebc5447282cf2bf4a
 
 	*reinterpret_cast< int* >( uintptr_t ( target ) + 0xA68 ) = 0;
 
@@ -363,6 +451,7 @@ auto recalc_weight = 0.0f;
 auto recalc_cycle = 0.0f;
 auto last_local_update = 0.0f;
 
+<<<<<<< HEAD
 /*
 
 */
@@ -387,6 +476,18 @@ int animations::store_local ( ) {
 }
 
 int animations::restore_local ( ) {
+=======
+int animations::fix_local ( ) {
+	/*
+	@CBRS
+		here's a tidbit. guess where animations get ran? post frame.
+		what's that mean?
+		after run command is called
+		so just update animations for each usrcmd parsed in run command
+
+	*/
+
+>>>>>>> b3ebc1ec849f3f15140c954ebc5447282cf2bf4a
 	/* update viewmodel manually */ {
 		using update_all_viewmodel_addons_t = int ( __fastcall* )( void* );
 		static auto update_all_viewmodel_addons = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t > ( );
@@ -601,6 +702,153 @@ int animations::restore_local ( ) {
 //	//features::lagcomp::cache( g::local );
 //}
 
+<<<<<<< HEAD
+=======
+void animations::simulate ( player_t* pl, bool updated ) {
+	/*
+	@CBRS
+		this is fairly spaghetti so i won't look through the entire thing, but here's a animation rundown
+		make animation states update for every position and angle a player is at on the server since you last saw them. make sure the client-only shit is not ran, and ur done
+		yay
+		you can do dumb airtime fixes (i.e. this layer4.weight < last layer4.weight = they hit ground some time), or you can simulate each command the player would have made, 
+		which will in turn correctly set airtime when ~raytracing~ occurs
+		easy enough, yeah?
+	*/
+
+	if ( updated && pl->animstate ( ) && pl->layers ( ) && pl->bone_accessor ( ).get_bone_arr_for_write ( ) ) {
+		data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( );
+		data::simulated::flags [ pl->idx ( ) ] = pl->flags ( );
+		data::simulated::velocities [ pl->idx ( ) ] = pl->vel ( );
+		data::simulated::origins [ pl->idx ( ) ] = pl->origin ( );
+
+		//pl->create_animstate ( &data::simulated::animstates [ pl->idx ( ) ] );
+
+		std::memcpy ( &data::simulated::animstates [ pl->idx ( ) ], pl->animstate ( ), sizeof ( animstate_t ) );
+		std::memcpy ( data::simulated::poses [ pl->idx ( ) ], &pl->poses ( ), sizeof ( float ) * 24 );
+		std::memcpy ( data::simulated::overlays [ pl->idx ( ) ], pl->layers ( ), sizeof ( animlayer_t ) * 15 );
+		std::memcpy ( data::simulated::bones [ pl->idx ( ) ], pl->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof ( matrix3x4_t ) * pl->bone_count( ) );
+
+		data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( );
+
+		return;
+	}
+
+	const auto recs = features::lagcomp::get_all ( pl );
+	const auto delta_ticks = csgo::i::globals->m_tickcount - data::old_tick [ pl->idx ( ) ];
+
+	animstate_t backup_animstate;
+	auto backup_flags = pl->flags ( );
+	auto backup_abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) );
+	auto backup_vel = pl->vel ( );
+	auto backup_abs_origin = pl->abs_origin ( );
+	auto backup_origin = pl->origin ( );
+	float backup_poses [ 24 ];
+	animlayer_t backup_overlays [ 15 ];
+	auto backup_eflags = *reinterpret_cast< uint32_t* >( uintptr_t ( pl ) + N ( 0xe8 ) );
+
+	if ( pl->layers ( ) )
+		std::memcpy ( backup_overlays, pl->layers ( ), sizeof ( animlayer_t ) * 15 );
+
+	std::memcpy ( backup_poses, &pl->poses ( ), sizeof ( float ) * 24 );
+	
+	if ( pl->animstate ( ) )
+		std::memcpy ( &backup_animstate, pl->animstate ( ), sizeof ( animstate_t ) );
+
+	if ( recs.first.size ( ) >= 2 ) {
+		auto first_rec = recs.first [ 0 ];
+		auto next_rec = recs.first [ 1 ];
+		auto accel = ( first_rec.m_vel - next_rec.m_vel ) / ( first_rec.m_simtime - next_rec.m_simtime );
+
+		data::simulated::velocities[ pl->idx ( ) ].x += accel.x * csgo::ticks2time ( 1 );
+		data::simulated::velocities[ pl->idx ( ) ].y += accel.y * csgo::ticks2time ( 1 );
+	}
+
+	data::simulated::velocities [ pl->idx ( ) ].z += -800.0f * csgo::ticks2time ( 1 );
+
+	auto from = data::simulated::origins [ pl->idx ( ) ];
+	auto to = data::simulated::origins [ pl->idx ( ) ] + data::simulated::velocities [ pl->idx ( ) ] * csgo::ticks2time ( 1 );
+
+	trace_t tr;
+	csgo::util_tracehull ( from + vec3_t ( 0.0f, 0.0f, 2.0f ), to, pl->mins( ), pl->maxs ( ), 0x201400B, pl, &tr );
+
+	data::simulated::flags [ pl->idx ( ) ] &= ~1;
+
+	if ( !tr.is_visible( ) ) {
+		to = tr.m_endpos;
+		data::simulated::flags [ pl->idx ( ) ] |= 1;
+	}
+
+	data::simulated::origins [ pl->idx ( ) ] = to;
+
+	pl->flags ( ) = data::simulated::flags [ pl->idx ( ) ];
+	pl->abs_origin ( ) = data::simulated::origins [ pl->idx ( ) ];
+	pl->origin ( ) = data::simulated::origins [ pl->idx ( ) ];
+	pl->vel ( ) = data::simulated::velocities [ pl->idx ( ) ];
+	*reinterpret_cast< uint32_t* >( uintptr_t ( pl ) + N ( 0xe8 ) ) &= ~0x1000; /* EFL_DIRTY_ABSVELOCITY */
+	*reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) ) = data::simulated::velocities [ pl->idx ( ) ];
+
+	if ( pl->layers ( ) )
+		std::memcpy ( pl->layers ( ), data::simulated::overlays [ pl->idx ( ) ], sizeof ( animlayer_t ) * 15 );
+
+	std::memcpy ( &pl->poses ( ), data::simulated::poses [ pl->idx ( ) ], sizeof ( float ) * 24 );
+
+	if ( pl->animstate ( ) )
+		std::memcpy ( pl->animstate ( ), &data::simulated::animstates [ pl->idx ( ) ], sizeof ( animstate_t ) );
+
+	auto update_angle = pl->angles ( );
+
+	if ( pl->weapon ( ) && csgo::time2ticks ( pl->weapon ( )->last_shot_time ( ) ) == csgo::time2ticks ( pl->simtime ( ) ) + delta_ticks )
+		update_angle = csgo::calc_angle ( pl->eyes ( ), g::local->eyes ( ) );
+
+	csgo::clamp ( update_angle );
+
+	data::simulated::animstates [ pl->idx ( ) ].m_force_update = true;
+	data::simulated::animstates [ pl->idx ( ) ].m_last_clientside_anim_framecount = 0;
+
+	const float backup_curtime = csgo::i::globals->m_curtime;
+	const float backup_frametime = csgo::i::globals->m_frametime;
+
+	csgo::i::globals->m_curtime = pl->simtime ( ) + csgo::ticks2time ( delta_ticks );
+	csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
+
+	data::simulated::animstates [ pl->idx ( ) ].update ( update_angle );
+
+	csgo::i::globals->m_curtime = backup_curtime;
+	csgo::i::globals->m_frametime = backup_frametime;
+
+	resolver::resolve ( pl, data::simulated::animstates [ pl->idx ( ) ].m_abs_yaw );
+
+	if ( pl->animstate ( ) )
+		std::memcpy ( pl->animstate ( ), &data::simulated::animstates [ pl->idx ( ) ], sizeof ( animstate_t ) );
+
+	build_matrix ( pl, data::simulated::bones [ pl->idx ( ) ], N ( 128 ), N ( 0x7ff00 ), csgo::i::globals->m_curtime );
+
+	if ( pl->layers ( ) )
+		std::memcpy ( data::simulated::overlays [ pl->idx ( ) ], pl->layers ( ), sizeof ( animlayer_t ) * 15 );
+
+	std::memcpy ( data::simulated::poses [ pl->idx ( ) ], &pl->poses ( ), sizeof ( float ) * 24 );
+
+	if ( pl->animstate ( ) )
+		std::memcpy ( &data::simulated::animstates [ pl->idx ( ) ], pl->animstate ( ), sizeof ( animstate_t ) );
+
+	*reinterpret_cast< uint32_t* >( uintptr_t ( pl ) + N ( 0xe8 ) ) = backup_eflags;
+	pl->flags ( ) = backup_flags;
+	pl->vel ( ) = backup_vel;
+	pl->origin ( ) = backup_origin;
+	pl->abs_origin ( ) = backup_abs_origin;
+	
+	if ( pl->layers ( ) )
+		std::memcpy ( pl->layers ( ), backup_overlays, sizeof ( animlayer_t ) * 15 );
+
+	std::memcpy ( &pl->poses ( ), backup_poses, sizeof ( float ) * 24 );
+
+	if ( pl->animstate ( ) )
+		std::memcpy ( pl->animstate ( ), &backup_animstate, sizeof ( animstate_t ) );
+
+	data::simulated::animtimes [ pl->idx ( ) ] = pl->simtime ( ) + csgo::ticks2time( delta_ticks );
+}
+
+>>>>>>> b3ebc1ec849f3f15140c954ebc5447282cf2bf4a
 int animations::fix_pl ( player_t* pl ) {
 	//FIND ( int, safe_point_mode, "rage", "aimbot", "safe point", oxui::object_dropdown );
 	KEYBIND ( safe_point_key, "Sesame->A->Default->Accuracy->Safe Point Key" );
@@ -778,12 +1026,39 @@ int animations::run( int stage ) {
 
 				resolver::process_event_buffer ( i );
 
+<<<<<<< HEAD
 				if ( !pl || !pl->is_player ( ) || pl == g::local /*|| pl->team ( ) == g::local->team( )*/ ) {				
+=======
+				/*
+				@CBRS
+					ew
+					reevaluateanimlod is fixeable with a hook... and you already have the hook
+					hint: is_hltv, 84 C0 0F 85 ? ? ? ? A1 ? ? ? ? 8B B7
+				*/
+
+				if ( !pl || !pl->is_player ( ) || pl == g::local || pl->team ( ) == g::local->team( ) ) {
+					if ( pl ) {
+						auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
+						auto var_map_list_count = *reinterpret_cast< int* >( var_map + 20 );
+
+						for ( auto index = 0; index < var_map_list_count; index++ )
+							*reinterpret_cast< uint16_t* >( *reinterpret_cast< uintptr_t* >( var_map ) + index * 12 ) = 1;
+					}
+
+>>>>>>> b3ebc1ec849f3f15140c954ebc5447282cf2bf4a
 					if ( pl && pl != g::local )
 						pl->animate ( ) = true;
 
 					continue;
 				}
+<<<<<<< HEAD
+=======
+				auto var_map = reinterpret_cast< uintptr_t >( pl ) + 36;
+				auto var_map_list_count = *reinterpret_cast< int* >( var_map + 20 );
+
+				for ( auto index = 0; index < var_map_list_count; index++ )
+					*reinterpret_cast< uint16_t* >( *reinterpret_cast< uintptr_t* >( var_map ) + index * 12 ) = 0;
+>>>>>>> b3ebc1ec849f3f15140c954ebc5447282cf2bf4a
 
 				RUN_SAFE (
 					"animations::fix_pl",
