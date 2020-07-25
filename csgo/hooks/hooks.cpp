@@ -29,6 +29,7 @@
 #include "should_skip_anim_frame.hpp"
 #include "write_usercmd_delta_to_buffer.hpp"
 #include "setup_bones.hpp"
+#include "run_command.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -88,6 +89,7 @@ void hooks::init ( ) {
 	const auto _cs_blood_spray_callback = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 4D 08 F3 0F 10 51 ? 8D 51 18" ) ).get<void*> ( );
 	const auto _modify_eye_pos = pattern::search ( _ ( "client.dll" ), _ ( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 1 ).resolve_rip ( ).get<void*> ( );
 	const auto _setup_bones = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* > ( );
+	const auto _run_command = vfunc<void*> ( csgo::i::pred, 19 );
 
 	MH_Initialize ( );
 
@@ -124,6 +126,7 @@ void hooks::init ( ) {
 	dbg_hook ( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** ) &old::cs_blood_spray_callback );
 	dbg_hook ( _modify_eye_pos, modify_eye_pos, ( void** ) &old::modify_eye_pos );
 	dbg_hook ( _setup_bones, setup_bones, ( void** ) &old::setup_bones );
+	dbg_hook ( _run_command, run_command, ( void** ) &old::run_command );
 
 	event_handler = std::make_unique< c_event_handler > ( );
 

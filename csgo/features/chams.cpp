@@ -306,7 +306,14 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				//	mat->set_material_var_flag ( 0x8000, true );
 				//	mat->set_material_var_flag ( 0x1000, visuals->model_type == oxui::model_type_t::model_flat );
 				//	csgo::i::mdl_render->force_mat ( mat );
-				//	hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::extrapolated_records [ e->idx ( ) ].front ( ).m_bones );
+				//
+				//	if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 0 )
+				//		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::extrapolated_records [ e->idx ( ) ].front ( ).m_bones1 );
+				//	else if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 1 )
+				//		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::extrapolated_records [ e->idx ( ) ].front ( ).m_bones2 );
+				//	else
+				//		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::extrapolated_records [ e->idx ( ) ].front ( ).m_bones3 );
+				//
 				//	csgo::i::mdl_render->force_mat ( nullptr );
 				//}
 

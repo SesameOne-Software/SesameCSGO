@@ -5,6 +5,8 @@
 #include "ragebot.hpp"
 #include "autowall.hpp"
 
+extern int g_refresh_counter;
+
 namespace lby {
 	float spawn_time = 0.0f;
 	float last_breaker_time = 0.0f;
@@ -45,9 +47,6 @@ void features::antiaim::simulate_lby( ) {
 		return;
 
 	if ( g::local->spawn_time( ) != lby::spawn_time ) {
-		if ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ) )
-			g::shifted_tickbase = g::ucmd->m_cmdnum;
-
 		lby::spawn_time = g::local->spawn_time( );
 		lby::last_breaker_time = lby::spawn_time;
 	}
@@ -271,28 +270,34 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		max_send = std::clamp ( max_send, 0, choke_limit );
 
 		if ( aa::old_lag_air != static_cast< int >( lag_air ) ) {
-			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_air );
+			g_refresh_counter = 0;
+			g::shifted_amount = lag_air;
 			aa::old_lag_air = static_cast< int >( lag_air );
 		}
 
 		if ( aa::old_lag_slow_walk != static_cast< int >( lag_slow_walk ) ) {
-			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_slow_walk );
+			g_refresh_counter = 0;
+			g::shifted_amount = lag_slow_walk;
 			aa::old_lag_slow_walk = static_cast< int >( lag_slow_walk );
 		}
 
 		if ( aa::old_lag_move != static_cast< int >( lag_move ) ) {
-			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_move );
+			g_refresh_counter = 0;
+			g::shifted_amount = lag_move;
 			aa::old_lag_move = static_cast< int >( lag_move );
 		}
 
 		if ( aa::old_lag_stand != static_cast< int >( lag_stand ) ) {
-			g::shifted_tickbase = ucmd->m_cmdnum + static_cast< int >( lag_stand );
+			g_refresh_counter = 0;
+			g::shifted_amount = lag_stand;
 			aa::old_lag_stand = static_cast< int >( lag_stand );
 		}
 
 		/* make up for lost frames */
-		if ( csgo::i::globals->m_frametime > csgo::i::globals->m_ipt )
-			g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( csgo::time2ticks ( csgo::i::globals->m_frametime ), 0, choke_limit );
+		if ( csgo::i::globals->m_frametime > csgo::i::globals->m_ipt ) {
+			g_refresh_counter = 0;
+			g::shifted_amount = std::clamp ( csgo::time2ticks ( csgo::i::globals->m_frametime ), 0, choke_limit );
+		}
 
 		static auto last_final_shift_amount = 0;
 		auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
@@ -304,8 +309,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && ( g::local->weapon ( )->item_definition_index ( ) == 64 || g::local->weapon ( )->data ( )->m_type == 0 || g::local->weapon ( )->data ( )->m_type >= 7 ) )
 			final_shift_amount_max = 0;
 
-		if ( final_shift_amount_max && !last_final_shift_amount )
-			g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ), 0, choke_limit );
+		if ( final_shift_amount_max && !last_final_shift_amount ) {
+			g_refresh_counter = 0;
+			g::shifted_amount = std::clamp ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ), 0, choke_limit );
+		}
 
 		last_final_shift_amount = final_shift_amount_max;
 
@@ -353,7 +360,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 		else if ( aa::was_fd ) {
 			ducked_ticks = 0;
-			g::shifted_tickbase = ucmd->m_cmdnum + choke_limit;
+			g_refresh_counter = 0;
+			g::shifted_amount = choke_limit;
 			aa::was_fd = false;
 		}
 

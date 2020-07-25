@@ -62,9 +62,6 @@ namespace animations {
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
-		void resolve_edge ( player_t* pl, float& yaw );
-		void resolve_smart ( player_t* pl, float& yaw );
-		void resolve_smart_v2 ( player_t* pl, float& yaw );
 		void resolve( player_t* pl, float& yaw1, float& yaw2, float& yaw3 );
 		void render_impacts( );
 		void update( ucmd_t* ucmd );

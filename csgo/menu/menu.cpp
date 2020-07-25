@@ -387,7 +387,6 @@ void menu::init( ) {
 				}
 
 				auto main_switch = std::make_shared< oxui::checkbox > ( OSTR ( "Main Switch" ) );
-				auto optimization = std::make_shared< oxui::dropdown > ( OSTR ( "Optimization" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Low" ), OSTR ( "Medium" ), OSTR ( "High" ) } );
 				auto knife_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Knife Bot" ) );
 				auto zeus_bot = std::make_shared< oxui::checkbox > ( OSTR ( "Zeus Bot" ) );
 				auto dt_key = std::make_shared< oxui::keybind > ( OSTR ( "Doubletap Key" ) );
@@ -396,7 +395,6 @@ void menu::init( ) {
 				auto default_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Default" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Doubletap Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -453,7 +451,6 @@ void menu::init( ) {
 				auto pistol_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Pistol" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -511,7 +508,6 @@ void menu::init( ) {
 				auto revolver_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Revolver" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -566,7 +562,6 @@ void menu::init( ) {
 				auto rifle_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Rifle" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -624,7 +619,6 @@ void menu::init( ) {
 				auto awp_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "AWP" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -678,7 +672,6 @@ void menu::init( ) {
 				auto auto_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Auto" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );
@@ -736,7 +729,6 @@ void menu::init( ) {
 				auto scout_aimbot = std::make_shared< oxui::subtab > ( OSTR ( "Scout" ) ); {
 					auto main = std::make_shared< oxui::group > ( OSTR ( "Main" ), std::vector< float > { 0.0f, 0.0f, 0.5f, 0.4f } ); {
 						main->add_element ( main_switch );
-						main->add_element ( optimization );
 						main->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Inherit From" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Default" ), OSTR ( "Pistol" ), OSTR ( "Revolver" ), OSTR ( "Rifle" ), OSTR ( "AWP" ), OSTR ( "Auto" ), OSTR ( "Scout" ) } ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Minimum Damage" ), 0.0, 0.0, 150.0 ) );
 						main->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Hit Chance" ), 0.0, 0.0, 100.0 ) );

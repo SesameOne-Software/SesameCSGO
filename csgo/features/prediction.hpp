@@ -5,7 +5,9 @@ namespace features {
 	namespace prediction {
 		extern float predicted_curtime;
 
-		void update_curtime( );
+		int shift ( const int& cur );
+
+		void update_curtime ( );
 		void run( const std::function< void( ) >& fn );
 	}
 }

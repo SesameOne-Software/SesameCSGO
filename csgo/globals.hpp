@@ -21,6 +21,7 @@ namespace g {
 	extern bool next_tickbase_shot;
 	extern bool send_packet;
 	extern int shifted_tickbase;
+	extern int shifted_amount;
 	extern int dt_ticks_to_shift;
 	extern int dt_recharge_time;
 	extern round_t round;

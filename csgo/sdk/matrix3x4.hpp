@@ -87,3 +87,16 @@ public:
 			m_values [ 2 ][ 0 ] == matrix [ 2 ][ 0 ] && m_values [ 2 ][ 1 ] == matrix [ 2 ][ 1 ] && m_values [ 2 ][ 2 ] == matrix [ 2 ][ 2 ] && m_values [ 2 ][ 3 ] == matrix [ 2 ][ 3 ];
 	}
 };
+
+class __declspec( align( 16 ) ) matrix3x4a_t : public matrix3x4_t {
+public:
+	matrix3x4a_t& operator=( const matrix3x4_t& src ) {
+		memcpy ( base ( ), src.base ( ), sizeof ( float ) * 3 * 4 );
+		return *this;
+	};
+
+	matrix3x4a_t& operator=( const matrix3x4a_t& src ) {
+		memcpy ( base ( ), src.base ( ), sizeof ( float ) * 3 * 4 );
+		return *this;
+	};
+};

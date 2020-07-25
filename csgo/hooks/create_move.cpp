@@ -21,6 +21,9 @@ int restore_ticks = 0;
 int cock_ticks = 0;
 bool last_attack = false;
 bool last_tickbase_shot = false;
+int g_refresh_counter = 0;
+
+bool hooks::vars::in_refresh = false;
 
 void fix_event_delay ( ucmd_t* ucmd ) {
 	OPTION ( int, _fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
@@ -49,7 +52,6 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	//);
 
 	if ( !g::local || !g::local->alive ( ) ) {
-		g::shifted_tickbase = ucmd->m_cmdnum;
 		cock_ticks = 0;
 	}
 
@@ -59,6 +61,20 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	}
 
 	security_handler::update ( );
+
+	if ( g_refresh_counter < g::shifted_amount ) {
+		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
+		ucmd->m_tickcount += 666;
+		in_cm = false;
+		g_refresh_counter++;
+		vars::in_refresh = true;
+		return false;
+	}
+	else {
+		vars::in_refresh = false;
+	}
+
+	features::prediction::update_curtime ( );
 
 	/* thanks chambers */
 	if ( csgo::i::client_state->choked ( ) ) {
@@ -71,15 +87,6 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 			csgo::i::client_state->last_outgoing_cmd ( ) + csgo::i::client_state->choked ( ) );
 
 		prediction::disable_sounds = false;
-	}
-
-	const auto refresh_tickbase = g::shifted_tickbase - 1 > ucmd->m_cmdnum&& g::local&& g::local->alive ( );
-
-	if ( refresh_tickbase && !csgo::is_valve_server ( ) ) {
-		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
-		ucmd->m_tickcount = INT_MAX;
-		in_cm = false;
-		return false;
 	}
 
 	if ( g::local && g::local->weapon ( ) ) {
@@ -99,11 +106,6 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
 
 	g::ucmd = ucmd;
-
-	//RUN_SAFE (
-	//	"features::prediction::update_curtime",
-		features::prediction::update_curtime ( );
-	//);
 
 	auto old_angs = ucmd->m_angs;
 
@@ -185,14 +187,14 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 		g::next_tickbase_shot = false;
 
 	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
-		g::shifted_tickbase = ucmd->m_cmdnum + std::clamp ( static_cast < int > ( features::ragebot::active_config.max_dt_ticks ), 0, csgo::is_valve_server ( ) ? 8 : 16 );
+		g_refresh_counter = 0;
 		g::next_tickbase_shot = false;
 		last_tickbase_shot = false;
 	}
 
 	last_tickbase_shot = g::next_tickbase_shot;
 
-	if ( !refresh_tickbase && g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
 		if ( csgo::time2ticks ( features::prediction::predicted_curtime ) > cock_ticks ) {
 			ucmd->m_buttons &= ~1;
 			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 1;
@@ -206,7 +208,7 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 
 	csgo::rotate_movement ( ucmd, old_smove, old_fmove, old_angs );
 
-	*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = refresh_tickbase ? true : g::send_packet;
+	*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	/* fix anti-aim slide */ {
 		if ( ucmd->m_fmove ) {

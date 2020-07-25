@@ -138,49 +138,6 @@ struct animlayer_t {
 	PAD( 4 );
 };
 
-class c_bone_accessor {
-public:
-	int get_readable( ) {
-		return m_readable;
-	}
-
-	void set_readable( int flags ) {
-		m_readable = flags;
-	}
-
-	int get_writeable( ) {
-		return m_writeable;
-	}
-
-	void set_writeable( int flags ) {
-		m_writeable = flags;
-	}
-
-	const matrix3x4_t* get_bone( int bone ) const {
-		if ( !m_bones )
-			return nullptr;
-
-		return &m_bones [ bone ];
-	}
-
-	matrix3x4_t* get_bone_for_write( int bone ) {
-		if ( !m_bones )
-			return nullptr;
-
-		return &m_bones [ bone ];
-	}
-
-	matrix3x4_t* get_bone_arr_for_write( ) const {
-		return m_bones;
-	};
-
-private:
-	const void* m_animating;
-	matrix3x4_t* m_bones;
-	int m_readable;
-	int m_writeable;
-};
-
 struct anim_list_record_t {
 	player_t* m_ent;
 	std::uint32_t m_flags;
@@ -230,7 +187,9 @@ public:
 	OFFSET( bool, should_update, 0x289C );
 	OFFSET( std::uint32_t, num_overlays, 0x298C );
 	OFFSET( float, spawn_time, 0xA360 );
-	OFFSET( c_bone_accessor, bone_accessor, 0x290C );
+	OFFSET ( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
+	OFFSET ( int, readable_bones, 0x26A8 + 0x4 );
+	OFFSET ( int, writeable_bones, 0x26AC + 0x4 );
 
 	bool is_player( ) {
 		using fn = bool( __thiscall* )( void* );

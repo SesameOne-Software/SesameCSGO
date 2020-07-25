@@ -39,7 +39,6 @@ namespace features {
 
 			int inherit_from,
 				dt_key,
-				optimization,
 				triggerbot_key;
 		};
 		

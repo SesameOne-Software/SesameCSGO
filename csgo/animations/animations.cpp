@@ -208,6 +208,97 @@ int animations::fake::simulate ( ) {
 	}
 }
 
+//bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
+//	/* vfunc indices */
+//	static auto standard_blending_rules_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 47 FC" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
+//	static auto build_transformations_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? A1 ? ? ? ? B9 ? ? ? ? 8B 40 34 FF D0 85 C0 74 41" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
+//	static auto update_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
+//	static auto calculate_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50 FF B7 ? ? ? ? 8D 84 24 ? ? ? ? 50 8D 84 24 ? ? ? ? 50 E8 ? ? ? ? 8B 47 FC 8D 4F FC 8B 80" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
+//
+//	/* func sigs */
+//	static auto init_iks = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ) ).get< void ( __thiscall* )( void*, studiohdr_t*, vec3_t&, vec3_t&, float, int, int ) > ( );
+//	static auto update_targets = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
+//	static auto solve_dependencies = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
+//
+//	/* offset sigs */
+//	static auto iks_off = pattern::search ( _ ( "client.dll" ), _ ( "8D 47 FC 8B 8F" ) ).add ( 5 ).deref ( ).add ( 4 ).get< uint32_t > ( );
+//	static auto effects_off = pattern::search ( _ ( "client.dll" ), _ ( "75 0D 8B 87" ) ).add ( 4 ).deref ( ).add ( 4 ).get< uint32_t > ( );
+//
+//	auto cstudio = *reinterpret_cast< studiohdr_t** >( uintptr_t ( target ) + 0x294C );
+//	
+//	if ( !cstudio )
+//		return false;
+//
+//	//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
+//	matrix3x4a_t used [ 128 ];
+//
+//	//	output shit
+//	uint8_t bone_computed [ 0x100 ] = { 0 };
+//
+//	//	needs to be aligned
+//	matrix3x4a_t base_matrix;
+//
+//	csgo::angle_matrix ( rotation, origin, base_matrix );
+//
+//	//	store shit
+//	const auto old_bones = target->bones ( );
+//
+//	auto iks = *reinterpret_cast< void** >( uintptr_t ( target ) + iks_off );
+//	*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) |= 8;
+//
+//	//	clear iks & re-create them
+//	if ( iks ) {
+//		if ( *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) > 0 ) {
+//			int v1 = 0;
+//			auto v62 = ( uint32_t* ) ( uintptr_t ( iks ) + 0xD0 );
+//
+//			do {
+//				*v62 = -9999;
+//				v62 += 0x55;
+//				++v1;
+//			} while ( v1 < *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) );
+//		}
+//
+//		init_iks ( iks, cstudio, rotation, origin, time, csgo::i::globals->m_framecount, 0x1000 );
+//	}
+//
+//	vec3_t pos [ 128 ];
+//	memset ( pos, 0, sizeof ( vec3_t [ 128 ] ) );
+//
+//	void* q = malloc ( /* sizeof quaternion_t */ 48 * 128 );
+//	memset ( q, 0, /* sizeof quaternion_t */ 48 * 128 );
+//
+//	//	set flags and bones
+//	target->bones ( ) = used;
+//
+//	//	build some shit
+//	// IDX = 205 ( 2020.7.10 )
+//	vfunc< void ( __thiscall* )( player_t*, studiohdr_t*, vec3_t*, void*, float, uint32_t ) > ( target, standard_blending_rules_vfunc_idx ) ( target, cstudio, pos, q, time, mask );
+//
+//	//	set iks
+//	if ( iks ) {
+//		vfunc< void ( __thiscall* )( player_t*, float ) > ( target, update_ik_locks_vfunc_idx ) ( target, time );
+//		update_targets ( iks, pos, q, target->bones ( ), bone_computed );
+//		vfunc< void ( __thiscall* )( player_t*, float ) > ( target, calculate_ik_locks_vfunc_idx ) ( target, time );
+//		solve_dependencies ( iks, pos, q, target->bones ( ), bone_computed );
+//	}
+//
+//	//	build the matrix
+//	// IDX = 189 ( 2020.7.10 )
+//	vfunc< void ( __thiscall* )( player_t*, studiohdr_t*, vec3_t*, void*, matrix3x4a_t const&, uint32_t, void* ) > ( target, build_transformations_vfunc_idx ) ( target, cstudio, pos, q, base_matrix, mask, bone_computed );
+//
+//	free ( q );
+//
+//	//	restore flags and bones
+//	*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) &= ~8;
+//	target->bones ( ) = old_bones;
+//
+//	//  and pop out our new matrix
+//	memcpy ( mat, used, sizeof ( matrix3x4_t ) * 128 );
+//
+//	return true;
+//}
+
 bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
 	const auto backup_mask_1 = *reinterpret_cast< int* >( uintptr_t ( target ) + N ( 0x269C ) );
 	const auto backup_mask_2 = *reinterpret_cast< int* >( uintptr_t ( target ) + N ( 0x26B0 ) );
@@ -263,98 +354,6 @@ bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec
 
 	return ret;
 }
-
-//bool animations::setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
-//	/* vfunc indices */
-//	static auto standard_blending_rules_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 47 FC" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-//	static auto build_transformations_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50" ) ).add( 2 ).deref( ).get< uint32_t > ( ) / 4;
-//	static auto update_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-//	static auto calculate_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50 FF B7 ? ? ? ? 8D 84 24 ? ? ? ? 50 8D 84 24 ? ? ? ? 50 E8 ? ? ? ? 8B 47 FC 8D 4F FC 8B 80" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-//
-//	/* func sigs */
-//	static auto init_iks = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ) ).get< void ( __thiscall* )( void*, studiohdr_t*, vec3_t&, vec3_t&, float, int, int ) > ( );
-//	static auto update_targets = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
-//	static auto solve_dependencies = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
-//
-//	/* offset sigs */
-//	static auto iks_off = pattern::search ( _ ( "client.dll" ), _ ( "8D 47 FC 8B 8F" ) ).add ( 5 ).deref ( ).add ( 4 ).get< uint32_t > ( );
-//	static auto effects_off = pattern::search ( _ ( "client.dll" ), _ ( "75 0D 8B 87" ) ).add ( 4 ).deref ( ).add ( 4 ).get< uint32_t > ( );
-//
-//	auto cstudio = *reinterpret_cast< studiohdr_t** >( uintptr_t ( target ) + 0x294C );
-//	
-//	if ( !cstudio )
-//		return false;
-//
-//	//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
-//	matrix3x4_t used [ 128 ];
-//
-//	//	output shit
-//	uint8_t bone_computed [ 0x100 ] = { 0 };
-//
-//	//	needs to be aligned
-//	alignas( 16 ) matrix3x4_t base_matrix;
-//
-//	csgo::angle_matrix ( rotation, origin, base_matrix );
-//
-//	//	store shit
-//	matrix3x4_t old_bones [ 128 ];
-//	memcpy ( old_bones, target->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof(matrix3x4_t) * target->bone_count());
-//
-//	auto iks = *reinterpret_cast< void** >( uintptr_t ( target ) + iks_off );
-//	*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) |= 8;
-//
-//	//	clear iks & re-create them
-//	if ( iks ) {
-//		if ( *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) > 0 ) {
-//			int v1 = 0;
-//			auto v62 = ( uint32_t* ) ( uintptr_t ( iks ) + 0xD0 );
-//
-//			do {
-//				*v62 = -9999;
-//				v62 += 0x55;
-//				++v1;
-//			} while ( v1 < *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) );
-//		}
-//
-//		init_iks ( iks, cstudio, rotation, origin, time, csgo::i::globals->m_framecount, 0x1000 );
-//	}
-//
-//	vec3_t pos [ 128 ];
-//	memset ( pos, 0, sizeof ( vec3_t [ 128 ] ) );
-//
-//	void* q = malloc ( /* sizeof quaternion_t */ 48 * 128 );
-//	memset ( q, 0, /* sizeof quaternion_t */ 48 * 128 );
-//
-//	//	set flags and bones
-//	memcpy ( target->bone_accessor ( ).get_bone_arr_for_write ( ), used, sizeof ( matrix3x4_t ) * target->bone_count ( ) );
-//
-//	//	build some shit
-//	// IDX = 205 ( 2020.7.10 )
-//	vfunc< void ( __thiscall* )( player_t*, studiohdr_t*, vec3_t*, void*, float, uint32_t ) > ( target, standard_blending_rules_vfunc_idx ) ( target, cstudio, pos, q, time, mask );
-//
-//	//	set iks
-//	if ( iks ) {
-//		vfunc< void ( __thiscall* )( player_t*, float ) > ( target, update_ik_locks_vfunc_idx ) ( target, time );
-//		update_targets ( iks, pos, q, target->bone_accessor ( ).get_bone_arr_for_write ( ), bone_computed );
-//		vfunc< void ( __thiscall* )( player_t*, float ) > ( target, calculate_ik_locks_vfunc_idx ) ( target, time );
-//		solve_dependencies ( iks, pos, q, target->bone_accessor ( ).get_bone_arr_for_write ( ), bone_computed );
-//	}
-//
-//	//	build the matrix
-//	// IDX = 189 ( 2020.7.10 )
-//	vfunc< void ( __thiscall* )( player_t*, studiohdr_t*, vec3_t*, void*, matrix3x4_t const&, uint32_t, void* ) > ( target, build_transformations_vfunc_idx ) ( target, cstudio, pos, q, base_matrix, mask, bone_computed );
-//
-//	free ( q );
-//
-//	//	restore flags and bones
-//	*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) &= ~8;
-//	memcpy ( target->bone_accessor ( ).get_bone_arr_for_write ( ), old_bones, sizeof ( matrix3x4_t ) * target->bone_count ( ) );
-//
-//	//  and pop out our new matrix
-//	memcpy ( mat ? mat : target->bone_accessor ( ).get_bone_arr_for_write ( ), used, sizeof ( matrix3x4_t ) * target->bone_count ( ) );
-//
-//	return true;
-//}
 
 auto last_vel2d = 0.0f;
 auto last_update_time = 0.0f;
@@ -451,7 +450,7 @@ int animations::restore_local ( ) {
 
 			local_data::abs = state->m_abs_yaw;
 			local_data::poses = g::local->poses ( );
-			local_data::old_update = features::prediction::predicted_curtime;
+			local_data::old_update = csgo::i::globals->m_curtime;
 
 			/* store old origin for lag-comp break check */
 			data::old_origin [ g::local->idx ( ) ] = data::origin [ g::local->idx ( ) ];
@@ -479,8 +478,8 @@ int animations::restore_local ( ) {
 
 	setup_bones ( g::local, nullptr, N ( 0x7ff00 ), vec3_t ( 0.0f, local_data::abs, 0.0f ), g::local->abs_origin ( ), csgo::i::globals->m_curtime );
 
-	if ( g::local->bone_accessor ( ).get_bone_arr_for_write ( ) )
-		std::memcpy ( &data::fixed_bones [ g::local->idx ( ) ], g::local->bone_accessor ( ).get_bone_arr_for_write ( ), sizeof ( matrix3x4_t ) * g::local->bone_count ( ) );
+	if ( g::local->bone_cache ( ) )
+		std::memcpy ( &data::fixed_bones [ g::local->idx ( ) ], g::local->bone_cache ( ), sizeof ( matrix3x4_t ) * g::local->bone_count ( ) );
 	//features::lagcomp::cache( g::local );
 }
 
@@ -568,7 +567,7 @@ int animations::restore_local ( ) {
 //
 //			local_data::abs = state->m_abs_yaw;
 //			local_data::poses = g::local->poses ( );
-//			local_data::old_update = features::prediction::predicted_curtime;
+//			local_data::old_update = csgo::i::globals->m_curtime;
 //
 //			/* store old origin for lag-comp break check */
 //			data::old_origin [ g::local->idx ( ) ] = data::origin [ g::local->idx ( ) ];
@@ -625,9 +624,6 @@ int animations::fix_pl ( player_t* pl ) {
 
 	/* fix velocity */
 	*reinterpret_cast< uint32_t* >( uintptr_t ( pl ) + N ( 0xe8 ) ) &= ~0x1000; /* EFL_DIRTY_ABSVELOCITY */
-
-
-	pl->set_abs_origin ( pl->origin ( ) );
 	*reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) ) = pl->vel ( );
 
 	if ( pl->simtime ( ) != pl->old_simtime ( ) ) {
@@ -644,7 +640,15 @@ int animations::fix_pl ( player_t* pl ) {
 		state->m_feet_yaw_rate = 0.0f;
 		state->m_feet_yaw = state->m_abs_yaw;
 
+		if ( pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
+			pl->angles ( ) = csgo::calc_angle ( pl->eyes ( ), g::local->eyes ( ) );
+		}
+
+		state->m_eye_yaw = pl->angles ( ).y;
+
 		update_animations ( pl );
+
+		state->m_eye_yaw = pl->angles ( ).y;
 
 		data::old_abs [ pl->idx ( ) ] = state->m_abs_yaw;
 		data::old_eye_yaw [ pl->idx ( ) ] = state->m_eye_yaw;
@@ -666,33 +670,39 @@ int animations::fix_pl ( player_t* pl ) {
 		//}
 
 		state->m_abs_yaw = data::resolved1 [ pl->idx ( ) ];
+		state->m_feet_yaw = state->m_abs_yaw;
 		rebuilt::poses::calculate ( pl );
 		setup_bones ( pl, reinterpret_cast< matrix3x4_t* >( &data::fixed_bones [ pl->idx ( ) ] ), N ( 0x7ff00 ), vec3_t ( 0.0f, data::resolved1 [ pl->idx ( ) ], 0.0f ), pl->origin ( ), csgo::i::globals->m_curtime );
 
 		state->m_abs_yaw = data::resolved2 [ pl->idx ( ) ];
+		state->m_feet_yaw = state->m_abs_yaw;
 		rebuilt::poses::calculate ( pl );
 		setup_bones ( pl, reinterpret_cast< matrix3x4_t* >( &data::fixed_bones1 [ pl->idx ( ) ] ), N ( 0x7ff00 ), vec3_t ( 0.0f, data::resolved2 [ pl->idx ( ) ], 0.0f ), pl->origin ( ), csgo::i::globals->m_curtime );
 
 		state->m_abs_yaw = data::resolved3 [ pl->idx ( ) ];
+		state->m_feet_yaw = state->m_abs_yaw;
 		rebuilt::poses::calculate ( pl );
 		setup_bones ( pl, reinterpret_cast< matrix3x4_t* >( &data::fixed_bones2 [ pl->idx ( ) ] ), N ( 0x7ff00 ), vec3_t ( 0.0f, data::resolved3 [ pl->idx ( ) ], 0.0f ), pl->origin ( ), csgo::i::globals->m_curtime );
 	}
 
-	if ( pl->bone_accessor ( ).get_bone_arr_for_write ( ) ) {
+	if ( pl->bone_cache ( ) ) {
 		if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 == 0 ) {
 			state->m_abs_yaw = data::resolved1 [ pl->idx ( ) ];
+			state->m_feet_yaw = state->m_abs_yaw;
 			pl->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
-			memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+			memcpy ( pl->bone_cache ( ), &data::fixed_bones [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 		}
 		else if ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 == 1 ) {
 			state->m_abs_yaw = data::resolved2 [ pl->idx ( ) ];
+			state->m_feet_yaw = state->m_abs_yaw;
 			pl->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
-			memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &data::fixed_bones1 [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+			memcpy ( pl->bone_cache ( ), &data::fixed_bones1 [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 		}
 		else {
 			state->m_abs_yaw = data::resolved3 [ pl->idx ( ) ];
+			state->m_feet_yaw = state->m_abs_yaw;
 			pl->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
-			memcpy ( pl->bone_accessor ( ).get_bone_arr_for_write ( ), &data::fixed_bones2 [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+			memcpy ( pl->bone_cache ( ), &data::fixed_bones2 [ pl->idx ( ) ], sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 		}
 
 	}

@@ -54,6 +54,7 @@
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
     <ClCompile Include="hooks\reset.cpp" />
+    <ClCompile Include="hooks\run_command.cpp" />
     <ClCompile Include="hooks\scene_end.cpp" />
     <ClCompile Include="hooks\send_datagram.cpp" />
     <ClCompile Include="hooks\send_net_msg.cpp" />
@@ -129,6 +130,7 @@
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
     <ClInclude Include="hooks\reset.hpp" />
+    <ClInclude Include="hooks\run_command.hpp" />
     <ClInclude Include="hooks\scene_end.hpp" />
     <ClInclude Include="hooks\send_datagram.hpp" />
     <ClInclude Include="hooks\send_net_msg.hpp" />

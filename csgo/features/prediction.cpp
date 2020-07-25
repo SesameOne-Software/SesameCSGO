@@ -1,45 +1,6 @@
 ﻿#include "prediction.hpp"
 #include "../globals.hpp"
 
-/*
-RUNCOMMAND HOOK
-runcommand hook
-	if ( exploits.data.exploit_cmd_nr == cmd->command_number ) {
-		gl::local->tick_base ( ) = exploits.data.last_shot_tb;
-		cs::globals->cur_time = gl::local->tick_base ( ) * cs::globals->interval_per_tick;
-	}
-
-	if ( cmd->tick_count == INT_MAX ) {
-		cmd->hasbeenpredicted = true;
-		return;
-	}
-
-	///  original
-
-		///  restore local player shit
-
-		don't need to recharge without teleport
-		set layer 12 weight to 0 on fake (sway removal)
-		calculate shoot matrix seperately (fix viewposition)
-
-		oh clock correction is a cvar, not replicated and the default is 30ms
-so you might add a slider for that or something idk
-
- if ( exploits.will_dtap ( ) ) {
-		auto clock_correction = time_to_ticks ( 0.03f );
-		auto latency_ticks = std::max<int> ( 0, time_to_ticks ( cs::engine->getnetchannelinfo ( )->getavglatency ( 0 ) ) );
-		auto tick_base = cs::client_state->clock_drift ( ).server_tick + latency_ticks + 1;
-		auto ideal_server_start = tick_base + clock_correction;
-
-		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
-		auto expected_shift = std::min<int> ( exploits.data.behind_by, time_to_ticks ( gl::local->active_weapon ( )->data ( )->cycle_time ( ) ) );
-
-		auto first_tick_in_batch_tc = ideal_server_start - std::min<int> ( 16, cs::client_state->choked_cmds ( ) + 1 + expected_shift ) + 1;
-
-		tb = first_tick_in_batch_tc + cs::client_state->choked_cmds ( );
-	}
-*/
-
 float features::prediction::predicted_curtime = 0.0f;
 
 namespace prediction_util {
@@ -123,8 +84,8 @@ namespace prediction_util {
 		const bool old_first_prediction = csgo::i::pred->m_is_first_time_predicted;
 
 		csgo::i::globals->m_curtime = features::prediction::predicted_curtime;
-		csgo::i::globals->m_frametime = csgo::i::pred->m_engine_paused ? 0 : csgo::i::globals->m_ipt;
-		csgo::i::globals->m_tickcount = csgo::time2ticks( features::prediction::predicted_curtime );
+		csgo::i::globals->m_frametime = csgo::i::pred->m_engine_paused ? 0.0f : csgo::i::globals->m_ipt;
+		csgo::i::globals->m_tickcount = csgo::time2ticks ( features::prediction::predicted_curtime );
 
 		csgo::i::pred->m_is_first_time_predicted = false;
 		csgo::i::pred->m_in_prediction = true;
@@ -202,17 +163,40 @@ namespace prediction_util {
 	}
 }
 
-void features::prediction::update_curtime( ) {
+int features::prediction::shift ( const int& cur ) {
+	auto clock_correction = csgo::time2ticks ( 0.03f );
+	auto latency_ticks = std::max<int> ( 0, csgo::time2ticks ( csgo::i::engine->get_net_channel_info()->get_avg_latency ( 0 ) ) );
+	auto tick_base = csgo::i::client_state->server_tickcount( ) + latency_ticks + 1;
+	auto ideal_server_start = tick_base + clock_correction;
+
+	if ( g::dt_ticks_to_shift ) {
+		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
+		auto expected_shift = std::min< int > ( 14, g::dt_ticks_to_shift );
+		auto first_tick_in_batch_tc = ideal_server_start - std::min<int> ( 16, csgo::i::client_state->choked ( ) + 1 + expected_shift ) + 1;
+
+		return first_tick_in_batch_tc + csgo::i::client_state->choked ( );
+	}
+	//else if ( will_hs ( ) ) {
+	//	//    this value will have to change once hide shots is added back in, look @ commented code above for reference
+	//	auto expected_shift = std::min< int > ( 6, g::dt_ticks_to_shift );
+	//	auto first_tick_in_batch_tc = ideal_server_start - std::min<int> ( 16, csgo::i::client_state->choked ( ) + 1 + expected_shift ) + 1;
+	//
+	//	return first_tick_in_batch_tc + csgo::i::client_state->choked ( );
+	//}
+
+	return cur;
+}
+
+void features::prediction::update_curtime ( ) {
 	static int g_tick = 0;
 	static ucmd_t* last_cmd = nullptr;
 
 	if ( !g::local )
 		return;
 
-	g_tick = ( !last_cmd || last_cmd->m_hasbeenpredicted ) ? g::local->tick_base( ) : ( g_tick + 1 );
+	g_tick = ( !last_cmd || last_cmd->m_hasbeenpredicted ) ? g::local->tick_base ( ) : ( g_tick + 1 );
 	last_cmd = g::ucmd;
-	predicted_curtime = csgo::ticks2time( g_tick );
-
+	predicted_curtime = csgo::ticks2time ( g_tick );
 }
 
 void features::prediction::run( const std::function< void( ) >& fn ) {

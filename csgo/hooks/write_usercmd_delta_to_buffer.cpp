@@ -52,11 +52,9 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer ( REG, int slot, void* buf,
 		cmd_to.m_tickcount++;
 	}
 
-	const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
-	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : total_new_cmds;
-
 	//if ( features::ragebot::active_config.dt_teleport )
-	//	g::shifted_tickbase = cmd_to.m_cmdnum + 1;
+	g::shifted_tickbase = cmd_to.m_cmdnum;
+	g::shifted_amount = total_new_cmds;
 
 	g::dt_ticks_to_shift = 0;
 	g::next_tickbase_shot = true;

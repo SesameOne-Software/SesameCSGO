@@ -7,4 +7,8 @@ namespace hooks {
 	namespace old {
 		extern decltype( &create_move ) create_move;
 	}
+
+	namespace vars {
+		extern bool in_refresh;
+	}
 }
