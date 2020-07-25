@@ -640,7 +640,7 @@ int animations::fix_pl ( player_t* pl ) {
 		state->m_feet_yaw_rate = 0.0f;
 		state->m_feet_yaw = state->m_abs_yaw;
 
-		if ( pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
+		if ( pl->weapon ( ) && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
 			pl->angles ( ) = csgo::calc_angle ( pl->eyes ( ), g::local->eyes ( ) );
 		}
 
