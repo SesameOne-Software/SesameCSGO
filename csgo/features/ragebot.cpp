@@ -628,20 +628,20 @@ bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbo
 		ray_t ray;
 
 		ray.init ( src, final_pos );
-		csgo::i::trace->clip_ray_to_entity ( ray, mask_shot, pl, &tr );
+		csgo::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
 
-		// dbg_print( "%3.f\n", dst );
-
-		if ( tr.m_hit_entity == pl && tr.m_hitgroup == as_hitgroup )
+		if ( tr.m_hit_entity == pl /*&& tr.m_hitgroup == as_hitgroup*/ )
 			hits++;
 
-		//if ( ray_intersects_sphere( src, final_pos, point, 5.0f ) )
-		//	hits++;
+		if ( static_cast< int >( ( static_cast< float >( hits ) / static_cast< float > ( rays ) ) * 100.0f ) >= features::ragebot::active_config.hit_chance )
+			return true;
+
+		if ( ( rays - i + hits ) < needed_hits )
+			return false;
 	}
 
-	const auto calculated_chance = ( static_cast< float >( hits ) / static_cast< float > ( rays ) ) * 100.0f;
-	features::ragebot::hitchances [ pl->idx ( ) ] = calculated_chance;
-	return calculated_chance >= ( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance );
+	features::ragebot::hitchances [ pl->idx ( ) ] = 100.0f;
+	return false;
 }
 
 void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out) {
@@ -783,7 +783,7 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 	}
 
 	if ( active_config.scan_chest ) {
-		hitboxes.push_back( 5 ); // chest
+		hitboxes.push_back( 6 ); // chest
 	}
 
 	if ( active_config.scan_legs ) {
@@ -812,10 +812,12 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 			if ( !g::local->weapon ( ) || !g::local->weapon ( )->ammo ( ) )
 				return false;
 
+			if ( g::local->weapon ( )->item_definition_index ( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks ( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+				return false;
+
 			//if ( g::shifted_tickbase )
 			//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
-
-			return g::local->weapon ( )->next_primary_attack ( ) <= features::prediction::predicted_curtime;
+			return features::prediction::predicted_curtime >= g::local->next_attack ( ) && features::prediction::predicted_curtime >= g::local->weapon ( )->next_primary_attack ( );
 		};
 
 		const auto weapon_data = ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) ? g::local->weapon ( )->data ( ) : nullptr;
@@ -1039,7 +1041,7 @@ retry_without_safe_points:
 					}
 				}
 
-				if ( best_dmg >= pl->health ( ) || ( ( should_baim || misses [ pl->idx ( ) ].bad_resolve >= active_config.baim_after_misses ) && ( best_dmg * 1.666f >= active_config.min_dmg || best_dmg * 1.666f >= pl->health ( ) ) ) ) {
+				if ( best_dmg >= pl->health ( ) || ( ( should_baim || misses [ pl->idx ( ) ].bad_resolve >= active_config.baim_after_misses ) && ( best_dmg /** 1.666f*/ >= active_config.min_dmg || best_dmg /** 1.666f*/ >= pl->health ( ) ) ) ) {
 					pl->mins ( ) = backup_min;
 					pl->maxs ( ) = backup_max;
 					pl->origin ( ) = backup_origin;
@@ -1136,11 +1138,12 @@ retry_without_safe_points:
 				}
 			} break;
 				// body stuff (aim outwards)
-			case 3:
-			case 7:
-			case 8:
+			case 2:
 			case 11:
-			case 12: {
+			case 12:
+			case 6:
+			case 7:
+			case 8: {
 				auto body = get_hitbox_pos( );
 				auto body_left = body + left * rad_coeff;
 				auto body_right = body + right * rad_coeff;
@@ -1190,10 +1193,9 @@ retry_without_safe_points:
 				}
 			} break;
 				// no need to test multiple points on these
-			case 9:
-			case 10:
-			case 13:
-			case 14: {
+			case 18:
+			case 16:
+			case 1: {
 				auto hitbox_pos = get_hitbox_pos( );
 				auto dmg = autowall::dmg( g::local, pl, g::local->eyes( ), hitbox_pos, -1 /* do not scan floating points */ );
 
@@ -1411,10 +1413,13 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		if ( !g::local->weapon ( ) || !g::local->weapon ( )->ammo ( ) )
 			return false;
 
+		if ( g::local->weapon ( )->item_definition_index ( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks ( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+			return false;
+
 		//if ( g::shifted_tickbase )
 		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
 
-		return g::local->weapon ( )->next_primary_attack ( ) <= features::prediction::predicted_curtime;
+		return features::prediction::predicted_curtime >= g::local->next_attack ( ) && features::prediction::predicted_curtime >= g::local->weapon ( )->next_primary_attack ( );
 	};
 
 	static const auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
@@ -1581,10 +1586,12 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 		if ( !g::local->weapon ( ) || !g::local->weapon ( )->ammo ( ) || !g::local->weapon ( )->data ( ) )
 			return false;
 
+		if ( g::local->weapon ( )->item_definition_index ( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks ( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+			return false;
+
 		//if ( g::shifted_tickbase )
 		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
-		
-		return g::local->weapon ( )->next_primary_attack ( ) <= features::prediction::predicted_curtime && g::local->weapon ( )->next_primary_attack ( ) + g::local->weapon ( )->data ( )->m_fire_rate <= features::prediction::predicted_curtime;
+		return features::prediction::predicted_curtime >= g::local->next_attack ( ) && g::local->weapon ( )->next_primary_attack ( ) <= features::prediction::predicted_curtime && g::local->weapon ( )->next_primary_attack ( ) + g::local->weapon ( )->data ( )->m_fire_rate <= features::prediction::predicted_curtime;
 	};
 
 	/* tickbase manip controller */

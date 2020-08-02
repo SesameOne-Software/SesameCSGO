@@ -18,7 +18,6 @@ vec3_t old_origin;
 bool in_cm = false;
 bool ducking = false;
 int restore_ticks = 0;
-int cock_ticks = 0;
 bool last_attack = false;
 bool last_tickbase_shot = false;
 int g_refresh_counter = 0;
@@ -52,7 +51,7 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	//);
 
 	if ( !g::local || !g::local->alive ( ) ) {
-		cock_ticks = 0;
+		g::cock_ticks = 0;
 	}
 
 	if ( !ucmd || !ucmd->m_cmdnum ) {
@@ -195,13 +194,18 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	last_tickbase_shot = g::next_tickbase_shot;
 
 	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
-		if ( csgo::time2ticks ( features::prediction::predicted_curtime ) > cock_ticks ) {
+		if ( csgo::time2ticks ( features::prediction::predicted_curtime ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~1;
-			cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 1;
+			g::cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 2;
+			g::can_fire_revolver = true;
 		}
 		else {
 			ucmd->m_buttons |= 1;
+			g::can_fire_revolver = false;
 		}
+	}
+	else {
+		g::can_fire_revolver = false;
 	}
 
 	csgo::clamp ( ucmd->m_angs );

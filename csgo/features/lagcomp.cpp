@@ -298,24 +298,77 @@ void features::lagcomp::cache( player_t* pl ) {
 
 	OPTION ( bool, fix_fakelag, "Sesame->A->Default->Accuracy->Fix Fakelag", oxui::object_checkbox );
 
-	///* interpolate between records */ {
-	//	const auto nci = csgo::i::engine->get_net_channel_info ( );
-	//
-	//	if ( nci && data::records [ pl->idx ( ) ].size ( ) >= 2 ) {
-	//		data::cham_records [ pl->idx ( ) ] = data::records [ pl->idx ( ) ].back ( );
-	//
-	//		const auto& current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 1 ];
-	//		const auto& last_to_current = data::records [ pl->idx ( ) ][ data::records [ pl->idx ( ) ].size ( ) - 2 ];
-	//		const auto delta_pos = last_to_current.m_origin - current.m_origin;
-	//		const auto delta_time = last_to_current.m_simtime - current.m_simtime;
-	//		const auto delta_lag = csgo::i::globals->m_curtime - pl->simtime ( );
-	//		const auto lerp_time = std::clamp ( delta_lag / delta_time, 0.0f, 1.0f );
-	//		const auto lerped_delta_pos = delta_pos * lerp_time;
-	//
-	//		for ( auto& bone : data::cham_records [ pl->idx ( ) ].m_bones )
-	//			bone.set_origin ( bone.origin ( ) + lerped_delta_pos );
-	//	}
-	//}
+	/* interpolate between records */ {
+		const auto nci = csgo::i::engine->get_net_channel_info ( );
+	
+		if ( nci && data::all_records [ pl->idx ( ) ].size ( ) >= 2 ) {
+			data::cham_records [ pl->idx ( ) ] = data::all_records [ pl->idx ( ) ].front ( );
+	
+			/* finding last valid visible record */
+			auto visible_idx = 0;
+
+			for ( auto i = 0; i < data::all_records [ pl->idx ( ) ].size ( ); i++ ) {
+				if ( data::all_records [ pl->idx ( ) ][ i ].valid ( ) )
+					visible_idx = i;
+			}
+
+			if ( visible_idx + 1 < data::all_records [ pl->idx ( ) ].size ( ) ) {
+				const auto itp1 = &data::all_records [ pl->idx ( ) ][ visible_idx ];
+				const auto it = &data::all_records [ pl->idx ( ) ][ visible_idx + 1 ];
+
+				data::cham_records [ pl->idx ( ) ] = *it;
+
+				const auto correct = nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp ( ) - ( it->m_simtime - ( itp1 )->m_simtime );
+				const auto time_delta = ( itp1 )->m_simtime - it->m_simtime;
+				const auto add = time_delta;
+				const auto deadtime = it->m_simtime + correct + add;
+				const auto curtime = csgo::i::globals->m_curtime;
+				const auto delta = deadtime - curtime;
+				const auto mul = 1.0f / add;
+				
+				const auto lerp_fraction = std::clamp ( delta * mul, 0.0f, 1.0f );
+
+				vec3_t lerp = vec3_t ( std::lerp ( ( itp1 )->m_origin.x, it->m_origin.x, lerp_fraction ),
+					std::lerp ( ( itp1 )->m_origin.y, it->m_origin.y, lerp_fraction ),
+					std::lerp ( ( itp1 )->m_origin.z, it->m_origin.z, lerp_fraction ) );
+
+				matrix3x4_t ret [ 128 ];
+
+				/*if ( (it->m_bones1 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
+					memcpy ( ret, it->m_bones1, sizeof ( matrix3x4_t ) * 128 );
+
+					for ( auto i = 0; i < 128; i++ ) {
+						const vec3_t matrix_delta = it->m_bones1 [ i ].origin ( ) - it->m_origin;
+						it->m_bones1 [ i ].set_origin ( matrix_delta + lerp );
+					}
+
+					memcpy ( &data::cham_records [ pl->idx ( ) ].m_bones1, ret, sizeof ( matrix3x4_t ) * 128 );
+				}
+
+				/*if ( (it->m_bones2 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
+					memcpy ( ret, it->m_bones2, sizeof ( matrix3x4_t ) * 128 );
+
+					for ( auto i = 0; i < 128; i++ ) {
+						const vec3_t matrix_delta = it->m_bones2 [ i ].origin ( ) - it->m_origin;
+						it->m_bones2 [ i ].set_origin ( matrix_delta + lerp );
+					}
+
+					memcpy ( &data::cham_records [ pl->idx ( ) ].m_bones2, ret, sizeof ( matrix3x4_t ) * 128 );
+				}
+
+				/*if ( (it->m_bones3 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
+					memcpy ( ret, it->m_bones3, sizeof ( matrix3x4_t ) * 128 );
+
+					for ( auto i = 0; i < 128; i++ ) {
+						const vec3_t matrix_delta = it->m_bones3 [ i ].origin ( ) - it->m_origin;
+						it->m_bones3 [ i ].set_origin ( matrix_delta + lerp );
+					}
+
+					memcpy ( &data::cham_records [ pl->idx ( ) ].m_bones3, ret, sizeof ( matrix3x4_t ) * 128 );
+				}
+			}
+		}
+	}
 
 	/*
 		@CBRS Great, you won't shoot at bad records!
@@ -397,7 +450,7 @@ void features::lagcomp::pop( player_t* pl ) {
 	while ( !data::records [ pl->idx ( ) ].empty ( ) && !data::records [ pl->idx ( ) ].back ( ).valid ( ) )
 		data::records [ pl->idx ( ) ].pop_back ( );
 
-	while ( !data::all_records [ pl->idx ( ) ].empty ( ) && data::all_records [ pl->idx ( ) ].size ( ) > 12 )
+	while ( !data::all_records [ pl->idx ( ) ].empty ( ) && data::all_records [ pl->idx ( ) ].size ( ) > 24 )
 		data::all_records [ pl->idx ( ) ].pop_back ( );
 
 	if ( !data::shot_records [ pl->idx ( ) ].valid ( ) )

@@ -45,6 +45,7 @@ struct impact_rec_t {
 	float m_time;
 	bool m_hurt;
 	uint32_t m_clr;
+	bool m_beam_created;
 };
 
 std::array< float, 65 > resolver_confidence { 0.0f };
@@ -125,7 +126,7 @@ void animations::resolver::process_blood ( const effect_data_t& effect_data ) {
 	//if ( std::fabsf ( angle_delta ) < 25.0f )
 	//	return;
 
-	print_console ( { 0, 255, 0, 255 }, "shot at valid record\n", effect_data.m_scale, effect_data.m_magnitude, effect_data.m_radius, effect_data.m_hitbox );
+	//print_console ( { 0, 255, 0, 255 }, "predicted particle angle: %.1f\n", angle_delta );
 
 	particle_predicted_desync_offset [ idx ] = std::copysignf ( 1.0f, angle_delta );
 
@@ -136,46 +137,58 @@ void animations::resolver::process_impact( event_t* event ) {
 	auto shooter = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_player_for_userid( event->get_int( _( "userid" ) ) ) );
 	auto& target = features::ragebot::get_target ( );
 
-	if ( !g::local || !g::local->alive( ) || !target || target->dormant( ) || target->idx ( ) <= 0 || target->idx ( ) > 64 || !shooter || shooter != g::local || features::ragebot::get_shot_pos ( target->idx ( ) ) == vec3_t( 0.0f, 0.0f, 0.0f ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
+	if ( !g::local || !g::local->alive ( ) || !shooter || shooter != g::local )
 		return;
 
-	auto target_rec = features::ragebot::get_lag_rec ( target->idx ( ) );
 	const auto impact_pos = vec3_t ( event->get_float ( _ ( "x" ) ), event->get_float ( _ ( "y" ) ), event->get_float ( _ ( "z" ) ) );
-	const auto towards = csgo::angle_vec ( csgo::calc_angle( features::ragebot::get_shot_pos ( target->idx ( ) ), impact_pos ) );
-	const auto vec_max = features::ragebot::get_shot_pos ( target->idx ( ) ) + towards * g::local->weapon ( )->data ( )->m_range;
 
-	auto backup_abs_origin = target->abs_origin ( );
-	const auto backup_origin = target->origin ( );
-	const auto backup_min = target->mins ( );
-	const auto backup_max = target->maxs ( );
-	matrix3x4_t backup_bones [ 128 ];
-	std::memcpy ( backup_bones, target->bone_cache ( ), sizeof matrix3x4_t * target->bone_count ( ) );
+	if ( target ) {
+		const auto shot_pos = features::ragebot::get_shot_pos ( target->idx ( ) );
 
-	target->mins ( ) = target_rec.m_min;
-	target->maxs ( ) = target_rec.m_max;
-	target->origin ( ) = target_rec.m_origin;
-	target->set_abs_origin ( target_rec.m_origin );
+		if ( !target || target->dormant ( ) || target->idx ( ) <= 0 || target->idx ( ) > 64 || shot_pos == vec3_t ( 0.0f, 0.0f, 0.0f ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
+			return;
 
-	if ( features::ragebot::get_misses ( target->idx ( ) ).bad_resolve % 3 == 0 )
-		std::memcpy ( target->bone_cache ( ), target_rec.m_bones1, sizeof matrix3x4_t * target->bone_count ( ) );
-	else if ( features::ragebot::get_misses ( target->idx ( ) ).bad_resolve % 3 == 1 )
-		std::memcpy ( target->bone_cache ( ), target_rec.m_bones2, sizeof matrix3x4_t * target->bone_count ( ) );
-	else
-		std::memcpy ( target->bone_cache ( ), target_rec.m_bones3, sizeof matrix3x4_t * target->bone_count ( ) );
+		auto target_rec = features::ragebot::get_lag_rec ( target->idx ( ) );
+		const auto towards = csgo::angle_vec ( csgo::calc_angle ( shot_pos, impact_pos ) );
+		const auto vec_max = shot_pos + towards * g::local->weapon ( )->data ( )->m_range;
 
-	auto hit_hitgroup = -1;
-	vec3_t impact_out = impact_pos;
+		auto backup_abs_origin = target->abs_origin ( );
+		const auto backup_origin = target->origin ( );
+		const auto backup_min = target->mins ( );
+		const auto backup_max = target->maxs ( );
+		matrix3x4_t backup_bones [ 128 ];
+		std::memcpy ( backup_bones, target->bone_cache ( ), sizeof matrix3x4_t * target->bone_count ( ) );
 
-	const auto dmg = autowall::dmg ( g::local, target, features::ragebot::get_shot_pos ( target->idx ( ) ), vec_max, -1, &impact_out );
+		target->mins ( ) = target_rec.m_min;
+		target->maxs ( ) = target_rec.m_max;
+		target->origin ( ) = target_rec.m_origin;
+		target->set_abs_origin ( target_rec.m_origin );
 
-	target->mins ( ) = backup_min;
-	target->maxs ( ) = backup_max;
-	target->origin ( ) = backup_origin;
-	target->set_abs_origin ( backup_abs_origin );
-	std::memcpy ( target->bone_cache ( ), backup_bones, sizeof matrix3x4_t * target->bone_count ( ) );
+		if ( features::ragebot::get_misses ( target->idx ( ) ).bad_resolve % 3 == 0 )
+			std::memcpy ( target->bone_cache ( ), target_rec.m_bones1, sizeof matrix3x4_t * target->bone_count ( ) );
+		else if ( features::ragebot::get_misses ( target->idx ( ) ).bad_resolve % 3 == 1 )
+			std::memcpy ( target->bone_cache ( ), target_rec.m_bones2, sizeof matrix3x4_t * target->bone_count ( ) );
+		else
+			std::memcpy ( target->bone_cache ( ), target_rec.m_bones3, sizeof matrix3x4_t * target->bone_count ( ) );
 
-	rdata::impact_dmg [ target->idx ( ) ] = dmg;
-	rdata::impacts [ target->idx ( ) ] = impact_pos;
+		auto hit_hitgroup = -1;
+		vec3_t impact_out = impact_pos;
+
+		const auto dmg = autowall::dmg ( g::local, target, shot_pos, vec_max, -1, &impact_out );
+
+		target->mins ( ) = backup_min;
+		target->maxs ( ) = backup_max;
+		target->origin ( ) = backup_origin;
+		target->set_abs_origin ( backup_abs_origin );
+		std::memcpy ( target->bone_cache ( ), backup_bones, sizeof matrix3x4_t * target->bone_count ( ) );
+
+		rdata::impact_dmg [ target->idx ( ) ] = dmg;
+		rdata::impacts [ target->idx ( ) ] = impact_pos;
+
+		return;
+	}
+
+	rdata::non_player_impacts = impact_pos;
 }
 
 std::array< bool, 65 > animations::resolver::flags::has_slow_walk { false };
@@ -251,9 +264,8 @@ void animations::resolver::process_hurt( event_t* event ) {
 	hit_hitgroup [ victim->idx ( ) ] = hitgroup;
 
 	/* hit wrong hitbox, probably due to resolver */
-	//if ( hitgroup != autowall::hitbox_to_hitgroup ( features::ragebot::get_hitbox ( victim->idx ( ) ) ) ) {
-	//	rdata::player_hurt [ victim->idx ( ) ] = false;
-	//}
+	if ( hitgroup != autowall::hitbox_to_hitgroup ( features::ragebot::get_hitbox ( victim->idx ( ) ) ) )
+		rdata::wrong_hitbox [ victim->idx ( ) ] = true;
 }
 
 void animations::resolver::process_event_buffer( int pl_idx ) {
@@ -271,23 +283,19 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		return d >= FLT_EPSILON;
 	};
 
-	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots ( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t ( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
-		//const auto vec_to_extended = csgo::angle_vec ( csgo::calc_angle ( features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ] ) ) * g::local->weapon ( )->data ( )->m_range;
-		//const auto reached_without_obstruction = ray_intersects_sphere ( features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_shot_pos ( pl_idx ) + vec_to_extended, features::ragebot::get_target_pos ( pl_idx ), 8.0f );
+	if ( rdata::non_player_impacts != vec3_t ( 0.0f, 0.0f, 0.0f ) ) {
+		impact_recs.push_back ( impact_rec_t { g::local->eyes ( ), rdata::non_player_impacts, _ ( L"" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+		rdata::non_player_impacts = vec3_t ( 0.0f, 0.0f, 0.0f );
+	}
 
-		/*if ( rdata::impact_dmg [ pl_idx ] <= 0.0f && reached_without_obstruction ) {
-			features::ragebot::get_misses ( pl_idx ).occlusion++;
-			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"occlusion ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).occlusion ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
-		}
-		else*/ if ( rdata::impact_dmg [ pl_idx ] <= 0.0f ) {
+	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots ( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t ( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
+		if ( rdata::impact_dmg [ pl_idx ] <= 0.0f ) {
 			features::ragebot::get_misses ( pl_idx ).spread++;
 			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( L"spread ( " ) + std::to_wstring ( features::ragebot::get_misses ( pl_idx ).spread ) + _ ( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
 			
 			if ( shot_logs ) {
 				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
-				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to spread ( hitchance: %d%, confidence: %d% )\n" ), static_cast< int >( features::ragebot::hitchances [ pl_idx ] ), static_cast< int >( get_confidence ( pl_idx ) ) );
-				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), ( char* ) _ ( u8"【ごま】" ) );
-				//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"不正確によるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).spread );
+				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to spread\n" ) );
 			}
 		}
 		else {
@@ -299,9 +307,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 
 			if ( shot_logs ) {
 				print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
-				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to bad resolve ( hitchance: %d%, confidence: %d% )\n" ), static_cast< int >( features::ragebot::hitchances [ pl_idx ] ), static_cast< int >( get_confidence ( pl_idx ) ) );
-				//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
-				//print_console ( oxui::color ( 255, 255, 255, 255 ), (char*)_ ( u8"悪いresolveによるショットの失敗（%d）\n" ), features::ragebot::get_misses ( pl_idx ).bad_resolve );
+				print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Missed shot due to bad resolve\n" ) );
 			}
 
 			if ( crash_when_miss )
@@ -316,6 +322,70 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		rdata::impact_dmg [ pl_idx ] = 0.0f;
 		features::ragebot::get_target_idx ( ) = 0;
 		features::ragebot::get_target ( ) = nullptr;
+		rdata::wrong_hitbox [ pl_idx ] = false;
+	}
+	else if ( rdata::wrong_hitbox [ pl_idx ] ) {
+		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, csgo::i::globals->m_curtime, D3DCOLOR_RGBA ( 202, 252, 3, 255 ) } );
+
+		if ( features::ragebot::get_misses ( pl_idx ).bad_resolve % 3 == 0 )
+			std::memcpy ( &hit_matrix_rec.back ( ).m_bones, features::ragebot::get_lag_rec ( pl_idx ).m_bones1, sizeof matrix3x4_t * 128 );
+		else if ( features::ragebot::get_misses ( pl_idx ).bad_resolve % 3 == 1 )
+			std::memcpy ( &hit_matrix_rec.back ( ).m_bones, features::ragebot::get_lag_rec ( pl_idx ).m_bones2, sizeof matrix3x4_t * 128 );
+		else
+			std::memcpy ( &hit_matrix_rec.back ( ).m_bones, features::ragebot::get_lag_rec ( pl_idx ).m_bones3, sizeof matrix3x4_t * 128 );
+
+		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos ( pl_idx ), std::to_wstring ( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA ( 161, 66, 245, 150 ) } );
+
+		player_info_t pl_info;
+		csgo::i::engine->get_player_info ( pl_idx, &pl_info );
+
+		if ( shot_logs ) {
+			print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), _ ( "[ sesame ] " ) );
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "Hit %s in the " ), pl_info.m_name );
+
+			switch ( hit_hitgroup [ pl_idx ] ) {
+			case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "generic" ) ); break;
+			case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "head" ) ); break;
+			case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "chest" ) ); break;
+			case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "stomach" ) ); break;
+			case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left arm" ) ); break;
+			case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right arm" ) ); break;
+			case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left leg" ) ); break;
+			case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right leg" ) ); break;
+			case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "gear" ) ); break;
+			default: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "unknown" ) ); break;
+			}
+
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " for " ) );
+			print_console ( oxui::color ( 255, 86, 86, 255 ), _ ( "%d" ), rdata::player_dmg [ pl_idx ] );
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( "; Wrong hitbox ( target " ) );
+
+			switch ( autowall::hitbox_to_hitgroup ( features::ragebot::get_hitbox ( pl_idx ) ) ) {
+			case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "generic" ) ); break;
+			case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "head" ) ); break;
+			case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "chest" ) ); break;
+			case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "stomach" ) ); break;
+			case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left arm" ) ); break;
+			case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right arm" ) ); break;
+			case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "left leg" ) ); break;
+			case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "right leg" ) ); break;
+			case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "gear" ) ); break;
+			default: print_console ( oxui::color ( 117, 255, 48, 255 ), _ ( "unknown" ) ); break;
+			}
+
+			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " )\n" ) );
+		}
+
+		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::queued_hit [ pl_idx ] = true;
+		rdata::player_hurt [ pl_idx ] = false;
+		rdata::last_shots [ pl_idx ] = features::ragebot::get_shots ( pl_idx );
+		features::ragebot::get_shot_pos ( pl_idx ) = vec3_t ( 0.0f, 0.0f, 0.0f );
+		rdata::player_dmg [ pl_idx ] = 0;
+		rdata::impact_dmg [ pl_idx ] = 0.0f;
+		features::ragebot::get_target_idx ( ) = 0;
+		features::ragebot::get_target ( ) = nullptr;
+		rdata::wrong_hitbox [ pl_idx ] = false;
 	}
 	else if ( rdata::player_hurt [ pl_idx ] ) {
 		hit_matrix_rec.push_back ( { uint32_t( pl_idx ), { }, csgo::i::globals->m_curtime, D3DCOLOR_RGBA ( 202, 252, 3, 255 ) } );
@@ -351,25 +421,6 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			
 			print_console ( oxui::color ( 255, 255, 255, 255 ), _ ( " for " ) );
 			print_console ( oxui::color ( 255, 86, 86, 255 ), _ ( "%d\n" ), rdata::player_dmg [ pl_idx ] );
-
-			//print_console ( oxui::color ( 0xd8, 0x50, 0xd4, 255 ), (char*)_ ( u8"【ごま】" ) );
-			//
-			//switch ( hit_hitgroup [ pl_idx ] ) {
-			//case 0: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"ジェネリック" ) ); break;
-			//case 1: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"頭" ) ); break;
-			//case 2: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胸" ) ); break;
-			//case 3: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"胃" ) ); break;
-			//case 4: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左腕" ) ); break;
-			//case 5: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右腕" ) ); break;
-			//case 6: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"左脚" ) ); break;
-			//case 7: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*) _ ( u8"右脚" ) ); break;
-			//case 10: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"装置" ) ); break;
-			//default: print_console ( oxui::color ( 117, 255, 48, 255 ), (char*)_ ( u8"不明" ) ); break;
-			//}
-			//
-			//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"に%を打ちます（" ), pl_info.m_name );
-			//print_console ( oxui::color ( 255, 86, 86, 255 ), ( char* ) _ ( u8"%d" ), rdata::player_dmg [ pl_idx ] );
-			//print_console ( oxui::color ( 255, 255, 255, 255 ), ( char* ) _ ( u8"）\n" ) );
 		}
 
 		rdata::impacts [ pl_idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
@@ -381,6 +432,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		rdata::impact_dmg [ pl_idx ] = 0.0f;
 		features::ragebot::get_target_idx ( ) = 0;
 		features::ragebot::get_target ( ) = nullptr;
+		rdata::wrong_hitbox [ pl_idx ] = false;
 	}
 }
 
@@ -485,8 +537,8 @@ void resolve_simple ( player_t* pl, float& yaw1, float& yaw2, float& yaw3 ) {
 	if ( pl->weapon ( ) && pl->weapon ( )->data ( ) )
 		has_slow_walk = std::fabsf ( pl->vel ( ).length_2d ( ) - animations::resolver::rdata::last_vel_rate [ pl->idx ( ) ] ) < 10.0f && animations::resolver::rdata::last_vel_rate [ pl->idx ( ) ] > 20.0f && pl->vel ( ).length_2d ( ) > 20.0f && animations::resolver::rdata::last_vel_rate [ pl->idx ( ) ] < pl->weapon ( )->data ( )->m_max_speed * 0.33f && pl->vel ( ).length_2d ( ) < pl->weapon ( )->data ( )->m_max_speed * 0.33f;
 
-	if ( std::fabsf ( avg_yaw_delta ) > pl->desync_amount() ) {
-		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * 2.0f;
+	if ( std::fabsf ( avg_yaw_delta ) > desync_amount * 1.2f ) {
+		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * ( ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
 		switch_delta = ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
 		correction_amount = switch_delta;
 
@@ -513,10 +565,28 @@ void resolve_simple ( player_t* pl, float& yaw1, float& yaw2, float& yaw3 ) {
 			yaw2 = csgo::normalize ( pl->angles ( ).y - desync_amount * 1.66f );
 			yaw3 = csgo::normalize ( pl->angles ( ).y );
 		}
-		else*/ {
+		else*/
+		if (pl->crouch_amount() > 0.666f) {
+			yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount );
+			yaw2 = csgo::normalize ( pl->angles ( ).y - desync_amount );
+			yaw3 = csgo::normalize ( pl->angles ( ).y );
+		}
+		else if ( !pl->weapon ( ) || !pl->weapon ( )->data( ) || pl->vel().length_2d() < pl->weapon ( )->data ( )->m_max_speed * 0.5f ) {
+			if ( has_slow_walk ) {
+				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -0.5f ) );
+				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -0.5f : 1.0f ) );
+				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount );
+			}
+			else {
+				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -1.0f ) );
+				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 1.0f ) );
+				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
+			}
+		}
+		else {
 			yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -1.0f ) );
 			yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 1.0f ) );
-			yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
+			yaw3 = csgo::normalize ( pl->angles ( ).y );
 		}
 	}
 
@@ -574,9 +644,7 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 
 	security_handler::update ( );
 
-	auto state = pl->animstate( );
-
-	if ( !state || !pl->layers ( ) || !resolver || !pl->weapon ( ) /*|| !animations::data::choke[pl->idx()]*/ ) {
+	if ( !resolver ) {
 		yaw1 = pl->angles ( ).y;
 		yaw2 = pl->angles ( ).y;
 		yaw3 = pl->angles ( ).y;
@@ -591,8 +659,6 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 		yaw1 = pl->angles().y;
 		yaw2 = pl->angles ( ).y;
 		yaw3 = pl->angles ( ).y;
-	
-		resolver_confidence [ pl->idx ( ) ] = 100.0f;
 		return;
 	}
 
@@ -612,10 +678,10 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 	//	features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve = 0;
 	//}
 
-	//if ( std::fabsf ( pl->angles ( ).x ) >= 60.0f )
-	//	initial_pitch_time [ pl->idx ( ) ] = csgo::i::globals->m_curtime;
+	if ( std::fabsf ( pl->angles ( ).x ) >= 60.0f )
+		initial_pitch_time [ pl->idx ( ) ] = csgo::i::globals->m_curtime;
 	
-	if ( std::fabsf ( pl->angles ( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx ( ) ] ) < 0.25f ) {
+	if ( std::fabsf ( pl->angles ( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx ( ) ] ) < 0.33f ) {
 		yaw1 = last_recorded_resolve1 [ pl->idx ( ) ];
 		yaw2 = last_recorded_resolve2 [ pl->idx ( ) ];
 		yaw3 = last_recorded_resolve3 [ pl->idx ( ) ];
@@ -628,13 +694,104 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 		resolve_simple ( pl, yaw1, yaw2, yaw3 );
 	//}
 
-		last_recorded_resolve1 [ pl->idx ( ) ] = yaw1;
-		last_recorded_resolve2 [ pl->idx ( ) ] = yaw2;
-		last_recorded_resolve3 [ pl->idx ( ) ] = yaw3;
+	last_recorded_resolve1 [ pl->idx ( ) ] = yaw1;
+	last_recorded_resolve2 [ pl->idx ( ) ] = yaw2;
+	last_recorded_resolve3 [ pl->idx ( ) ] = yaw3;
 
 	//last_recorded_resolve [ pl->idx ( ) ] = yaw;
 	last_recorded_tick [ pl->idx ( ) ] = csgo::i::globals->m_tickcount;
 	rdata::queued_hit [ pl->idx ( ) ] = false;
+}
+
+void animations::resolver::create_beams ( ) {
+	OPTION ( bool, bullet_tracers, "Sesame->C->Other->World->Bullet Tracers", oxui::object_checkbox );
+	OPTION ( bool, bullet_impacts, "Sesame->C->Other->World->Bullet Impacts", oxui::object_checkbox );
+	OPTION ( oxui::color, clr_bullet_tracer, "Sesame->C->Other->World->Bullet Tracer", oxui::object_colorpicker );
+	OPTION ( oxui::color, clr_bullet_impact, "Sesame->C->Other->World->Bullet Impact", oxui::object_colorpicker );
+
+	/* erase resolver data if we exit the game or connect to another server */
+	if ( !csgo::i::engine->is_connected ( ) || !csgo::i::engine->is_in_game ( ) ) {
+		for ( auto i = 0; i < 65; i++ ) {
+			particle_predicted_desync_offset [ i ] = FLT_MAX;
+			rdata::tried_side [ i ] = 0;
+			rdata::forced_side [ i ] = 0;
+			rdata::l_dmg [ i ] = 0.0f;
+			rdata::r_dmg [ i ] = 0.0f;
+			cached_resolves [ i ].clear ( );
+
+			if ( !csgo::i::ent_list->get< player_t* > ( i ) || !csgo::i::ent_list->get< player_t* > ( i )->alive ( ) )
+				features::ragebot::get_misses ( i ).bad_resolve = 0;
+		}
+	}
+
+	if ( !g::local || !g::local->alive ( ) ) {
+		if ( !impact_recs.empty ( ) )
+			impact_recs.clear ( );
+
+		if ( !hit_matrix_rec.empty ( ) )
+			hit_matrix_rec.clear ( );
+
+		return;
+	}
+
+	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
+		const auto dormant_time = 10.0f;
+		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( csgo::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf ( csgo::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
+	};
+
+	int cur_ray = 0;
+
+	for ( auto& impact : impact_recs ) {
+		vec3_t scrn_src;
+		vec3_t scrn_dst;
+
+		const auto alpha = calc_alpha ( impact.m_time, 2.0f, clr_bullet_tracer.a );
+		const auto alpha1 = calc_alpha ( impact.m_time, 2.0f, clr_bullet_impact.a );
+		const auto alpha2 = calc_alpha ( impact.m_time, 2.0f, 255 );
+
+		if ( !alpha && !alpha1 && !alpha2 ) {
+			impact_recs.erase ( impact_recs.begin ( ) + cur_ray );
+			continue;
+		}
+
+		impact.m_clr = D3DCOLOR_RGBA ( clr_bullet_tracer.r, clr_bullet_tracer.g, clr_bullet_tracer.b, alpha );
+
+		if ( bullet_tracers && !impact.m_beam_created ) {
+			beam_info_t beam_info;
+			
+			beam_info.m_type = 0;
+			beam_info.m_model_name = "sprites/physbeam.vmt";
+			beam_info.m_model_idx = -1;
+			beam_info.m_halo_scale = 0.0f;
+			beam_info.m_start = impact.m_dst;
+			beam_info.m_end = impact.m_src - vec3_t( 0.0f, 0.0f, 2.0f );
+			beam_info.m_life = 7.0f;
+			beam_info.m_fade_len = 2.0f;
+			beam_info.m_amplitude = 2.3f;
+			beam_info.m_segments = 2;
+			beam_info.m_renderable = true;
+			beam_info.m_speed = 0.0f;
+			beam_info.m_start_frame = 0;
+			beam_info.m_frame_rate = 0.0f;
+			beam_info.m_width = 1.5f;
+			beam_info.m_end_width = 1.5f;
+			beam_info.m_flags = 0;
+
+			beam_info.m_red = static_cast< float > ( clr_bullet_tracer.r );
+			beam_info.m_green = static_cast< float > ( clr_bullet_tracer.g );
+			beam_info.m_blue = static_cast< float > ( clr_bullet_tracer.b );
+			beam_info.m_brightness = static_cast< float > ( clr_bullet_tracer.a );
+
+			auto beam = csgo::i::beams->create_beam_points ( beam_info );
+
+			if ( beam )
+				csgo::i::beams->draw_beam ( beam );
+			
+			impact.m_beam_created = true;
+		}
+
+		cur_ray++;
+	}
 }
 
 void animations::resolver::render_impacts ( ) {
@@ -667,34 +824,6 @@ void animations::resolver::render_impacts ( ) {
 
 		return;
 	}
-
-	//if ( !hit_matrix_rec.empty ( ) && !hit_matrix )
-	//	hit_matrix_rec.clear ( );
-	//
-	//if ( !impact_recs.empty ( ) && ( !bullet_tracers && !bullet_impacts ) )
-	//	impact_recs.clear ( );
-
-	//for ( auto i = 0; i < 65; i++ ) {
-	//	const auto ent = csgo::i::ent_list->get< player_t* > ( i );
-	//
-	//	if ( !ent->valid ( ) )
-	//		continue;
-	//
-	//	for ( auto& cached_resolve : cached_resolves [ i ] ) {
-	//		if ( !cached_resolve.within ( i ) )
-	//			continue;
-	//
-	//		vec3_t screen;
-	//
-	//		if ( csgo::render::world_to_screen ( screen, cached_resolve.m_origin ) ) {
-	//			const auto correction_amount = std::to_wstring ( static_cast< int > ( cached_resolve.m_correction ) );
-	//			render::dim dim;
-	//			render::text_size ( features::esp::esp_font, correction_amount, dim );
-	//			render::text ( screen.x - dim.w / 2, screen.y - dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::esp_font, correction_amount, true );
-	//			render::circle3d ( cached_resolve.m_origin, 90, 26, D3DCOLOR_RGBA ( 193, 108, 230, 255 ), true );
-	//		}
-	//	}
-	//}
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
 		const auto dormant_time = 10.0f;
@@ -757,11 +886,11 @@ void animations::resolver::render_impacts ( ) {
 
 		impact.m_clr = D3DCOLOR_RGBA ( clr_bullet_tracer.r, clr_bullet_tracer.g, clr_bullet_tracer.b, alpha );
 
-		if ( bullet_tracers ) {
-			render::line ( scrn_src.x - 1, scrn_src.y, scrn_dst.x - 1, scrn_dst.y, impact.m_clr );
-			render::line ( scrn_src.x + 1, scrn_src.y, scrn_dst.x + 1, scrn_dst.y, impact.m_clr );
-			render::line ( scrn_src.x, scrn_src.y, scrn_dst.x, scrn_dst.y, impact.m_clr );
-		}
+		//if ( bullet_tracers ) {
+		//	render::line ( scrn_src.x - 1, scrn_src.y, scrn_dst.x - 1, scrn_dst.y, impact.m_clr );
+		//	render::line ( scrn_src.x + 1, scrn_src.y, scrn_dst.x + 1, scrn_dst.y, impact.m_clr );
+		//	render::line ( scrn_src.x, scrn_src.y, scrn_dst.x, scrn_dst.y, impact.m_clr );
+		//}
 
 		render::dim dim;
 		render::text_size ( features::esp::esp_font, impact.m_msg, dim );

@@ -6,8 +6,10 @@ namespace animations {
 		namespace rdata {
 			static std::array< float, 65 > impact_dmg { 0.0f };
 			static std::array< vec3_t, 65 > impacts { vec3_t( 0.0f, 0.0f, 0.0f ) };
+			static vec3_t non_player_impacts = vec3_t ( 0.0f, 0.0f, 0.0f );
 			static std::array< int, 65 > player_dmg { 0 };
 			static std::array< bool, 65 > player_hurt { false };
+			static std::array< bool, 65 > wrong_hitbox { false };
 			static std::array< bool, 65 > queued_hit { false };
 			static std::array< bool, 65 > has_jitter { false };
 			static std::array< bool, 65 > flip_jitter { false };
@@ -63,6 +65,7 @@ namespace animations {
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
 		void resolve( player_t* pl, float& yaw1, float& yaw2, float& yaw3 );
+		void create_beams ( );
 		void render_impacts( );
 		void update( ucmd_t* ucmd );
 	}

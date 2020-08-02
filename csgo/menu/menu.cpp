@@ -1224,6 +1224,10 @@ void menu::init( ) {
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Grenade Radii" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Spread Circle" ) ) );
 						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Gradient Spread Circle" ) ) );
+						world->add_element ( std::make_shared< oxui::checkbox > ( OSTR ( "Offscreen ESP" ) ) );
+						world->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Offscreen Arrow Distance" ), 0.0, 0.0, 100.0 ) );
+						world->add_element ( std::make_shared< oxui::slider > ( OSTR ( "Offscreen Arrow Size" ), 0.0, 0.0, 100.0 ) );
+						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Offscreen ESP Color" ), oxui::color ( 161, 66, 245, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::dropdown > ( OSTR ( "Hit Sound" ), std::vector< oxui::str > { OSTR ( "None" ), OSTR ( "Arena Switch" ), OSTR ( "Fall Pain" ), OSTR ( "Bolt" ), OSTR ( "Neck Snap" ), OSTR ( "Power Switch" ), OSTR ( "Glass" ), OSTR ( "Bell" ), OSTR ( "COD" ), OSTR ( "Rattle" ), OSTR ( "Sesame" ) } ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Tracer" ), oxui::color ( 161, 66, 245, 255 ) ) );
 						world->add_element ( std::make_shared< oxui::color_picker > ( OSTR ( "Bullet Impact" ), oxui::color ( 201, 145, 250, 255 ) ) );

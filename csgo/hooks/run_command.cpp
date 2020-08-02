@@ -2,6 +2,7 @@
 #include "../globals.hpp"
 #include "../features/prediction.hpp"
 #include "create_move.hpp"
+#include "../animations/animations.hpp"
 
 decltype( &hooks::run_command ) hooks::old::run_command = nullptr;
 
@@ -21,7 +22,10 @@ void __fastcall hooks::run_command ( REG, player_t* ent, ucmd_t* cmd, c_move_hel
 
 	old::run_command ( REG_OUT, ent, cmd, move_helper );
 
-	// local_anims.run_command ( cmd );
+	RUN_SAFE (
+		"animations::restore_local",
+		animations::restore_local ( );
+	);
 
 	if ( g::shifted_tickbase == cmd->m_cmdnum ) {
 		g::local->tick_base ( ) = backup_tb + 1;

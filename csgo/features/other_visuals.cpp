@@ -1,5 +1,6 @@
 ﻿#include "other_visuals.hpp"
 #include "../globals.hpp"
+#include "lagcomp.hpp"
 #include <deque>
 #include <mutex>
 
@@ -27,12 +28,63 @@ bool features::get_visuals ( player_t* pl, oxui::visual_editor::settings_t** out
 	return true;
 }
 
+void features::offscreen_esp::draw ( ) {
+	OPTION ( double, offscreen_arrow_distance, "Sesame->C->Other->World->Offscreen Arrow Distance", oxui::object_slider );
+	OPTION ( double, offscreen_arrow_size, "Sesame->C->Other->World->Offscreen Arrow Size", oxui::object_slider );
+	OPTION ( bool, offscreen_esp, "Sesame->C->Other->World->Offscreen ESP", oxui::object_checkbox );	
+	OPTION ( oxui::color, spread_circle_clr, "Sesame->C->Other->World->Offscreen ESP Color", oxui::object_colorpicker );
+
+	if ( !g::local || !offscreen_esp )
+		return;
+
+	int w = 0, h = 0;
+	render::screen_size ( w, h );
+
+	vec3_t center ( w * 0.5f, h * 0.5f, 0.0f );
+
+	const auto calc_distance = offscreen_arrow_distance / 100.0f * ( h * 0.5f );
+
+	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
+		const auto pl = csgo::i::ent_list->get< player_t* > ( i );
+
+		if ( !pl || !pl->alive() || pl->dormant() || pl->team() == g::local->team() )
+			continue;
+
+		vec3_t screen;
+		
+		auto interp_origin = lagcomp::data::cham_records [ pl->idx ( ) ].m_bones1 [ 1 ].origin ( );
+
+		if ( !csgo::render::world_to_screen ( screen, interp_origin ) ) {
+			auto target_ang = csgo::vec_angle ( center - screen );
+			target_ang.y = csgo::normalize ( target_ang.y - 90.0f );
+
+			auto top_ang = csgo::vec_angle ( vec3_t ( 0.0f, -calc_distance - offscreen_arrow_size * 0.5f ) ) + target_ang;
+			auto left_ang = csgo::vec_angle ( vec3_t ( -offscreen_arrow_size * 0.5f, -calc_distance + offscreen_arrow_size * 0.5f ) ) + target_ang;
+			auto right_ang = csgo::vec_angle ( vec3_t ( offscreen_arrow_size * 0.5f, -calc_distance + offscreen_arrow_size * 0.5f ) ) + target_ang;
+
+			top_ang.y = csgo::normalize ( top_ang.y );
+			left_ang.y = csgo::normalize ( left_ang.y );
+			right_ang.y = csgo::normalize ( right_ang.y );
+
+			const auto mag1 = calc_distance + offscreen_arrow_size * 0.5f;
+			const auto mag2 = calc_distance - offscreen_arrow_size * 0.5f;
+
+			const auto top_pos = center + csgo::angle_vec ( top_ang ) * mag1;
+			const auto left_pos = center + csgo::angle_vec ( left_ang ) * mag2;
+			const auto right_pos = center + csgo::angle_vec ( right_ang ) * mag2;
+
+			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( spread_circle_clr.r, spread_circle_clr.g, spread_circle_clr.b, spread_circle_clr.a ), false );
+			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( spread_circle_clr.r - 33, spread_circle_clr.g - 33, spread_circle_clr.b - 33, spread_circle_clr.a ), true );
+		}
+	}
+}
+
 void features::spread_circle::draw ( ) {
 	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
 	OPTION ( oxui::color, spread_circle_clr, "Sesame->C->Other->World->Spread Circle Color", oxui::object_colorpicker );
 	OPTION ( bool, spread_circle, "Sesame->C->Other->World->Spread Circle", oxui::object_checkbox );
 	OPTION ( bool, gradient_spread_circle, "Sesame->C->Other->World->Gradient Spread Circle", oxui::object_checkbox );
-
+	
 	int w = 0, h = 0;
 	render::screen_size ( w, h );
 

@@ -168,6 +168,7 @@
     <ClInclude Include="player_images.h" />
     <ClInclude Include="renderer\d3d9.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="sdk\beams.hpp" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\effects.hpp" />
     <ClInclude Include="sdk\engine.hpp" />

@@ -7,5 +7,6 @@ namespace features {
 		bool detonated ( weapon_t* weapon, float time, trace_t& trace );
 		void trace ( ucmd_t* ucmd );
 		void draw ( );
+		void draw_beam ( );
 	}
 }

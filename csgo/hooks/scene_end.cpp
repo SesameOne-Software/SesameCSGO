@@ -46,7 +46,7 @@ void __fastcall hooks::scene_end ( REG ) {
 
 					if ( !hit_matrix_rec.empty ( ) )
 						for ( auto& hit : hit_matrix_rec )
-							if ( hit.m_pl == pl_idx )
+							if ( hit.m_pl == pl_idx - 1 )
 								hit_matricies.push_back ( hit );
 
 					if ( !hit_matricies.empty ( ) ) {

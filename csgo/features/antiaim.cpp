@@ -319,8 +319,14 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		max_lag = std::clamp< int > ( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
 		max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
 
+		/* allow 1 extra tick just for when we land (if we are in air) */
+		if ( !( g::local->flags ( ) & 1 ) ) {
+			max_lag = std::clamp< int > ( max_lag, 1, 15 );
+			max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
+		}
+
 		if ( fakewalk && slowwalk_key ) {
-			max_lag = 6;
+			max_lag = 14;
 			max_send = 0;
 		}
 
@@ -333,8 +339,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			aa::choke_counter = 0;
 		}
 
-		//if ( g::local->flags ( ) & 1 && !aa::was_on_ground && g::local->weapon ( )->item_definition_index ( ) != 64 )
-		//	g::send_packet = false;
+		if ( g::local->flags ( ) & 1 && !aa::was_on_ground && g::local->weapon ( )->item_definition_index ( ) != 64 )
+			g::send_packet = false;
 
 		aa::was_on_ground = g::local->flags ( ) & 1;
 
@@ -378,12 +384,16 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			const auto move_ratio = target_speed * move_to_button_ratio;
 
 			if ( !target_speed ) {
-				if ( magnitude <= 13.0f ) {
+				if ( g::local->vel ( ).length_2d ( ) <= 13.0f ) {
 					old_fmove = old_smove = 0.0f;
 				}
 				else {
-					old_fmove = ( old_fmove / magnitude ) * move_ratio;
-					old_smove = ( old_smove / magnitude ) * move_ratio;
+					auto as_ang = csgo::vec_angle ( vec_move );
+					as_ang.y = csgo::normalize ( as_ang.y + 180.0f );
+					const auto inverted_move = csgo::angle_vec ( as_ang );
+
+					old_fmove = inverted_move.x * 450.0f;
+					old_smove = inverted_move.y * 450.0f;
 				}
 			}
 			else if ( std::fabsf ( old_fmove ) > 3.0f || std::fabsf ( old_smove ) > 3.0f ) {
@@ -392,24 +402,27 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		};
 
-		if ( slowwalk_key ) {
+		if ( slowwalk_key && g::local->weapon ( ) && g::local->weapon ( )->data( ) ) {
 			if ( fakewalk ) {
 				force_standing_antiaim = true;
 
-				/* force lby flick, will update when we stand still and send packet... */
-				if ( !aa::choke_counter ) {
+				if ( aa::choke_counter > 7 )
 					approach_speed ( 0.0f );
-				}
-				else {
-					if ( aa::choke_counter == 6 )
-						approach_speed ( 0.0f );
-					else {
-						approach_speed ( 23.0f );
 
-						if ( aa::choke_counter == 5 )
-							lby::in_update = true;
-					}
-				}
+				/* force lby flick, will update when we stand still and send packet... */
+				//if ( !aa::choke_counter ) {
+				//	approach_speed ( 0.0f );
+				//}
+				//else {
+				//	if ( aa::choke_counter == 6 )
+				//		approach_speed ( 0.0f );
+				//	else {
+				//		//approach_speed ( g::local->weapon ( )->data ( )->m_max_speed * 0.333f );
+				//
+				//		if ( aa::choke_counter == 5 )
+				//			lby::in_update = true;
+				//	}
+				//}
 			}
 			else {
 				/* tiny slowwalk */

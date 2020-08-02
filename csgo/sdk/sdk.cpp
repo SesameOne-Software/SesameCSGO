@@ -23,6 +23,7 @@ mdl_cache_t* csgo::i::mdl_cache = nullptr;
 c_input* csgo::i::input = nullptr;
 void* csgo::i::cvar = nullptr;
 c_game_event_mgr* csgo::i::events = nullptr;
+c_view_render_beams* csgo::i::beams = nullptr;
 IDirect3DDevice9* csgo::i::dev = nullptr;
 
 c_mdl_cache_critical_section::c_mdl_cache_critical_section( ) {
@@ -120,116 +121,6 @@ void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, 
 	}
 }
 
-void csgo::for_each_player( std::function< void( player_t* ) > fn ) {
-	for ( auto i = 1; i <= i::globals->m_max_clients; i++ ) {
-		auto entity = i::ent_list->get< player_t* >( i );
-
-		if ( !entity->valid( ) )
-			continue;
-
-		fn( entity );
-	}
-}
-
-float csgo::normalize( float ang ) {
-	while ( ang > 180.0f ) ang -= 360.0f;
-	while ( ang < -180.0f ) ang += 360.0f;
-	return ang;
-}
-
-void csgo::clamp( vec3_t& ang ) {
-	auto flt_valid = [ ] ( float val ) {
-		return std::isfinite( val ) && !std::isnan( val );
-	};
-
-	for ( auto i = 0; i < 3; i++ )
-		if ( !flt_valid( ang [ i ] ) )
-			return;
-
-	ang.x = std::clamp( normalize( ang.x ), -89.0f, 89.0f );
-	ang.y = std::clamp( normalize( ang.y ), -180.0f, 180.0f );
-	ang.z = 0.0f;
-}
-
-float csgo::rad2deg( float rad ) {
-	float result = rad * ( 180.0f / pi );
-	return result;
-}
-
-float csgo::deg2rad( float deg ) {
-	float result = deg * ( pi / 180.0f );
-	return result;
-}
-
-void csgo::sin_cos( float radians, float* sine, float* cosine ) {
-	*sine = std::sinf( radians );
-	*cosine = std::cosf( radians );
-}
-
-vec3_t csgo::calc_angle( const vec3_t& from, const vec3_t& to ) {
-	return vec_angle( to - from );
-}
-
-vec3_t csgo::vec_angle( vec3_t vec ) {
-	vec3_t ret;
-
-	if ( vec.x == 0.0f && vec.y == 0.0f ) {
-		ret.x = ( vec.z > 0.0f ) ? 270.0f : 90.0f;
-		ret.y = 0.0f;
-	}
-	else {
-		ret.x = rad2deg( std::atan2f( -vec.z, vec.length_2d( ) ) );
-		ret.y = rad2deg( std::atan2f( vec.y, vec.x ) );
-
-		if ( ret.y < 0.0f )
-			ret.y += 360.0f;
-
-		if ( ret.x < 0.0f )
-			ret.x += 360.0f;
-	}
-
-	ret.z = 0.0f;
-
-	return ret;
-}
-
-vec3_t csgo::angle_vec( vec3_t angle ) {
-	vec3_t ret;
-
-	float sp, sy, cp, cy;
-
-	sin_cos( deg2rad( angle.y ), &sy, &cy );
-	sin_cos( deg2rad( angle.x ), &sp, &cp );
-
-	ret.x = cp * cy;
-	ret.y = cp * sy;
-	ret.z = -sp;
-
-	return ret;
-}
-
-void csgo::util_traceline( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr ) {
-	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, std::uint32_t, const void*, std::uint32_t, trace_t* );
-	static auto utl = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 83 EC 7C 56 52" ) ).get< fn >( );
-	utl( start, end, mask, ignore, 0, tr );
-}
-
-void csgo::util_tracehull( const vec3_t& start, const vec3_t& end, const vec3_t& mins, const vec3_t& maxs, unsigned int mask, const void* ignore, trace_t* tr ) {
-	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, const vec3_t&, const vec3_t&, unsigned int, const void*, std::uint32_t, trace_t* );
-	static auto utl = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 8B 07 83 C4 20" ) ).resolve_rip( ).get< fn >( );
-	utl( start, end, mins, maxs, mask, ignore, 0, tr );
-}
-
-bool csgo::is_visible( const vec3_t& point ) {
-	if ( !g::local->valid( ) )
-		return false;
-
-	trace_t tr;
-	util_traceline( g::local->eyes( ), point, 0x46004003, g::local, &tr );
-
-	return tr.m_fraction > 0.97f || ( reinterpret_cast< player_t* >( tr.m_hit_entity )->valid ( ) && reinterpret_cast< player_t* >( tr.m_hit_entity )->team ( ) != g::local->team ( ) );
-}
-
 template < typename t >
 t csgo::create_interface( const char* module, const char* iname ) {
 	using createinterface_fn = void* ( __cdecl* )( const char*, int );
@@ -237,72 +128,6 @@ t csgo::create_interface( const char* module, const char* iname ) {
 	const auto fn = ( createinterface_fn ) createinterface_export;
 
 	return reinterpret_cast< t >( fn( iname, 0 ) );
-}
-
-void csgo::rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, const vec3_t& old_angs ) {
-	auto dv = 0.0f;
-	auto f1 = 0.0f;
-	auto f2 = 0.0f;
-
-	if ( old_angs.y < 0.f )
-		f1 = 360.0f + old_angs.y;
-	else
-		f1 = old_angs.y;
-
-	if ( ucmd->m_angs.y < 0.0f )
-		f2 = 360.0f + ucmd->m_angs.y;
-	else
-		f2 = ucmd->m_angs.y;
-
-	if ( f2 < f1 )
-		dv = abs ( f2 - f1 );
-	else
-		dv = 360.0f - abs ( f1 - f2 );
-
-	dv = 360.0f - dv;
-
-	ucmd->m_fmove = std::cosf ( csgo::deg2rad ( dv ) ) * old_fmove + std::cosf ( csgo::deg2rad ( dv + 90.0f ) ) * old_smove;
-	ucmd->m_smove = std::sinf ( csgo::deg2rad ( dv ) ) * old_fmove + std::sinf ( csgo::deg2rad ( dv + 90.0f ) ) * old_smove;
-}
-
-void csgo::angle_matrix ( const vec3_t& angles, const vec3_t& position, matrix3x4_t& matrix ) {
-	angle_matrix ( angles, matrix );
-	matrix.set_origin ( position );
-}
-
-void csgo::angle_matrix ( const vec3_t& angles, matrix3x4_t& matrix ) {
-	float sr, sp, sy, cr, cp, cy;
-
-	sin_cos ( deg2rad ( angles.y ), &sy, &cy );
-	sin_cos ( deg2rad ( angles.x ), &sp, &cp );
-	sin_cos ( deg2rad ( angles.z ), &sr, &cr );
-
-	// matrix = (YAW * PITCH) * ROLL
-	matrix [ 0 ][ 0 ] = cp * cy;
-	matrix [ 1 ][ 0 ] = cp * sy;
-	matrix [ 2 ][ 0 ] = -sp;
-
-	float crcy = cr * cy;
-	float crsy = cr * sy;
-	float srcy = sr * cy;
-	float srsy = sr * sy;
-
-	matrix [ 0 ][ 1 ] = sp * srcy - crsy;
-	matrix [ 1 ][ 1 ] = sp * srsy + crcy;
-	matrix [ 2 ][ 1 ] = sr * cp;
-
-	matrix [ 0 ][ 2 ] = ( sp * crcy + srsy );
-	matrix [ 1 ][ 2 ] = ( sp * crsy - srcy );
-	matrix [ 2 ][ 2 ] = cr * cp;
-
-	matrix [ 0 ][ 3 ] = 0.0f;
-	matrix [ 1 ][ 3 ] = 0.0f;
-	matrix [ 2 ][ 3 ] = 0.0f;
-}
-
-bool csgo::is_valve_server ( ) {
-	static auto cs_game_rules = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 74 38" ) ).add ( 1 ).deref( ).get< void* > ( );
-	return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x75 );
 }
 
 bool csgo::init( ) {
@@ -326,6 +151,7 @@ bool csgo::init( ) {
 	i::cvar = create_interface< void* >( _( "vstdlib.dll" ), _( "VEngineCvar007" ) );
 	i::move_helper = **reinterpret_cast< c_move_helper*** >( pattern::search( _( "client.dll" ), _( "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" ) ).add( 2 ).get< std::uintptr_t >( ) );
 	i::client_state = **reinterpret_cast< c_clientstate*** >( reinterpret_cast< std::uintptr_t >( vfunc< void* >( i::engine, 12 ) ) + 16 );
+	i::beams = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 56 8B F1 B9 ? ? ? ? FF 50 08" ) ).add ( 1 ).deref ( ).get< c_view_render_beams* > ( );
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" ) ), _( "g_pMemAlloc" ) );
 	i::dev = pattern::search( _( "shaderapidx9.dll" ), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C" ) ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
 

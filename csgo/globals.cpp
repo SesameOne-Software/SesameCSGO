@@ -15,3 +15,5 @@ int g::shifted_amount=0;
 bool g::send_packet = true;
 int g::dt_ticks_to_shift = 0;
 int g::dt_recharge_time = 0;
+int g::cock_ticks = 0;
+bool g::can_fire_revolver = false;

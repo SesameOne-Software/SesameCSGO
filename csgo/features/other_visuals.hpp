@@ -10,4 +10,8 @@ namespace features {
 
 		void draw ( );
 	}
+
+	namespace offscreen_esp {
+		void draw ( );
+	}
 }

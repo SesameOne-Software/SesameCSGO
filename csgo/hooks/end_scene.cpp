@@ -89,6 +89,11 @@ long __fastcall hooks::end_scene ( REG, IDirect3DDevice9* device ) {
 	);
 
 	RUN_SAFE (
+		"features::offscreen_esp::draw",
+		features::offscreen_esp::draw ( );
+	);
+
+	RUN_SAFE (
 		"js::process_render_callbacks",
 		js::process_render_callbacks ( );
 	);

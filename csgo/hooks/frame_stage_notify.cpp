@@ -5,6 +5,7 @@
 #include "../features/antiaim.hpp"
 #include "../features/chams.hpp"
 #include "../features/glow.hpp"
+#include "../features/nade_prediction.hpp"
 #include "../animations/animations.hpp"
 #include "../animations/resolver.hpp"
 #include "../javascript/js_api.hpp"
@@ -85,6 +86,16 @@ void __fastcall hooks::frame_stage_notify ( REG, int stage ) {
 	);
 
 	if ( stage == 5 && g::local ) {
+		RUN_SAFE (
+			"animations::resolver::create_beams",
+			animations::resolver::create_beams ( );
+		);
+
+		RUN_SAFE (
+			"features::nade_prediction::draw_beam",
+			features::nade_prediction::draw_beam ( );
+		);
+
 		RUN_SAFE (
 			"run_preserve_death_notices",
 			run_preserve_death_notices ( );

@@ -52,7 +52,7 @@ namespace animations {
 	void estimate_vel ( player_t* pl, vec3_t& out );
 	bool setup_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
 	int store_local ( );
-	int restore_local( );
+	int restore_local( bool render = false );
 	int fix_pl( player_t* pl );
 	int run( int stage );
 }
