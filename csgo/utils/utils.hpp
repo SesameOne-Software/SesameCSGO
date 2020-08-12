@@ -9,6 +9,8 @@
 
 extern std::array< bool, 5 > mouse_down;
 extern std::array< bool, 512 > key_down;
+extern std::array< bool, 512 > key_toggled;
+extern std::array< bool, 512 > last_key_toggled;
 
 namespace utils {
 	__forceinline bool key_state ( int vkey ) {
@@ -21,6 +23,29 @@ namespace utils {
 		}
 
 		return key_down [ vkey ];
+	}
+
+	__forceinline bool last_key_state ( int vkey ) {
+		return last_key_toggled [ vkey ];
+	}
+
+	__forceinline void update_key_toggles ( ) {
+		for ( auto i = 0; i < 512; i++ ) {
+			if ( !key_state ( i ) && last_key_state ( i ) )
+				key_toggled [ i ] = !key_toggled [ i ];
+
+			last_key_toggled [ i ] = key_state ( i );
+		}
+	}
+
+	__forceinline bool keybind_active ( int vkey, int mode ) {
+		switch ( mode ) {
+		case 0: return vkey && key_state ( vkey ); break;
+		case 1: return vkey && key_toggled [ vkey ]; break;
+		case 2: return true; break;
+		}
+
+		return false;
 	}
 }
 

@@ -14,6 +14,9 @@ namespace features {
 				auto_revolver,
 				knife_bot,
 				zeus_bot,
+				fix_fakelag,
+				resolve_desync,
+				headshot_only,
 				dt_teleport,
 				baim_lethal,
 				baim_air,
@@ -26,7 +29,8 @@ namespace features {
 				scan_feet,
 				safe_point,
 				legit_mode,
-				triggerbot;
+				triggerbot,
+				dt_enabled;
 
 			double min_dmg,
 				hit_chance,
@@ -38,8 +42,9 @@ namespace features {
 				baim_if_resolver_confidence_less_than;
 
 			int inherit_from,
-				dt_key,
-				triggerbot_key;
+				dt_key, dt_key_mode,
+				triggerbot_key, triggerbot_key_mode,
+				safe_point_key, safe_point_key_mode;
 		};
 		
 		extern weapon_config_t active_config;

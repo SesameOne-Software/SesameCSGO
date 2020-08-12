@@ -12,11 +12,10 @@ bool __fastcall hooks::setup_bones ( REG, matrix3x4_t* out, int max_bones, int m
 
 	const auto pl = reinterpret_cast< player_t* > ( uintptr_t ( ecx ) - 4 );
 	
-	//192.223.30.224:27015
 	/* remove to force matrix on local player */
 	if( pl && pl == g::local )
 		return animations::setup_bones ( pl, out, mask, vec3_t ( ), vec3_t ( ), curtime );
-
+	
 	if ( pl && pl->is_player ( ) && pl->idx ( ) > 0 && pl->idx ( ) <= 64 && out && !bone_setup::allow ) {
 		if ( pl == g::local ) {
 			memcpy ( out, &animations::data::fixed_bones [ g::local->idx ( ) ], sizeof ( matrix3x4_t ) * max_bones );

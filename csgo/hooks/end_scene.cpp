@@ -11,11 +11,12 @@
 #include "../animations/animations.hpp"
 #include "../animations/resolver.hpp"
 #include "../javascript/js_api.hpp"
+#include "../menu/options.hpp"
 
 decltype( &hooks::end_scene ) hooks::old::end_scene = nullptr;
 
 long __fastcall hooks::end_scene ( REG, IDirect3DDevice9* device ) {
-	OPTION ( bool, no_scope, "Sesame->C->Other->Removals->No Scope", oxui::object_checkbox );
+	static auto& removals = options::vars [ _ ( "visuals.other.removals" ) ].val.l;
 
 	static auto ret = _ReturnAddress ( );
 
@@ -76,7 +77,7 @@ long __fastcall hooks::end_scene ( REG, IDirect3DDevice9* device ) {
 		animations::resolver::render_impacts ( );
 	);
 
-	if ( no_scope && g::local && g::local->scoped ( ) ) {
+	if ( removals[2] && g::local && g::local->scoped ( ) ) {
 		int w, h;
 		render::screen_size ( w, h );
 		render::line ( w / 2, 0, w / 2, h, D3DCOLOR_RGBA ( 0, 0, 0, 255 ) );
@@ -100,8 +101,7 @@ long __fastcall hooks::end_scene ( REG, IDirect3DDevice9* device ) {
 
 	RUN_SAFE (
 		"menu::draw",
-		menu::draw_watermark ( );
-	menu::draw ( );
+		gui::draw ( );
 	);
 
 	pixel_state->Apply ( );

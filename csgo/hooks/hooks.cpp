@@ -38,20 +38,26 @@
 #include "../features/esp.hpp"
 
 #include "../segoeui.h"
+#include "../icons/generated_font/sesame_icons.hpp"
+
+#include "../menu/menu.hpp"
 
 void hooks::init ( ) {
-	unsigned long font_count = 0;
-	LI_FN ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
-	LI_FN ( AddFontMemResourceEx ) ( sesame_segoe_ui, sizeof sesame_segoe_ui, nullptr, &font_count );
+	/* initialize cheat config */
+	gui::init ( );
+	erase::erase_func ( gui::init );
 
-	menu::init ( );
-	erase::erase_func ( menu::init );
+	/* initialize resources we need from memory */
+	unsigned long font_count = 0;
+	// ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_icons_font, sizeof resources::sesame_icons_font, nullptr, &font_count );
 
 	/* create fonts */
-	render::create_font ( ( void** ) &features::esp::dbg_font, _ ( L"Segoe UI" ), N ( 12 ), false );
-	render::create_font ( ( void** ) &features::esp::esp_font, _ ( L"Segoe UI" ), N ( 18 ), false );
-	render::create_font ( ( void** ) &features::esp::indicator_font, _ ( L"Segoe UI" ), N ( 14 ), true );
-	render::create_font ( ( void** ) &features::esp::watermark_font, _ ( L"Segoe UI" ), N ( 18 ), false );
+	render::create_font ( ( void** ) &features::esp::dbg_font, _ ( L"sesame_ui" ), N ( 12 ), false );
+	render::create_font ( ( void** ) &features::esp::esp_font, _ ( L"sesame_ui" ), N ( 14 ), false );
+	render::create_font ( ( void** ) &features::esp::indicator_font, _ ( L"sesame_ui" ), N ( 14 ), true );
+	render::create_font ( ( void** ) &features::esp::watermark_font, _ ( L"sesame_ui" ), N ( 18 ), false );
 
 	/* load default config */
 	//menu::load_default( );

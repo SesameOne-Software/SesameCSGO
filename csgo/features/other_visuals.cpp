@@ -3,36 +3,203 @@
 #include "lagcomp.hpp"
 #include <deque>
 #include <mutex>
+#include "../menu/options.hpp"
 
 float features::spread_circle::total_spread = 0.0f;
 
-bool features::get_visuals ( player_t* pl, oxui::visual_editor::settings_t** out ) {
-	OPTION ( oxui::visual_editor::settings_t, vis_local, "Sesame->C->Local->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
-	OPTION ( oxui::visual_editor::settings_t, vis_enemy, "Sesame->C->Enemy->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
-	OPTION ( oxui::visual_editor::settings_t, vis_team, "Sesame->C->Team->Visual Editor->Visual Editor Data", oxui::object_visual_editor );
+bool features::get_visuals ( player_t* pl, visual_config_t& out ) {
+	memset ( &out, 0, sizeof out );
 
-	if ( !pl || !pl->alive( ) || !pl->idx( ) || pl->idx( ) > csgo::i::globals->m_max_clients )
+	if ( !pl || !pl->is_player( ) )
 		return false;
 
 	if ( pl == g::local ) {
-		*out = &vis_local;
+		static auto& options = options::vars [ _ ( "visuals.local.options" ) ].val.l;
+		static auto& health_bar_placement = options::vars [ _ ( "visuals.local.health_bar_location" ) ].val.i;
+		static auto& desync_bar_placement = options::vars [ _ ( "visuals.local.desync_bar_location" ) ].val.i;
+		static auto& ammo_bar_placement = options::vars [ _ ( "visuals.local.ammo_bar_location" ) ].val.i;
+		static auto& value_text_placement = options::vars [ _ ( "visuals.local.value_text_location" ) ].val.i;
+		static auto& nametag_placement = options::vars [ _ ( "visuals.local.nametag_location" ) ].val.i;
+		static auto& weapon_name_placement = options::vars [ _ ( "visuals.local.weapon_name_location" ) ].val.i;
+		static auto& reflectivity = options::vars [ _ ( "visuals.local.reflectivity" ) ].val.f;
+		static auto& phong = options::vars [ _ ( "visuals.local.phong" ) ].val.f;
+		static auto& chams_color = options::vars [ _ ( "visuals.local.chams_color" ) ].val.c;
+		static auto& xqz_chams_color = options::vars [ _ ( "visuals.local.xqz_chams_color" ) ].val.c;
+		static auto& backtrack_chams_color = options::vars [ _ ( "visuals.local.backtrack_chams_color" ) ].val.c;
+		static auto& hit_matrix_color = options::vars [ _ ( "visuals.local.hit_matrix_color" ) ].val.c;
+		static auto& glow_color = options::vars [ _ ( "visuals.local.glow_color" ) ].val.c;
+		static auto& rimlight_overlay_color = options::vars [ _ ( "visuals.local.rimlight_overlay_color" ) ].val.c;
+		static auto& box_color = options::vars [ _ ( "visuals.local.box_color" ) ].val.c;
+		static auto& health_bar_color = options::vars [ _ ( "visuals.local.health_bar_color" ) ].val.c;
+		static auto& ammo_bar_color = options::vars [ _ ( "visuals.local.ammo_bar_color" ) ].val.c;
+		static auto& desync_bar_color = options::vars [ _ ( "visuals.local.desync_bar_color" ) ].val.c;
+		static auto& name_color = options::vars [ _ ( "visuals.local.name_color" ) ].val.c;
+		static auto& weapon_color = options::vars [ _ ( "visuals.local.weapon_color" ) ].val.c;
+		static auto& desync_chams_color = options::vars [ _ ( "visuals.local.desync_chams_color" ) ].val.c;
+		static auto& desync_rimlight_overlay_color = options::vars [ _ ( "visuals.local.desync_rimlight_overlay_color" ) ].val.c;
+
+		out.chams = options [ 0 ];
+		out.chams_flat = options [ 1 ];
+		out.chams_xqz = options [ 2 ];
+		out.desync_chams = options [ 3 ];
+		out.desync_chams_fakelag = options [ 4 ];
+		out.desync_chams_rimlight = options [ 5 ];
+		out.glow = options [ 6 ];
+		out.rimlight_overlay = options [ 7 ];
+		out.esp_box = options [ 8 ];
+		out.health_bar = options [ 9 ];
+		out.ammo_bar = options [ 10 ];
+		out.desync_bar = options [ 11 ];
+		out.value_text = options [ 12 ];
+		out.nametag = options [ 13 ];
+		out.weapon_name = options [ 14 ];
+		out.health_bar_placement = health_bar_placement;
+		out.ammo_bar_placement = ammo_bar_placement;
+		out.desync_bar_placement = desync_bar_placement;
+		out.value_text_placement = value_text_placement;
+		out.nametag_placement = nametag_placement;
+		out.weapon_name_placement = weapon_name_placement;
+		out.chams_color = chams_color;
+		out.chams_xqz_color = xqz_chams_color;
+		out.backtrack_chams_color = backtrack_chams_color;
+		out.hit_matrix_color = hit_matrix_color;
+		out.glow_color = glow_color;
+		out.rimlight_color = rimlight_overlay_color;
+		out.box_color = box_color;
+		out.health_bar_color = health_bar_color;
+		out.ammo_bar_color = ammo_bar_color;
+		out.desync_bar_color = desync_bar_color;
+		out.name_color = name_color;
+		out.weapon_color = weapon_color;
+		out.chams_color = chams_color;
+		out.desync_chams_color = desync_chams_color;
+		out.desync_rimlight_color = desync_rimlight_overlay_color;
+
 		return true;
 	}
 
 	if ( g::local->team ( ) != pl->team ( ) ) {
-		*out = &vis_enemy;
+		static auto& options = options::vars [ _ ( "visuals.enemies.options" ) ].val.l;
+		static auto& health_bar_placement = options::vars [ _ ( "visuals.enemies.health_bar_location" ) ].val.i;
+		static auto& desync_bar_placement = options::vars [ _ ( "visuals.enemies.desync_bar_location" ) ].val.i;
+		static auto& ammo_bar_placement = options::vars [ _ ( "visuals.enemies.ammo_bar_location" ) ].val.i;
+		static auto& value_text_placement = options::vars [ _ ( "visuals.enemies.value_text_location" ) ].val.i;
+		static auto& nametag_placement = options::vars [ _ ( "visuals.enemies.nametag_location" ) ].val.i;
+		static auto& weapon_name_placement = options::vars [ _ ( "visuals.enemies.weapon_name_location" ) ].val.i;
+		static auto& reflectivity = options::vars [ _ ( "visuals.enemies.reflectivity" ) ].val.f;
+		static auto& phong = options::vars [ _ ( "visuals.enemies.phong" ) ].val.f;
+		static auto& chams_color = options::vars [ _ ( "visuals.enemies.chams_color" ) ].val.c;
+		static auto& xqz_chams_color = options::vars [ _ ( "visuals.enemies.xqz_chams_color" ) ].val.c;
+		static auto& backtrack_chams_color = options::vars [ _ ( "visuals.enemies.backtrack_chams_color" ) ].val.c;
+		static auto& hit_matrix_color = options::vars [ _ ( "visuals.enemies.hit_matrix_color" ) ].val.c;
+		static auto& glow_color = options::vars [ _ ( "visuals.enemies.glow_color" ) ].val.c;
+		static auto& rimlight_overlay_color = options::vars [ _ ( "visuals.enemies.rimlight_overlay_color" ) ].val.c;
+		static auto& box_color = options::vars [ _ ( "visuals.enemies.box_color" ) ].val.c;
+		static auto& health_bar_color = options::vars [ _ ( "visuals.enemies.health_bar_color" ) ].val.c;
+		static auto& ammo_bar_color = options::vars [ _ ( "visuals.enemies.ammo_bar_color" ) ].val.c;
+		static auto& desync_bar_color = options::vars [ _ ( "visuals.enemies.desync_bar_color" ) ].val.c;
+		static auto& name_color = options::vars [ _ ( "visuals.enemies.name_color" ) ].val.c;
+		static auto& weapon_color = options::vars [ _ ( "visuals.enemies.weapon_color" ) ].val.c;
+
+		out.chams = options [ 0 ];
+		out.chams_flat = options [ 1 ];
+		out.chams_xqz = options [ 2 ];
+		out.backtrack_chams = options [ 3 ];
+		out.hit_matrix = options [ 4 ];
+		out.glow = options [ 5 ];
+		out.rimlight_overlay = options [ 6 ];
+		out.esp_box = options [ 7 ];
+		out.health_bar = options [ 8 ];
+		out.ammo_bar = options [ 9 ];
+		out.desync_bar = options [ 10 ];
+		out.value_text = options [ 11 ];
+		out.nametag = options [ 12 ];
+		out.weapon_name = options [ 13 ];
+		out.health_bar_placement = health_bar_placement;
+		out.ammo_bar_placement = ammo_bar_placement;
+		out.desync_bar_placement = desync_bar_placement;
+		out.value_text_placement = value_text_placement;
+		out.nametag_placement = nametag_placement;
+		out.weapon_name_placement = weapon_name_placement;
+		out.chams_color = chams_color;
+		out.chams_xqz_color = xqz_chams_color;
+		out.backtrack_chams_color = backtrack_chams_color;
+		out.hit_matrix_color = hit_matrix_color;
+		out.glow_color = glow_color;
+		out.rimlight_color = rimlight_overlay_color;
+		out.box_color = box_color;
+		out.health_bar_color = health_bar_color;
+		out.ammo_bar_color = ammo_bar_color;
+		out.desync_bar_color = desync_bar_color;
+		out.name_color = name_color;
+		out.weapon_color = weapon_color;
+		out.chams_color = chams_color;
+
 		return true;
 	}
 
-	*out = &vis_team;
+	static auto& options = options::vars [ _ ( "visuals.teammates.options" ) ].val.l;
+	static auto& health_bar_placement = options::vars [ _ ( "visuals.teammates.health_bar_location" ) ].val.i;
+	static auto& desync_bar_placement = options::vars [ _ ( "visuals.teammates.desync_bar_location" ) ].val.i;
+	static auto& ammo_bar_placement = options::vars [ _ ( "visuals.teammates.ammo_bar_location" ) ].val.i;
+	static auto& value_text_placement = options::vars [ _ ( "visuals.teammates.value_text_location" ) ].val.i;
+	static auto& nametag_placement = options::vars [ _ ( "visuals.teammates.nametag_location" ) ].val.i;
+	static auto& weapon_name_placement = options::vars [ _ ( "visuals.teammates.weapon_name_location" ) ].val.i;
+	static auto& reflectivity = options::vars [ _ ( "visuals.teammates.reflectivity" ) ].val.f;
+	static auto& phong = options::vars [ _ ( "visuals.teammates.phong" ) ].val.f;
+	static auto& chams_color = options::vars [ _ ( "visuals.teammates.chams_color" ) ].val.c;
+	static auto& xqz_chams_color = options::vars [ _ ( "visuals.teammates.xqz_chams_color" ) ].val.c;
+	static auto& backtrack_chams_color = options::vars [ _ ( "visuals.teammates.backtrack_chams_color" ) ].val.c;
+	static auto& hit_matrix_color = options::vars [ _ ( "visuals.teammates.hit_matrix_color" ) ].val.c;
+	static auto& glow_color = options::vars [ _ ( "visuals.teammates.glow_color" ) ].val.c;
+	static auto& rimlight_overlay_color = options::vars [ _ ( "visuals.teammates.rimlight_overlay_color" ) ].val.c;
+	static auto& box_color = options::vars [ _ ( "visuals.teammates.box_color" ) ].val.c;
+	static auto& health_bar_color = options::vars [ _ ( "visuals.teammates.health_bar_color" ) ].val.c;
+	static auto& ammo_bar_color = options::vars [ _ ( "visuals.teammates.ammo_bar_color" ) ].val.c;
+	static auto& desync_bar_color = options::vars [ _ ( "visuals.teammates.desync_bar_color" ) ].val.c;
+	static auto& name_color = options::vars [ _ ( "visuals.teammates.name_color" ) ].val.c;
+	static auto& weapon_color = options::vars [ _ ( "visuals.teammates.weapon_color" ) ].val.c;
+
+	out.chams = options [ 0 ];
+	out.chams_flat = options [ 1 ];
+	out.chams_xqz = options [ 2 ];
+	out.glow = options [ 3 ];
+	out.rimlight_overlay = options [ 4 ];
+	out.esp_box = options [ 5 ];
+	out.health_bar = options [ 6 ];
+	out.ammo_bar = options [ 7 ];
+	out.desync_bar = options [ 8 ];
+	out.value_text = options [ 9 ];
+	out.nametag = options [ 10 ];
+	out.weapon_name = options [ 11 ];
+	out.health_bar_placement = health_bar_placement;
+	out.ammo_bar_placement = ammo_bar_placement;
+	out.desync_bar_placement = desync_bar_placement;
+	out.value_text_placement = value_text_placement;
+	out.nametag_placement = nametag_placement;
+	out.weapon_name_placement = weapon_name_placement;
+	out.chams_color = chams_color;
+	out.chams_xqz_color = xqz_chams_color;
+	out.backtrack_chams_color = backtrack_chams_color;
+	out.hit_matrix_color = hit_matrix_color;
+	out.glow_color = glow_color;
+	out.rimlight_color = rimlight_overlay_color;
+	out.box_color = box_color;
+	out.health_bar_color = health_bar_color;
+	out.ammo_bar_color = ammo_bar_color;
+	out.desync_bar_color = desync_bar_color;
+	out.name_color = name_color;
+	out.weapon_color = weapon_color;
+	out.chams_color = chams_color;
+
 	return true;
 }
 
 void features::offscreen_esp::draw ( ) {
-	OPTION ( double, offscreen_arrow_distance, "Sesame->C->Other->World->Offscreen Arrow Distance", oxui::object_slider );
-	OPTION ( double, offscreen_arrow_size, "Sesame->C->Other->World->Offscreen Arrow Size", oxui::object_slider );
-	OPTION ( bool, offscreen_esp, "Sesame->C->Other->World->Offscreen ESP", oxui::object_checkbox );	
-	OPTION ( oxui::color, spread_circle_clr, "Sesame->C->Other->World->Offscreen ESP Color", oxui::object_colorpicker );
+	static auto& offscreen_esp = options::vars [ _ ( "visuals.other.offscreen_esp" ) ].val.b;
+	static auto& offscreen_esp_distance = options::vars [ _ ( "visuals.other.offscreen_esp_distance" ) ].val.f;
+	static auto& offscreen_esp_size = options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f;
+	static auto& offscreen_esp_color = options::vars [ _ ( "visuals.other.offscreen_esp_color" ) ].val.c;
 
 	if ( !g::local || !offscreen_esp )
 		return;
@@ -42,7 +209,7 @@ void features::offscreen_esp::draw ( ) {
 
 	vec3_t center ( w * 0.5f, h * 0.5f, 0.0f );
 
-	const auto calc_distance = offscreen_arrow_distance / 100.0f * ( h * 0.5f );
+	const auto calc_distance = offscreen_esp_distance / 100.0f * ( h * 0.5f );
 
 	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 		const auto pl = csgo::i::ent_list->get< player_t* > ( i );
@@ -58,32 +225,33 @@ void features::offscreen_esp::draw ( ) {
 			auto target_ang = csgo::vec_angle ( center - screen );
 			target_ang.y = csgo::normalize ( target_ang.y - 90.0f );
 
-			auto top_ang = csgo::vec_angle ( vec3_t ( 0.0f, -calc_distance - offscreen_arrow_size * 0.5f ) ) + target_ang;
-			auto left_ang = csgo::vec_angle ( vec3_t ( -offscreen_arrow_size * 0.5f, -calc_distance + offscreen_arrow_size * 0.5f ) ) + target_ang;
-			auto right_ang = csgo::vec_angle ( vec3_t ( offscreen_arrow_size * 0.5f, -calc_distance + offscreen_arrow_size * 0.5f ) ) + target_ang;
+			auto top_ang = csgo::vec_angle ( vec3_t ( 0.0f, -calc_distance - offscreen_esp_size * 0.5f ) ) + target_ang;
+			auto left_ang = csgo::vec_angle ( vec3_t ( -offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
+			auto right_ang = csgo::vec_angle ( vec3_t ( offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
 
 			top_ang.y = csgo::normalize ( top_ang.y );
 			left_ang.y = csgo::normalize ( left_ang.y );
 			right_ang.y = csgo::normalize ( right_ang.y );
 
-			const auto mag1 = calc_distance + offscreen_arrow_size * 0.5f;
-			const auto mag2 = calc_distance - offscreen_arrow_size * 0.5f;
+			const auto mag1 = calc_distance + offscreen_esp_size * 0.5f;
+			const auto mag2 = calc_distance - offscreen_esp_size * 0.5f;
 
 			const auto top_pos = center + csgo::angle_vec ( top_ang ) * mag1;
 			const auto left_pos = center + csgo::angle_vec ( left_ang ) * mag2;
 			const auto right_pos = center + csgo::angle_vec ( right_ang ) * mag2;
 
-			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( spread_circle_clr.r, spread_circle_clr.g, spread_circle_clr.b, spread_circle_clr.a ), false );
-			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( spread_circle_clr.r - 33, spread_circle_clr.g - 33, spread_circle_clr.b - 33, spread_circle_clr.a ), true );
+			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), static_cast< int > ( offscreen_esp_color.a * 255.0f ) ), false );
+			render::polygon ( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( 0, 0, 0, static_cast < int > ( offscreen_esp_color.a * 100.0f ) ), true );
 		}
 	}
 }
 
 void features::spread_circle::draw ( ) {
-	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
-	OPTION ( oxui::color, spread_circle_clr, "Sesame->C->Other->World->Spread Circle Color", oxui::object_colorpicker );
-	OPTION ( bool, spread_circle, "Sesame->C->Other->World->Spread Circle", oxui::object_checkbox );
-	OPTION ( bool, gradient_spread_circle, "Sesame->C->Other->World->Gradient Spread Circle", oxui::object_checkbox );
+	static auto& spread_circle = options::vars [ _ ( "visuals.other.spread_circle" ) ].val.b;
+	static auto& gradient_spread_circle = options::vars [ _ ( "visuals.other.gradient_spread_circle" ) ].val.b;
+	static auto& spread_circle_color = options::vars [ _ ( "visuals.other.spread_circle_color" ) ].val.c;
+	static auto& fov = options::vars [ _ ( "visuals.other.fov" ) ].val.f;
+	static auto& viewmodel_fov = options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f;
 	
 	int w = 0, h = 0;
 	render::screen_size ( w, h );
@@ -92,7 +260,7 @@ void features::spread_circle::draw ( ) {
 		return;
 
 	const auto weapon = g::local->weapon ( );
-	const auto radius = ( total_spread * 320.0f ) / std::tanf ( csgo::deg2rad( custom_fov ) * 0.5f );
+	const auto radius = ( total_spread * 320.0f ) / std::tanf ( csgo::deg2rad( fov ) * 0.5f );
 
 	if ( gradient_spread_circle ) {
 		auto x = w / 2;
@@ -114,7 +282,7 @@ void features::spread_circle::draw ( ) {
 			circle [ i ].y = ( float ) ( y - radius * std::sinf ( pi * ( ( i - 1 ) / ( 48.0f / 2.0f ) ) ) ) - 0.5f;
 			circle [ i ].z = 0;
 			circle [ i ].rhw = 1;
-			circle [ i ].color = D3DCOLOR_RGBA ( spread_circle_clr.r, spread_circle_clr.g, spread_circle_clr.b, spread_circle_clr.a );
+			circle [ i ].color = D3DCOLOR_RGBA ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) );
 		}
 
 		const auto _res = 48 + 2;
@@ -140,7 +308,7 @@ void features::spread_circle::draw ( ) {
 			vb->Release ( );
 	}
 	else {
-		render::circle ( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA ( spread_circle_clr.r, spread_circle_clr.g, spread_circle_clr.b, spread_circle_clr.a ) );
-		render::circle ( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA( spread_circle_clr.r, spread_circle_clr.g, spread_circle_clr.b, spread_circle_clr.a ), true );
+		render::circle ( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ) );
+		render::circle ( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ), true );
 	}
 }

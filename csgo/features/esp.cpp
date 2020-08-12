@@ -14,14 +14,12 @@ ID3DXFont* features::esp::esp_font = nullptr;
 ID3DXFont* features::esp::dbg_font = nullptr;
 float box_alpha = 0.0f;
 
-oxui::visual_editor::settings_t* visuals;
-
 std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
 std::array< features::esp::esp_data_t, 65 > features::esp::esp_data;
 
-void draw_esp_box( int x, int y, int w, int h, bool dormant, oxui::visual_editor::settings_t* visuals ) {
-	render::outline( x - 1, y - 1, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( box_alpha * 60.0f, 0, 60 ) ) );
-	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( visuals->esp_box.picker->clr.a ) * box_alpha ) ) : D3DCOLOR_RGBA ( visuals->esp_box.picker->clr.r, visuals->esp_box.picker->clr.g, visuals->esp_box.picker->clr.b, static_cast< int >( static_cast< float >( visuals->esp_box.picker->clr.a )* box_alpha ) ) );
+void draw_esp_box( int x, int y, int w, int h, bool dormant, const sesui::color& esp_box_color ) {
+	render::outline( x - 1, y - 1, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( esp_box_color.a * 60.0f, 0, 60 ) ) );
+	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int > ( esp_box_color.a * 255.0f * box_alpha ) ) : D3DCOLOR_RGBA ( static_cast< int > ( esp_box_color.r * 255.0f ), static_cast< int > ( esp_box_color.g * 255.0f ), static_cast< int > ( esp_box_color.b * 255.0f ), static_cast< int >( esp_box_color.a * 255.0f * box_alpha ) ) );
 }
 
 auto cur_offset_left_height = 0;
@@ -31,15 +29,22 @@ auto cur_offset_right = 4;
 auto cur_offset_bottom = 4;
 auto cur_offset_top = 4;
 
-void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widget, bool dormant, double value, double max, const std::wstring_view& to_print = _ (L"") ) {
-	uint32_t clr1 = D3DCOLOR_RGBA ( 0, 0, 0, std::clamp< int > ( static_cast< float >( esp_widget.picker->clr.a ) / 2, 0, 125 ) );
-	uint32_t clr = D3DCOLOR_RGBA ( esp_widget.picker->clr.r, esp_widget.picker->clr.g, esp_widget.picker->clr.b, esp_widget.picker->clr.a );
+enum esp_type_t {
+	esp_type_bar = 0,
+	esp_type_text,
+	esp_type_number,
+	esp_type_flag
+};
+
+void draw_esp_widget ( const sesui::rect& box, const sesui::color& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, const std::wstring_view& to_print = _ (L"") ) {
+	uint32_t clr1 = D3DCOLOR_RGBA ( 0, 0, 0, std::clamp< int > ( static_cast< float >( widget_color.a * 255.0f ) / 2.0f, 0, 125 ) );
+	uint32_t clr = D3DCOLOR_RGBA ( static_cast< int > ( widget_color.r * 255.0f), static_cast< int > ( widget_color.g * 255.0f), static_cast< int > ( widget_color.b * 255.0f), static_cast< int > ( widget_color.a * 255.0f) );
 
 	if ( dormant )
-		clr = D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( static_cast< float >( esp_widget.picker->clr.a ) * box_alpha ) );
+		clr = D3DCOLOR_RGBA ( 150, 150, 150, static_cast< int >( widget_color.a * 255.0f * box_alpha ) );
 
-	switch ( esp_widget.type ) {
-	case oxui::esp_widget_type_t::info_type_bar: {
+	switch ( type ) {
+	case esp_type_bar: {
 		const auto sval = std::to_wstring ( static_cast< int >( value ) );
 
 		render::dim text_dim;
@@ -48,68 +53,68 @@ void draw_esp_widget ( const oxui::rect& box, const oxui::esp_widget_t& esp_widg
 		const auto fraction = std::clamp( value / max, 0.0, 1.0 );
 		const auto calc_height = fraction * box.h;
 
-		switch ( esp_widget.location ) {
-		case oxui::esp_widget_pos_t::pos_left:
+		switch ( orientation ) {
+		case features::esp_placement_left:
 			render::rounded_rect ( box.x - cur_offset_left - 5 + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
 			render::rounded_rect ( box.x - cur_offset_left - 5, box.y, 5, box.h, 2, 4, clr1, true );
 
-			if ( visuals->show_value )
+			if ( show_value )
 			render::text ( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255), features::esp::dbg_font, sval, false, true );
 			cur_offset_left += 7;
 			break;
-		case oxui::esp_widget_pos_t::pos_right:
+		case features::esp_placement_right:
 			render::rounded_rect ( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
 			render::rounded_rect ( box.x + box.w + cur_offset_right, box.y, 5, box.h, 2, 4, clr1, true );
 
-			if ( visuals->show_value )
+			if ( show_value )
 			render::text ( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
 			cur_offset_right += 7;
 			break;
-		case oxui::esp_widget_pos_t::pos_bottom:
+		case features::esp_placement_bottom:
 			render::rounded_rect ( box.x + 1, box.y + box.h + cur_offset_bottom + 1, static_cast< float >( box.w )* fraction + 1, 5 - 1, 2, 4, clr, false );
 			render::rounded_rect ( box.x, box.y + box.h + cur_offset_bottom, box.w, 5, 2, 4, clr1, true );
 
-			if ( visuals->show_value )
+			if ( show_value )
 			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1 - text_dim.w / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
 			cur_offset_bottom += 7;
 			break;
-		case oxui::esp_widget_pos_t::pos_top:
+		case features::esp_placement_top:
 			render::rounded_rect ( box.x + 1, box.y - cur_offset_top - 5 + 1, static_cast< float >( box.w )* fraction + 1, 5 - 1, 2, 4, clr, false );
 			render::rounded_rect ( box.x, box.y - cur_offset_top - 5, box.w, 5, 2, 4, clr1, true );
 
-			if ( visuals->show_value )
+			if ( show_value )
 			render::text ( box.x + 1 + static_cast< float >( box.w )* fraction + 1 - text_dim.w / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
 			cur_offset_top += 7;
 			break;
 		}
 	} break;
-	case oxui::esp_widget_type_t::info_type_text: {
+	case esp_type_text: {
 		render::dim text_dim;
 		render::text_size ( features::esp::esp_font, to_print, text_dim );
 
-		switch ( esp_widget.location ) {
-		case oxui::esp_widget_pos_t::pos_left:
+		switch ( orientation ) {
+		case features::esp_placement_left:
 			render::text ( box.x - cur_offset_left - text_dim.w, box.y + cur_offset_left_height, clr, features::esp::esp_font, to_print, true );
 			cur_offset_left_height += text_dim.h + 2;
 			break;
-		case oxui::esp_widget_pos_t::pos_right:
+		case features::esp_placement_right:
 			render::text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, clr, features::esp::esp_font, to_print, true );
 			cur_offset_right_height += text_dim.h + 2;
 			break;
-		case oxui::esp_widget_pos_t::pos_bottom:
+		case features::esp_placement_bottom:
 			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y + box.h + cur_offset_bottom, clr, features::esp::esp_font, to_print, true );
 			cur_offset_bottom += text_dim.h + 2;
 			break;
-		case oxui::esp_widget_pos_t::pos_top:
+		case features::esp_placement_top:
 			render::text ( box.x + box.w / 2 - text_dim.w / 2, box.y - cur_offset_top - text_dim.h, clr, features::esp::esp_font, to_print, true );
 			cur_offset_top += text_dim.h + 2;
 			break;
 		}
 	} break;
-	case oxui::esp_widget_type_t::info_type_number: {
+	case esp_type_number: {
 
 	} break;
-	case oxui::esp_widget_type_t::info_type_flag: {
+	case esp_type_flag: {
 
 	} break;
 	default: break;
@@ -206,7 +211,9 @@ void features::esp::render( ) {
 			continue;
 		}
 
-		if ( !get_visuals ( e, &visuals ) ) {
+		features::visual_config_t visuals;
+
+		if ( !get_visuals ( e, visuals ) ) {
 			esp_data [ i ].m_pl = nullptr;
 			continue;
 		}
@@ -322,7 +329,7 @@ void features::esp::render( ) {
 			esp_data [ e->idx ( ) ].m_first_seen = 0.0f;
 		}
 
-		auto dormant_time = std::max< float > ( 7.0f/*esp_fade_time*/, 0.1f );
+		auto dormant_time = std::max< float > ( 9.0f/*esp_fade_time*/, 0.1f );
 
 		if ( esp_data [ e->idx ( ) ].m_pl && std::fabsf( csgo::i::globals->m_curtime - esp_data [ e->idx ( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
@@ -339,11 +346,12 @@ void features::esp::render( ) {
 
 			wchar_t buf [ 36 ] { '\0' };
 			std::wstring wname = _ ( L"" );
+
 			if ( MultiByteToWideChar ( CP_UTF8, 0, info.m_name, -1, buf, 36 ) > 0 )
 				wname = buf;
 
-			if ( visuals->esp_box.enabled )
-				draw_esp_box ( left, top, right - left, bottom - top, esp_data [ e->idx ( ) ].m_dormant, visuals );
+			if ( visuals.esp_box )
+				draw_esp_box ( left, top, right - left, bottom - top, esp_data [ e->idx ( ) ].m_dormant, visuals.box_color );
 
 			cur_offset_left_height = 0;
 			cur_offset_right_height = 0;
@@ -352,22 +360,22 @@ void features::esp::render( ) {
 			cur_offset_bottom = 4;
 			cur_offset_top = 4;
 
-			oxui::rect esp_rect { static_cast<int>( left ), static_cast< int >(top), static_cast< int >(right - left), static_cast< int >(bottom - top) };
+			sesui::rect esp_rect { static_cast<int>( left ), static_cast< int >(top), static_cast< int >(right - left), static_cast< int >(bottom - top) };
 
-			if ( visuals->health_bar.enabled )
-				draw_esp_widget ( esp_rect, visuals->health_bar, esp_data [ e->idx ( ) ].m_dormant, e->health ( ), 100.0 );
+			if ( visuals.health_bar )
+				draw_esp_widget ( esp_rect, visuals.health_bar_color, esp_type_bar, visuals.value_text, visuals.health_bar_placement, esp_data [ e->idx ( ) ].m_dormant, e->health ( ), 100.0 );
 
-			if ( visuals->ammo_bar.enabled && e->weapon ( ) && e->weapon ( )->data ( ) )
-				draw_esp_widget ( esp_rect, visuals->ammo_bar, esp_data [ e->idx ( ) ].m_dormant, e->weapon ( )->ammo( ), e->weapon ( )->data ( )->m_max_clip );
+			if ( visuals.ammo_bar && e->weapon ( ) && e->weapon ( )->data ( ) && e->weapon ( )->ammo ( ) != -1 )
+				draw_esp_widget ( esp_rect, visuals.ammo_bar_color, esp_type_bar, visuals.value_text, visuals.ammo_bar_placement, esp_data [ e->idx ( ) ].m_dormant, e->weapon ( )->ammo( ), e->weapon ( )->data ( )->m_max_clip );
 
-			if ( visuals->desync_bar.enabled )
-				draw_esp_widget ( esp_rect, visuals->desync_bar, esp_data [ e->idx ( ) ].m_dormant, e->desync_amount( ), 58.0 );
+			if ( visuals.desync_bar )
+				draw_esp_widget ( esp_rect, visuals.desync_bar_color, esp_type_bar, visuals.value_text, visuals.desync_bar_placement, esp_data [ e->idx ( ) ].m_dormant, e->desync_amount( ), 58.0 );
 
-			if ( visuals->esp_name.enabled )
-				draw_esp_widget ( esp_rect, visuals->esp_name, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, wname );
+			if ( visuals.nametag )
+				draw_esp_widget ( esp_rect, visuals.name_color, esp_type_text, visuals.value_text, visuals.nametag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, wname );
 
-			if ( visuals->esp_weapon.enabled )
-				draw_esp_widget ( esp_rect, visuals->esp_weapon, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx ( ) ].m_weapon_name );
+			if ( visuals.weapon_name )
+				draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx ( ) ].m_weapon_name );
 		}
 	}
 }

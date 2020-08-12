@@ -1,13 +1,14 @@
 ﻿#include "list_leaves_in_box.hpp"
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
+#include "../menu/options.hpp"
 
 decltype( &hooks::list_leaves_in_box ) hooks::old::list_leaves_in_box = nullptr;
 
 int __fastcall hooks::list_leaves_in_box ( REG, vec3_t& mins, vec3_t& maxs, uint16_t* list, int list_max ) {
-	OPTION ( bool, skip_occlusion, "Sesame->C->Other->Removals->Skip Occlusion", oxui::object_checkbox );
+	static auto& removals = options::vars [ _ ( "visuals.other.removals" ) ].val.l;
 
-	if ( !skip_occlusion || !g::local )
+	if ( !removals[6] || !g::local )
 		return old::list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
 
 	struct render_info_t {

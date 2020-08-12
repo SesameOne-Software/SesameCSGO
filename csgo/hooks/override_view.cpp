@@ -2,19 +2,26 @@
 
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
+#include "../menu/options.hpp"
 
 decltype( &hooks::override_view ) hooks::old::override_view = nullptr;
 
 void __fastcall hooks::override_view ( REG, void* setup ) {
-	OPTION ( bool, thirdperson, "Sesame->E->Effects->Main->Third Person", oxui::object_checkbox );
-	OPTION ( double, thirdperson_range, "Sesame->E->Effects->Main->Third Person Range", oxui::object_slider );
-	KEYBIND ( thirdperson_key, "Sesame->E->Effects->Main->Third Person Key" );
-	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
-	OPTION ( bool, no_zoom, "Sesame->C->Other->Removals->No Zoom", oxui::object_checkbox );
-	OPTION ( double, custom_fov, "Sesame->C->Other->Removals->Custom FOV", oxui::object_slider );
+	static auto& removals = options::vars [ _ ( "visuals.other.removals" ) ].val.l;
+	static auto& fov = options::vars [ _ ( "visuals.other.fov" ) ].val.f;
 
-	if ( g::local && ( no_zoom ? true : !g::local->scoped ( ) ) )
-		*reinterpret_cast< float* > ( uintptr_t ( setup ) + 176 ) = static_cast < float > ( custom_fov );
+	static auto& third_person = options::vars [ _ ( "misc.effects.third_person" ) ].val.b;
+	static auto& third_person_range = options::vars [ _ ( "misc.effects.third_person_range" ) ].val.f;
+	static auto& third_person_key = options::vars [ _ ( "misc.effects.third_person_key" ) ].val.i;
+	static auto& third_person_key_mode = options::vars [ _ ( "misc.effects.third_person_key_mode" ) ].val.i;
+
+	static auto& fd_enabled = options::vars [ _ ( "antiaim.fakeduck" ) ].val.b;
+	static auto& fd_mode = options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i;
+	static auto& fd_key = options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _ ( "antiaim.fd_key_mode" ) ].val.i;
+
+	if ( g::local && ( removals[5] ? true : !g::local->scoped ( ) ) )
+		*reinterpret_cast< float* > ( uintptr_t ( setup ) + 176 ) = static_cast < float > ( fov );
 
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
 		vec3_t inverse;
@@ -33,12 +40,12 @@ void __fastcall hooks::override_view ( REG, void* setup ) {
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
 
-	if ( thirdperson && thirdperson_key && g::local ) {
+	if ( third_person && utils::keybind_active( third_person_key, third_person_key_mode ) && g::local ) {
 		if ( g::local->alive ( ) ) {
 			vec3_t ang;
 			csgo::i::engine->get_viewangles ( ang );
 			csgo::i::input->m_camera_in_thirdperson = true;
-			csgo::i::input->m_camera_offset = vec3_t ( ang.x, ang.y, get_ideal_dist ( thirdperson_range ) );
+			csgo::i::input->m_camera_offset = vec3_t ( ang.x, ang.y, get_ideal_dist ( third_person_range ) );
 		}
 		else {
 			csgo::i::input->m_camera_in_thirdperson = false;
@@ -49,7 +56,7 @@ void __fastcall hooks::override_view ( REG, void* setup ) {
 		csgo::i::input->m_camera_in_thirdperson = false;
 	}
 
-	if ( fd_key && g::local && g::local->alive ( ) )
+	if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) && g::local && g::local->alive ( ) )
 		*reinterpret_cast< float* >( uintptr_t ( setup ) + 0xc0 ) = g::local->abs_origin ( ).z + 64.0f;
 
 	old::override_view ( REG_OUT, setup );

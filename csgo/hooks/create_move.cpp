@@ -14,6 +14,8 @@
 
 #include "../features/autowall.hpp"
 
+#include "../menu/options.hpp"
+
 vec3_t old_origin;
 bool in_cm = false;
 bool ducking = false;
@@ -25,15 +27,17 @@ int g_refresh_counter = 0;
 bool hooks::vars::in_refresh = false;
 
 void fix_event_delay ( ucmd_t* ucmd ) {
-	OPTION ( int, _fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
-	KEYBIND ( _fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
+	static auto& fd_enabled = options::vars [ _ ( "antiaim.fakeduck" ) ].val.b;
+	static auto& fd_mode = options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i;
+	static auto& fd_key = options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _ ( "antiaim.fd_key_mode" ) ].val.i;
 
 	/* choke packets if requested */
-	if ( ucmd->m_buttons & 1 && g::local && !_fd_key )
+	if ( ucmd->m_buttons & 1 && g::local && !(fd_enabled && utils::keybind_active(fd_key, fd_key_mode )) )
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( _fd_key && _fd_mode ) && !csgo::is_valve_server ( ) )
+	if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) ) && !csgo::is_valve_server ( ) )
 		g::send_packet = true;
 
 	last_attack = ucmd->m_buttons & 1;
@@ -44,6 +48,8 @@ decltype( &hooks::create_move ) hooks::old::create_move = nullptr;
 bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	ducking = ucmd->m_buttons & 4;
 	in_cm = true;
+
+	utils::update_key_toggles ( );
 
 	//RUN_SAFE (
 	//	"features::ragebot::get_weapon_config",
@@ -62,12 +68,11 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	security_handler::update ( );
 
 	if ( g_refresh_counter < g::shifted_amount ) {
-		*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
+		//*( bool* ) ( *( uintptr_t* ) ( uintptr_t ( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = true;
 		ucmd->m_tickcount += 666;
 		in_cm = false;
 		g_refresh_counter++;
 		vars::in_refresh = true;
-		return false;
 	}
 	else {
 		vars::in_refresh = false;
@@ -160,6 +165,7 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 
 		//RUN_SAFE (
 		//	"features::ragebot::run",
+		if (!vars::in_refresh )
 			features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
 		//);
 
@@ -193,7 +199,7 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 
 	last_tickbase_shot = g::next_tickbase_shot;
 
-	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+	if ( !vars::in_refresh && g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && features::ragebot::active_config.auto_revolver && g::local->weapon ( )->item_definition_index ( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
 		if ( csgo::time2ticks ( features::prediction::predicted_curtime ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~1;
 			g::cock_ticks = csgo::time2ticks ( features::prediction::predicted_curtime + 0.25f ) - 2;
@@ -209,6 +215,11 @@ bool __fastcall hooks::create_move ( REG, float sampletime, ucmd_t* ucmd ) {
 	}
 
 	csgo::clamp ( ucmd->m_angs );
+
+	vec3_t engine_angs;
+	csgo::i::engine->get_viewangles ( engine_angs );
+	csgo::clamp ( engine_angs );
+	csgo::i::engine->set_viewangles ( engine_angs );
 
 	csgo::rotate_movement ( ucmd, old_smove, old_fmove, old_angs );
 

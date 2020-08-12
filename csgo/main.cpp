@@ -13,6 +13,7 @@
 
 /* security */
 #include "security/security_handler.hpp"
+#include "plusaes.hpp"
 
 FILE* g_fp;
 
@@ -87,12 +88,98 @@ __declspec( noreturn ) void __stdcall mmunload ( void* img_base ) {
 	}
 }
 
-int __stdcall init( uintptr_t mod ) {
+typedef void* ( _stdcall* padd_veh )( ULONG, PVECTORED_EXCEPTION_HANDLER );
+typedef HMODULE ( _stdcall* pget_mod )( LPCSTR );
+typedef void ( _stdcall* psleep )( DWORD );
+typedef void( *perase_func )( void* );
+typedef bool( *pcsgo_init )( void );
+typedef bool( *pnetvars_init )( void );
+typedef void( *pjs_init )( void );
+typedef void( *phooks_init )( void );
+
+typedef struct _init_data {
+	padd_veh add_veh;
+	void* exception_handler;
+	pget_mod get_mod;
+	psleep sleep;
+	perase_func erase_func;
+	pcsgo_init csgo_init;
+	pnetvars_init netvars_init;
+	pjs_init js_init;
+	phooks_init hooks_init;
+	const char* server_browser;
+} init_data, * pinit_data;
+
+std::string decrypt_cbc ( const std::string& encrypted, const unsigned char* key,
+	size_t key_size,
+	const unsigned char* iv,
+	const bool padding ) {
+
+	plusaes::Error e;
+
+	std::vector<unsigned char> decrypted ( encrypted.size ( ) );
+	unsigned long padded = 0;
+	if ( padding ) {
+		e = plusaes::decrypt_cbc ( ( const unsigned char* ) &encrypted.data ( ) [ 0 ], ( unsigned long ) encrypted.size ( ), key, ( int ) key_size, iv, &decrypted [ 0 ], ( unsigned long ) decrypted.size ( ), &padded );
+	}
+	else {
+		e = plusaes::decrypt_cbc ( ( const unsigned char* ) &encrypted.data ( ) [ 0 ], ( unsigned long ) encrypted.size ( ), key, ( int ) key_size, iv, &decrypted [ 0 ], ( unsigned long ) decrypted.size ( ), 0 );
+	}
+
+	const std::string s ( decrypted.begin ( ), decrypted.end ( ) - padded );
+
+	if ( padding ) {
+		const std::vector<unsigned char> ok_pad ( padded ); \
+			memcmp ( &decrypted [ decrypted.size ( ) - padded ], &ok_pad [ 0 ], padded );
+	}
+
+	return std::string ( reinterpret_cast< const char* >( decrypted.data ( ) ) );
+}
+
+typedef int ( __stdcall* pinit )( void* );
+
+void call_init ( PLoader_Info loader_info ) {
+	anti_patch::g_text_section = uintptr_t ( loader_info->section );
+	anti_patch::g_text_section_size = loader_info->section_sz;
+
+	init_data initdata;
+	memset ( &initdata, 0, sizeof ( init_data ) );
+
+	initdata.add_veh = AddVectoredExceptionHandler;
+	initdata.csgo_init = csgo::init;
+	initdata.erase_func = erase::erase_func;
+	initdata.exception_handler = ExceptionHandler;
+	initdata.get_mod = GetModuleHandleA;
+	initdata.hooks_init = hooks::init;
+	initdata.js_init = js::init;
+	initdata.netvars_init = netvars::init;
+	initdata.server_browser = _ ( "serverbrowser.dll" );
+	initdata.sleep = Sleep;
+
+	std::string decrypted = decrypt_cbc ( loader_info->init, loader_info->key, 32, loader_info->iv, true );
+
+	if ( decrypted.size ( ) <= 0 )
+		return;
+
+	char* init_addr = &decrypted [ 0 ];
+
+	DWORD old = NULL;
+	VirtualProtect ( init_addr, decrypted.size ( ), PAGE_EXECUTE_READWRITE, &old );
+
+	reinterpret_cast< pinit >( init_addr )( &initdata );
+
+	VirtualProtect ( init_addr, decrypted.size ( ), old, &old );
+
+	memset ( &initdata, 0, sizeof ( init_data ) );
+	VirtualFree ( ( void* ) loader_info->init, 0, MEM_RELEASE );
+}
+
+int __stdcall init ( uintptr_t mod ) {
 	PIMAGE_NT_HEADERS pNtHdr = PIMAGE_NT_HEADERS ( uintptr_t ( mod ) + PIMAGE_DOS_HEADER ( mod )->e_lfanew );
 	PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER ) ( pNtHdr + 1 );
 
 	g_ImageStartAddr = PVOID ( mod );
-	g_ImageEndAddr = PVOID( mod + pNtHdr->OptionalHeader.SizeOfImage );
+	g_ImageEndAddr = PVOID ( mod + pNtHdr->OptionalHeader.SizeOfImage );
 
 	/* fix SEH */
 	AddVectoredExceptionHandler ( 1, ExceptionHandler );
@@ -102,52 +189,35 @@ int __stdcall init( uintptr_t mod ) {
 	for ( int i = 0; i < anti_patch::g_header_data.m_num_of_sections; ++i )
 		anti_patch::g_header_data.m_sections.push_back ( *pSectionHeader );
 
-		/* open console debug window */
-#ifdef DEV_BUILD
-	//LI_FN( AllocConsole )( );
-	//freopen_s( &g_fp, _( "CONOUT$" ), _( "w" ), stdout );
-#endif // DEV_BUILD
-
-	/* for anti-tamper */
-	//LI_FN( LoadLibraryA )( _("ntoskrnl.exe") );
-
 	/* wait for all modules to load */
-		while( !LI_FN( GetModuleHandleA )( _( "serverbrowser.dll" ) ) )
-		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
+	while ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
+		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
 
-		/* initialize hack */
-		csgo::init( );
-		erase::erase_func ( csgo::init );
-		netvars::init ( );
-		erase::erase_func ( netvars::init );
-		js::init ( );
-		erase::erase_func ( js::init );
+	/* initialize hack */
+	csgo::init ( );
+	erase::erase_func ( csgo::init );
+	netvars::init ( );
+	erase::erase_func ( netvars::init );
+	js::init ( );
+	erase::erase_func ( js::init );
 	hooks::init ( );
 	erase::erase_func ( hooks::init );
 
 	erase::erase_headers ( mod );
 
-	//LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( _ ( "Valve001" ), nullptr ), GWLP_WNDPROC, long ( hooks::o_wndproc ) );
-	//
-	//MH_RemoveHook ( MH_ALL_HOOKS );
-	//MH_Uninitialize ( );
-	//
-	//std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 200 ) ) );
-	//
-	//if ( g::local )
-	//	g::local->animate ( ) = true;
-	//
-	//FreeLibraryAndExitThread ( HMODULE ( mod ), 0 );
-
 	END_FUNC
 
-	return 0;
+		return 0;
 }
 
-int __stdcall init_proxy ( uintptr_t mod ) {
-	init ( mod );
-	erase::erase_func ( init );
-	security_handler::store_text_section_hash ( mod );
+int __stdcall init_proxy ( PLoader_Info loader_info ) {
+#ifndef DEV_BUILD
+	call_init ( loader_info );
+#else
+	init ( uintptr_t ( loader_info ) );
+#endif
+
+	//security_handler::store_text_section_hash ( mod );
 
 	while ( !g::unload )
 		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
@@ -188,15 +258,22 @@ int __stdcall init_proxy ( uintptr_t mod ) {
 		}
 	}
 
-	FreeLibraryAndExitThread ( HMODULE ( mod ), 0 );
-	//mmunload ( reinterpret_cast< void* > ( mod ) );
+#ifndef DEV_BUILD
+	mmunload ( loader_info->hMod );
+#else
+	FreeLibraryAndExitThread ( HMODULE ( loader_info ), 0 );
+#endif
 
 	return 0;
 }
 
-int __stdcall DllMain( HINSTANCE inst, std::uint32_t reason, void* reserved ) {
+int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved ) {
+#ifndef DEV_BUILD
+	g::loader_data = reinterpret_cast< PLoader_Info >( loader_data );
+#endif
+
 	if ( reason == 1 )
-		CreateThread ( nullptr, N ( 0 ), LPTHREAD_START_ROUTINE ( init_proxy ), HMODULE ( inst ), N ( 0 ), nullptr );
+		CloseHandle ( CreateThread ( nullptr, N ( 0 ), LPTHREAD_START_ROUTINE ( init_proxy ), loader_data, N ( 0 ), nullptr ) );
 
 	return 1;
 }

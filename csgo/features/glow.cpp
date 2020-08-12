@@ -1,6 +1,5 @@
 ﻿#include "glow.hpp"
 #include "../menu/menu.hpp"
-#include "../oxui/themes/purple.hpp"
 #include "../globals.hpp"
 #include "other_visuals.hpp"
 
@@ -130,11 +129,12 @@ void features::glow::cache_entities( ) {
 		if ( !client_class )
 			continue;
 
-		oxui::visual_editor::settings_t* visuals;
-		if ( !get_visuals ( entity, &visuals ) )
+		visual_config_t visuals;
+
+		if ( !get_visuals ( entity, visuals ) )
 			continue;
 
-		if ( !visuals->glow )
+		if ( !visuals.glow )
 			continue;
 
 		/*if ( client_class->m_class_id == 1 || ( client_class->m_class_id >= 231 && client_class->m_class_id <= 272 ) )
@@ -143,7 +143,7 @@ void features::glow::cache_entities( ) {
 			if ( !entity->valid( ) )
 				continue;
 
-			glow_object.set( static_cast< float >( visuals->glow_picker->clr.r ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.g ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.b ) / 255.0f, static_cast< float >( visuals->glow_picker->clr.a ) / 255.0f );
+			glow_object.set( visuals.glow_color.r, visuals.glow_color.g, visuals.glow_color.b, visuals.glow_color.a );
 		}
 		/*else if ( client_class->m_class_id == 8
 			|| client_class->m_class_id == 9

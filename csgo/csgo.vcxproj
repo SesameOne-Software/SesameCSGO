@@ -22,7 +22,6 @@
     <ClCompile Include="animations\animations.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="features\antiaim.cpp" />
-    <ClCompile Include="features\autowall.cpp" />
     <ClCompile Include="features\chams.cpp" />
     <ClCompile Include="features\clantag.cpp" />
     <ClCompile Include="features\esp.cpp" />
@@ -65,31 +64,18 @@
     <ClCompile Include="javascript\duktape.c" />
     <ClCompile Include="javascript\js_api.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="menu\d3d9_render.cpp" />
     <ClCompile Include="menu\menu.cpp" />
-    <ClCompile Include="oxui\json\cJSON.c" />
-    <ClCompile Include="oxui\objects\button.cpp" />
-    <ClCompile Include="oxui\objects\checkbox.cpp" />
-    <ClCompile Include="oxui\objects\colorpicker.cpp" />
-    <ClCompile Include="oxui\objects\dropdown.cpp" />
-    <ClCompile Include="oxui\objects\groupbox.cpp" />
-    <ClCompile Include="oxui\objects\keybind.cpp" />
-    <ClCompile Include="oxui\objects\label.cpp" />
-    <ClCompile Include="oxui\objects\object.cpp" />
-    <ClCompile Include="oxui\objects\shapes.cpp" />
-    <ClCompile Include="oxui\objects\slider.cpp" />
-    <ClCompile Include="oxui\objects\subtab.cpp" />
-    <ClCompile Include="oxui\objects\tab.cpp" />
-    <ClCompile Include="oxui\objects\textbox.cpp" />
-    <ClCompile Include="oxui\objects\visual_editor.cpp" />
-    <ClCompile Include="oxui\objects\window.cpp" />
-    <ClCompile Include="oxui\panels\panel.cpp" />
-    <ClCompile Include="oxui\themes\theme.cpp" />
+    <ClCompile Include="menu\options.cpp" />
+    <ClCompile Include="menu\sesui.cpp" />
+    <ClCompile Include="menu\sesui_custom.cpp" />
     <ClCompile Include="renderer\d3d9.cpp" />
     <ClCompile Include="sdk\netvar.cpp" />
     <ClCompile Include="sdk\player.cpp" />
     <ClCompile Include="sdk\sdk.cpp" />
     <ClCompile Include="sdk\weapon.cpp" />
     <ClCompile Include="security\anti_debug.cpp" />
+    <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="utils\miniz.c" />
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
@@ -141,31 +127,15 @@
     <ClInclude Include="javascript\duktape.h" />
     <ClInclude Include="javascript\duk_config.h" />
     <ClInclude Include="javascript\js_api.hpp" />
+    <ClInclude Include="menu\d3d9_render.hpp" />
+    <ClInclude Include="menu\logo.hpp" />
     <ClInclude Include="menu\menu.hpp" />
+    <ClInclude Include="menu\options.hpp" />
+    <ClInclude Include="menu\sesui.hpp" />
+    <ClInclude Include="menu\sesui_custom.hpp" />
     <ClInclude Include="minhook\minhook.h" />
-    <ClInclude Include="oxui\bindings\bindings.hpp" />
-    <ClInclude Include="oxui\json\cJSON.h" />
-    <ClInclude Include="oxui\objects\button.hpp" />
-    <ClInclude Include="oxui\objects\checkbox.hpp" />
-    <ClInclude Include="oxui\objects\colorpicker.hpp" />
-    <ClInclude Include="oxui\objects\dropdown.hpp" />
-    <ClInclude Include="oxui\objects\groupbox.hpp" />
-    <ClInclude Include="oxui\objects\keybind.hpp" />
-    <ClInclude Include="oxui\objects\label.hpp" />
-    <ClInclude Include="oxui\objects\object.hpp" />
-    <ClInclude Include="oxui\objects\shapes.hpp" />
-    <ClInclude Include="oxui\objects\slider.hpp" />
-    <ClInclude Include="oxui\objects\subtab.hpp" />
-    <ClInclude Include="oxui\objects\tab.hpp" />
-    <ClInclude Include="oxui\objects\textbox.hpp" />
-    <ClInclude Include="oxui\objects\visual_editor.hpp" />
-    <ClInclude Include="oxui\objects\window.hpp" />
-    <ClInclude Include="oxui\oxui.hpp" />
-    <ClInclude Include="oxui\panels\panel.hpp" />
-    <ClInclude Include="oxui\themes\pink.hpp" />
-    <ClInclude Include="oxui\themes\purple.hpp" />
-    <ClInclude Include="oxui\types\types.hpp" />
     <ClInclude Include="player_images.h" />
+    <ClInclude Include="plusaes.hpp" />
     <ClInclude Include="renderer\d3d9.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sdk\beams.hpp" />
@@ -203,10 +173,11 @@
     <ClInclude Include="security\xorstr.hpp" />
     <ClInclude Include="segoeui.h" />
     <ClInclude Include="sesame_font.h" />
-    <ClInclude Include="sesame_logo.h" />
+    <ClInclude Include="tinyxml2\tinyxml2.h" />
     <ClInclude Include="utils\base64.hpp" />
     <ClInclude Include="utils\detours.hpp" />
     <ClInclude Include="utils\miniz.h" />
+    <ClInclude Include="utils\networking.hpp" />
     <ClInclude Include="utils\padding.hpp" />
     <ClInclude Include="utils\patternscanner.hpp" />
     <ClInclude Include="utils\registers.hpp" />
@@ -300,7 +271,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;OXUI_WIDESTR;OXUI_THEME_PURPLE_HPP;ANTI_DEBUG;DEV_BUILD;JM_XORSTR_DISABLE_AVX_INTRINSICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;JM_XORSTR_DISABLE_AVX_INTRINSICS;DEV_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -310,13 +281,14 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>minhook/minhook.lib;d3dx9.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>minhook/minhook.lib;d3dx9.lib;d3d9.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
       <IgnoreEmbeddedIDL>false</IgnoreEmbeddedIDL>

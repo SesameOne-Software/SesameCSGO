@@ -1,4 +1,7 @@
 #pragma once
+#include <windows.h>
+
+#define SESAME_VERSION L"PREVIEW 3.0.0"
 
 struct ucmd_t;
 class vec3_t;
@@ -9,6 +12,20 @@ enum class round_t : int {
 	in_progress,
 	ending,
 };
+
+typedef struct _Loader_Info {
+	HMODULE hMod;
+	size_t hMod_sz;
+	void* section;
+	size_t section_sz;
+	const char* init;
+	unsigned char* key;
+	unsigned char* iv;
+	const char* username;
+	const char* avatar;
+	size_t avatar_sz;
+	char padding [ 24 ];
+}Loader_Info, * PLoader_Info;
 
 namespace g {
 	extern bool unload;
@@ -27,4 +44,5 @@ namespace g {
 	extern int cock_ticks;
 	extern bool can_fire_revolver;
 	extern round_t round;
+	extern PLoader_Info loader_data;
 }

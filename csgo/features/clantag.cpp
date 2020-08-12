@@ -1,5 +1,6 @@
 ﻿#include "../menu/menu.hpp"
 #include "clantag.hpp"
+#include "../menu/options.hpp"
 
 int iter = 0;
 std::string last_tag = _( "" );
@@ -8,9 +9,9 @@ extern int current_plist_player;
 int player_to_steal_tag_from = 0;
 
 void features::clantag::run( ucmd_t* ucmd ) {
-	OPTION( bool, enabled, "Sesame->E->Effects->Main->Clantag", oxui::object_checkbox );
-	OPTION( int, type, "Sesame->E->Effects->Main->Clantag Animation", oxui::object_dropdown );
-	OPTION( oxui::str, wtag, "Sesame->E->Effects->Main->Clantag Text", oxui::object_textbox );
+	static auto& clantag = options::vars [ _ ( "misc.effects.clantag" ) ].val.b;
+	static auto& clantag_animation = options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i;
+	static auto& clantag_text = options::vars [ _("misc.effects.clantag_text")].val.s;
 
 	static auto player_rsc_ptr = pattern::search ( _ ( "client.dll" ), _ ( "8B 3D ? ? ? ? 85 FF 0F 84 ? ? ? ? 81 C7" ) ).add ( 2 ).deref ( ).get< uintptr_t > ( );
 	static std::ptrdiff_t off_clan = netvars::get_offset ( _ ( "DT_CSPlayerResource->m_szClan" ) );
@@ -18,7 +19,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 	using fn = int( __fastcall* )( const char*, const char* );
 	static auto change_clantag = pattern::search( _( "engine.dll" ), _( "53 56 57 8B DA 8B F9 FF 15" ) ).get< fn >( );
 
-	if ( !enabled && !player_to_steal_tag_from ) {
+	if ( !clantag && !player_to_steal_tag_from ) {
 		if ( last_tag != _ ( "" ) ) {
 			change_clantag ( _ ( "" ), _ ( "" ) );
 		}
@@ -28,7 +29,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 	}
 
 	auto iter = static_cast< int >( csgo::i::globals->m_curtime * 4.0f );
-	const auto tag = std::string( wtag.begin( ), wtag.end( ) );
+	const std::string tag = std::string( clantag_text, clantag_text + wcslen( clantag_text ) );
 
 	if ( player_to_steal_tag_from ) {
 		const auto player_rsc = *reinterpret_cast< uintptr_t* > ( player_rsc_ptr );
@@ -52,16 +53,16 @@ void features::clantag::run( ucmd_t* ucmd ) {
 		}
 	}
 	else {
-		switch ( type ) {
+		switch ( clantag_animation ) {
 		case 0: {
+			if ( last_tag != tag ) { change_clantag ( tag.data ( ), tag.data ( ) ); }
+			last_tag = tag;
+		} break;
+		case 1: {
 			auto marquee_tag = tag + _ ( "    " );
 			std::rotate ( marquee_tag.rbegin ( ), marquee_tag.rbegin ( ) + ( iter % ( tag.length ( ) - 1 + 4 ) ), marquee_tag.rend ( ) );
 			if ( last_tag != marquee_tag ) { change_clantag ( marquee_tag.data ( ), marquee_tag.data ( ) ); }
 			last_tag = marquee_tag;
-		} break;
-		case 1: {
-			if ( last_tag != tag ) { change_clantag ( tag.data ( ), tag.data ( ) ); }
-			last_tag = tag;
 		} break;
 		case 2: {
 			auto dynamic_tag = tag;

@@ -76,7 +76,7 @@ namespace csgo {
 		return static_cast< float >( t )* i::globals->m_ipt;
 	}
 
-	__forceinline void for_each_player ( std::function< void ( player_t* ) > fn ) {
+	__forceinline void for_each_player ( const std::function< void ( player_t* ) >& fn ) {
 		for ( auto i = 1; i <= i::globals->m_max_clients; i++ ) {
 			auto entity = i::ent_list->get< player_t* > ( i );
 
@@ -162,6 +162,11 @@ namespace csgo {
 		ret.z = -sp;
 
 		return ret;
+	}
+
+	__forceinline float calc_fov ( const vec3_t& src, const vec3_t& dst ) {
+		vec3_t ang = angle_vec ( src ), aim = angle_vec ( dst );
+		return rad2deg ( acosf ( aim.dot_product ( ang ) / aim.length_sqr ( ) ) );
 	}
 
 	__forceinline void util_traceline ( const vec3_t& start, const vec3_t& end, unsigned int mask, const void* ignore, trace_t* tr ) {

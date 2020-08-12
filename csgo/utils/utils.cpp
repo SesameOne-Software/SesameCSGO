@@ -6,3 +6,5 @@
 
 std::array< bool, 5 > mouse_down { false };
 std::array< bool, 512 > key_down { false };
+std::array< bool, 512 > key_toggled { false };
+std::array< bool, 512 > last_key_toggled { false };

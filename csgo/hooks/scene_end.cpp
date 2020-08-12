@@ -23,45 +23,42 @@ void __fastcall hooks::scene_end ( REG ) {
 	if ( g::local && g::local->alive ( ) && g::send_packet )
 		features::chams::old_origin = g::local->origin ( );
 
-	RUN_SAFE (
-		"draw_hit_matricies",
-		if ( g::local ) {
-			for ( auto i = 1; i <= 200; i++ ) {
-				const auto ent = csgo::i::ent_list->get < entity_t* > ( i );
+	if ( g::local ) {
+		for ( auto i = 1; i <= 200; i++ ) {
+			const auto ent = csgo::i::ent_list->get < entity_t* > ( i );
 
-				if ( !ent || !ent->client_class ( ) || ( ent->client_class ( )->m_class_id != 40 && ent->client_class ( )->m_class_id != 42 ) )
-					continue;
+			if ( !ent || !ent->client_class ( ) || ( ent->client_class ( )->m_class_id != 40 && ent->client_class ( )->m_class_id != 42 ) )
+				continue;
 
-				static auto off_player_handle = netvars::get_offset ( _ ( "DT_CSRagdoll->m_hPlayer" ) );
+			static auto off_player_handle = netvars::get_offset ( _ ( "DT_CSRagdoll->m_hPlayer" ) );
 
-				auto pl_idx = -1;
+			auto pl_idx = -1;
 
-				if ( ent->client_class ( )->m_class_id == 42 )
-					pl_idx = *reinterpret_cast< uint32_t* > ( uintptr_t ( ent ) + off_player_handle ) & 0xfff;
-				else
-					pl_idx = ent->idx ( );
+			if ( ent->client_class ( )->m_class_id == 42 )
+				pl_idx = *reinterpret_cast< uint32_t* > ( uintptr_t ( ent ) + off_player_handle ) & 0xfff;
+			else
+				pl_idx = ent->idx ( );
 
-				if ( pl_idx != -1 && pl_idx ) {
-					std::vector< animations::resolver::hit_matrix_rec_t > hit_matricies { };
+			if ( pl_idx != -1 && pl_idx ) {
+				std::vector< animations::resolver::hit_matrix_rec_t > hit_matricies { };
 
-					if ( !hit_matrix_rec.empty ( ) )
-						for ( auto& hit : hit_matrix_rec )
-							if ( hit.m_pl == pl_idx - 1 )
-								hit_matricies.push_back ( hit );
+				if ( !hit_matrix_rec.empty ( ) )
+					for ( auto& hit : hit_matrix_rec )
+						if ( hit.m_pl == pl_idx - 1 )
+							hit_matricies.push_back ( hit );
 
-					if ( !hit_matricies.empty ( ) ) {
-						for ( auto& hit : hit_matricies ) {
-							cur_hit_matrix_rec = hit;
+				if ( !hit_matricies.empty ( ) ) {
+					for ( auto& hit : hit_matricies ) {
+						cur_hit_matrix_rec = hit;
 
-							features::chams::in_model = true;
-							ent->draw ( );
-							features::chams::in_model = false;
-						}
+						features::chams::in_model = true;
+						ent->draw ( );
+						features::chams::in_model = false;
 					}
 				}
 			}
 		}
-	);
+	}
 
 	RUN_SAFE (
 		"features::glow::cache_entities",

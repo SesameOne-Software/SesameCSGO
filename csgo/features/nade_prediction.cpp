@@ -1,6 +1,6 @@
 ﻿#include "nade_prediction.hpp"
 #include "../menu/menu.hpp"
-#include "../oxui/themes/purple.hpp"
+#include "../menu/options.hpp"
 #include "../globals.hpp"
 #include <deque>
 #include <mutex>
@@ -199,14 +199,11 @@ bool features::nade_prediction::detonated ( weapon_t* weapon, float time, trace_
 auto was_attacking_last_tick = false;
 
 void features::nade_prediction::trace ( ucmd_t* ucmd ) {
-	OPTION ( bool, grenade_trajectory, "Sesame->C->Other->World->Grenade Trajectories", oxui::object_checkbox );
-	OPTION ( bool, grenade_bounces, "Sesame->C->Other->World->Grenade Bounces", oxui::object_checkbox );
-	OPTION ( bool, grenade_radius, "Sesame->C->Other->World->Grenade Radii", oxui::object_checkbox );
+	static auto& grenade_trajectories = options::vars [ _ ( "visuals.other.grenade_trajectories" ) ].val.b;
+	static auto& grenade_bounces = options::vars [ _ ( "visuals.other.grenade_bounces" ) ].val.b;
+	static auto& grenade_blast_radii = options::vars [ _ ( "visuals.other.grenade_blast_radii" ) ].val.b;
 
-	//if ( !g_vars.visuals.grenade_pred )
-	//	return;
-
-	if ( ( g::local && !g::local->alive ( ) ) || ( !grenade_trajectory && !grenade_bounces && !grenade_radius ) ) {
+	if ( ( g::local && !g::local->alive ( ) ) || ( !grenade_trajectories && !grenade_bounces && !grenade_blast_radii ) ) {
 		cur_nade_track.clear ( );
 		nade_points.clear ( );
 		nade_predicted = false;
@@ -253,15 +250,13 @@ void features::nade_prediction::trace ( ucmd_t* ucmd ) {
 }
 
 void features::nade_prediction::draw ( ) {
-	OPTION ( bool, grenade_trajectory, "Sesame->C->Other->World->Grenade Trajectories", oxui::object_checkbox );
-	OPTION ( bool, grenade_bounces, "Sesame->C->Other->World->Grenade Bounces", oxui::object_checkbox );
-	OPTION ( bool, grenade_radius, "Sesame->C->Other->World->Grenade Radii", oxui::object_checkbox );
-	OPTION ( oxui::color, clr_bullet_tracer, "Sesame->C->Other->World->Bullet Tracer", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_bullet_impact, "Sesame->C->Other->World->Bullet Impact", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_trajectory, "Sesame->C->Other->World->Grenade Trajectory", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_bounces, "Sesame->C->Other->World->Grenade Bounce", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_radius, "Sesame->C->Other->World->Grenade Radius", oxui::object_colorpicker );
-	OPTION ( double, nade_fade_time, "Sesame->C->Other->World->Nade Path Fade Time", oxui::object_slider );
+	static auto& grenade_trajectories = options::vars [ _ ( "visuals.other.grenade_trajectories" ) ].val.b;
+	static auto& grenade_bounces = options::vars [ _ ( "visuals.other.grenade_bounces" ) ].val.b;
+	static auto& grenade_blast_radii = options::vars [ _ ( "visuals.other.grenade_blast_radii" ) ].val.b;
+	static auto& grenade_path_fade_time = options::vars [ _ ( "visuals.other.grenade_path_fade_time" ) ].val.f;
+	static auto& grenade_trajectory_color = options::vars [ _ ( "visuals.other.grenade_trajectory_color" ) ].val.c;
+	static auto& grenade_bounce_color = options::vars [ _ ( "visuals.other.grenade_bounce_color" ) ].val.c;
+	static auto& grenade_radii_color = options::vars [ _ ( "visuals.other.grenade_radii_color" ) ].val.c;
 
 	//if ( !g_vars.visuals.grenade_pred )
 	//	return;
@@ -272,7 +267,7 @@ void features::nade_prediction::draw ( ) {
 	vec3_t start, end;
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
-		const auto dormant_time = nade_fade_time;
+		const auto dormant_time = grenade_path_fade_time;
 		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( csgo::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf ( csgo::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
 
@@ -288,9 +283,9 @@ void features::nade_prediction::draw ( ) {
 			}
 
 			for ( auto& p : nade_path ) {
-				const auto alpha = calc_alpha ( p.m_time, 2.0f, clr_grenade_trajectory.a );
-				const auto alpha1 = calc_alpha ( p.m_time, 2.0f, clr_grenade_bounces.a );
-				const auto alpha2 = calc_alpha ( p.m_time, 2.0f, clr_grenade_radius.a );
+				const auto alpha = calc_alpha ( p.m_time, 2.0f, grenade_trajectory_color.a * 255.0f );
+				const auto alpha1 = calc_alpha ( p.m_time, 2.0f, grenade_bounce_color.a * 255.0f );
+				const auto alpha2 = calc_alpha ( p.m_time, 2.0f, grenade_radii_color.a * 255.0f );
 
 				if ( !alpha && !alpha1 && !alpha2 ) {
 					nade_path.erase ( nade_path.begin ( ) + cur_point );
@@ -308,12 +303,12 @@ void features::nade_prediction::draw ( ) {
 					//	render::line ( start.x - 1, start.y, end.x - 1, end.y, D3DCOLOR_RGBA ( clr_grenade_trajectory.r , clr_grenade_trajectory.g, clr_grenade_trajectory.b, alpha ) );
 					//}
 
-					if ( p.m_detonate && grenade_radius ) {
-						render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( clr_grenade_radius.r , clr_grenade_radius.g, clr_grenade_radius.b, alpha2 ), false );
-						render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( clr_grenade_radius.r, clr_grenade_radius.g, clr_grenade_radius.b, alpha2 ), true );
+					if ( p.m_detonate && grenade_blast_radii ) {
+						render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( static_cast< int > ( grenade_radii_color.r * 255.0f ) , static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), false );
+						render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), true );
 					}
 					else if ( p.m_plane && grenade_bounces ) {
-						render::cube ( p.m_start, 4, D3DCOLOR_RGBA ( clr_grenade_bounces.r, clr_grenade_bounces.g, clr_grenade_bounces.b, alpha1 ) );
+						render::cube ( p.m_start, 4, D3DCOLOR_RGBA ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), alpha1 ) );
 					}
 				}
 
@@ -327,11 +322,11 @@ void features::nade_prediction::draw ( ) {
 	if ( nade_predicted ) {
 		auto base_time = csgo::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp ( static_cast< int >( std::sinf ( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + clr_grenade_radius.a ), 0, 255 );
+		auto calc_alpha1 = std::clamp ( static_cast< int >( std::sinf ( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + clr_grenade_trajectory.a ), 0, 255 );
-			auto calc_alpha2 = std::clamp( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + clr_grenade_bounces.a ), 0, 255);
+			auto calc_alpha = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + grenade_bounce_color.a * 255.0f ), 0, 255);
 
 			if ( !p.m_valid ) {
 				break;
@@ -344,12 +339,12 @@ void features::nade_prediction::draw ( ) {
 				//	render::line ( start.x - 1, start.y, end.x - 1, end.y, D3DCOLOR_RGBA ( clr_grenade_trajectory.r , clr_grenade_trajectory.g, clr_grenade_trajectory.b, calc_alpha ) );
 				//}
 
-				if ( p.m_detonate && grenade_radius ) {
-					render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( clr_grenade_radius.r, clr_grenade_radius.g, clr_grenade_radius.b, calc_alpha1 ), false );
-					render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( clr_grenade_radius.r, clr_grenade_radius.g, clr_grenade_radius.b, calc_alpha1 ), true );
+				if ( p.m_detonate && grenade_blast_radii ) {
+					render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( static_cast< int > ( grenade_radii_color.r * 255.0f ) , static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), false );
+					render::circle3d ( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA ( static_cast< int > ( grenade_radii_color.r * 255.0f ) , static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), true );
 				}
 				else if ( p.m_plane && grenade_bounces ) {
-					render::cube ( p.m_start, 4, D3DCOLOR_RGBA ( clr_grenade_bounces.r, clr_grenade_bounces.g, clr_grenade_bounces.b, calc_alpha2 ) );
+					render::cube ( p.m_start, 4, D3DCOLOR_RGBA ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), calc_alpha2 ) );
 				}
 			}
 
@@ -359,15 +354,13 @@ void features::nade_prediction::draw ( ) {
 }
 
 void features::nade_prediction::draw_beam ( ) {
-	OPTION ( bool, grenade_trajectory, "Sesame->C->Other->World->Grenade Trajectories", oxui::object_checkbox );
-	OPTION ( bool, grenade_bounces, "Sesame->C->Other->World->Grenade Bounces", oxui::object_checkbox );
-	OPTION ( bool, grenade_radius, "Sesame->C->Other->World->Grenade Radii", oxui::object_checkbox );
-	OPTION ( oxui::color, clr_bullet_tracer, "Sesame->C->Other->World->Bullet Tracer", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_bullet_impact, "Sesame->C->Other->World->Bullet Impact", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_trajectory, "Sesame->C->Other->World->Grenade Trajectory", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_bounces, "Sesame->C->Other->World->Grenade Bounce", oxui::object_colorpicker );
-	OPTION ( oxui::color, clr_grenade_radius, "Sesame->C->Other->World->Grenade Radius", oxui::object_colorpicker );
-	OPTION ( double, nade_fade_time, "Sesame->C->Other->World->Nade Path Fade Time", oxui::object_slider );
+	static auto& grenade_trajectories = options::vars [ _ ( "visuals.other.grenade_trajectories" ) ].val.b;
+	static auto& grenade_bounces = options::vars [ _ ( "visuals.other.grenade_bounces" ) ].val.b;
+	static auto& grenade_blast_radii = options::vars [ _ ( "visuals.other.grenade_blast_radii" ) ].val.b;
+	static auto& grenade_path_fade_time = options::vars [ _ ( "visuals.other.grenade_path_fade_time" ) ].val.f;
+	static auto& grenade_trajectory_color = options::vars [ _ ( "visuals.other.grenade_trajectory_color" ) ].val.c;
+	static auto& grenade_bounce_color = options::vars [ _ ( "visuals.other.grenade_bounce_color" ) ].val.c;
+	static auto& grenade_radii_color = options::vars [ _ ( "visuals.other.grenade_radii_color" ) ].val.c;
 
 	//if ( !g_vars.visuals.grenade_pred )
 	//	return;
@@ -378,7 +371,7 @@ void features::nade_prediction::draw_beam ( ) {
 	vec3_t start, end;
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
-		const auto dormant_time = nade_fade_time;
+		const auto dormant_time = grenade_path_fade_time;
 		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( csgo::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf ( csgo::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
 
@@ -402,10 +395,10 @@ void features::nade_prediction::draw_beam ( ) {
 	beam_info.m_end_width = 1.5f;
 	beam_info.m_flags = 0;
 
-	beam_info.m_red = static_cast< float > ( clr_bullet_tracer.r );
-	beam_info.m_green = static_cast< float > ( clr_bullet_tracer.g );
-	beam_info.m_blue = static_cast< float > ( clr_bullet_tracer.b );
-	beam_info.m_brightness = static_cast< float > ( clr_bullet_tracer.a );
+	beam_info.m_red = static_cast< float > ( grenade_trajectory_color.r * 255.0f );
+	beam_info.m_green = static_cast< float > ( grenade_trajectory_color.g * 255.0f );
+	beam_info.m_blue = static_cast< float > ( grenade_trajectory_color.b * 255.0f );
+	beam_info.m_brightness = static_cast< float > ( grenade_trajectory_color.a * 255.0f );
 
 	if ( !nade_points.empty ( ) ) {
 		for ( auto& nade_path : nade_points ) {
@@ -417,9 +410,9 @@ void features::nade_prediction::draw_beam ( ) {
 			}
 
 			for ( auto& p : nade_path ) {
-				const auto alpha = calc_alpha ( p.m_time, 2.0f, clr_grenade_trajectory.a );
-				const auto alpha1 = calc_alpha ( p.m_time, 2.0f, clr_grenade_bounces.a );
-				const auto alpha2 = calc_alpha ( p.m_time, 2.0f, clr_grenade_radius.a );
+				const auto alpha = calc_alpha ( p.m_time, 2.0f, grenade_trajectory_color.a * 255.0f );
+				const auto alpha1 = calc_alpha ( p.m_time, 2.0f, grenade_bounce_color.a * 255.0f );
+				const auto alpha2 = calc_alpha ( p.m_time, 2.0f, grenade_radii_color.a * 255.0f );
 
 				if ( !alpha && !alpha1 && !alpha2 ) {
 					nade_path.erase ( nade_path.begin ( ) + cur_point );
@@ -430,7 +423,7 @@ void features::nade_prediction::draw_beam ( ) {
 					break;
 				}
 
-				if ( grenade_trajectory ) {
+				if ( grenade_trajectories ) {
 					beam_info.m_start = p.m_start;
 					beam_info.m_end = p.m_end;
 
@@ -450,17 +443,17 @@ void features::nade_prediction::draw_beam ( ) {
 	if ( nade_predicted ) {
 		auto base_time = csgo::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp ( static_cast< int >( std::sinf ( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + clr_grenade_radius.a ), 0, 255 );
+		auto calc_alpha1 = std::clamp ( static_cast< int >( std::sinf ( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + clr_grenade_trajectory.a ), 0, 255 );
-			auto calc_alpha2 = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + clr_grenade_bounces.a ), 0, 255 );
+			auto calc_alpha = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp ( static_cast< int >( std::sinf ( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 			if ( !p.m_valid ) {
 				break;
 			}
 
-			if ( grenade_trajectory ) {
+			if ( grenade_trajectories ) {
 				beam_info.m_start = p.m_start;
 				beam_info.m_end = p.m_end;
 

@@ -43,11 +43,12 @@ long __stdcall hooks::wnd_proc ( HWND hwnd, std::uint32_t msg, std::uintptr_t wp
 		if ( wparam < 256 )
 			key_down [ wparam ] = false;
 		break;
+	case WM_MOUSEWHEEL:
+		sesui::input::scroll_amount += static_cast< float > ( GET_WHEEL_DELTA_WPARAM ( wparam ) ) / static_cast< float > ( WHEEL_DELTA );
+		break;
 	}
 
-	menu::wndproc ( hwnd, msg, wparam, lparam );
-
-	if ( menu::open ( ) && ( ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) || ( msg == WM_MOUSEWHEEL ) ) )
+	if ( gui::opened && ( ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) || ( msg == WM_MOUSEWHEEL ) ) )
 		return true;
 
 	return CallWindowProcA ( old::wnd_proc, hwnd, msg, wparam, lparam );

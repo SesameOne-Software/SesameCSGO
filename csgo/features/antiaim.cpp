@@ -4,6 +4,7 @@
 #include "prediction.hpp"
 #include "ragebot.hpp"
 #include "autowall.hpp"
+#include "../menu/options.hpp"
 
 extern int g_refresh_counter;
 
@@ -25,7 +26,6 @@ namespace aa {
 	bool was_fd = false;
 	bool move_flip = false;
 
-	int choke_counter = 0;
 	int old_lag_air = 0;
 	int old_lag_move = 0;
 	int old_lag_slow_walk = 0;
@@ -78,7 +78,7 @@ player_t* looking_at ( ) {
 
 		auto angle_to = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) );
 		csgo::clamp ( angle_to );
-		auto fov = csgo::normalize( angle_to.dist_to ( angs ) );
+		auto fov = csgo::calc_fov( angle_to, angs );
 
 		if ( fov < best_fov ) {
 			ret = pl;
@@ -108,132 +108,152 @@ int ducked_ticks = 0;
 
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
 	/* toggle */
-	OPTION( bool, air, "Sesame->B->Air->Base->In Air", oxui::object_checkbox );
-	OPTION( bool, move, "Sesame->B->Moving->Base->On Moving", oxui::object_checkbox );
-	OPTION ( bool, stand, "Sesame->B->Standing->Base->On Standing", oxui::object_checkbox );
-	OPTION ( bool, slow_walk, "Sesame->B->Slow Walk->Base->On Slow Walk", oxui::object_checkbox );
+	auto air = options::vars [ _ ( "antiaim.air.enabled" ) ].val.b;
+	auto move = options::vars [ _ ( "antiaim.moving.enabled" ) ].val.b;
+	auto stand = options::vars [ _ ( "antiaim.standing.enabled" ) ].val.b;
+	auto slow_walk = options::vars [ _ ( "antiaim.slow_walk.enabled" ) ].val.b;
 
 	/* desync */
-	OPTION( bool, desync_air, "Sesame->B->Air->Desync->Desync", oxui::object_checkbox );
-	OPTION( bool, desync_move, "Sesame->B->Moving->Desync->Desync", oxui::object_checkbox );
-	OPTION ( bool, desync_stand, "Sesame->B->Standing->Desync->Desync", oxui::object_checkbox );
-	OPTION( bool, desync_slow_walk, "Sesame->B->Slow Walk->Desync->Desync", oxui::object_checkbox );
+	static auto& desync_air = options::vars [ _ ( "antiaim.air.desync" ) ].val.b;
+	static auto& desync_move = options::vars [ _ ( "antiaim.moving.desync" ) ].val.b;
+	static auto& desync_stand = options::vars [ _ ( "antiaim.standing.desync" ) ].val.b;
+	static auto& desync_slow_walk = options::vars [ _ ( "antiaim.slow_walk.desync" ) ].val.b;
 
 	/* desync side */
-	OPTION( bool, desync_side_air, "Sesame->B->Air->Desync->Flip Desync Side", oxui::object_checkbox );
-	OPTION( bool, desync_side_move, "Sesame->B->Moving->Desync->Flip Desync Side", oxui::object_checkbox );
-	OPTION ( bool, desync_side_stand, "Sesame->B->Standing->Desync->Flip Desync Side", oxui::object_checkbox );
-	OPTION( bool, desync_side_slow_walk, "Sesame->B->Slow Walk->Desync->Flip Desync Side", oxui::object_checkbox );
+	static auto& desync_side_air = options::vars [ _ ( "antiaim.air.invert_initial_side" ) ].val.b;
+	static auto& desync_side_move = options::vars [ _ ( "antiaim.moving.invert_initial_side" ) ].val.b;
+	static auto& desync_side_stand = options::vars [ _ ( "antiaim.standing.invert_initial_side" ) ].val.b;
+	static auto& desync_side_slow_walk = options::vars [ _ ( "antiaim.slow_walk.invert_initial_side" ) ].val.b;
 
 	/* fake lag */
-	OPTION ( double, lag_air, "Sesame->B->Other->Fakelag->In Air Fakelag", oxui::object_slider );
-	OPTION ( double, lag_move, "Sesame->B->Other->Fakelag->Moving Fakelag", oxui::object_slider );
-	OPTION ( double, lag_stand, "Sesame->B->Other->Fakelag->Standing Fakelag", oxui::object_slider );
-	OPTION ( double, lag_slow_walk, "Sesame->B->Other->Fakelag->Slow Walk Fakelag", oxui::object_slider );
-	OPTION ( double, lag_send_air, "Sesame->B->Other->Fakelag->In Air Send Ticks", oxui::object_slider );
-	OPTION ( double, lag_send_move, "Sesame->B->Other->Fakelag->Moving Send Ticks", oxui::object_slider );
-	OPTION ( double, lag_send_stand, "Sesame->B->Other->Fakelag->Standing Send Ticks", oxui::object_slider );
-	OPTION ( double, lag_send_slow_walk, "Sesame->B->Other->Fakelag->Slow Walk Send Ticks", oxui::object_slider );
+	static auto& lag_air = options::vars [ _ ( "antiaim.air.fakelag_factor" ) ].val.i;
+	static auto& lag_move = options::vars [ _ ( "antiaim.moving.fakelag_factor" ) ].val.i;
+	static auto& lag_stand = options::vars [ _ ( "antiaim.standing.fakelag_factor" ) ].val.i;
+	static auto& lag_slow_walk = options::vars [ _ ( "antiaim.slow_walk.fakelag_factor" ) ].val.i;
 
 	/* pitch */
-	OPTION( int, pitch_air, "Sesame->B->Air->Base->Pitch", oxui::object_dropdown );
-	OPTION( int, pitch_move, "Sesame->B->Moving->Base->Pitch", oxui::object_dropdown );
-	OPTION ( int, pitch_stand, "Sesame->B->Standing->Base->Pitch", oxui::object_dropdown );
-	OPTION( int, pitch_slow_walk, "Sesame->B->Slow Walk->Base->Pitch", oxui::object_dropdown );
+	static auto& pitch_air = options::vars [ _ ( "antiaim.air.pitch" ) ].val.i;
+	static auto& pitch_move = options::vars [ _ ( "antiaim.moving.pitch" ) ].val.i;
+	static auto& pitch_stand = options::vars [ _ ( "antiaim.standing.pitch" ) ].val.i;
+	static auto& pitch_slow_walk = options::vars [ _ ( "antiaim.slow_walk.pitch" ) ].val.i;
 
 	/* base yaw */
-	OPTION( double, yaw_offset_air, "Sesame->B->Air->Base->Yaw Offset", oxui::object_slider );
-	OPTION( double, yaw_offset_move, "Sesame->B->Moving->Base->Yaw Offset", oxui::object_slider );
-	OPTION ( double, yaw_offset_stand, "Sesame->B->Standing->Base->Yaw Offset", oxui::object_slider );
-	OPTION ( double, yaw_offset_slow_walk , "Sesame->B->Slow Walk->Base->Yaw Offset", oxui::object_slider );
+	static auto& yaw_offset_air = options::vars [ _ ( "antiaim.air.yaw_offset" ) ].val.f;
+	static auto& yaw_offset_move = options::vars [ _ ( "antiaim.moving.yaw_offset" ) ].val.f;
+	static auto& yaw_offset_stand = options::vars [ _ ( "antiaim.standing.yaw_offset" ) ].val.f;
+	static auto& yaw_offset_slow_walk = options::vars [ _ ( "antiaim.slow_walk.yaw_offset" ) ].val.f;
 
 	/* slow walk settings */
-	OPTION ( double, slow_walk_speed, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Speed", oxui::object_slider );
-	OPTION ( bool, fakewalk, "Sesame->B->Slow Walk->Slow Walk->Fakewalk", oxui::object_checkbox );
+	static auto& slow_walk_speed = options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f;
+	static auto& fakewalk = options::vars [ _ ( "antiaim.fakewalk" ) ].val.b;
 
 	/* jitter desync */
-	OPTION( bool, jitter_air, "Sesame->B->Air->Desync->Jitter Desync Side", oxui::object_checkbox );
-	OPTION( bool, jitter_move, "Sesame->B->Moving->Desync->Jitter Desync Side", oxui::object_checkbox );
-	OPTION ( bool, jitter_stand, "Sesame->B->Standing->Desync->Jitter Desync Side", oxui::object_checkbox );
-	OPTION( bool, jitter_slow_walk, "Sesame->B->Slow Walk->Desync->Jitter Desync Side", oxui::object_checkbox );
+	static auto& jitter_air = options::vars [ _ ( "antiaim.air.jitter_desync_side" ) ].val.b;
+	static auto& jitter_move = options::vars [ _ ( "antiaim.moving.jitter_desync_side" ) ].val.b;
+	static auto& jitter_stand = options::vars [ _ ( "antiaim.standing.jitter_desync_side" ) ].val.b;
+	static auto& jitter_slow_walk = options::vars [ _ ( "antiaim.slow_walk.jitter_desync_side" ) ].val.b;
 
 	/* desync ranges */
-	OPTION ( double, desync_amount_air, "Sesame->B->Air->Desync->Desync Range", oxui::object_slider );
-	OPTION ( double, desync_amount_move, "Sesame->B->Moving->Desync->Desync Range", oxui::object_slider );
-	OPTION ( double, desync_amount_stand, "Sesame->B->Standing->Desync->Desync Range", oxui::object_slider );
-	OPTION ( double, desync_amount_slow_walk, "Sesame->B->Slow Walk->Desync->Desync Range", oxui::object_slider );
+	static auto& desync_amount_air = options::vars [ _ ( "antiaim.air.desync_range" ) ].val.f;
+	static auto& desync_amount_move = options::vars [ _ ( "antiaim.moving.desync_range" ) ].val.f;
+	static auto& desync_amount_stand = options::vars [ _ ( "antiaim.standing.desync_range" ) ].val.f;
+	static auto& desync_amount_slow_walk = options::vars [ _ ( "antiaim.slow_walk.desync_range" ) ].val.f;
+
+	static auto& desync_amount_inverted_air = options::vars [ _ ( "antiaim.air.desync_range_inverted" ) ].val.f;
+	static auto& desync_amount_inverted_move = options::vars [ _ ( "antiaim.moving.desync_range_inverted" ) ].val.f;
+	static auto& desync_amount_inverted_stand = options::vars [ _ ( "antiaim.standing.desync_range_inverted" ) ].val.f;
+	static auto& desync_amount_inverted_slow_walk = options::vars [ _ ( "antiaim.slow_walk.desync_range_inverted" ) ].val.f;
 
 	/* jitter amount */
-	OPTION ( double, jitter_amount_air, "Sesame->B->Air->Base->Jitter Range", oxui::object_slider );
-	OPTION ( double, jitter_amount_move, "Sesame->B->Moving->Base->Jitter Range", oxui::object_slider );
-	OPTION ( double, jitter_amount_stand, "Sesame->B->Standing->Base->Jitter Range", oxui::object_slider );
-	OPTION ( double, jitter_amount_slow_walk, "Sesame->B->Slow Walk->Base->Jitter Range", oxui::object_slider );
+	static auto& jitter_amount_air = options::vars [ _ ( "antiaim.air.jitter_range" ) ].val.f;
+	static auto& jitter_amount_move = options::vars [ _ ( "antiaim.moving.jitter_range" ) ].val.f;
+	static auto& jitter_amount_stand = options::vars [ _ ( "antiaim.standing.jitter_range" ) ].val.f;
+	static auto& jitter_amount_slow_walk = options::vars [ _ ( "antiaim.slow_walk.jitter_range" ) ].val.f;
 
-	OPTION ( double, auto_direction_amount_air, "Sesame->B->Air->Base->Auto Direction Amount", oxui::object_slider );
-	OPTION ( double, auto_direction_amount_move, "Sesame->B->Moving->Base->Auto Direction Amount", oxui::object_slider );
-	OPTION ( double, auto_direction_amount_stand, "Sesame->B->Standing->Base->Auto Direction Amount", oxui::object_slider );
-	OPTION ( double, auto_direction_amount_slow_walk, "Sesame->B->Slow Walk->Base->Auto Direction Amount", oxui::object_slider );
+	static auto& auto_direction_amount_air = options::vars [ _ ( "antiaim.air.auto_direction_amount" ) ].val.f;
+	static auto& auto_direction_amount_move = options::vars [ _ ( "antiaim.moving.auto_direction_amount" ) ].val.f;
+	static auto& auto_direction_amount_stand = options::vars [ _ ( "antiaim.standing.auto_direction_amount" ) ].val.f;
+	static auto& auto_direction_amount_slow_walk = options::vars [ _ ( "antiaim.slow_walk.auto_direction_amount" ) ].val.f;
 
-	OPTION ( double, auto_direction_range_air, "Sesame->B->Air->Base->Auto Direction Range", oxui::object_slider );
-	OPTION ( double, auto_direction_range_move, "Sesame->B->Moving->Base->Auto Direction Range", oxui::object_slider );
-	OPTION ( double, auto_direction_range_stand, "Sesame->B->Standing->Base->Auto Direction Range", oxui::object_slider );
-	OPTION ( double, auto_direction_range_slow_walk, "Sesame->B->Slow Walk->Base->Auto Direction Range", oxui::object_slider );
+	static auto& auto_direction_range_air = options::vars [ _ ( "antiaim.air.auto_direction_range" ) ].val.f;
+	static auto& auto_direction_range_move = options::vars [ _ ( "antiaim.moving.auto_direction_range" ) ].val.f;
+	static auto& auto_direction_range_stand = options::vars [ _ ( "antiaim.standing.auto_direction_range" ) ].val.f;
+	static auto& auto_direction_range_slow_walk = options::vars [ _ ( "antiaim.slow_walk.auto_direction_range" ) ].val.f;
 
-	KEYBIND ( left_key, "Sesame->B->Other->Other->Left Side Key" );
-	KEYBIND ( back_key, "Sesame->B->Other->Other->Back Side Key" );
-	KEYBIND ( right_key, "Sesame->B->Other->Other->Right Side Key" );
-	KEYBIND ( slowwalk_key, "Sesame->B->Slow Walk->Slow Walk->Slow Walk Key" );
-	OPTION ( int, fd_mode, "Sesame->B->Other->Other->Fakeduck Mode", oxui::object_dropdown );
-	KEYBIND ( fd_key, "Sesame->B->Other->Other->Fakeduck Key" );
-	KEYBIND ( desync_flip_key, "Sesame->B->Other->Other->Desync Flip Key" );
+	static auto& left_key = options::vars [ _ ( "antiaim.manual_left_key" ) ].val.i;
+	static auto& right_key = options::vars [ _ ( "antiaim.manual_right_key" ) ].val.i;
+	static auto& back_key = options::vars [ _ ( "antiaim.manual_back_key" ) ].val.i;
 
-	OPTION ( bool, center_real_air, "Sesame->B->Air->Desync->Center Real", oxui::object_checkbox );
-	OPTION ( bool, center_real_move, "Sesame->B->Moving->Desync->Center Real", oxui::object_checkbox );
-	OPTION ( bool, center_real_stand, "Sesame->B->Standing->Desync->Center Real", oxui::object_checkbox );
-	OPTION ( bool, center_real_slow_walk, "Sesame->B->Slow Walk->Desync->Center Real", oxui::object_checkbox );
+	static auto& slowwalk_key = options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i;
+	static auto& slowwalk_key_mode = options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i;
+	
+	static auto& fd_mode = options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i;
+	static auto& fd_enabled = options::vars [ _ ( "antiaim.fakeduck" ) ].val.b;
+	static auto& fd_key = options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _ ( "antiaim.fakeduck_key_mode" ) ].val.i;
 
-	OPTION ( bool, anti_bruteforce_air, "Sesame->B->Air->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
-	OPTION ( bool, anti_bruteforce_move, "Sesame->B->Moving->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
-	OPTION ( bool, anti_bruteforce_stand, "Sesame->B->Standing->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
-	OPTION ( bool, anti_bruteforce_slow_walk, "Sesame->B->Slow Walk->Anti-Hit->Anti-Bruteforce", oxui::object_checkbox );
+	static auto& desync_flip_key = options::vars [ _ ( "antiaim.desync_invert_key" ) ].val.i;
+	static auto& desync_flip_key_mode = options::vars [ _ ( "antiaim.desync_invert_key_mode" ) ].val.i;
 
-	OPTION ( bool, anti_freestand_prediction_air, "Sesame->B->Air->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
-	OPTION ( bool, anti_freestand_prediction_move, "Sesame->B->Moving->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
-	OPTION ( bool, anti_freestand_prediction_stand, "Sesame->B->Standing->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
-	OPTION ( bool, anti_freestand_prediction_slow_walk, "Sesame->B->Slow Walk->Anti-Hit->Anti-Freestand Prediction", oxui::object_checkbox );
+	static auto& center_real_air = options::vars [ _ ( "antiaim.air.center_real" ) ].val.b;
+	static auto& center_real_move = options::vars [ _ ( "antiaim.moving.center_real" ) ].val.b;
+	static auto& center_real_stand = options::vars [ _ ( "antiaim.standing.center_real" ) ].val.b;
+	static auto& center_real_slow_walk = options::vars [ _ ( "antiaim.slow_walk.center_real" ) ].val.b;
 
-	OPTION ( int, base_yaw_air, "Sesame->B->Air->Base->Base Yaw", oxui::object_dropdown );
-	OPTION ( int, base_yaw_move, "Sesame->B->Moving->Base->Base Yaw", oxui::object_dropdown );
-	OPTION ( int, base_yaw_stand, "Sesame->B->Standing->Base->Base Yaw", oxui::object_dropdown );
-	OPTION ( int, base_yaw_slow_walk, "Sesame->B->Slow Walk->Base->Base Yaw", oxui::object_dropdown );
+	static auto& anti_bruteforce_air = options::vars [ _ ( "antiaim.air.anti_bruteforce" ) ].val.b;
+	static auto& anti_bruteforce_move = options::vars [ _ ( "antiaim.moving.anti_bruteforce" ) ].val.b;
+	static auto& anti_bruteforce_stand = options::vars [ _ ( "antiaim.standing.anti_bruteforce" ) ].val.b;
+	static auto& anti_bruteforce_slow_walk = options::vars [ _ ( "antiaim.slow_walk.anti_bruteforce" ) ].val.b;
+
+	static auto& anti_freestand_prediction_air = options::vars [ _ ( "antiaim.air.anti_freestand_prediction" ) ].val.b;
+	static auto& anti_freestand_prediction_move = options::vars [ _ ( "antiaim.moving.anti_freestand_prediction" ) ].val.b;
+	static auto& anti_freestand_prediction_stand = options::vars [ _ ( "antiaim.standing.anti_freestand_prediction" ) ].val.b;
+	static auto& anti_freestand_prediction_slow_walk = options::vars [ _ ( "antiaim.slow_walk.anti_freestand_prediction" ) ].val.b;
+
+	static auto& base_yaw_air = options::vars [ _ ( "antiaim.air.base_yaw" ) ].val.i;
+	static auto& base_yaw_move = options::vars [ _ ( "antiaim.moving.base_yaw" ) ].val.i;
+	static auto& base_yaw_stand = options::vars [ _ ( "antiaim.standing.base_yaw" ) ].val.i;
+	static auto& base_yaw_slow_walk = options::vars [ _ ( "antiaim.slow_walk.base_yaw" ) ].val.i;
+
+	static auto& rotation_range_air = options::vars [ _ ( "antiaim.air.rotation_range" ) ].val.f;
+	static auto& rotation_range_move = options::vars [ _ ( "antiaim.moving.rotation_range" ) ].val.f;
+	static auto& rotation_range_stand = options::vars [ _ ( "antiaim.standing.rotation_range" ) ].val.f;
+	static auto& rotation_range_slow_walk = options::vars [ _ ( "antiaim.slow_walk.rotation_range" ) ].val.f;
+
+	static auto& rotation_speed_air = options::vars [ _ ( "antiaim.air.rotation_speed" ) ].val.f;
+	static auto& rotation_speed_move = options::vars [ _ ( "antiaim.moving.rotation_speed" ) ].val.f;
+	static auto& rotation_speed_stand = options::vars [ _ ( "antiaim.standing.rotation_speed" ) ].val.f;
+	static auto& rotation_speed_slow_walk = options::vars [ _ ( "antiaim.slow_walk.rotation_speed" ) ].val.f;
 
 	security_handler::update ( );
 
 	const auto choke_limit = csgo::is_valve_server ( ) ? 8 : 16;
 
-	if ( MAKE_KEYBIND ( left_key )->key == -1 && side == 1 )
-		side = 0;
-
-	if ( MAKE_KEYBIND ( right_key )->key == -1 && side == 2 )
-		side = 2;
-
-	if ( MAKE_KEYBIND ( back_key )->key == -1 && side == 0 )
+	if ( !left_key && side == 1 )
 		side = -1;
 
-	if ( desync_flip_key == -1 && desync_side != -1 )
+	if ( !right_key && side == 2 )
+		side = -1;
+
+	if ( !back_key && side == 0 )
+		side = -1;
+
+	if ( !desync_flip_key && desync_side != -1 )
 		desync_side = -1;
 
-	if ( MAKE_KEYBIND ( left_key )->key != -1 && utils::key_state ( MAKE_KEYBIND( left_key )->key ) & 1 )
-		side = 1;
+	if ( utils::keybind_active ( left_key, 1 ) )
+		side = side == 1 ? -1 : 1;
 
-	if ( MAKE_KEYBIND ( right_key )->key != -1 && utils::key_state ( MAKE_KEYBIND ( right_key )->key ) & 1 )
-		side = 2;
+	if ( utils::keybind_active ( right_key, 1 ) )
+		side = side == 2 ? -1 : 2;
 
-	if ( MAKE_KEYBIND ( back_key )->key != -1 && utils::key_state ( MAKE_KEYBIND ( back_key )->key ) & 1 )
-		side = 0;
+	if ( utils::keybind_active ( back_key, 1 ) )
+		side = side == 0 ? -1 : 0;
 
-	if ( desync_flip_key )
-		desync_side = !desync_side;
+	if ( desync_flip_key && utils::keybind_active( desync_flip_key, desync_flip_key_mode ) )
+		desync_side = 0;
+	else if ( desync_flip_key )
+		desync_side = 1;
 
 	/* reset anti-bruteforce when new round starts */
 	if ( g::round == round_t::starting )
@@ -246,28 +266,16 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	if ( g::local->valid ( ) && g::round != round_t::starting ) {
 		auto max_lag = 1;
 
-		if ( air && !( g::local->flags ( ) & 1 ) )
+		if ( air && !(g::local->flags ( ) & 1 ) )
 			max_lag = lag_air;
-		else if ( slow_walk && g::local->vel ( ).length_2d ( ) > 5.0f && slowwalk_key )
+		else if ( slow_walk && g::local->vel ( ).length_2d ( ) > 5.0f && utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = lag_slow_walk;
 		else if ( move && g::local->vel ( ).length_2d ( ) > 0.1f )
 			max_lag = lag_move;
 		else if ( stand )
 			max_lag = lag_stand;
-
-		auto max_send = 0;
-
-		if ( air && !( g::local->flags ( ) & 1 ) )
-			max_send = lag_send_air;
-		else if ( slow_walk && g::local->vel ( ).length_2d ( ) > 5.0f && slowwalk_key )
-			max_send = lag_send_slow_walk;
-		else if ( move && g::local->vel ( ).length_2d ( ) > 0.1f )
-			max_send = lag_send_move;
-		else if ( stand )
-			max_send = lag_send_stand;
 		
-		max_lag = std::clamp ( max_lag, 0, choke_limit );
-		max_send = std::clamp ( max_send, 0, choke_limit );
+		max_lag = std::clamp ( max_lag, 1, choke_limit );
 
 		if ( aa::old_lag_air != static_cast< int >( lag_air ) ) {
 			g_refresh_counter = 0;
@@ -317,34 +325,24 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		last_final_shift_amount = final_shift_amount_max;
 
 		max_lag = std::clamp< int > ( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
-		max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
 
 		/* allow 1 extra tick just for when we land (if we are in air) */
 		if ( !( g::local->flags ( ) & 1 ) ) {
 			max_lag = std::clamp< int > ( max_lag, 1, 15 );
-			max_send = std::clamp< int > ( max_send, 0, max_lag - 1 );
 		}
 
-		if ( fakewalk && slowwalk_key ) {
+		if ( fakewalk && utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) ) {
 			max_lag = 14;
-			max_send = 0;
 		}
 
-		if ( aa::choke_counter < max_lag ) {
-			g::send_packet = !( aa::choke_counter >= max_send );
-			aa::choke_counter++;
-		}
-		else {
-			g::send_packet = true;
-			aa::choke_counter = 0;
-		}
+		g::send_packet = csgo::i::client_state->choked ( ) >= max_lag;
 
 		if ( g::local->flags ( ) & 1 && !aa::was_on_ground && g::local->weapon ( )->item_definition_index ( ) != 64 )
 			g::send_packet = false;
 
 		aa::was_on_ground = g::local->flags ( ) & 1;
 
-		if ( fd_key && fd_mode ) {
+		if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) {
 			aa::was_fd = true;
 			g::send_packet = csgo::i::client_state->choked ( ) >= choke_limit;
 
@@ -359,7 +357,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ducked_ticks++;
 			}
 			else {
-				ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > ( fd_mode == 1 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
+				ucmd->m_buttons = ( csgo::i::client_state->choked ( ) > ( fd_mode == 0 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
 			}
 
 			ucmd->m_buttons |= 0x400000;
@@ -371,7 +369,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			aa::was_fd = false;
 		}
 
-		if ( std::fabsf ( old_fmove ) <= 3.0f && std::fabsf ( old_smove ) <= 3.0f && desync_amount_stand <= 50.0 ) {
+		if ( std::fabsf ( old_fmove ) <= 3.0f && std::fabsf ( old_smove ) <= 3.0f && desync_amount_stand <= 30.0f && desync_amount_inverted_stand <= 30.0f ) {
 			old_fmove += aa::move_flip ? -3.3f : 3.3f;
 			aa::move_flip = !aa::move_flip;
 		}
@@ -402,11 +400,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		};
 
-		if ( slowwalk_key && g::local->weapon ( ) && g::local->weapon ( )->data( ) ) {
+		if ( utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && g::local->weapon ( ) && g::local->weapon ( )->data( ) ) {
 			if ( fakewalk ) {
 				force_standing_antiaim = true;
 
-				if ( aa::choke_counter > 7 )
+				if ( csgo::i::client_state->choked ( ) > 7 )
 					approach_speed ( 0.0f );
 
 				/* force lby flick, will update when we stand still and send packet... */
@@ -503,15 +501,18 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			if ( air ) {
 				process_base_yaw ( base_yaw_air, auto_direction_amount_air, auto_direction_range_air );
 
+				ucmd->m_angs.y += yaw_offset_air;
+
 				if ( side != -1 ) {
+					vec3_t ang;
+					csgo::i::engine->get_viewangles ( ang );
+
 					switch ( side ) {
-					case 0: ucmd->m_angs.y += 180.0f; break;
-					case 1: ucmd->m_angs.y += 90.0f; break;
-					case 2: ucmd->m_angs.y += -90.0f; break;
+					case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
+					case 1: ucmd->m_angs.y = ang.y + 90.0f; break;
+					case 2: ucmd->m_angs.y = ang.y - 90.0f; break;
 					}
 				}
-
-				ucmd->m_angs.y += yaw_offset_air;
 
 				switch ( pitch_air ) {
 				case 0: break;
@@ -527,36 +528,58 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
 				}
 
-				desync_amnt *= desync_amount_air / 100.0f;
-
 				if ( anti_bruteforce_air && target_player )
 					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx ( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
-				if ( desync_air && jitter_air && !g::send_packet )
-					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
-				else if ( desync_air && !g::send_packet )
-					ucmd->m_angs.y += desync_side_air ? -desync_amnt : desync_amnt;
+				if ( desync_air && jitter_air && !g::send_packet ) {
+					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_air / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_air / 60.0f;
 
-				if ( desync_air && center_real_air )
-					ucmd->m_angs.y += ( ( ( desync_side_air ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * 0.5f;
+					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
+				}
+				else if ( desync_air && !g::send_packet ) {
+					if ( ( desync_side_air ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_air / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_air / 60.0f;
+
+					ucmd->m_angs.y += desync_side_air ? -desync_amnt : desync_amnt;
+				}
+
+				if ( desync_air && center_real_air ) {
+					if ( ( desync_side_air ? desync_amnt : -desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_air / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_air / 60.0f;
+
+					ucmd->m_angs.y += ( ( ( desync_side_air ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * std::fabsf ( desync_amnt * 0.5f );
+				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_air : jitter_amount_air;
+
+				if ( rotation_range_air )
+					ucmd->m_angs.y += std::fmodf ( csgo::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
 			}
 		}
 		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
-			if ( slowwalk_key && slow_walk ) {
+			if ( utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && slow_walk ) {
 				process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
-
-				if ( side != -1 ) {
-					switch ( side ) {
-					case 0: ucmd->m_angs.y += 180.0f; break;
-					case 1: ucmd->m_angs.y += 90.0f; break;
-					case 2: ucmd->m_angs.y += -90.0f; break;
-					}
-				}
 
 				ucmd->m_angs.y += yaw_offset_slow_walk;
 				
+				if ( side != -1 ) {
+					vec3_t ang;
+					csgo::i::engine->get_viewangles ( ang );
+
+					switch ( side ) {
+					case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
+					case 1: ucmd->m_angs.y = ang.y + 90.0f; break;
+					case 2: ucmd->m_angs.y = ang.y - 90.0f; break;
+					}
+				}
+
 				switch ( pitch_slow_walk ) {
 				case 0: break;
 				case 1: ucmd->m_angs.x = 89.0f; break;
@@ -571,34 +594,56 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
 				}
 
-				desync_amnt *= desync_amount_slow_walk / 100.0f;
-
 				if ( anti_bruteforce_slow_walk && target_player )
 					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx ( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
-				if ( desync_slow_walk && jitter_slow_walk && !g::send_packet )
-					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
-				else if ( desync_slow_walk && !g::send_packet )
-					ucmd->m_angs.y += desync_side_slow_walk ? -desync_amnt : desync_amnt;
+				if ( desync_slow_walk && jitter_slow_walk && !g::send_packet ) {
+					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_slow_walk / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_slow_walk / 60.0f;
 
-				if ( desync_slow_walk && center_real_slow_walk )
-					ucmd->m_angs.y += ( ( ( desync_side_slow_walk ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * 0.5f;
+					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
+				}
+				else if ( desync_slow_walk && !g::send_packet ) {
+					if ( ( desync_side_slow_walk ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_slow_walk / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_slow_walk / 60.0f;
+
+					ucmd->m_angs.y += desync_side_slow_walk ? -desync_amnt : desync_amnt;
+				}
+
+				if ( desync_slow_walk && center_real_slow_walk ) {
+					if ( ( desync_side_slow_walk ? desync_amnt : -desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_slow_walk / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_slow_walk / 60.0f;
+
+					ucmd->m_angs.y += ( ( ( desync_side_slow_walk ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * std::fabsf ( desync_amnt * 0.5f );
+				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_slow_walk : jitter_amount_slow_walk;
+
+				if( rotation_range_slow_walk )
+					ucmd->m_angs.y += std::fmodf ( csgo::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
 			}
 			else if ( move ) {
 				process_base_yaw ( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
 
+				ucmd->m_angs.y += yaw_offset_move;
+				
 				if ( side != -1 ) {
+					vec3_t ang;
+					csgo::i::engine->get_viewangles ( ang );
+
 					switch ( side ) {
-					case 0: ucmd->m_angs.y += 180.0f; break;
-					case 1: ucmd->m_angs.y += 90.0f; break;
-					case 2: ucmd->m_angs.y += -90.0f; break;
+					case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
+					case 1: ucmd->m_angs.y = ang.y + 90.0f; break;
+					case 2: ucmd->m_angs.y = ang.y - 90.0f; break;
 					}
 				}
 
-				ucmd->m_angs.y += yaw_offset_move;
-				
 				switch ( pitch_move ) {
 				case 0: break;
 				case 1: ucmd->m_angs.x = 89.0f; break;
@@ -613,35 +658,57 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						desync_amnt = !desync_side ? 120.0f : -120.0f;
 				}
 
-				desync_amnt *= desync_amount_move / 100.0f;
-
 				if ( anti_bruteforce_move && target_player )
 					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx ( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
-				if ( desync_move && jitter_move && !g::send_packet )
-					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
-				else if ( desync_move && !g::send_packet )
-					ucmd->m_angs.y += desync_side_move ? -desync_amnt : desync_amnt;
+				if ( desync_move && jitter_move && !g::send_packet ) {
+					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_move / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_move / 60.0f;
 
-				if ( desync_move && center_real_move )
-					ucmd->m_angs.y += ( ( ( desync_side_move ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * 0.5f;
+					ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
+				}
+				else if ( desync_move && !g::send_packet ) {
+					if ( ( desync_side_move ? -desync_amnt : desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_move / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_move / 60.0f;
+
+					ucmd->m_angs.y += desync_side_move ? -desync_amnt : desync_amnt;
+				}
+
+				if ( desync_move && center_real_move ) {
+					if ( ( desync_side_move ? desync_amnt : -desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_move / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_move / 60.0f;
+
+					ucmd->m_angs.y += ( ( ( desync_side_move ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * std::fabsf ( desync_amnt * 0.5f );
+				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_move : jitter_amount_move;
+
+				if( rotation_range_move )
+					ucmd->m_angs.y += std::fmodf ( csgo::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
 			}
 		}
 		else if ( stand ) {
 			process_base_yaw ( base_yaw_stand, auto_direction_amount_stand, auto_direction_range_stand );
 
+			ucmd->m_angs.y += yaw_offset_stand;
+			
 			if ( side != -1 ) {
+				vec3_t ang;
+				csgo::i::engine->get_viewangles ( ang );
+
 				switch ( side ) {
-				case 0: ucmd->m_angs.y += 180.0f; break;
-				case 1: ucmd->m_angs.y += 90.0f; break;
-				case 2: ucmd->m_angs.y += -90.0f; break;
+				case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
+				case 1: ucmd->m_angs.y = ang.y + 90.0f; break;
+				case 2: ucmd->m_angs.y = ang.y - 90.0f; break;
 				}
 			}
 
-			ucmd->m_angs.y += yaw_offset_stand;
-			
 			switch ( pitch_stand ) {
 			case 0: break;
 			case 1: ucmd->m_angs.x = 89.0f; break;
@@ -656,16 +723,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					desync_amnt = !desync_side ? 120.0f : -120.0f;
 			}
 
-			desync_amnt *= desync_amount_stand / 100.0f;
-
-			//if ( target_player )
-			//	dbg_print ( "shots: %d\n", lagcomp::data::shot_count [ target_player->idx ( ) ] );
-
 			if ( anti_bruteforce_stand && target_player )
 				desync_amnt = ( lagcomp::data::shot_count [ target_player->idx ( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
 			if ( desync_stand ) {
-				if ( desync_amount_stand > 50.0 ) {
+				if ( desync_amount_stand > 30.0f ) {
 					if ( jitter_stand ) {
 						/* go 180 from update location to trigger 979 activity */
 						if ( lby::in_update || !g::send_packet ) {
@@ -678,22 +740,49 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 							ucmd->m_angs.y -= /*std::copysignf ( desync_side_stand ? -desync_amnt : desync_amnt, 120.0f )*/ 180.0f;
 							g::send_packet = false;
 						}
-						else if ( !g::send_packet )
-							ucmd->m_angs.y += std::copysignf( desync_side_stand ? -desync_amnt : desync_amnt, 30.0f + 30.0f * ( ( desync_amount_stand - 50.0f ) / 50.0f ) );
+						else if ( !g::send_packet ) {
+							if ( ( desync_side_stand ? -desync_amnt : desync_amnt ) > 0.0f )
+								desync_amnt *= desync_amount_stand / 60.0f;
+							else
+								desync_amnt *= desync_amount_inverted_stand / 60.0f;
+
+							ucmd->m_angs.y += std::copysignf ( desync_side_stand ? -desync_amnt : desync_amnt, 30.0f + 30.0f * ( ( desync_amount_stand - 30.0f ) / 30.0f ) );
+						}
 					}
 				}
 				else {
-					if ( desync_stand && jitter_stand && !g::send_packet )
+					if ( desync_stand && jitter_stand && !g::send_packet ) {
+						if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
+							desync_amnt *= desync_amount_stand / 60.0f;
+						else
+							desync_amnt *= desync_amount_inverted_stand / 60.0f;
+
 						ucmd->m_angs.y += aa::flip ? -desync_amnt : desync_amnt;
-					else if ( desync_stand && !g::send_packet )
+					}
+					else if ( desync_stand && !g::send_packet ) {
+						if ( ( desync_side_stand ? -desync_amnt : desync_amnt ) > 0.0f )
+							desync_amnt *= desync_amount_stand / 60.0f;
+						else
+							desync_amnt *= desync_amount_inverted_stand / 60.0f;
+
 						ucmd->m_angs.y += desync_side_stand ? -desync_amnt : desync_amnt;
+					}
 				}
 
-				if ( center_real_stand )
-					ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * 0.5f;
+				if ( center_real_stand ) {
+					if ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f )
+						desync_amnt *= desync_amount_stand / 60.0f;
+					else
+						desync_amnt *= desync_amount_inverted_stand / 60.0f;
+
+					ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * std::fabsf( desync_amnt * 0.5f );
+				}
 			}
 
 			ucmd->m_angs.y += aa::flip ? -jitter_amount_stand : jitter_amount_stand;
+
+			if ( rotation_range_stand )
+				ucmd->m_angs.y += std::fmodf ( csgo::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
 		}
 	}
 }

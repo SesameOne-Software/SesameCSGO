@@ -206,51 +206,6 @@
     <ClInclude Include="globals.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\oxui.hpp">
-      <Filter>Header Files\oxui</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\panels\panel.hpp">
-      <Filter>Header Files\oxui\panels</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\types\types.hpp">
-      <Filter>Header Files\oxui\types</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\bindings\bindings.hpp">
-      <Filter>Header Files\oxui\bindings</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\object.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\window.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\shapes.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\themes\pink.hpp">
-      <Filter>Header Files\oxui\themes</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\tab.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\themes\purple.hpp">
-      <Filter>Header Files\oxui\themes</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\groupbox.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\checkbox.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\slider.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="menu\menu.hpp">
-      <Filter>Header Files\menu</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\button.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
     <ClInclude Include="minhook\minhook.h">
       <Filter>Header Files\minhook</Filter>
     </ClInclude>
@@ -271,9 +226,6 @@
     </ClInclude>
     <ClInclude Include="animations\animations.hpp">
       <Filter>Header Files\animations</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\dropdown.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
     </ClInclude>
     <ClInclude Include="features\antiaim.hpp">
       <Filter>Header Files\features</Filter>
@@ -302,14 +254,8 @@
     <ClInclude Include="features\clantag.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\objects\textbox.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
     <ClInclude Include="features\lagcomp.hpp">
       <Filter>Header Files\features</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\colorpicker.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
     </ClInclude>
     <ClInclude Include="features\glow.hpp">
       <Filter>Header Files\features</Filter>
@@ -317,26 +263,11 @@
     <ClInclude Include="animations\resolver.hpp">
       <Filter>Header Files\animations</Filter>
     </ClInclude>
-    <ClInclude Include="oxui\objects\keybind.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\json\cJSON.h">
-      <Filter>Header Files\oxui\json</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\label.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
-    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sesame_font.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="sesame_logo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\subtab.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
     </ClInclude>
     <ClInclude Include="security\erase.hpp">
       <Filter>Header Files\security</Filter>
@@ -355,9 +286,6 @@
     </ClInclude>
     <ClInclude Include="player_images.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="oxui\objects\visual_editor.hpp">
-      <Filter>Header Files\oxui\objects</Filter>
     </ClInclude>
     <ClInclude Include="javascript\duk_config.h">
       <Filter>Header Files\javascript</Filter>
@@ -458,6 +386,33 @@
     <ClInclude Include="sdk\beams.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="menu\sesui.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\menu.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\options.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\d3d9_render.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2\tinyxml2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\sesui_custom.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="menu\logo.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\networking.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="plusaes.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -487,36 +442,6 @@
     <ClCompile Include="globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="oxui\panels\panel.cpp">
-      <Filter>Source Files\oxui\panels</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\object.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\window.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\shapes.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\tab.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\groupbox.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\checkbox.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\slider.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="menu\menu.cpp">
-      <Filter>Source Files\menu</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\button.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
     <ClCompile Include="features\chams.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
@@ -529,14 +454,8 @@
     <ClCompile Include="features\ragebot.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
-    <ClCompile Include="features\autowall.cpp">
-      <Filter>Source Files\features</Filter>
-    </ClCompile>
     <ClCompile Include="animations\animations.cpp">
       <Filter>Source Files\animations</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\dropdown.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
     <ClCompile Include="features\antiaim.cpp">
       <Filter>Source Files\features</Filter>
@@ -550,17 +469,8 @@
     <ClCompile Include="features\clantag.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
-    <ClCompile Include="oxui\themes\theme.cpp">
-      <Filter>Source Files\oxui\themes</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\textbox.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
     <ClCompile Include="features\lagcomp.cpp">
       <Filter>Source Files\features</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\colorpicker.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
     <ClCompile Include="features\glow.cpp">
       <Filter>Source Files\features</Filter>
@@ -568,26 +478,11 @@
     <ClCompile Include="animations\resolver.cpp">
       <Filter>Source Files\animations</Filter>
     </ClCompile>
-    <ClCompile Include="oxui\objects\keybind.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\json\cJSON.c">
-      <Filter>Source Files\oxui\json</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\label.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\subtab.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
-    </ClCompile>
     <ClCompile Include="features\nade_prediction.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
     <ClCompile Include="features\other_visuals.cpp">
       <Filter>Source Files\features</Filter>
-    </ClCompile>
-    <ClCompile Include="oxui\objects\visual_editor.cpp">
-      <Filter>Source Files\oxui\objects</Filter>
     </ClCompile>
     <ClCompile Include="javascript\duktape.c">
       <Filter>Source Files\javascript</Filter>
@@ -677,6 +572,24 @@
       <Filter>Source Files\hooks</Filter>
     </ClCompile>
     <ClCompile Include="hooks\run_command.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="menu\sesui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="menu\menu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="menu\options.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="menu\d3d9_render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyxml2\tinyxml2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="menu\sesui_custom.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

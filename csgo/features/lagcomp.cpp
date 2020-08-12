@@ -42,6 +42,11 @@ const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get
 	return { data::shot_records [ pl->idx( ) ], data::shot_records [ pl->idx ( ) ].m_pl };
 }
 
+void features::lagcomp::lag_record_t::backtrack ( ucmd_t* ucmd ) {
+	if ( ragebot::active_config.fix_fakelag )
+		ucmd->m_tickcount = csgo::time2ticks ( m_simtime ) + csgo::time2ticks( lerp ( ) );
+}
+
 bool features::lagcomp::lag_record_t::store ( player_t* pl, const vec3_t& last_origin, bool simulated ) {
 	m_pl = pl;
 
@@ -181,7 +186,7 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 			rec.m_bones3 [ i ].set_origin ( rec.m_bones3 [ i ].origin ( ) - old_origin + rec.m_origin );
 		}
 
-		rec.m_simtime = pl->old_simtime ( ) + csgo::ticks2time ( dtick );
+		rec.m_simtime = pl->simtime ( ) + csgo::ticks2time ( dtick );
 		rec.m_tick = csgo::time2ticks ( rec.m_simtime );
 
 		return false;
@@ -245,7 +250,7 @@ bool features::lagcomp::extrapolate_record( player_t* pl, lag_record_t& rec, boo
 		cur_magnitude = rec.m_vel.length_2d ( );
 	}
 
-	rec.m_simtime = pl->old_simtime ( ) + csgo::ticks2time ( dtick );
+	rec.m_simtime = pl->simtime ( ) + csgo::ticks2time ( dtick );
 	rec.m_tick = csgo::time2ticks ( rec.m_simtime );
 
 	for ( auto i = 0; i < 128; i++ ) {
@@ -296,8 +301,6 @@ void features::lagcomp::cache( player_t* pl ) {
 	//		data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
 	//}
 
-	OPTION ( bool, fix_fakelag, "Sesame->A->Default->Accuracy->Fix Fakelag", oxui::object_checkbox );
-
 	/* interpolate between records */ {
 		const auto nci = csgo::i::engine->get_net_channel_info ( );
 	
@@ -312,7 +315,7 @@ void features::lagcomp::cache( player_t* pl ) {
 					visible_idx = i;
 			}
 
-			if ( visible_idx + 1 < data::all_records [ pl->idx ( ) ].size ( ) ) {
+			if ( visible_idx && visible_idx + 1 < data::all_records [ pl->idx ( ) ].size ( ) ) {
 				const auto itp1 = &data::all_records [ pl->idx ( ) ][ visible_idx ];
 				const auto it = &data::all_records [ pl->idx ( ) ][ visible_idx + 1 ];
 
@@ -373,7 +376,7 @@ void features::lagcomp::cache( player_t* pl ) {
 	/*
 		@CBRS Great, you won't shoot at bad records!
 	*/
-	if ( pl->simtime ( ) <= pl->old_simtime ( ) && fix_fakelag )
+	if ( pl->simtime ( ) <= pl->old_simtime ( ) )
 		return;
 
 	lag_record_t rec;
@@ -421,46 +424,6 @@ void features::lagcomp::cache( player_t* pl ) {
 	}
 
 	data::old_origins [ pl->idx( ) ] = pl->origin( );
-}
-
-void features::lagcomp::pop( player_t* pl ) {
-	/*
-	@CBRs
-		this is bad. you should not pop from the main deque, but rather pop from a copy of it during create move - otherwise, you'll be popping off valid records that you may be able to shoot at if you were to modify
-		tickbase. basically, you can get ~14 more ticks of backtrack assuming you have desync on and you toggle on hide shots or doubletap.
-	*/
-
-	if ( !pl->valid ( ) ) {
-		if ( !data::records [ pl->idx ( ) ].empty ( ) )
-			data::records [ pl->idx ( ) ].clear ( );
-
-		data::cham_records [ pl->idx ( ) ].m_pl = nullptr;
-
-		if ( !data::all_records [ pl->idx ( ) ].empty ( ) )
-			data::all_records [ pl->idx ( ) ].clear ( );
-
-		data::shot_records [ pl->idx ( ) ].m_pl = nullptr;
-
-		if ( !data::extrapolated_records [ pl->idx ( ) ].empty ( ) )
-			data::extrapolated_records [ pl->idx ( ) ].clear ( );
-
-		return;
-	}
-
-	while ( !data::records [ pl->idx ( ) ].empty ( ) && !data::records [ pl->idx ( ) ].back ( ).valid ( ) )
-		data::records [ pl->idx ( ) ].pop_back ( );
-
-	while ( !data::all_records [ pl->idx ( ) ].empty ( ) && data::all_records [ pl->idx ( ) ].size ( ) > 24 )
-		data::all_records [ pl->idx ( ) ].pop_back ( );
-
-	if ( !data::shot_records [ pl->idx ( ) ].valid ( ) )
-		data::shot_records [ pl->idx ( ) ].m_pl = nullptr;
-
-	if ( !data::cham_records [ pl->idx ( ) ].valid ( ) )
-		data::cham_records [ pl->idx ( ) ].m_pl = nullptr;
-
-	while ( !data::extrapolated_records [ pl->idx ( ) ].empty ( ) && !data::extrapolated_records [ pl->idx ( ) ].back().valid ( ) )
-		data::extrapolated_records [ pl->idx ( ) ].pop_back ( );
 }
 
 bool features::lagcomp::breaking_lc( player_t* pl ) {

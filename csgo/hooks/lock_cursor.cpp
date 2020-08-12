@@ -4,7 +4,7 @@
 decltype( &hooks::lock_cursor ) hooks::old::lock_cursor = nullptr;
 
 void __fastcall hooks::lock_cursor ( REG ) {
-	if ( menu::open ( ) ) {
+	if ( gui::opened ) {
 		csgo::i::surface->unlock_cursor ( );
 		return;
 	}
