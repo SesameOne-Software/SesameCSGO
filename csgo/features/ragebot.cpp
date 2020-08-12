@@ -507,30 +507,52 @@ bool run_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbo
 
 	const auto as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
 
+	static auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
+		auto q = sphere - from;
+		auto v = q.dot_product ( csgo::angle_vec ( csgo::calc_angle ( from, to ) ).normalized ( ) );
+		auto d = rad - ( q.length_sqr ( ) - v * v );
+
+		return d >= FLT_EPSILON;
+	};
+
+	static auto get_hitbox_radius = [ & ] ( ) -> float {
+		auto mdl = pl->mdl ( );
+
+		if ( !mdl )
+			return 0.0f;
+
+		auto studio_mdl = csgo::i::mdl_info->studio_mdl ( mdl );
+
+		if ( !studio_mdl )
+			return 0.0f;
+
+		auto s = studio_mdl->hitbox_set ( 0 );
+
+		if ( !s )
+			return 0.0f;
+
+		auto hb = s->hitbox ( hitbox );
+
+		if ( !hb )
+			return 0.0f;
+
+		return hb->m_radius;
+	};
+
+	const auto hitbox_rad = get_hitbox_radius ( );
+
 	for ( auto i = 0; i < rays; i++ ) {
 		const auto spread_x = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
 		const auto spread_y = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
 		const auto spread_z = -weap_spread * 0.5f + ( ( static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX ) )* weap_spread );
 		const auto final_pos = src + ( ( forward + vec3_t ( spread_x, spread_y, spread_z ) ) * weapon->data ( )->m_range );
 
-		trace_t tr;
-		ray_t ray;
-
-		ray.init ( src, final_pos );
-		csgo::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
-
-		if ( tr.m_hit_entity == pl /*&& tr.m_hitgroup == as_hitgroup*/ )
+		if ( ray_intersects_sphere( src, final_pos, point, hitbox_rad ) )
 			hits++;
-
-		if ( static_cast< int >( ( static_cast< float >( hits ) / static_cast< float > ( rays ) ) * 100.0f ) >= features::ragebot::active_config.hit_chance )
-			return true;
-
-		if ( ( rays - i + hits ) < needed_hits )
-			return false;
 	}
 
 	features::ragebot::hitchances [ pl->idx ( ) ] = 100.0f;
-	return false;
+	return static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f >= features::ragebot::active_config.hit_chance;
 }
 
 void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out) {
@@ -671,7 +693,7 @@ retry_without_safe_points:
 
 	/* optimization - increases our framerate by a shit ton, but decreases ragebot performance by a bit */
 	auto is_similar_scan = [ ] ( const recorded_scans_t& scan_record, const lagcomp::lag_record_t& lag_rec ) {
-		return std::abs ( scan_record.m_tick - lag_rec.m_tick ) <= 2 || scan_record.m_rec.m_origin.dist_to ( lag_rec.m_origin ) < 5.0f;
+		return std::abs ( scan_record.m_tick - lag_rec.m_tick ) <= 2 /*|| scan_record.m_rec.m_origin.dist_to ( lag_rec.m_origin ) < 5.0f*/;
 	};
 
 	/* find best record */

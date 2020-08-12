@@ -9,7 +9,7 @@ bool __fastcall hooks::is_hltv ( REG ) {
 	if ( !csgo::i::engine->is_in_game ( ) || !csgo::i::engine->is_connected ( ) )
 		return old::is_hltv ( REG_OUT );
 
-	if ( _ReturnAddress ( ) == accumulate_layers_call || _ReturnAddress ( ) == setupvelocity_call )
+	if ( _ReturnAddress ( ) == accumulate_layers_call /*|| _ReturnAddress ( ) == setupvelocity_call*/ )
 		return true;
 
 	return old::is_hltv ( REG_OUT );

@@ -125,6 +125,8 @@ namespace animations {
 			auto last_local_update = 0.0f;
 
 			__forceinline void calculate_ground_fraction ( player_t* pl ) {
+				auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) );
+
 				constexpr auto CS_PLAYER_SPEED_DUCK_MODIFIER = 0.340f;
 				constexpr auto CS_PLAYER_SPEED_WALK_MODIFIER = 0.520f;
 				constexpr auto CS_PLAYER_SPEED_RUN = 260.0f;
@@ -143,11 +145,11 @@ namespace animations {
 					ground_fractions [ pl->idx ( ) ] = std::clamp< float > ( ground_fractions [ pl->idx ( ) ], 0.0f, 1.0f );
 				}
 
-				if ( pl->vel ( ).length_2d ( ) > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && old_not_walking [ pl->idx ( ) ] ) {
+				if ( abs_vel.length_2d ( ) > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && old_not_walking [ pl->idx ( ) ] ) {
 					old_not_walking [ pl->idx ( ) ] = false;
 					ground_fractions [ pl->idx ( ) ] = std::max< float > ( ground_fractions [ pl->idx ( ) ], 0.01f );
 				}
-				else if ( pl->vel ( ).length_2d ( ) < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !old_not_walking [ pl->idx ( ) ] ) {
+				else if ( abs_vel.length_2d ( ) < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !old_not_walking [ pl->idx ( ) ] ) {
 					old_not_walking [ pl->idx ( ) ] = true;
 					ground_fractions [ pl->idx ( ) ] = std::min< float > ( ground_fractions [ pl->idx ( ) ], 0.99f );
 				}
@@ -201,25 +203,27 @@ __forceinline void update_animations ( player_t* pl ) {
 	const auto backup_curtime = csgo::i::globals->m_curtime;
 
 	if ( pl == g::local ) {
+		auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) );
+
 		static bool last_on_ground = false;
 		static float last_ground_time = 0.0f;
 		static float last_moving_time = 0.0f;
 		static bool last_moving = false;
 		static float last_stop_moving_time = 0.0f;
 
-		if ( pl->vel ( ).length_2d ( ) > 0.1f && !last_moving )
+		if ( abs_vel.length_2d ( ) > 0.1f && !last_moving )
 			last_stop_moving_time = csgo::i::globals->m_curtime;
 
-		if ( last_moving = pl->vel ( ).length_2d ( ) > 0.1f )
+		if ( last_moving = abs_vel.length_2d ( ) > 0.1f )
 			last_moving_time = csgo::i::globals->m_curtime;
 
-		pl->animstate ( )->m_speed2d = pl->vel ( ).length_2d ( );
-		pl->animstate ( )->m_up_vel = pl->vel ( ).z;
-		pl->animstate ( )->m_vel2d = { pl->vel ( ).x, pl->vel ( ).y };
+		pl->animstate ( )->m_speed2d = abs_vel.length_2d ( );
+		pl->animstate ( )->m_up_vel = abs_vel.z;
+		pl->animstate ( )->m_vel2d = { abs_vel.x, abs_vel.y };
 		pl->animstate ( )->m_on_ground = pl->flags ( ) & 1;
 		pl->animstate ( )->m_hit_ground = pl->flags ( ) & 1 && !last_on_ground;
 		pl->animstate ( )->m_time_in_air = fabsf( csgo::i::globals->m_curtime - last_ground_time );
-		pl->animstate ( )->m_moving = pl->vel ( ).length_2d ( ) > 0.1f;
+		pl->animstate ( )->m_moving = abs_vel.length_2d ( ) > 0.1f;
 		pl->animstate ( )->m_time_since_stop = last_moving_time;
 		pl->animstate ( )->m_time_since_move = last_stop_moving_time;
 
@@ -240,6 +244,38 @@ __forceinline void update_animations ( player_t* pl ) {
 
 	pl->animate ( ) = false;
 	pl->animstate ( )->update ( pl == g::local ? ( lby::in_update ? g::sent_cmd.m_angs : g::angles ) :  pl->angles( ) );
+
+	if ( pl == g::local ) {
+		auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( pl ) + N ( 0x94 ) );
+
+		static bool last_on_ground = false;
+		static float last_ground_time = 0.0f;
+		static float last_moving_time = 0.0f;
+		static bool last_moving = false;
+		static float last_stop_moving_time = 0.0f;
+
+		if ( abs_vel.length_2d ( ) > 0.1f && !last_moving )
+			last_stop_moving_time = csgo::i::globals->m_curtime;
+
+		if ( last_moving = abs_vel.length_2d ( ) > 0.1f )
+			last_moving_time = csgo::i::globals->m_curtime;
+
+		pl->animstate ( )->m_speed2d = abs_vel.length_2d ( );
+		pl->animstate ( )->m_up_vel = abs_vel.z;
+		pl->animstate ( )->m_vel2d = { abs_vel.x, abs_vel.y };
+		pl->animstate ( )->m_on_ground = pl->flags ( ) & 1;
+		pl->animstate ( )->m_hit_ground = pl->flags ( ) & 1 && !last_on_ground;
+		pl->animstate ( )->m_time_in_air = fabsf ( csgo::i::globals->m_curtime - last_ground_time );
+		pl->animstate ( )->m_moving = abs_vel.length_2d ( ) > 0.1f;
+		pl->animstate ( )->m_time_since_stop = last_moving_time;
+		pl->animstate ( )->m_time_since_move = last_stop_moving_time;
+
+		if ( last_on_ground = pl->flags ( ) & 1 )
+			last_ground_time = csgo::i::globals->m_curtime;
+
+		if ( !csgo::i::input->m_camera_in_thirdperson )
+			pl->animstate ( )->m_hit_ground = false;
+	}
 
 	//if ( pl != g::local ) {
 	//	pl->animstate ( )->m_pitch = pl->angles ( ).x;
@@ -281,7 +317,16 @@ int animations::fake::simulate ( ) {
 		std::memcpy ( g::local->layers ( ), &local_data::overlays, N ( sizeof animlayer_t ) * g::local->num_overlays ( ) );
 
 		*reinterpret_cast< uint32_t* >( uintptr_t ( g::local ) + N ( 0xe8 ) ) &= ~0x1000; /* EFL_DIRTY_ABSVELOCITY */
-		*reinterpret_cast< vec3_t* >( uintptr_t ( g::local ) + N ( 0x94 ) ) = g::local->vel ( );
+		auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( g::local ) + N ( 0x94 ) );
+
+		if ( fabsf ( abs_vel.x ) < 0.001f )
+			abs_vel.x = 0.0f;
+
+		if ( fabsf ( abs_vel.y ) < 0.001f )
+			abs_vel.y = 0.0f;
+
+		if ( fabsf ( abs_vel.z ) < 0.001f )
+			abs_vel.z = 0.0f;
 
 		const float backup_frametime = csgo::i::globals->m_frametime;
 		const auto backup_poses = g::local->poses ( );
@@ -460,7 +505,16 @@ int animations::restore_local ( bool render ) {
 	const auto state = g::local->animstate ( );
 
 	*reinterpret_cast< uint32_t* >( uintptr_t ( g::local ) + N ( 0xe8 ) ) &= ~0x1000; /* EFL_DIRTY_ABSVELOCITY */
-	*reinterpret_cast< vec3_t* >( uintptr_t ( g::local ) + N ( 0x94 ) ) = g::local->vel ( );
+	auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t ( g::local ) + N ( 0x94 ) );
+
+	if ( fabsf ( abs_vel.x ) < 0.001f )
+		abs_vel.x = 0.0f;
+	
+	if ( fabsf ( abs_vel.y ) < 0.001f )
+		abs_vel.y = 0.0f;
+	
+	if ( fabsf ( abs_vel.z ) < 0.001f )
+		abs_vel.z = 0.0f;
 
 	if ( !render ) {
 		if ( g::ucmd->m_buttons & 1 ) {
@@ -507,7 +561,7 @@ int animations::restore_local ( bool render ) {
 					local_data::hit_ground_time = csgo::i::globals->m_curtime;
 				}
 
-				rebuilt::poses::last_vel2d = g::local->vel ( ).length_2d ( );
+				rebuilt::poses::last_vel2d = abs_vel.length_2d ( );
 				rebuilt::poses::last_update_time = csgo::i::globals->m_curtime;
 
 				local_data::abs = state->m_abs_yaw;
@@ -581,7 +635,13 @@ int animations::fix_pl ( player_t* pl ) {
 
 		data::old_tick [ pl->idx ( ) ] = csgo::i::globals->m_tickcount;
 
+		state->m_pitch = pl->angles ( ).x;
+		state->m_eye_yaw = pl->angles ( ).y;
+
 		update_animations ( pl );
+
+		state->m_pitch = pl->angles ( ).x;
+		state->m_eye_yaw = pl->angles ( ).y;
 
 		data::old_abs [ pl->idx ( ) ] = state->m_abs_yaw;
 		data::old_eye_yaw [ pl->idx ( ) ] = state->m_eye_yaw;

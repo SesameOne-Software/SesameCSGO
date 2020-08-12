@@ -563,69 +563,92 @@ __forceinline void resolve_simple ( player_t* pl, float& yaw1, float& yaw2, floa
 			yaw3 = csgo::normalize ( pl->angles ( ).y );
 		}
 		else*/
-		if (pl->crouch_amount() > 0.666f) {
-			yaw1 = csgo::normalize ( pl->angles ( ).y );
-			yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount );
-			yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount );
-		}
-		else if ( !pl->weapon ( ) || !pl->weapon ( )->data( ) || pl->vel().length_2d() < pl->weapon ( )->data ( )->m_max_speed * 0.5f ) {
-			if ( has_slow_walk ) {
-				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 0.5f : -0.5f ) );
-				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -0.5f : 0.5f ) );
-				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount );
+		auto cached_yaw = pl->angles().y;
+
+		if ( resolve_cached ( pl->idx ( ), cached_yaw ) ) {
+			switch ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ) {
+			case 0:
+				yaw1 = csgo::normalize ( cached_yaw );
+				yaw2 = -csgo::normalize ( cached_yaw );
+				yaw3 = csgo::normalize ( pl->angles ( ).y );
+				break;
+			case 1:
+				yaw1 = csgo::normalize ( pl->angles ( ).y );
+				yaw2 = csgo::normalize ( cached_yaw );
+				yaw3 = -csgo::normalize ( cached_yaw );
+				break;
+			case 2:
+				yaw1 = -csgo::normalize ( cached_yaw );
+				yaw2 = csgo::normalize ( pl->angles ( ).y );
+				yaw3 = csgo::normalize ( cached_yaw );
+				break;
 			}
-			else {
-				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 0.5f : -1.0f ) );
-				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 0.5f ) );
-				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
-			}
+
+			record_correction = false;
 		}
 		else {
-			yaw1 = csgo::normalize ( pl->angles ( ).y );
-			yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 0.5f : -1.0f ) );
-			yaw3 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 0.5f ) );
+			if ( has_slow_walk ) {
+				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -1.0f ) );
+				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 1.0f ) );
+				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
+			}
+			else if ( fabsf ( eye_feet_delta ) > 35.0f ) {
+				yaw1 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? desync_amount : -desync_amount ) );
+				yaw2 = csgo::normalize ( pl->angles ( ).y );
+				yaw3 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? -desync_amount : desync_amount ) );
+			}
+			else {
+				yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -1.0f ) );
+				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 1.0f ) );
+				yaw3 = csgo::normalize ( pl->angles ( ).y );
+			}
 		}
 	}
 
-	if ( last_missed_shots [ pl->idx ( ) ] == features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve && last_predicted_particle_yaw [ pl->idx ( ) ] != FLT_MAX && !( std::fabsf ( avg_yaw_delta ) > pl->desync_amount ( ) ) ) {
+	/* if we hit them with the current resolve, cache it at current location so we can use it later on */
+	if ( animations::resolver::rdata::queued_hit [ pl->idx ( ) ] && record_correction ) {
+		auto cached_resolve_exists = false;
+	
+		auto correction_amnt = 0.0f;
+
 		switch ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ) {
-		case 0: yaw1 = csgo::normalize ( pl->angles ( ).y + last_predicted_particle_yaw [ pl->idx ( ) ] * desync_amount ); break;
-		case 1: yaw2 = csgo::normalize ( pl->angles ( ).y + last_predicted_particle_yaw [ pl->idx ( ) ] * desync_amount ); break;
-		case 2: yaw3 = csgo::normalize ( pl->angles ( ).y + last_predicted_particle_yaw [ pl->idx ( ) ] * desync_amount ); break;
+		case 0: correction_amnt = csgo::normalize ( yaw1 - pl->angles ( ).y ); break;
+		case 1: correction_amnt = csgo::normalize ( yaw2 - pl->angles ( ).y ); break;
+		case 2: correction_amnt = csgo::normalize ( yaw3 - pl->angles ( ).y ); break;
+		}
+
+		/* replace cached resolve if current one exists */
+		for ( auto& cached_resolve : cached_resolves [ pl->idx ( ) ] ) {
+			if ( cached_resolve.within ( pl->idx ( ) ) ) {
+				cached_resolve = { pl->origin ( ), correction_amnt, 35.0f, 0 };
+				cached_resolve_exists = true;
+				break;
+			}
 		}
 	
-		record_correction = false;
+		/* else add a new entry */
+		if ( !cached_resolve_exists )
+			cached_resolves [ pl->idx ( ) ].push_back ( { pl->origin ( ), correction_amount, 35.0f, 0 } );
 	}
-
-	///* if we hit them with the current resolve, cache it at current location so we can use it later on */
-	//if ( animations::resolver::rdata::queued_hit [ pl->idx ( ) ] && record_correction ) {
-	//	auto cached_resolve_exists = false;
-	//
-	//	/* replace cached resolve if current one exists */
-	//	for ( auto& cached_resolve : cached_resolves [ pl->idx ( ) ] ) {
-	//		if ( cached_resolve.within ( pl->idx ( ) ) ) {
-	//			cached_resolve = { pl->origin ( ), correction_amount, 25.0f, 0 };
-	//			cached_resolve_exists = true;
-	//			break;
-	//		}
-	//	}
-	//
-	//	/* else add a new entry */
-	//	if ( !cached_resolve_exists )
-	//		cached_resolves [ pl->idx ( ) ].push_back ( { pl->origin ( ), correction_amount, 45.0f, 0 } );
-	//}
 
 	/* replace predicted data if we recieved new information from particle system shit */
 	if ( received_new_particles [ pl->idx ( ) ] ) {
+		auto cached_resolve_exists = false;
+
 		last_predicted_particle_yaw [ pl->idx ( ) ] = particle_predicted_desync_offset [ pl->idx ( ) ];
 		last_missed_shots [ pl->idx ( ) ] = features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve;
 
-		//for ( auto& cached_resolve : cached_resolves [ pl->idx ( ) ] ) {
-		//	if ( cached_resolve.within ( pl->idx ( ) ) ) {
-		//		cached_resolve = { pl->origin ( ), particle_predicted_desync_offset [ pl->idx ( ) ], 45.0f, 0 };
-		//		break;
-		//	}
-		//}
+		for ( auto& cached_resolve : cached_resolves [ pl->idx ( ) ] ) {
+			if ( cached_resolve.within ( pl->idx ( ) ) ) {
+				cached_resolve = { pl->origin ( ), particle_predicted_desync_offset [ pl->idx ( ) ] * desync_amount, 35.0f, 0 };
+				cached_resolve_exists = true;
+				break;
+			}
+		}
+
+		/* else add a new entry */
+		if ( !cached_resolve_exists )
+			cached_resolves [ pl->idx ( ) ].push_back ( { pl->origin ( ), particle_predicted_desync_offset [ pl->idx ( ) ] * desync_amount, 35.0f, 0 } );
 
 		received_new_particles [ pl->idx ( ) ] = false;
 	}
