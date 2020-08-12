@@ -1,8 +1,9 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <cstdint>
 #include <iostream>
 #include <thread>
 #include "utils/utils.hpp"
+#include "utils/base64.hpp"
 #include "minhook/minhook.h"
 #include "sdk/sdk.hpp"
 #include "hooks/hooks.hpp"
@@ -19,7 +20,7 @@ FILE* g_fp;
 
 uint64_t anti_patch::g_text_section_hash;
 uintptr_t anti_patch::g_text_section, anti_patch::g_text_section_size;
-anti_patch::s_header_data anti_patch::g_header_data;
+//anti_patch::s_header_data anti_patch::g_header_data;
 
 PVOID g_ImageStartAddr, g_ImageEndAddr;
 
@@ -139,6 +140,9 @@ std::string decrypt_cbc ( const std::string& encrypted, const unsigned char* key
 typedef int ( __stdcall* pinit )( void* );
 
 void call_init ( PLoader_Info loader_info ) {
+	g_ImageStartAddr = PVOID(loader_info->hMod);
+	g_ImageEndAddr = PVOID(loader_info->hMod + loader_info->hMod_sz);
+
 	anti_patch::g_text_section = uintptr_t ( loader_info->section );
 	anti_patch::g_text_section_size = loader_info->section_sz;
 
@@ -156,7 +160,7 @@ void call_init ( PLoader_Info loader_info ) {
 	initdata.server_browser = _ ( "serverbrowser.dll" );
 	initdata.sleep = Sleep;
 
-	std::string decrypted = decrypt_cbc ( loader_info->init, loader_info->key, 32, loader_info->iv, true );
+	std::string decrypted = decrypt_cbc ( base64_decode(loader_info->init), (const unsigned char*)base64_decode(loader_info->key).data(), 32, (const unsigned char*)base64_decode(loader_info->iv).data(), true );
 
 	if ( decrypted.size ( ) <= 0 )
 		return;
@@ -175,19 +179,11 @@ void call_init ( PLoader_Info loader_info ) {
 }
 
 int __stdcall init ( uintptr_t mod ) {
-	PIMAGE_NT_HEADERS pNtHdr = PIMAGE_NT_HEADERS ( uintptr_t ( mod ) + PIMAGE_DOS_HEADER ( mod )->e_lfanew );
-	PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER ) ( pNtHdr + 1 );
-
 	g_ImageStartAddr = PVOID ( mod );
-	g_ImageEndAddr = PVOID ( mod + pNtHdr->OptionalHeader.SizeOfImage );
+	g_ImageEndAddr = PVOID ( mod + std::string((char*)mod).size() );
 
 	/* fix SEH */
 	AddVectoredExceptionHandler ( 1, ExceptionHandler );
-
-	anti_patch::g_header_data.m_num_of_sections = pNtHdr->FileHeader.NumberOfSections;
-
-	for ( int i = 0; i < anti_patch::g_header_data.m_num_of_sections; ++i )
-		anti_patch::g_header_data.m_sections.push_back ( *pSectionHeader );
 
 	/* wait for all modules to load */
 	while ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
@@ -207,7 +203,7 @@ int __stdcall init ( uintptr_t mod ) {
 
 	END_FUNC
 
-		return 0;
+	return 0;
 }
 
 int __stdcall init_proxy ( PLoader_Info loader_info ) {
@@ -217,7 +213,7 @@ int __stdcall init_proxy ( PLoader_Info loader_info ) {
 	init ( uintptr_t ( loader_info ) );
 #endif
 
-	//security_handler::store_text_section_hash ( mod );
+	security_handler::store_text_section_hash ( uintptr_t(loader_info->hMod) );
 
 	while ( !g::unload )
 		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
@@ -272,8 +268,8 @@ int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved )
 	g::loader_data = reinterpret_cast< PLoader_Info >( loader_data );
 #endif
 
-	if ( reason == 1 )
-		CloseHandle ( CreateThread ( nullptr, N ( 0 ), LPTHREAD_START_ROUTINE ( init_proxy ), loader_data, N ( 0 ), nullptr ) );
+	if (reason == 1)
+		CloseHandle( CreateThread( nullptr, N(0), LPTHREAD_START_ROUTINE(init_proxy), loader_data, N(0), nullptr ) );
 
 	return 1;
 }
