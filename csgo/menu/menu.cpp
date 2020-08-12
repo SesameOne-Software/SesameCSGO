@@ -96,41 +96,41 @@ std::string g_pfp_data;
 std::wstring g_username;
 
 void gui::init ( ) {
-	if ( g::loader_data && g::loader_data->username ) {
-		wchar_t wstr [ 64 ];
-		memset ( wstr, '\0', sizeof wstr );
-		mbstowcs ( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
-		g_username = wstr;
-	}
-	else
-		g_username = _ ( L"Developer" );
+    if ( g::loader_data && g::loader_data->username ) {
+        wchar_t wstr [ 64 ];
+        memset ( wstr, '\0', sizeof wstr );
+        mbstowcs ( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
+        g_username = wstr;
+    }
+    else
+        g_username = _ ( L"Developer" );
 
-	if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
-		g_pfp_data = networking::get ( _ ( "sesame.one/data/avatars/s/0/1.jpg" ) );
-	else
-		g_pfp_data = std::string ( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
+    if (!g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz)
+        g_pfp_data = std::string(reinterpret_cast<const char*>(ses_pfp), sizeof(ses_pfp));//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
+    else
+        g_pfp_data = std::string ( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
 
-	/* initialize cheat config */
-	options::init ( );
-	//erase::erase_func ( options::init );
-	//erase::erase_func ( options::add_antiaim_config );
-	//erase::erase_func ( options::add_player_visual_config );
-	//erase::erase_func ( options::add_weapon_config );
+    /* initialize cheat config */
+    options::init ( );
+    //erase::erase_func ( options::init );
+    //erase::erase_func ( options::add_antiaim_config );
+    //erase::erase_func ( options::add_player_visual_config );
+    //erase::erase_func ( options::add_weapon_config );
 
-	/* bind draw list methods to our own drawing functions */
-	sesui::draw_list.draw_texture = sesui::binds::draw_texture;
-	sesui::draw_list.draw_polygon = sesui::binds::polygon;
-	sesui::draw_list.draw_multicolor_polygon = sesui::binds::multicolor_polygon;
-	sesui::draw_list.draw_text = sesui::binds::text;
-	sesui::draw_list.get_text_size = sesui::binds::get_text_size;
-	sesui::draw_list.get_frametime = sesui::binds::get_frametime;
-	sesui::draw_list.begin_clip = sesui::binds::begin_clip;
-	sesui::draw_list.end_clip = sesui::binds::end_clip;
-	sesui::draw_list.create_font = sesui::binds::create_font;
+    /* bind draw list methods to our own drawing functions */
+    sesui::draw_list.draw_texture = sesui::binds::draw_texture;
+    sesui::draw_list.draw_polygon = sesui::binds::polygon;
+    sesui::draw_list.draw_multicolor_polygon = sesui::binds::multicolor_polygon;
+    sesui::draw_list.draw_text = sesui::binds::text;
+    sesui::draw_list.get_text_size = sesui::binds::get_text_size;
+    sesui::draw_list.get_frametime = sesui::binds::get_frametime;
+    sesui::draw_list.begin_clip = sesui::binds::begin_clip;
+    sesui::draw_list.end_clip = sesui::binds::end_clip;
+    sesui::draw_list.create_font = sesui::binds::create_font;
 
-	load_cfg_list ( );
+    load_cfg_list ( );
 
-	END_FUNC
+    END_FUNC
 }
 
 std::wstring selected_config = _ ( L"default" );
@@ -231,12 +231,12 @@ void gui::antiaim_controls ( const std::string& antiaim_name ) {
 		sesui::checkbox ( _ ( L"Enable" ), options::vars [ antiaim_config + _ ( "enabled" ) ].val.b );
 		sesui::slider ( _ ( L"Fakelag Factor" ), options::vars [ antiaim_config + _ ( "fakelag_factor" ) ].val.i, 0, 16, _ ( L"%d ticks" ) );
 		sesui::combobox ( _ ( L"Base Pitch" ), options::vars [ antiaim_config + _ ( "pitch" ) ].val.i, { _ ( L"None" ), _ ( L"Down" ), _ ( L"Up" ), _ ( L"Zero" ) } );
-		sesui::slider ( _ ( L"Yaw Offset" ), options::vars [ antiaim_config + _ ( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1f°" ) );
+		sesui::slider ( _ ( L"Yaw Offset" ), options::vars [ antiaim_config + _ ( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1fÂ°" ) );
 		sesui::combobox ( _ ( L"Base Yaw" ), options::vars [ antiaim_config + _ ( "base_yaw" ) ].val.i, { _ ( L"Relative" ), _ ( L"Absolute" ), _ ( L"At Target" ), _ ( L"Auto Direction" ) } );
-		sesui::slider ( _ ( L"Auto Direction Amount" ), options::vars [ antiaim_config + _ ( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1f°" ) );
+		sesui::slider ( _ ( L"Auto Direction Amount" ), options::vars [ antiaim_config + _ ( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1fÂ°" ) );
 		sesui::slider ( _ ( L"Auto Direction Range" ), options::vars [ antiaim_config + _ ( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _ ( L"%.1f units" ) );
-		sesui::slider ( _ ( L"Jitter Range" ), options::vars [ antiaim_config + _ ( "jitter_range" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1f°" ) );
-		sesui::slider ( _ ( L"Rotation Range" ), options::vars [ antiaim_config + _ ( "rotation_range" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1f°" ) );
+		sesui::slider ( _ ( L"Jitter Range" ), options::vars [ antiaim_config + _ ( "jitter_range" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1fÂ°" ) );
+		sesui::slider ( _ ( L"Rotation Range" ), options::vars [ antiaim_config + _ ( "rotation_range" ) ].val.f, -180.0f, 180.0f, _ ( L"%.1fÂ°" ) );
 		sesui::slider ( _ ( L"Rotation Speed" ), options::vars [ antiaim_config + _ ( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _ ( L"%.1f Hz" ) );
 
 		gui::end_group ( );
@@ -249,8 +249,8 @@ void gui::antiaim_controls ( const std::string& antiaim_name ) {
 		sesui::checkbox ( _ ( L"Center Real" ), options::vars [ antiaim_config + _ ( "center_real" ) ].val.b );
 		sesui::checkbox ( _ ( L"Anti Bruteforce" ), options::vars [ antiaim_config + _ ( "anti_bruteforce" ) ].val.b );
 		sesui::checkbox ( _ ( L"Anti Freestanding Prediction" ), options::vars [ antiaim_config + _ ( "anti_freestand_prediction" ) ].val.b );
-		sesui::slider ( _ ( L"Desync Range" ), options::vars [ antiaim_config + _ ( "desync_range" ) ].val.f, 0.0f, 60.0f, _ ( L"%.1f°" ) );
-		sesui::slider ( _ ( L"Desync Range Inverted" ), options::vars [ antiaim_config + _ ( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, _ ( L"%.1f°" ) );
+		sesui::slider ( _ ( L"Desync Range" ), options::vars [ antiaim_config + _ ( "desync_range" ) ].val.f, 0.0f, 60.0f, _ ( L"%.1fÂ°" ) );
+		sesui::slider ( _ ( L"Desync Range Inverted" ), options::vars [ antiaim_config + _ ( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, _ ( L"%.1fÂ°" ) );
 
 		gui::end_group ( );
 	}
@@ -598,8 +598,8 @@ void gui::draw ( ) {
 						{_ ( L"Killfeed Decay" ), options::vars [ _ ( "visuals.other.removals" ) ].val.l [ 7 ]},
 						{_ ( L"Post Processing" ), options::vars [ _ ( "visuals.other.removals" ) ].val.l [ 8 ]}
 					} );
-					sesui::slider ( _ ( L"FOV" ), options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, _ ( L"%.1f°" ) );
-					sesui::slider ( _ ( L"Viewmodel FOV" ), options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _ ( L"%.1f°" ) );
+					sesui::slider ( _ ( L"FOV" ), options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, _ ( L"%.1fÂ°" ) );
+					sesui::slider ( _ ( L"Viewmodel FOV" ), options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _ ( L"%.1fÂ°" ) );
 					sesui::slider ( _ ( L"Aspect Ratio" ), options::vars [ _ ( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
 
 					sesui::multiselect ( _ ( L"Logs" ), {
