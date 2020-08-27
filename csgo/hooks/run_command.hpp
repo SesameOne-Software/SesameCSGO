@@ -1,5 +1,5 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 
 namespace hooks {
 	void __fastcall run_command ( REG, player_t* ent, ucmd_t* cmd, c_move_helper* move_helper );

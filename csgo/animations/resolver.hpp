@@ -1,12 +1,12 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 
 namespace animations {
 	namespace resolver {
 		namespace rdata {
 			static std::array< float, 65 > impact_dmg { 0.0f };
 			static std::array< vec3_t, 65 > impacts { vec3_t( 0.0f, 0.0f, 0.0f ) };
-			static vec3_t non_player_impacts = vec3_t ( 0.0f, 0.0f, 0.0f );
+			static vec3_t non_player_impacts = vec3_t( 0.0f, 0.0f, 0.0f );
 			static std::array< int, 65 > player_dmg { 0 };
 			static std::array< bool, 65 > player_hurt { false };
 			static std::array< bool, 65 > wrong_hitbox { false };
@@ -34,17 +34,17 @@ namespace animations {
 			extern std::array< bool, 65 > force_pitch_flick_yaw;
 			extern std::array< float, 65 > eye_delta;
 			extern std::array< float, 65 > last_pitch;
-			extern std::array< animlayer_t[ 15 ], 65 > anim_layers;
+			extern std::array< animlayer_t [ 15 ], 65 > anim_layers;
 
-			static bool has ( player_t* pl, const std::string_view& flag ) {
-				if ( flag == _ ( "slow walk" ) )
-					return has_slow_walk [ pl->idx ( ) ];
-				else if ( flag == _ ( "micro movements" ) )
-					return has_micro_movements [ pl->idx ( ) ];
-				else if ( flag == _ ( "desync" ) )
-					return has_desync [ pl->idx ( ) ];
-				else if ( flag == _ ( "jitter" ) )
-					return has_jitter [ pl->idx ( ) ];
+			static bool has( player_t* pl, const std::string_view& flag ) {
+				if ( flag == _( "slow walk" ) )
+					return has_slow_walk [ pl->idx( ) ];
+				else if ( flag == _( "micro movements" ) )
+					return has_micro_movements [ pl->idx( ) ];
+				else if ( flag == _( "desync" ) )
+					return has_desync [ pl->idx( ) ];
+				else if ( flag == _( "jitter" ) )
+					return has_jitter [ pl->idx( ) ];
 
 				return false;
 			}
@@ -57,15 +57,15 @@ namespace animations {
 			uint32_t m_clr;
 		};
 
-		float get_confidence ( int pl_idx );
-		float get_dmg ( player_t* pl, int side );
+		float get_confidence( int pl_idx );
+		float get_dmg( player_t* pl, int side );
 		bool jittering( player_t* pl );
-		void process_blood ( const effect_data_t& effect_data );
+		void process_blood( const effect_data_t& effect_data );
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
 		void resolve( player_t* pl, float& yaw1, float& yaw2, float& yaw3 );
-		void create_beams ( );
+		void create_beams( );
 		void render_impacts( );
 		void update( ucmd_t* ucmd );
 	}

@@ -1,11 +1,11 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 
 namespace hooks {
 	bool __fastcall in_prediction ( REG );
 
 	namespace old {
-		extern decltype( &in_prediction ) in_prediction;
+		extern decltype( &hooks::in_prediction ) in_prediction;
 	}
 
 	namespace prediction {

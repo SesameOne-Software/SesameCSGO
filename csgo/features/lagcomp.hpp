@@ -1,5 +1,5 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 #include <deque>
 #include "../globals.hpp"
 #include "../animations/animations.hpp"

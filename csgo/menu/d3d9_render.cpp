@@ -1,5 +1,5 @@
 #include "d3d9_render.hpp"
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 #include "../renderer/d3d9.hpp"
 
 struct vertex_t {

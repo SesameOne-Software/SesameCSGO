@@ -1,5 +1,5 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 
 namespace hooks {
 	class c_event_handler : c_event_listener {

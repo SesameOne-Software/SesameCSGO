@@ -12,7 +12,7 @@ bool disabled_input_for_subtab_click = false;
 
 bool sesui::custom::tab_open = false;
 float sesui::custom::tab_open_timer = 0.0f;
-sesui::font sesui::custom::tab_font = font ( L"sesame_icons", 26, 400, false );
+sesui::font sesui::custom::tab_font = sesui::font( L"sesame_icons", 26, 400, false );
 
 bool sesui::custom::begin_group ( const ses_string& name, const rect& fraction, const rect& extra ) {
 	const auto window = globals::window_ctx.find ( globals::cur_window );

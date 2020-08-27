@@ -24,15 +24,13 @@ uintptr_t anti_patch::g_text_section, anti_patch::g_text_section_size;
 
 PVOID g_ImageStartAddr, g_ImageEndAddr;
 
-struct EH4_SCOPETABLE_RECORD
-{
+struct EH4_SCOPETABLE_RECORD {
 	int EnclosingLevel;
 	void* FilterFunc;
 	void* HandlerFunc;
 };
 
-struct EH4_SCOPETABLE
-{
+struct EH4_SCOPETABLE {
 	int GSCookieOffset;
 	int GSCookieXOROffset;
 	int EHCookieOffset;
@@ -40,8 +38,7 @@ struct EH4_SCOPETABLE
 	struct EH4_SCOPETABLE_RECORD ScopeRecord [ ];
 };
 
-struct EH4_EXCEPTION_REGISTRATION_RECORD
-{
+struct EH4_EXCEPTION_REGISTRATION_RECORD {
 	void* SavedESP;
 	EXCEPTION_POINTERS* ExceptionPointers;
 	EXCEPTION_REGISTRATION_RECORD SubRecord;
@@ -49,23 +46,22 @@ struct EH4_EXCEPTION_REGISTRATION_RECORD
 	unsigned int TryLevel;
 };
 
-LONG NTAPI ExceptionHandler ( _EXCEPTION_POINTERS* ExceptionInfo )
-{
+LONG NTAPI ExceptionHandler( _EXCEPTION_POINTERS* ExceptionInfo ) {
 	//making sure to only process exceptions from the manual mapped code:
 	PVOID ExceptionAddress = ExceptionInfo->ExceptionRecord->ExceptionAddress;
 	if ( ExceptionAddress < g_ImageStartAddr || ExceptionAddress > g_ImageEndAddr )
 		return EXCEPTION_CONTINUE_SEARCH;
 
-	EXCEPTION_REGISTRATION_RECORD* pFs = ( EXCEPTION_REGISTRATION_RECORD* ) __readfsdword ( 0 ); // mov pFs, large fs:0 ; <= reading from the segment register
-	if ( ( DWORD_PTR ) pFs > 0x1000 && ( DWORD_PTR ) pFs < 0xFFFFFFF0 ) //validate pointer
+	EXCEPTION_REGISTRATION_RECORD* pFs = ( EXCEPTION_REGISTRATION_RECORD* )__readfsdword( 0 ); // mov pFs, large fs:0 ; <= reading from the segment register
+	if ( ( DWORD_PTR )pFs > 0x1000 && ( DWORD_PTR )pFs < 0xFFFFFFF0 ) //validate pointer
 	{
-		EH4_EXCEPTION_REGISTRATION_RECORD* EH4 = CONTAINING_RECORD ( pFs, EH4_EXCEPTION_REGISTRATION_RECORD, SubRecord );
+		EH4_EXCEPTION_REGISTRATION_RECORD* EH4 = CONTAINING_RECORD( pFs, EH4_EXCEPTION_REGISTRATION_RECORD, SubRecord );
 		EXCEPTION_ROUTINE* EH4_ExceptionHandler = EH4->SubRecord.Handler;
 
 		if ( EH4_ExceptionHandler > g_ImageStartAddr && EH4_ExceptionHandler < g_ImageEndAddr )//validate pointer
 		{
 			//calling the compiler generated function to do the work :D
-			EXCEPTION_DISPOSITION ExceptionDisposition = EH4_ExceptionHandler ( ExceptionInfo->ExceptionRecord, &EH4->SubRecord, ExceptionInfo->ContextRecord, nullptr );
+			EXCEPTION_DISPOSITION ExceptionDisposition = EH4_ExceptionHandler( ExceptionInfo->ExceptionRecord, &EH4->SubRecord, ExceptionInfo->ContextRecord, nullptr );
 			if ( ExceptionDisposition == ExceptionContinueExecution )
 				return EXCEPTION_CONTINUE_EXECUTION;
 		}
@@ -73,9 +69,9 @@ LONG NTAPI ExceptionHandler ( _EXCEPTION_POINTERS* ExceptionInfo )
 	return EXCEPTION_CONTINUE_SEARCH;
 }
 
-__declspec( noreturn ) void __stdcall mmunload ( void* img_base ) {
-	void* exit_thread = GetProcAddress ( GetModuleHandleA ( _ ( "Kernel32.dll" ) ), _ ( "ExitThread" ) );
-	void* virtual_free = GetProcAddress ( GetModuleHandleA ( _ ( "Kernel32.dll" ) ), _ ( "VirtualFree" ) );
+__declspec( noreturn ) void __stdcall mmunload( void* img_base ) {
+	void* exit_thread = GetProcAddress( GetModuleHandleA( _( "Kernel32.dll" ) ), _( "ExitThread" ) );
+	void* virtual_free = GetProcAddress( GetModuleHandleA( _( "Kernel32.dll" ) ), _( "VirtualFree" ) );
 
 	__asm {
 		push 0
@@ -90,8 +86,8 @@ __declspec( noreturn ) void __stdcall mmunload ( void* img_base ) {
 }
 
 typedef void* ( _stdcall* padd_veh )( ULONG, PVECTORED_EXCEPTION_HANDLER );
-typedef HMODULE ( _stdcall* pget_mod )( LPCSTR );
-typedef void ( _stdcall* psleep )( DWORD );
+typedef HMODULE( _stdcall* pget_mod )( LPCSTR );
+typedef void( _stdcall* psleep )( DWORD );
 typedef void( *perase_func )( void* );
 typedef bool( *pcsgo_init )( void );
 typedef bool( *pnetvars_init )( void );
@@ -111,43 +107,43 @@ typedef struct _init_data {
 	const char* server_browser;
 } init_data, * pinit_data;
 
-std::string decrypt_cbc ( const std::string& encrypted, const unsigned char* key,
+std::string decrypt_cbc( const std::string& encrypted, const unsigned char* key,
 	size_t key_size,
 	const unsigned char* iv,
 	const bool padding ) {
 
 	plusaes::Error e;
 
-	std::vector<unsigned char> decrypted ( encrypted.size ( ) );
+	std::vector<unsigned char> decrypted( encrypted.size( ) );
 	unsigned long padded = 0;
 	if ( padding ) {
-		e = plusaes::decrypt_cbc ( ( const unsigned char* ) &encrypted.data ( ) [ 0 ], ( unsigned long ) encrypted.size ( ), key, ( int ) key_size, iv, &decrypted [ 0 ], ( unsigned long ) decrypted.size ( ), &padded );
+		e = plusaes::decrypt_cbc( ( const unsigned char* )&encrypted.data( ) [ 0 ], ( unsigned long )encrypted.size( ), key, ( int )key_size, iv, &decrypted [ 0 ], ( unsigned long )decrypted.size( ), &padded );
 	}
 	else {
-		e = plusaes::decrypt_cbc ( ( const unsigned char* ) &encrypted.data ( ) [ 0 ], ( unsigned long ) encrypted.size ( ), key, ( int ) key_size, iv, &decrypted [ 0 ], ( unsigned long ) decrypted.size ( ), 0 );
+		e = plusaes::decrypt_cbc( ( const unsigned char* )&encrypted.data( ) [ 0 ], ( unsigned long )encrypted.size( ), key, ( int )key_size, iv, &decrypted [ 0 ], ( unsigned long )decrypted.size( ), 0 );
 	}
 
-	const std::string s ( decrypted.begin ( ), decrypted.end ( ) - padded );
+	const std::string s( decrypted.begin( ), decrypted.end( ) - padded );
 
 	if ( padding ) {
-		const std::vector<unsigned char> ok_pad ( padded ); \
-			memcmp ( &decrypted [ decrypted.size ( ) - padded ], &ok_pad [ 0 ], padded );
+		const std::vector<unsigned char> ok_pad( padded ); \
+			memcmp( &decrypted [ decrypted.size( ) - padded ], &ok_pad [ 0 ], padded );
 	}
 
-	return std::string ( reinterpret_cast< const char* >( decrypted.data ( ) ) );
+	return std::string( reinterpret_cast< const char* >( decrypted.data( ) ) );
 }
 
-typedef int ( __stdcall* pinit )( void* );
+typedef int( __stdcall* pinit )( void* );
 
-void call_init ( PLoader_Info loader_info ) {
-	g_ImageStartAddr = PVOID(loader_info->hMod);
-	g_ImageEndAddr = PVOID(loader_info->hMod + loader_info->hMod_sz);
+void call_init( PLoader_Info loader_info ) {
+	g_ImageStartAddr = PVOID( loader_info->hMod );
+	g_ImageEndAddr = PVOID( loader_info->hMod + loader_info->hMod_sz );
 
-	anti_patch::g_text_section = uintptr_t ( loader_info->section );
+	anti_patch::g_text_section = uintptr_t( loader_info->section );
 	anti_patch::g_text_section_size = loader_info->section_sz;
 
 	init_data initdata;
-	memset ( &initdata, 0, sizeof ( init_data ) );
+	memset( &initdata, 0, sizeof( init_data ) );
 
 	initdata.add_veh = AddVectoredExceptionHandler;
 	initdata.csgo_init = csgo::init;
@@ -157,107 +153,110 @@ void call_init ( PLoader_Info loader_info ) {
 	initdata.hooks_init = hooks::init;
 	initdata.js_init = js::init;
 	initdata.netvars_init = netvars::init;
-	initdata.server_browser = _ ( "serverbrowser.dll" );
+	initdata.server_browser = _( "serverbrowser.dll" );
 	initdata.sleep = Sleep;
 
-	std::string decrypted = decrypt_cbc ( base64_decode(loader_info->init), (const unsigned char*)base64_decode(loader_info->key).data(), 32, (const unsigned char*)base64_decode(loader_info->iv).data(), true );
+	std::string decrypted = decrypt_cbc( base64_decode( loader_info->init ), ( const unsigned char* )base64_decode( ( char* )loader_info->key ).data( ), 32, ( const unsigned char* )base64_decode( ( char* )loader_info->iv ).data( ), true );
 
-	if ( decrypted.size ( ) <= 0 )
+	if ( decrypted.size( ) <= 0 )
 		return;
 
 	char* init_addr = &decrypted [ 0 ];
 
 	DWORD old = NULL;
-	VirtualProtect ( init_addr, decrypted.size ( ), PAGE_EXECUTE_READWRITE, &old );
+	VirtualProtect( init_addr, decrypted.size( ), PAGE_EXECUTE_READWRITE, &old );
 
 	reinterpret_cast< pinit >( init_addr )( &initdata );
 
-	VirtualProtect ( init_addr, decrypted.size ( ), old, &old );
+	VirtualProtect( init_addr, decrypted.size( ), old, &old );
 
-	memset ( &initdata, 0, sizeof ( init_data ) );
-	VirtualFree ( ( void* ) loader_info->init, 0, MEM_RELEASE );
+	memset( &initdata, 0, sizeof( init_data ) );
+	VirtualFree( ( void* )loader_info->init, 0, MEM_RELEASE );
 }
 
-int __stdcall init ( uintptr_t mod ) {
-	g_ImageStartAddr = PVOID ( mod );
-	g_ImageEndAddr = PVOID ( mod + std::string((char*)mod).size() );
+int __stdcall init( uintptr_t mod ) {
+	PIMAGE_NT_HEADERS pNtHdr = PIMAGE_NT_HEADERS( uintptr_t( mod ) + PIMAGE_DOS_HEADER( mod )->e_lfanew );
+	PIMAGE_SECTION_HEADER pSectionHeader = ( PIMAGE_SECTION_HEADER )( pNtHdr + 1 );
+
+	g_ImageStartAddr = PVOID( mod );
+	g_ImageEndAddr = PVOID( mod + pNtHdr->OptionalHeader.SizeOfImage );
 
 	/* fix SEH */
-	AddVectoredExceptionHandler ( 1, ExceptionHandler );
+	AddVectoredExceptionHandler( 1, ExceptionHandler );
 
 	/* wait for all modules to load */
-	while ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
-		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
+	while ( !LI_FN( GetModuleHandleA )( _( "serverbrowser.dll" ) ) )
+		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
 
 	/* initialize hack */
-	csgo::init ( );
-	erase::erase_func ( csgo::init );
-	netvars::init ( );
-	erase::erase_func ( netvars::init );
-	js::init ( );
-	erase::erase_func ( js::init );
-	hooks::init ( );
-	erase::erase_func ( hooks::init );
+	csgo::init( );
+	erase::erase_func( csgo::init );
+	netvars::init( );
+	erase::erase_func( netvars::init );
+	js::init( );
+	erase::erase_func( js::init );
+	hooks::init( );
+	erase::erase_func( hooks::init );
 
-	erase::erase_headers ( mod );
+	erase::erase_headers( mod );
 
 	END_FUNC
 
-	return 0;
+		return 0;
 }
 
-int __stdcall init_proxy ( PLoader_Info loader_info ) {
+int __stdcall init_proxy( PLoader_Info loader_info ) {
 #ifndef DEV_BUILD
-	call_init ( loader_info );
+	call_init( loader_info );
 #else
-	init ( uintptr_t ( loader_info ) );
+	init( uintptr_t( loader_info ) );
 #endif
 
-	security_handler::store_text_section_hash ( uintptr_t(loader_info->hMod) );
+	security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
 	while ( !g::unload )
-		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
+		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
 
-	std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 500 ) ) );
-	
-	LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( _ ( "Valve001" ), nullptr ), GWLP_WNDPROC, long ( hooks::old::wnd_proc ) );
-	
-	MH_RemoveHook ( MH_ALL_HOOKS );
-	MH_Uninitialize ( );
-	
-	std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 200 ) ) );
-	
+	std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
+
+	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( hooks::old::wnd_proc ) );
+
+	MH_RemoveHook( MH_ALL_HOOKS );
+	MH_Uninitialize( );
+
+	std::this_thread::sleep_for( std::chrono::milliseconds( N( 200 ) ) );
+
 	if ( g::local )
-		g::local->animate ( ) = true;
+		g::local->animate( ) = true;
 
 	csgo::i::input->m_camera_in_thirdperson = false;
-	
-	static auto r_aspect_ratio = pattern::search ( _ ( "engine.dll" ), _ ( "81 F9 ? ? ? ? 75 16 F3 0F 10 0D ? ? ? ? F3 0F 11 4D ? 81 75 ? ? ? ? ? EB 18 8B 01 8B 40 30 FF D0 F3 0F 10 0D ? ? ? ? 8B 0D ? ? ? ? D9 5D FC F3 0F 10 45 ? 0F 2F 05 ? ? ? ? 76 34" ) ).add ( 2 ).deref ( ).get< void* > ( );
+
+	static auto r_aspect_ratio = pattern::search( _( "engine.dll" ), _( "81 F9 ? ? ? ? 75 16 F3 0F 10 0D ? ? ? ? F3 0F 11 4D ? 81 75 ? ? ? ? ? EB 18 8B 01 8B 40 30 FF D0 F3 0F 10 0D ? ? ? ? 8B 0D ? ? ? ? D9 5D FC F3 0F 10 45 ? 0F 2F 05 ? ? ? ? 76 34" ) ).add( 2 ).deref( ).get< void* >( );
 	auto as_float = 1.777777f;
-	*reinterpret_cast< uintptr_t* > ( uintptr_t ( r_aspect_ratio ) + 0x2c ) = *reinterpret_cast< uintptr_t* > ( &as_float ) ^ uintptr_t ( r_aspect_ratio );
+	*reinterpret_cast< uintptr_t* > ( uintptr_t( r_aspect_ratio ) + 0x2c ) = *reinterpret_cast< uintptr_t* > ( &as_float ) ^ uintptr_t( r_aspect_ratio );
 
 	/* reset world color */ {
-		static auto load_named_sky = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void ( __fastcall* )( const char* ) > ( );
+		static auto load_named_sky = pattern::search( _( "engine.dll" ), _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void( __fastcall* )( const char* ) >( );
 
-		load_named_sky ( _ ( "nukeblank" ) );
+		load_named_sky( _( "nukeblank" ) );
 
-		for ( auto i = csgo::i::mat_sys->first_material ( ); i != csgo::i::mat_sys->invalid_material ( ); i = csgo::i::mat_sys->next_material ( i ) ) {
-			auto mat = csgo::i::mat_sys->get_material ( i );
+		for ( auto i = csgo::i::mat_sys->first_material( ); i != csgo::i::mat_sys->invalid_material( ); i = csgo::i::mat_sys->next_material( i ) ) {
+			auto mat = csgo::i::mat_sys->get_material( i );
 
-			if ( !mat || mat->is_error_material ( ) )
+			if ( !mat || mat->is_error_material( ) )
 				continue;
 
-			if ( strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) ) || strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) ) {
-				mat->color_modulate ( 255, 255, 255 );
-				mat->alpha_modulate ( 255 );
+			if ( strstr( mat->get_texture_group_name( ), _( "StaticProp" ) ) || strstr( mat->get_texture_group_name( ), _( "World" ) ) ) {
+				mat->color_modulate( 255, 255, 255 );
+				mat->alpha_modulate( 255 );
 			}
 		}
 	}
 
 #ifndef DEV_BUILD
-	mmunload ( loader_info->hMod );
+	mmunload( loader_info->hMod );
 #else
-	FreeLibraryAndExitThread ( HMODULE ( loader_info ), 0 );
+	FreeLibraryAndExitThread( HMODULE( loader_info ), 0 );
 #endif
 
 	return 0;
@@ -268,8 +267,8 @@ int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved )
 	g::loader_data = reinterpret_cast< PLoader_Info >( loader_data );
 #endif
 
-	if (reason == 1)
-		CloseHandle( CreateThread( nullptr, N(0), LPTHREAD_START_ROUTINE(init_proxy), loader_data, N(0), nullptr ) );
+	if ( reason == 1 )
+		_beginthreadex( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( init_proxy ), loader_data, 0, nullptr );
 
 	return 1;
 }
