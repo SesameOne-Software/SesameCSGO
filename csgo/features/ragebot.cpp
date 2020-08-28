@@ -559,7 +559,11 @@ bool run_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox
 
 		VEC_TRANSFORM( hb->m_bbmin, pl->bone_cache( ) [ hb->m_bone ], vmin );
 		VEC_TRANSFORM( hb->m_bbmax, pl->bone_cache( ) [ hb->m_bone ], vmax );
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 		pos_out = ( vmin + vmax ) * 0.5f;
 
 		return hb->m_radius;
@@ -692,15 +696,26 @@ void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcom
 			if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
 				return false;
 
+<<<<<<< HEAD
 			if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
 				return false;
 
 			return csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
+=======
+			if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+				return false;
+
+			return features::prediction::predicted_curtime >= g::local->next_attack( ) && features::prediction::predicted_curtime >= g::local->weapon( )->next_primary_attack( );
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 		};
 
 		const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 		const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
+<<<<<<< HEAD
 		auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+=======
+		auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ), 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 
 		if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 			tickbase_as_int = 0;
@@ -751,6 +766,7 @@ retry_without_safe_points:
 		/* this should drastically speed up the ragebot */
 		auto record_existed = false;
 
+<<<<<<< HEAD
 		//if ( !previous_scanned_records [ pl->idx( ) ].empty( ) ) {
 		//	recorded_scans_t* similar_scan = nullptr;
 		//	//
@@ -810,6 +826,67 @@ retry_without_safe_points:
 		//		}
 		//	}
 		//}
+=======
+		if ( !previous_scanned_records [ pl->idx( ) ].empty( ) ) {
+			recorded_scans_t* similar_scan = nullptr;
+			//
+			for ( auto& scan_record : previous_scanned_records [ pl->idx( ) ] ) {
+				if ( is_similar_scan( scan_record, rec_it ) ) {
+					similar_scan = &scan_record;
+					break;
+				}
+			}
+			//
+			if ( similar_scan ) {
+				/* if they become shootable soon, maybe we should rescan them to make sure we can shoot as soon as possible */ {
+					const auto eyes_max = pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
+					const auto fwd = csgo::angle_vec( eyes_max - g::local->eyes( ) );
+					const auto right_dir = fwd.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
+					const auto left_dir = -right_dir;
+					const auto dmg_left = autowall::dmg( g::local, pl, g::local->eyes( ) + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
+					const auto dmg_right = autowall::dmg( g::local, pl, g::local->eyes( ) + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
+					//
+										/* scan this record again to make sure we might be able to hit this one if state changed */
+					if ( dmg_left || dmg_right ) {
+						similar_scan->m_rec.m_pl = nullptr;
+						similar_scan = nullptr;
+						record_existed = false;
+					}
+				}
+				//
+				if ( similar_scan ) {
+					if ( /* double check validity i guess */ similar_scan->m_rec.valid( )
+						/* make sure overwriting this record is worth it, would probably be a good thing */ && similar_scan->m_dmg > best_dmg
+						/* if the shot is fatal, it doesn't matter */ || best_dmg >= pl->health( ) ) {
+						best_dmg = similar_scan->m_dmg;
+						best_point = similar_scan->m_target;
+						best_rec = similar_scan->m_rec;
+						best_hitbox = similar_scan->m_hitbox;
+						best_priority = similar_scan->m_priority;
+						record_existed = true;
+					}
+					//
+					if ( best_dmg >= pl->health( ) ) {
+						pl->mins( ) = backup_min;
+						pl->maxs( ) = backup_max;
+						pl->origin( ) = backup_origin;
+						pl->set_abs_origin( backup_abs_origin );
+						std::memcpy( pl->bone_cache( ), backup_bones, sizeof matrix3x4_t * pl->bone_count( ) );
+						//
+						point = best_point;
+						dmg = best_dmg;
+						rec_out = best_rec;
+						hitbox_out = best_hitbox;
+						//
+						return;
+					}
+					else {
+						continue;
+					}
+				}
+			}
+		}
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 
 		/* for safe point scanning */
 		/* override aim matrix with safe point matrix so we scan safe points from safe point matrix on current aim matrix */
@@ -1302,13 +1379,21 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
 			return false;
 
+<<<<<<< HEAD
 		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+=======
+		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 			return false;
 
 		//if ( g::shifted_tickbase )
 		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
 
+<<<<<<< HEAD
 		return ( csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( ) ) || g::next_tickbase_shot;
+=======
+		return ( features::prediction::predicted_curtime >= g::local->next_attack( ) && features::prediction::predicted_curtime >= g::local->weapon( )->next_primary_attack( ) ) || g::next_tickbase_shot;
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 	};
 
 	static const auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
@@ -1496,12 +1581,20 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) || !g::local->weapon( )->data( ) )
 			return false;
 
+<<<<<<< HEAD
 		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+=======
+		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 			return false;
 
 		//if ( g::shifted_tickbase )
 		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
+<<<<<<< HEAD
 		return csgo::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= features::prediction::predicted_curtime;
+=======
+		return features::prediction::predicted_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= features::prediction::predicted_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= features::prediction::predicted_curtime;
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 	};
 
 	/* tickbase manip controller */
@@ -1512,7 +1605,11 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
+<<<<<<< HEAD
 	auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+=======
+	auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ), 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;

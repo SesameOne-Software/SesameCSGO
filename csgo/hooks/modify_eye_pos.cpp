@@ -29,7 +29,11 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 		return;
 
 	auto bone_idx = lookup_bone( pl, _( "head_0" ) );
+<<<<<<< HEAD
 	vec3_t bone_pos = anims::aim_matrix [ bone_idx ].origin( );
+=======
+	vec3_t bone_pos = animations::data::aim_matrix [ bone_idx ].origin( );
+>>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 	bone_pos.z += 1.7f;
 
 	if ( bone_pos.z < pos.z ) {
