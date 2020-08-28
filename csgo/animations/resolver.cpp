@@ -264,13 +264,8 @@ void animations::resolver::process_hurt( event_t* event ) {
 	hit_hitgroup [ victim->idx( ) ] = hitgroup;
 
 	/* hit wrong hitbox, probably due to resolver */
-<<<<<<< HEAD
 	//if ( hitgroup != autowall::hitbox_to_hitgroup( features::ragebot::get_hitbox( victim->idx( ) ) ) )
 	//	rdata::wrong_hitbox [ victim->idx( ) ] = true;
-=======
-	if ( hitgroup != autowall::hitbox_to_hitgroup( features::ragebot::get_hitbox( victim->idx( ) ) ) )
-		rdata::wrong_hitbox [ victim->idx( ) ] = true;
->>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 }
 
 void animations::resolver::process_event_buffer( int pl_idx ) {

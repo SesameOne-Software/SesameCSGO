@@ -283,15 +283,10 @@ void features::offscreen_esp::draw( ) {
 							}
 
 							if ( bomb_esp ) {
-<<<<<<< HEAD
 								auto c4_origin = as_bomb->origin ( ) + vec3_t ( 0.0f, 0.0f, 8.0f );
 
 								vec3_t bomb_screen;
 								const auto transformed = csgo::render::world_to_screen( bomb_screen, c4_origin );
-=======
-								vec3_t bomb_screen;
-								const auto transformed = csgo::render::world_to_screen( bomb_screen, as_bomb->origin( ) + vec3_t( 0.0f, 0.0f, 8.0f ) );
->>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 
 								vec3_t calc_pos;
 

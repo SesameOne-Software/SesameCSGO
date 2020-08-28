@@ -69,43 +69,22 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	}
 
 	security_handler::update( );
-<<<<<<< HEAD
-=======
 
-	if ( g_refresh_counter < g::shifted_amount ) {
-		ucmd->m_buttons &= ~1;
-		ucmd->m_fmove = ucmd->m_smove = 0.0f;
-		//ucmd->m_angs = old_angles;
-		//csgo::clamp( ucmd->m_angs );
-
-		//*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = true;
-		ucmd->m_tickcount += 666;
-		in_cm = false;
-		g_refresh_counter++;
-		vars::in_refresh = true;
-		return false;
-	}
-	else {
-		vars::in_refresh = false;
-	}
->>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
-
-	features::prediction::update_curtime( );
+	features::prediction::update_curtime ( );
 
 	/* thanks chambers */
-	if ( csgo::i::client_state->choked( ) ) {
-		//prediction::disable_sounds = true;
+	if ( csgo::i::client_state->choked ( ) ) {
+		prediction::disable_sounds = true;
 
-		csgo::i::pred->update(
-			csgo::i::client_state->delta_tick( ),
-			csgo::i::client_state->delta_tick( ) > 0,
-			csgo::i::client_state->last_command_ack( ),
-			csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( ) );
+		csgo::i::pred->update (
+			csgo::i::client_state->delta_tick ( ),
+			csgo::i::client_state->delta_tick ( ) > 0,
+			csgo::i::client_state->last_command_ack ( ),
+			csgo::i::client_state->last_outgoing_cmd ( ) + csgo::i::client_state->choked ( ) );
 
-		//prediction::disable_sounds = false;
+		prediction::disable_sounds = false;
 	}
 
-<<<<<<< HEAD
 	if ( g_refresh_counter < g::shifted_amount ) {
 		ucmd->m_buttons &= ~1;
 		ucmd->m_fmove = ucmd->m_smove = 0.0f;
@@ -123,8 +102,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		vars::in_refresh = false;
 	}
 
-=======
->>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 	if ( g::local && g::local->weapon( ) ) {
 		const auto weapon = g::local->weapon( );
 		weapon->update_accuracy( );

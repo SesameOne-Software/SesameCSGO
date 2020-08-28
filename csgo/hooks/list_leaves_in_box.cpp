@@ -56,12 +56,8 @@ int __fastcall hooks::list_leaves_in_box( REG, vec3_t& mins, vec3_t& maxs, uint1
 	info->m_flags &= ~0x100;
 	info->m_flags2 |= 0x40;
 
-<<<<<<< HEAD
 	auto mins_out = vec3_t ( -16384.0f, -16384.0f, -16384.0f );
 	auto maxs_out = vec3_t ( 16384.0f, 16384.0f, 16384.0f );
 
 	return old::list_leaves_in_box( REG_OUT, mins_out, maxs_out, list, list_max );
-=======
-	return old::list_leaves_in_box( REG_OUT, vec3_t( -16384.0f, -16384.0f, -16384.0f ), vec3_t( 16384.0f, 16384.0f, 16384.0f ), list, list_max );
->>>>>>> 5f27508511bc7685dc3c2729d5da61a7f805d94b
 }
