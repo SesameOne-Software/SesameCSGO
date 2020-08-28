@@ -35,7 +35,7 @@ namespace prediction_util {
 
 		simulate_player_simulated_entities( local );
 
-		vfunc< int ( __thiscall* )( void* ) > ( csgo::i::mdl_cache, 34 )( csgo::i::mdl_cache );
+		vfunc< int( __thiscall* )( void* ) >( csgo::i::mdl_cache, 34 )( csgo::i::mdl_cache );
 	}
 
 	void start( ucmd_t* ucmd ) {
@@ -73,7 +73,7 @@ namespace prediction_util {
 
 		/*
 		@CBRS
-			so here's the thing... 
+			so here's the thing...
 			a) tickbase is never modified in any of these called functions, so why are you backing it up and restoring it?
 			b) you should predict what your tickbase will be (i.e. after shifting back due to doubletap) and set it here so that you don't try to exploit + fire at a time when you actually can't,
 			thus causing ghost-shots on the server
@@ -85,7 +85,7 @@ namespace prediction_util {
 
 		csgo::i::globals->m_curtime = features::prediction::predicted_curtime;
 		csgo::i::globals->m_frametime = csgo::i::pred->m_engine_paused ? 0.0f : csgo::i::globals->m_ipt;
-		csgo::i::globals->m_tickcount = csgo::time2ticks ( features::prediction::predicted_curtime );
+		csgo::i::globals->m_tickcount = csgo::time2ticks( features::prediction::predicted_curtime );
 
 		csgo::i::pred->m_is_first_time_predicted = false;
 		csgo::i::pred->m_in_prediction = true;
@@ -93,8 +93,8 @@ namespace prediction_util {
 		if ( ucmd->m_impulse )
 			*reinterpret_cast< std::uint32_t* >( std::uintptr_t( local ) + 0x31FC ) = ucmd->m_impulse;
 
-		ucmd->m_buttons |= ( *reinterpret_cast< int* >( uintptr_t ( local ) + 0x3330 ) );
-		ucmd->m_buttons &= ~( *reinterpret_cast< int* >( uintptr_t ( local ) + 0x3334 ) );
+		ucmd->m_buttons |= ( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3330 ) );
+		ucmd->m_buttons &= ~( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3334 ) );
 
 		const auto v16 = ucmd->m_buttons;
 		const auto unk02 = reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F8 );
@@ -114,12 +114,12 @@ namespace prediction_util {
 			local->pre_think( );
 			*/
 		const auto next_think = reinterpret_cast< int* >( std::uintptr_t( local ) + 0xFC );
-		
-		if ( *next_think != -1 && *next_think > 0 && *next_think <= local->tick_base ( ) ) {
+
+		if ( *next_think != -1 && *next_think > 0 && *next_think <= local->tick_base( ) ) {
 			*next_think = -1;
 
-			static auto unknown_fn = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 56 57 8B F9 8B B7 ? ? ? ? 8B" ) ).get< void ( __thiscall* )( int ) > ( );
-			unknown_fn ( 0 );
+			static auto unknown_fn = pattern::search( _( "client.dll" ), _( "55 8B EC 56 57 8B F9 8B B7 ? ? ? ? 8B" ) ).get< void( __thiscall* )( int ) >( );
+			unknown_fn( 0 );
 
 			local->think( );
 		}
@@ -143,12 +143,12 @@ namespace prediction_util {
 	void end( ucmd_t* ucmd ) {
 		auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
-		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive ( ) )
+		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
 		csgo::i::move->finish_track_prediction_errors( local );
 		csgo::i::move_helper->set_host( nullptr );
-		csgo::i::move->reset ( );
+		csgo::i::move->reset( );
 
 		//if ( csgo::i::globals->m_frametime > 0.0f )
 		//	local->tick_base ( )++;
@@ -163,22 +163,22 @@ namespace prediction_util {
 	}
 }
 
-int features::prediction::shift ( const int& cur ) {
-	auto clock_correction = csgo::time2ticks ( 0.03f );
-	auto latency_ticks = std::max<int> ( 0, csgo::time2ticks ( csgo::i::engine->get_net_channel_info()->get_avg_latency ( 0 ) ) );
+int features::prediction::shift( const int& cur ) {
+	auto clock_correction = csgo::time2ticks( 0.03f );
+	auto latency_ticks = std::max<int>( 0, csgo::time2ticks( csgo::i::engine->get_net_channel_info( )->get_avg_latency( 0 ) ) );
 	auto tick_base = csgo::i::client_state->server_tickcount( ) + latency_ticks + 1;
 	auto ideal_server_start = tick_base + clock_correction;
 
-	if ( g::dt_ticks_to_shift ) {
+	if ( g::shifted_amount ) {
 		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
-		auto expected_shift = std::min< int > ( 14, g::dt_ticks_to_shift );
-		auto first_tick_in_batch_tc = ideal_server_start - std::min<int> ( 16, csgo::i::client_state->choked ( ) + 1 + expected_shift ) + 1;
+		auto expected_shift = std::min< int >( 14, g::shifted_amount );
+		auto first_tick_in_batch_tc = ideal_server_start - std::min<int>( 16, csgo::i::client_state->choked( ) + 1 + expected_shift ) + 1;
 
-		return first_tick_in_batch_tc + csgo::i::client_state->choked ( );
+		return first_tick_in_batch_tc + csgo::i::client_state->choked( );
 	}
 	//else if ( will_hs ( ) ) {
 	//	//    this value will have to change once hide shots is added back in, look @ commented code above for reference
-	//	auto expected_shift = std::min< int > ( 6, g::dt_ticks_to_shift );
+	//	auto expected_shift = std::min< int > ( 6, g::shifted_amount );
 	//	auto first_tick_in_batch_tc = ideal_server_start - std::min<int> ( 16, csgo::i::client_state->choked ( ) + 1 + expected_shift ) + 1;
 	//
 	//	return first_tick_in_batch_tc + csgo::i::client_state->choked ( );
@@ -187,16 +187,16 @@ int features::prediction::shift ( const int& cur ) {
 	return cur;
 }
 
-void features::prediction::update_curtime ( ) {
+void features::prediction::update_curtime( ) {
 	static int g_tick = 0;
 	static ucmd_t* last_cmd = nullptr;
 
 	if ( !g::local )
 		return;
 
-	g_tick = ( !last_cmd || last_cmd->m_hasbeenpredicted ) ? g::local->tick_base ( ) : ( g_tick + 1 );
+	g_tick = ( !last_cmd || last_cmd->m_hasbeenpredicted ) ? g::local->tick_base( ) : ( g_tick + 1 );
 	last_cmd = g::ucmd;
-	predicted_curtime = csgo::ticks2time ( g_tick );
+	predicted_curtime = csgo::ticks2time( g_tick );
 }
 
 void features::prediction::run( const std::function< void( ) >& fn ) {

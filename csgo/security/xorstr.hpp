@@ -75,7 +75,8 @@ namespace jm {
 		template<std::size_t Size>
 		constexpr std::size_t _buffer_size( )
 		{
-			return ( ( Size / 16 ) + ( Size % 16 != 0 ) ) * 2;
+			// deepcode ignore IntegralExprWithBoolOperand: <please specify a reason of ignoring this>
+   return ( ( Size / 16 ) + ( Size % 16 != 0 ) ) * 2;
 		}
 
 		template<auto... Cs>

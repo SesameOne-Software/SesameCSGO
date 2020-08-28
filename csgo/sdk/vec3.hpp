@@ -60,7 +60,8 @@ public:
 	}
 
 	bool operator==( const vec3_t& src ) const {
-		return ( src.x == this->x ) && ( src.y == y ) && ( src.z == z );
+		// deepcode ignore FloatingPointEquals: <please specify a reason of ignoring this>
+  return ( src.x == this->x ) && ( src.y == y ) && ( src.z == z );
 	}
 
 	bool operator!=( const vec3_t& src ) const {

@@ -149,7 +149,7 @@ struct anim_list_t {
 
 class player_t : public entity_t {
 public:
-	NETVAR ( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
+	NETVAR( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
 	NETVAR( std::uint32_t, flags, "DT_BasePlayer->m_fFlags" );
 	NETVAR( bool, has_defuser, "DT_CSPlayer->m_bHasDefuser" );
 	NETVAR( bool, immune, "DT_CSPlayer->m_bGunGameImmunity" );
@@ -164,7 +164,7 @@ public:
 	NETVAR( float, flash_alpha, "DT_CSPlayer->m_flFlashMaxAlpha" );
 	NETVAR( std::uint8_t, life_state, "DT_BasePlayer->m_lifeState" );
 	NETVAR( std::uint32_t, tick_base, "DT_BasePlayer->m_nTickBase" );
-	NETVAR ( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
+	NETVAR( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
 	NETVAR( float, crouch_speed, "DT_BasePlayer->m_flDuckSpeed" );
 	NETVAR( vec3_t, view_punch, "DT_BasePlayer->m_viewPunchAngle" );
 	NETVAR( vec3_t, aim_punch, "DT_BasePlayer->m_aimPunchAngle" );
@@ -177,20 +177,20 @@ public:
 	NETVAR( vec3_t, mins, "DT_CSPlayer->m_vecMins" );
 	NETVAR( vec3_t, maxs, "DT_CSPlayer->m_vecMaxs" );
 	NETVAR( std::uint32_t, observer_mode, "DT_CSPlayer->m_iObserverMode" );
-	NETVAR ( uint32_t, ragdoll_handle, "DT_CSPlayer->m_hRagdoll" );
+	NETVAR( uint32_t, ragdoll_handle, "DT_CSPlayer->m_hRagdoll" );
 	NETVAR( uint32_t, viewmodel_handle, "DT_BasePlayer->m_hViewModel[0]" );
-	NETVAR ( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
-	NETVAR ( vec3_t, ragdoll_vel, "DT_CSRagdoll->m_vecRagdollVelocity" );
-	NETVAR ( float, next_attack, "DT_CSPlayer->m_flNextAttack" );
+	NETVAR( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
+	NETVAR( vec3_t, ragdoll_vel, "DT_CSRagdoll->m_vecRagdollVelocity" );
+	NETVAR( float, next_attack, "DT_CSPlayer->m_flNextAttack" );
 	OFFSET( int, effects, 0xE4 );
 	OFFSET( int, eflags, 0xE8 );
 	OFFSET( void*, iks, 0x266C );
 	OFFSET( bool, should_update, 0x289C );
 	OFFSET( std::uint32_t, num_overlays, 0x298C );
 	OFFSET( float, spawn_time, 0xA360 );
-	OFFSET ( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
-	OFFSET ( int, readable_bones, 0x26A8 + 0x4 );
-	OFFSET ( int, writeable_bones, 0x26AC + 0x4 );
+	OFFSET( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
+	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
+	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
 
 	bool is_player( ) {
 		using fn = bool( __thiscall* )( void* );
@@ -248,7 +248,7 @@ public:
 	}
 
 	float& old_simtime( ) {
-		return *( float* ) ( std::uintptr_t( &simtime( ) ) + 4 );
+		return *( float* )( std::uintptr_t( &simtime( ) ) + 4 );
 	}
 
 	animstate_t* animstate( );
@@ -288,10 +288,7 @@ public:
 
 	std::uint32_t handle( );
 
-	bool setup_bones( std::array< matrix3x4_t, 128 >& m, std::uint32_t max, std::uint32_t mask, float seed ) {
-		using setupbones_fn = bool( __thiscall* )( void*, std::array< matrix3x4_t, 128 >&, std::uint32_t, std::uint32_t, float );
-		return vfunc< setupbones_fn >( renderable( ), 13 )( renderable( ), m, max, mask, seed );
-	}
+	bool setup_bones( matrix3x4_t* m, std::uint32_t max, std::uint32_t mask, float seed );
 
 	void estimate_abs_vel( vec3_t& vec ) {
 		using fn = void( __thiscall* )( void*, vec3_t& );

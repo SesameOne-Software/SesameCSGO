@@ -8,7 +8,6 @@
 #include "../features/nade_prediction.hpp"
 #include "../features/other_visuals.hpp"
 #include "../features/esp.hpp"
-#include "../animations/animations.hpp"
 #include "../animations/resolver.hpp"
 #include "../javascript/js_api.hpp"
 #include "../menu/options.hpp"

@@ -1,5 +1,5 @@
 #pragma once
-#include <sdk.hpp>
+#include "../sdk/sdk.hpp"
 #include "lagcomp.hpp"
 
 namespace features {
@@ -33,6 +33,7 @@ namespace features {
 				dt_enabled;
 
 			double min_dmg,
+				dmg_accuracy,
 				hit_chance,
 				dt_hit_chance,
 				max_dt_ticks,
@@ -46,7 +47,7 @@ namespace features {
 				triggerbot_key, triggerbot_key_mode,
 				safe_point_key, safe_point_key_mode;
 		};
-		
+
 		extern weapon_config_t active_config;
 
 		struct misses_t {
@@ -60,15 +61,15 @@ namespace features {
 
 		extern std::array< float, 65 > hitchances;
 
-		void get_weapon_config ( weapon_config_t& const config );
-		lagcomp::lag_record_t& get_lag_rec ( int pl );
-		int& get_target_idx ( );
-		player_t*& get_target ( );
+		void get_weapon_config( weapon_config_t& const config );
+		lagcomp::lag_record_t& get_lag_rec( int pl );
+		int& get_target_idx( );
+		player_t*& get_target( );
 		misses_t& get_misses( int pl );
 		vec3_t& get_target_pos( int pl );
 		vec3_t& get_shot_pos( int pl );
 		int& get_hits( int pl );
-		int& get_shots ( int pl );
+		int& get_shots( int pl );
 		int& get_hitbox( int pl );
 
 		void hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out );

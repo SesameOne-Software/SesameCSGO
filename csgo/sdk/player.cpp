@@ -2,6 +2,11 @@
 #include "player.hpp"
 #include "sdk.hpp"
 #include "../hooks/modify_eye_pos.hpp"
+#include "../hooks/setup_bones.hpp"
+
+void* planted_c4_t::get_defuser( ) {
+	return csgo::i::ent_list->get_by_handle<player_t*>( defuser_handle( ) );
+}
 
 void animstate_pose_param_cache_t::set_value( player_t* e, float val ) {
 	if ( m_idx >= 0 )
@@ -29,6 +34,14 @@ std::uint32_t player_t::handle( ) {
 	return get_ehandle( this );
 }
 
+bool player_t::setup_bones( matrix3x4_t* m, std::uint32_t max, std::uint32_t mask, float seed ) {
+	using setupbones_fn = bool( __thiscall* )( void*, matrix3x4_t*, std::uint32_t, std::uint32_t, float );
+	hooks::bone_setup::allow = true;
+	const auto ret = vfunc< setupbones_fn >( renderable( ), 13 )( renderable( ), m, max, mask, seed );
+	hooks::bone_setup::allow = false;
+	return ret;
+}
+
 void player_t::create_animstate( animstate_t* state ) {
 	static auto create_animstate = pattern::search( _( "client.dll" ), _( "55 8B EC 56 8B F1 B9 ? ? ? ? C7 46" ) ).get< void( __thiscall* )( void*, void* ) >( );
 	create_animstate( state, this );
@@ -37,8 +50,8 @@ void player_t::create_animstate( animstate_t* state ) {
 void player_t::inval_bone_cache( ) {
 	static auto invalidate_bone_cache = pattern::search( _( "client.dll" ), _( "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ) ).add( 10 ).get< std::uintptr_t >( );
 
-	*( std::uint32_t* ) ( ( std::uintptr_t ) this + N( 0x2924 ) ) = N( 0xFF7FFFFF );
-	*( std::uint32_t* ) ( ( std::uintptr_t ) this + N( 0x2690 ) ) = **( std::uintptr_t** ) invalidate_bone_cache - N( 1 );
+	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2924 ) = 0xFF7FFFFF;
+	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2690 ) = **( std::uintptr_t** ) invalidate_bone_cache - 1;
 }
 
 void player_t::set_abs_angles( const vec3_t& ang ) {
@@ -59,7 +72,7 @@ vec3_t& player_t::abs_vel( ) {
 	// old abs velocity
 	// *( vec3_t* ) ( std::uintptr_t( this ) + 0x94 ) = vel;
 	// current abs velocity
-	return *( vec3_t* ) ( std::uintptr_t( this ) + N( 0x94 ) );
+	return *( vec3_t* )( std::uintptr_t( this ) + 0x94 );
 }
 
 void player_t::set_abs_vel( vec3_t& vel ) {
@@ -76,31 +89,31 @@ void player_t::set_abs_origin( vec3_t& vec ) {
 
 animstate_t* player_t::animstate( ) {
 	static auto animstate_offset = pattern::search( _( "client.dll" ), _( "8B 8E ? ? ? ? F3 0F 10 48 04 E8 ? ? ? ? E9" ) ).add( 2 ).deref( ).get< std::uintptr_t >( );
-	return *( animstate_t** ) ( std::uintptr_t( this ) + animstate_offset );
+	return *( animstate_t** )( std::uintptr_t( this ) + animstate_offset );
 }
 
 vec3_t player_t::eyes( ) {
-	static auto modify_eye_position = pattern::search ( _ ( "client.dll" ), _ ( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 1 ).resolve_rip ( ).get<void*> ( );
+	static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 
 	vec3_t pos = vec3_t( 0.0f, 0.0f, 0.0f );
 
 	/* eye position */
-	vfunc< void ( __thiscall* )( player_t*, vec3_t& ) > ( this, 168 ) ( this, pos );
+	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 168 ) ( this, pos );
 
-	if ( *reinterpret_cast< uint8_t* > ( uintptr_t ( this ) + 0x3AB4 ) && animstate ( ) )
-		hooks::modify_eye_pos ( animstate ( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
+	if ( *reinterpret_cast< uint8_t* > ( uintptr_t( this ) + 0x3AB4 ) && animstate( ) )
+		hooks::modify_eye_pos( animstate( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
 
 	return pos;
 }
 
 std::uint32_t& player_t::bone_count( ) {
 	static auto offset = pattern::search( _( "client.dll" ), _( "8B 87 ? ? ? ? 8B 4D 0C" ) ).add( 2 ).deref( ).get< std::uint32_t >( );
-	return *( uint32_t* ) ( std::uintptr_t( renderable( ) ) + offset );
+	return *( uint32_t* )( std::uintptr_t( renderable( ) ) + offset );
 }
 
 matrix3x4_t* player_t::bone_cache( ) {
 	static auto offset = pattern::search( _( "client.dll" ), _( "FF B7 ? ? ? ? 52" ) ).add( 2 ).deref( ).get< std::uint32_t >( );
-	return *( matrix3x4_t** ) ( std::uintptr_t( renderable( ) ) + offset );
+	return *( matrix3x4_t** )( std::uintptr_t( renderable( ) ) + offset );
 }
 
 weapon_t* player_t::weapon( ) {

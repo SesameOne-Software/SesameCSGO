@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach",
+            "type": "cppvsdbg",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        },
+        {
+            "name": "Debug (Auto-Inject)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/main.exe",
+            "preLaunchTask": "Build and Inject",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/bin",
+            "environment": [],
+            "externalConsole": true,
+        }
+    ]
+}

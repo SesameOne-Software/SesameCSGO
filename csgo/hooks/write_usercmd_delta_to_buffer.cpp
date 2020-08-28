@@ -4,59 +4,92 @@
 
 decltype( &hooks::write_usercmd_delta_to_buffer ) hooks::old::write_usercmd_delta_to_buffer = nullptr;
 
-bool __fastcall hooks::write_usercmd_delta_to_buffer ( REG, int slot, void* buf, int from, int to, bool new_cmd ) {
-	static auto write_ucmd = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F8 51 53 56 8B D9 8B 0D" ) ).get< void ( __fastcall* )( void*, ucmd_t*, ucmd_t* ) > ( );
-	static auto cl_sendmove_ret = pattern::search ( _ ( "engine.dll" ), _ ( "84 C0 74 04 B0 01 EB 02 32 C0 8B FE 46 3B F3 7E C9 84 C0 0F 84" ) ).get< void* > ( );
+class c_nc {
+public:
+	PAD( 23 );
+	bool should_delete;
+	int out_seq_nr;
+	int in_seq_nr;
+	int out_seq_nr_ack;
+	int out_reliable_state;
+	int in_reliable_state;
+	int choked_packets;
+};
 
-	if ( _ReturnAddress ( ) != cl_sendmove_ret || g::dt_ticks_to_shift <= 0 ) {
-		return old::write_usercmd_delta_to_buffer ( REG_OUT, slot, buf, from, to, new_cmd );
+bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, int from, int to, bool new_cmd ) {
+	static auto write_ucmd = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 51 53 56 8B D9 8B 0D" ) ).get< void( __fastcall* )( void*, ucmd_t*, ucmd_t* ) >( );
+	static auto cl_sendmove_ret = pattern::search( _( "engine.dll" ), _( "84 C0 74 04 B0 01 EB 02 32 C0 8B FE 46 3B F3 7E C9 84 C0 0F 84" ) ).get< void* >( );
+
+	if ( /*_ReturnAddress( ) != cl_sendmove_ret ||*/ g::dt_ticks_to_shift <= 0 || !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) ) {
+		return old::write_usercmd_delta_to_buffer( REG_OUT, slot, buf, from, to, new_cmd );
 	}
 
 	if ( from != -1 )
 		return true;
 
-	const auto new_commands = *reinterpret_cast< int* >( uintptr_t ( buf ) - 0x2C );
-	const auto num_cmd = csgo::i::client_state->choked ( ) + 1;
-	const auto next_cmd_num = csgo::i::client_state->last_outgoing_cmd ( ) + num_cmd;
-	const auto total_new_cmds = std::clamp ( g::dt_ticks_to_shift, 0, csgo::is_valve_server ( ) ? 8 : 16 );
+	int* m_backup_commands = ( int* )( reinterpret_cast< uintptr_t >( buf ) - 0x30 );
+	int* m_new_commands = ( int* )( reinterpret_cast< uintptr_t >( buf ) - 0x2C );
+
+	const auto backup_new_commands = *m_new_commands;
+
+	/* ez sit nn dog */
+	//byte m_data [ 4000 ];
+	//buf->start_writing( m_data, sizeof( m_data ) );
+
+	int num_cmd = csgo::i::client_state->choked( ) + 1;
+	int next_cmdnr = csgo::i::client_state->last_outgoing_cmd( ) + num_cmd;
+
+	if ( num_cmd > 62 )
+		num_cmd = 62;
+
+	const auto shift_amount_clamped = std::clamp( g::dt_ticks_to_shift, 0, 16 );
 
 	from = -1;
-	*reinterpret_cast< int* >( uintptr_t ( buf ) - 0x2C ) = total_new_cmds;
-	*reinterpret_cast< int* >( uintptr_t ( buf ) - 0x30 ) = 0;
+	*m_new_commands = shift_amount_clamped;
+	*m_backup_commands = 0;
 
-	for ( to = next_cmd_num - new_commands + 1; to <= next_cmd_num; to++ ) {
-		if ( !old::write_usercmd_delta_to_buffer ( REG_OUT, slot, buf, from, to, true ) )
+	int new_cmdnr = next_cmdnr - backup_new_commands + 1;
+	for ( to = new_cmdnr; to <= next_cmdnr; to++ ) {
+		if ( !old::write_usercmd_delta_to_buffer( REG_OUT, slot, buf, from, to, true ) )
 			return false;
 
 		from = to;
 	}
 
-	const auto last_real_cmd = vfunc< ucmd_t * ( __thiscall* )( void*, int, int ) > ( csgo::i::input, 8 )( csgo::i::input, slot, from );
-	ucmd_t cmd_from;
+	auto get_ucmd = [ ] ( int m_slot, int m_from ) {
+		typedef ucmd_t* ( __thiscall* o_fn )( void*, int, int );
+		return ( *( o_fn** )csgo::i::input ) [ 8 ]( csgo::i::input, m_slot, m_from );
+	};
 
-	if ( last_real_cmd )
-		cmd_from = *last_real_cmd;
+	ucmd_t* m_lastrealcmd = get_ucmd( slot, from );
+	ucmd_t m_fromcmd, m_tocmd;
 
-	ucmd_t cmd_to = cmd_from;
-	cmd_to.m_cmdnum++;
+	if ( m_lastrealcmd )
+		m_fromcmd = *m_lastrealcmd;
 
-	if ( features::ragebot::active_config.dt_teleport && !csgo::is_valve_server ( ) /* don't wanna set tickcount to int_max or else we will get banned on valve servers */ )
-		cmd_to.m_tickcount++;
-	else
-		cmd_to.m_tickcount += 666;
+	m_tocmd = m_fromcmd;
+	m_tocmd.m_cmdnum++;
+	m_tocmd.m_tickcount += 666;
 
-	for ( auto i = new_commands; i <= total_new_cmds; i++ ) {
-		write_ucmd ( buf, &cmd_to, &cmd_from );
-		cmd_from = cmd_to;
-		cmd_to.m_cmdnum++;
-		cmd_to.m_tickcount++;
+	g::shifted_amount = g::dt_ticks_to_shift;
+
+	for ( auto i = backup_new_commands; i <= shift_amount_clamped; i++ ) {
+		write_ucmd( buf, &m_tocmd, &m_fromcmd );
+		m_fromcmd = m_tocmd;
+		m_tocmd.m_cmdnum++;
+		m_tocmd.m_tickcount++;
 	}
 
-	//if ( features::ragebot::active_config.dt_teleport )
-	g::shifted_tickbase = cmd_to.m_cmdnum;
-	g::shifted_amount = total_new_cmds;
+	//const auto nc = *reinterpret_cast< c_nc** >( uintptr_t( csgo::i::client_state ) + 0x9c );
+//
+	//if ( nc )
+	//	nc->out_seq_nr += 666;
 
 	g::dt_ticks_to_shift = 0;
+
+	//if ( features::ragebot::active_config.dt_teleport )
+	g::shifted_tickbase = m_tocmd.m_cmdnum;
+
 	g::next_tickbase_shot = true;
 
 	return true;

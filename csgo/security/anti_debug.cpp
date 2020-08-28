@@ -29,16 +29,14 @@ bool found = true;
 #define NtCurrentProcess        ((HANDLE)(LONG_PTR)-1)
 #define NtCurrentThread         ((HANDLE)(LONG_PTR)-2)
 
-int __cdecl vm_handler( EXCEPTION_RECORD* p_rec, void* est, unsigned char* p_context, void* disp )
-{
+int __cdecl vm_handler( EXCEPTION_RECORD* p_rec, void* est, unsigned char* p_context, void* disp ) {
 	found = true;
-	( *( unsigned long* ) ( p_context + 0xB8 ) ) += 4;
+	( *( unsigned long* )( p_context + 0xB8 ) ) += 4;
 	return ExceptionContinueExecution;
 }
 
-__forceinline void security::internal::to_lower( unsigned char* input )
-{
-	char* p = ( char* ) input;
+__forceinline void security::internal::to_lower( unsigned char* input ) {
+	char* p = ( char* )input;
 	unsigned long length = LI_FN( strlen )( p );
 	for ( unsigned long i = 0; i < length; i++ ) p [ i ] = LI_FN( tolower )( p [ i ] );
 }
@@ -49,14 +47,14 @@ __forceinline const wchar_t* security::internal::get_string( int index ) {
 	std::string value = "";
 
 	switch ( index ) {
-	case 0: value = _( "Qt5QWindowIcon" ); break; /* supposed to be AutoIT check, but can also be logitech software / other QT5 software. ignore. */
-	case 1: value = _( "OLLYDBG" ); break;
-	case 2: value = _( "SunAwtFrame" ); break;
-	case 3: value = _( "ID" ); break;
-	case 4: value = _( "ntdll.dll" ); break;
-	case 5: value = _( "antidbg" ); break;
-	case 6: value = _( "%random_environment_var_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
-	case 7: value = _( "%random_file_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
+		case 0: value = _( "Qt5QWindowIcon" ); break; /* supposed to be AutoIT check, but can also be logitech software / other QT5 software. ignore. */
+		case 1: value = _( "OLLYDBG" ); break;
+		case 2: value = _( "SunAwtFrame" ); break;
+		case 3: value = _( "ID" ); break;
+		case 4: value = _( "ntdll.dll" ); break;
+		case 5: value = _( "antidbg" ); break;
+		case 6: value = _( "%random_environment_var_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
+		case 7: value = _( "%random_file_name_that_doesnt_exist?[]<>@\\;*!-{}#:/~%" ); break;
 	}
 
 	return std::wstring( value.begin( ), value.end( ) ).c_str( );
@@ -146,7 +144,7 @@ __forceinline int security::internal::memory::nt_query_information_process( ) {
 
 	//dynamically acquire the address of NtQueryInformationProcess
 	_NtQueryInformationProcess NtQueryInformationProcess = nullptr;
-	NtQueryInformationProcess = ( _NtQueryInformationProcess ) LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
+	NtQueryInformationProcess = ( _NtQueryInformationProcess )LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
 
 	//if we cant get access for some reason, we return none
 	if ( NtQueryInformationProcess == nullptr ) { return security::internal::debug_results::none; }
@@ -177,13 +175,13 @@ __forceinline int security::internal::memory::nt_set_information_thread( ) {
 
 	//dynamically acquire the address of NtQueryInformationProcess
 	_NtQueryInformationProcess NtQueryInformationProcess = nullptr;
-	NtQueryInformationProcess = ( _NtQueryInformationProcess ) LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
+	NtQueryInformationProcess = ( _NtQueryInformationProcess )LI_FN( GetProcAddress )( h_ntdll, _( "NtQueryInformationProcess" ) );
 
 	//if we cant get access for some reason, we return none
 	if ( NtQueryInformationProcess == nullptr ) { return security::internal::debug_results::none; }
 
 	_NtSetInformationThread NtSetInformationThread = nullptr;
-	NtSetInformationThread = ( _NtSetInformationThread ) LI_FN( GetProcAddress )( h_ntdll, _( "NtSetInformationThread" ) );
+	NtSetInformationThread = ( _NtSetInformationThread )LI_FN( GetProcAddress )( h_ntdll, _( "NtSetInformationThread" ) );
 
 	//if we cant get access for some reason, we return none
 	if ( NtSetInformationThread == nullptr ) { return security::internal::debug_results::none; }
@@ -214,16 +212,13 @@ __forceinline int security::internal::memory::debug_active_process( ) {
 
 	const char* cp_id = args.c_str( );
 	LI_FN( CreateMutexW )( nullptr, FALSE, get_string( 5 ) );
-	if ( LI_FN( GetLastError )( ) != ERROR_SUCCESS )
-	{
+	if ( LI_FN( GetLastError )( ) != ERROR_SUCCESS ) {
 		//if we get here, we're in the child process
-		if ( LI_FN( DebugActiveProcess )( ( DWORD ) LI_FN( atoi )( cp_id ) ) )
-		{
+		if ( LI_FN( DebugActiveProcess )( ( DWORD )LI_FN( atoi )( cp_id ) ) ) {
 			//no debugger found
 			return security::internal::debug_results::none;
 		}
-		else
-		{
+		else {
 			//debugger found, exit child with unique code that we can check for
 			exit( 555 );
 		}
@@ -292,8 +287,7 @@ __forceinline int security::internal::memory::write_buffer( ) {
 
 	hits = 4096;
 	if ( LI_FN( GetWriteWatch )( 0, buffer, 4096, addresses, &hits, &granularity ) != 0 ) { return security::internal::debug_results::write_buffer; }
-	else
-	{
+	else {
 		//free the memory again
 		LI_FN( VirtualFree )( addresses, 0, MEM_RELEASE );
 		LI_FN( VirtualFree )( buffer, 0, MEM_RELEASE );
@@ -304,6 +298,7 @@ __forceinline int security::internal::memory::write_buffer( ) {
 
 	//second option
 
+	// file deepcode ignore CppDeadCode: <code will be of use later, do not remove!>
 	BOOL result = FALSE, error = FALSE;
 
 	addresses = static_cast< PVOID* >( LI_FN( VirtualAlloc )( nullptr, 4096 * sizeof( PVOID ), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE ) );
@@ -316,23 +311,20 @@ __forceinline int security::internal::memory::write_buffer( ) {
 	}
 
 	//make some calls where a buffer *can* be written to, but isn't actually edited because we pass invalid parameters
-	if ( LI_FN( GlobalGetAtomName )( INVALID_ATOM, ( LPTSTR ) buffer, 1 ) != FALSE || LI_FN( GetEnvironmentVariableW )( get_string( 6 ), ( LPWSTR ) buffer, 4096 * 4096 ) != FALSE || LI_FN( GetBinaryTypeW )( get_string( 7 ), ( LPDWORD ) buffer ) != FALSE
-		|| LI_FN( HeapQueryInformation )( nullptr, ( HEAP_INFORMATION_CLASS ) 69, buffer, 4096, nullptr ) != FALSE || LI_FN( ReadProcessMemory )( INVALID_HANDLE_VALUE, ( LPCVOID ) 0x69696969, buffer, 4096, nullptr ) != FALSE
-		|| LI_FN( GetThreadContext )( INVALID_HANDLE_VALUE, ( LPCONTEXT ) buffer ) != FALSE || LI_FN( GetWriteWatch )( 0, &security::internal::memory::write_buffer, 0, nullptr, nullptr, ( PULONG ) buffer ) == 0 ) {
+	if ( LI_FN( GlobalGetAtomName )( INVALID_ATOM, ( LPTSTR )buffer, 1 ) != FALSE || LI_FN( GetEnvironmentVariableW )( get_string( 6 ), ( LPWSTR )buffer, 4096 * 4096 ) != FALSE || LI_FN( GetBinaryTypeW )( get_string( 7 ), ( LPDWORD )buffer ) != FALSE
+		|| LI_FN( HeapQueryInformation )( nullptr, ( HEAP_INFORMATION_CLASS )69, buffer, 4096, nullptr ) != FALSE || LI_FN( ReadProcessMemory )( INVALID_HANDLE_VALUE, ( LPCVOID )0x69696969, buffer, 4096, nullptr ) != FALSE
+		|| LI_FN( GetThreadContext )( INVALID_HANDLE_VALUE, ( LPCONTEXT )buffer ) != FALSE || LI_FN( GetWriteWatch )( 0, &security::internal::memory::write_buffer, 0, nullptr, nullptr, ( PULONG )buffer ) == 0 ) {
 		result = false;
 		error = true;
 	}
 
-	if ( error == FALSE )
-	{
+	if ( error == FALSE ) {
 		//all calles failed as they're supposed to
 		hits = 4096;
-		if ( LI_FN( GetWriteWatch )( 0, buffer, 4096, addresses, &hits, &granularity ) != 0 )
-		{
+		if ( LI_FN( GetWriteWatch )( 0, buffer, 4096, addresses, &hits, &granularity ) != 0 ) {
 			result = FALSE;
 		}
-		else
-		{
+		else {
 			//should have zero reads here because GlobalGetAtomName doesn't probe the buffer until other checks have succeeded
 			//if there's an API hook or debugger in here it'll probably try to probe the buffer, which will be caught here
 			result = hits != 0;
@@ -350,14 +342,12 @@ __forceinline int security::internal::memory::write_buffer( ) {
 //possible bypass: change the passed handle to an existing handle or adjust the extended instruction pointer register to skip over the invalid handle
 __forceinline int security::internal::exceptions::close_handle_exception( ) {
 	//invalid handle
-	HANDLE h_invalid = ( HANDLE ) 0xDEADBEEF;
+	HANDLE h_invalid = ( HANDLE )0xDEADBEEF;
 
-	__try
-	{
+	__try {
 		LI_FN( CloseHandle )( h_invalid );
 	}
-	__except ( EXCEPTION_EXECUTE_HANDLER )
-	{
+	__except ( EXCEPTION_EXECUTE_HANDLER ) {
 		//if we get the exception, we return the right code.
 		return security::internal::debug_results::close_handle_exception;
 	}
@@ -368,8 +358,7 @@ __forceinline int security::internal::exceptions::close_handle_exception( ) {
 //we force an exception to occur, if it occurs outside of a debugger the __except() handler is called, if it's inside a debugger it will not be called
 __forceinline int security::internal::exceptions::single_step_exception( ) {
 	BOOL debugger_present = TRUE;
-	__try
-	{
+	__try {
 		__asm
 		{
 			pushfd						//save flag register
@@ -392,8 +381,7 @@ __forceinline int security::internal::exceptions::single_step_exception( ) {
 //if it doesn't get hit, theres a debugger handling it instead -> we can detect that our handler was not run -> debugger found
 //possible bypass: most debuggers give an option (pass exception to the application or let the debugger handle it), if the debugger handles it, we can detect it.
 __forceinline int security::internal::exceptions::int_3( ) {
-	__try
-	{
+	__try {
 		_asm
 		{
 			int 3;	//0xCC / standard software breakpoint
@@ -420,8 +408,7 @@ __forceinline int security::internal::exceptions::int_3( ) {
 //this behaviour can be checked to see whether a debugger is present.
 __forceinline int security::internal::exceptions::int_2d( ) {
 	BOOL found = false;
-	__try
-	{
+	__try {
 		_asm
 		{
 			int 0x2D;	//kernel breakpoint
@@ -430,8 +417,7 @@ __forceinline int security::internal::exceptions::int_2d( ) {
 
 	__except ( EXCEPTION_EXECUTE_HANDLER ) { return security::internal::debug_results::none; }
 
-	__try
-	{
+	__try {
 		__asm
 		{
 			xor eax, eax; //clear the eax register
@@ -448,8 +434,7 @@ __forceinline int security::internal::exceptions::int_2d( ) {
 }
 
 __forceinline int security::internal::exceptions::prefix_hop( ) {
-	__try
-	{
+	__try {
 		_asm
 		{
 			__emit 0xF3;	//0xF3 0x64 is the prefix rep
@@ -565,8 +550,7 @@ __forceinline int security::internal::cpu::hardware_debug_registers( ) {
 	HANDLE h_thread = LI_FN( GetCurrentThread )( );
 
 	ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
-	if ( LI_FN( GetThreadContext )( h_thread, &ctx ) )
-	{
+	if ( LI_FN( GetThreadContext )( h_thread, &ctx ) ) {
 		return ( ( ctx.Dr0 != 0x00 ) || ( ctx.Dr1 != 0x00 ) || ( ctx.Dr2 != 0x00 ) || ( ctx.Dr3 != 0x00 ) || ( ctx.Dr6 != 0x00 ) || ( ctx.Dr7 != 0x00 ) ) ? security::internal::debug_results::hardware_debug_registers : security::internal::debug_results::none;
 	}
 
@@ -628,18 +612,14 @@ __forceinline int security::internal::virtualization::vm( ) {
 	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"SOFTWARE\\Oracle\\VirtualBox Guest Additions" ), 0, KEY_READ, &h_key ) ) && h_key ) { RegCloseKey( h_key ); return security::internal::debug_results::vm; }
 
 	h_key = 0;
-	if ( LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"HARDWARE\\DESCRIPTION\\System" ), 0, KEY_READ, &h_key ) == ERROR_SUCCESS )
-	{
+	if ( LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, _( L"HARDWARE\\DESCRIPTION\\System" ), 0, KEY_READ, &h_key ) == ERROR_SUCCESS ) {
 		unsigned long type = 0;
 		unsigned long size = 0x100;
-		char* systembiosversion = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
-		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"SystemBiosVersion" ), nullptr, &type, ( unsigned char* ) systembiosversion, &size ) )
-		{
-			to_lower( ( unsigned char* ) systembiosversion );
-			if ( type == REG_SZ || type == REG_MULTI_SZ )
-			{
-				if ( strstr( systembiosversion, _( "vbox" ) ) )
-				{
+		char* systembiosversion = ( char* )LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
+		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"SystemBiosVersion" ), nullptr, &type, ( unsigned char* )systembiosversion, &size ) ) {
+			to_lower( ( unsigned char* )systembiosversion );
+			if ( type == REG_SZ || type == REG_MULTI_SZ ) {
+				if ( strstr( systembiosversion, _( "vbox" ) ) ) {
 					return security::internal::debug_results::vm;
 				}
 			}
@@ -648,15 +628,12 @@ __forceinline int security::internal::virtualization::vm( ) {
 
 		type = 0;
 		size = 0x200;
-		char* videobiosversion = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
-		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"VideoBiosVersion" ), nullptr, &type, ( unsigned char* ) videobiosversion, &size ) )
-		{
-			if ( type == REG_MULTI_SZ )
-			{
+		char* videobiosversion = ( char* )LI_FN( LocalAlloc )( LMEM_ZEROINIT, size + 10 );
+		if ( ERROR_SUCCESS == LI_FN( RegQueryValueExW )( h_key, _( L"VideoBiosVersion" ), nullptr, &type, ( unsigned char* )videobiosversion, &size ) ) {
+			if ( type == REG_MULTI_SZ ) {
 				char* video = videobiosversion;
-				while ( *( unsigned char* ) video )
-				{
-					to_lower( ( unsigned char* ) video );
+				while ( *( unsigned char* )video ) {
+					to_lower( ( unsigned char* )video );
 					if ( strstr( video, _( "oracle" ) ) || strstr( video, _( "virtualbox" ) ) ) { return security::internal::debug_results::vm; }
 					video = &video [ strlen( video ) + 1 ];
 				}
@@ -670,7 +647,7 @@ __forceinline int security::internal::virtualization::vm( ) {
 	if ( h != INVALID_HANDLE_VALUE ) { LI_FN( CloseHandle )( h ); return security::internal::debug_results::vm; }
 
 	unsigned long pnsize = 0x1000;
-	char* s_provider = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, pnsize );
+	char* s_provider = ( char* )LI_FN( LocalAlloc )( LMEM_ZEROINIT, pnsize );
 	wchar_t w_provider [ 0x1000 ];
 	LI_FN( mbstowcs )( w_provider, s_provider, strlen( s_provider ) + 1 );
 
@@ -678,42 +655,34 @@ __forceinline int security::internal::virtualization::vm( ) {
 	const char* s_subkey = _( "SYSTEM\\CurrentControlSet\\Enum\\IDE" );
 	wchar_t w_subkey [ 22 ];
 	LI_FN( mbstowcs )( w_subkey, s_subkey, strlen( s_subkey ) + 1 );
-	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, w_subkey, 0, KEY_READ, &h_key ) ) && h_key )
-	{
+	if ( ( ERROR_SUCCESS == LI_FN( RegOpenKeyExW )( HKEY_LOCAL_MACHINE, w_subkey, 0, KEY_READ, &h_key ) ) && h_key ) {
 		unsigned long n_subkeys = 0;
 		unsigned long max_subkey_length = 0;
-		if ( ERROR_SUCCESS == LI_FN( RegQueryInfoKeyW )( h_key, nullptr, nullptr, nullptr, &n_subkeys, &max_subkey_length, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr ) )
-		{
+		if ( ERROR_SUCCESS == LI_FN( RegQueryInfoKeyW )( h_key, nullptr, nullptr, nullptr, &n_subkeys, &max_subkey_length, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr ) ) {
 			//n_subkeys is usually 2
-			if ( n_subkeys )
-			{
-				char* s_new_key = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, max_subkey_length + 1 );
-				for ( unsigned long i = 0; i < n_subkeys; i++ )
-				{
+			if ( n_subkeys ) {
+				char* s_new_key = ( char* )LI_FN( LocalAlloc )( LMEM_ZEROINIT, max_subkey_length + 1 );
+				for ( unsigned long i = 0; i < n_subkeys; i++ ) {
 					memset( s_new_key, 0, max_subkey_length + 1 );
 					HKEY h_new_key = 0;
 
 					wchar_t w_key_new [ 2048 ];
 					LI_FN( mbstowcs )( w_key_new, s_new_key, strlen( s_new_key ) + 1 );
 
-					if ( ERROR_SUCCESS == LI_FN( RegEnumKeyW )( h_key, i, w_key_new, max_subkey_length + 1 ) )
-					{
-						if ( ( LI_FN( RegOpenKeyExW )( h_key, w_key_new, 0, KEY_READ, &h_new_key ) == ERROR_SUCCESS ) && h_new_key )
-						{
+					if ( ERROR_SUCCESS == LI_FN( RegEnumKeyW )( h_key, i, w_key_new, max_subkey_length + 1 ) ) {
+						if ( ( LI_FN( RegOpenKeyExW )( h_key, w_key_new, 0, KEY_READ, &h_new_key ) == ERROR_SUCCESS ) && h_new_key ) {
 							unsigned long nn = 0;
 							unsigned long maxlen = 0;
 							RegQueryInfoKey( h_new_key, 0, 0, 0, &nn, &maxlen, 0, 0, 0, 0, 0, 0 );
-							char* s_newer_key = ( char* ) LI_FN( LocalAlloc )( LMEM_ZEROINIT, maxlen + 1 );
+							char* s_newer_key = ( char* )LI_FN( LocalAlloc )( LMEM_ZEROINIT, maxlen + 1 );
 							wchar_t w_key_newer [ 2048 ];
 							LI_FN( mbstowcs )( w_key_newer, s_newer_key, strlen( s_newer_key ) + 1 );
-							if ( LI_FN( RegEnumKeyW )( h_new_key, 0, w_key_newer, maxlen + 1 ) == ERROR_SUCCESS )
-							{
+							if ( LI_FN( RegEnumKeyW )( h_new_key, 0, w_key_newer, maxlen + 1 ) == ERROR_SUCCESS ) {
 								HKEY HKKK = 0;
-								if ( LI_FN( RegOpenKeyExW )( h_new_key, w_key_newer, 0, KEY_READ, &HKKK ) == ERROR_SUCCESS )
-								{
+								if ( LI_FN( RegOpenKeyExW )( h_new_key, w_key_newer, 0, KEY_READ, &HKKK ) == ERROR_SUCCESS ) {
 									unsigned long size = 0xFFF;
 									unsigned char value_name [ 0x1000 ] = { 0 };
-									if ( LI_FN( RegQueryValueExW )( h_new_key, _( L"FriendlyName" ), nullptr, nullptr, value_name, &size ) == ERROR_SUCCESS ) { to_lower( value_name ); if ( strstr( ( char* ) value_name, _( "vbox" ) ) ) { return security::internal::debug_results::vm; } }
+									if ( LI_FN( RegQueryValueExW )( h_new_key, _( L"FriendlyName" ), nullptr, nullptr, value_name, &size ) == ERROR_SUCCESS ) { to_lower( value_name ); if ( strstr( ( char* )value_name, _( "vbox" ) ) ) { return security::internal::debug_results::vm; } }
 									LI_FN( RegCloseKey )( HKKK );
 								}
 							}

@@ -57,8 +57,7 @@ namespace obf
 		DigitToInt( time [ 0 ] ) * 36000;
 
 	template<int N>
-	struct MetaRandomGenerator final
-	{
+	struct MetaRandomGenerator final {
 	private:
 		static constexpr unsigned a = 16807;
 		static constexpr unsigned m = 2147483647;
@@ -75,14 +74,12 @@ namespace obf
 	};
 
 	template<>
-	struct MetaRandomGenerator<0> final
-	{
+	struct MetaRandomGenerator<0> final {
 		static constexpr unsigned value = seed;
 	};
 
 	template<int N, int M>
-	struct MetaRandom final
-	{
+	struct MetaRandom final {
 		static const int value = MetaRandomGenerator<N + 1>::value % M;
 	};
 
@@ -98,12 +95,11 @@ namespace obf
 
 	/* simple reference holder class, mostly for dealing with holding variables */
 	template <typename T>
-	class refholder final
-	{
+	class refholder final {
 	public:
 		/* Construction, destruction */
 		refholder( ) = delete;
-		refholder( T& pv ) : v( pv ) {}
+		refholder( T& pv ) : v( pv ) { }
 		refholder( T&& ) = delete;
 
 		~refholder( ) = default;
@@ -151,12 +147,11 @@ namespace obf
 
 	/* simple reference holder class, for holding reference of constant variables */
 	template <typename T>
-	class refholder <const T> final
-	{
+	class refholder <const T> final {
 	public:
 		/* Construction, destruction */
 		refholder( ) = delete;
-		refholder( const T& pv ) : v( pv ) {}
+		refholder( const T& pv ) : v( pv ) { }
 		refholder( T&& ) = delete;
 
 		~refholder( ) = default;
@@ -194,25 +189,21 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 		/* Helping stuff */
 
-		struct base_rvholder
-	{
+		struct base_rvholder {
 		virtual ~base_rvholder( ) = default;
 
 		template<class T>
-		operator T ( ) const
-		{
+		operator T ( ) const {
 			return *reinterpret_cast< const T* >( get( ) );
 		}
 
 		template<class T>
-		bool operator == ( const T& o ) const
-		{
+		bool operator == ( const T& o ) const {
 			return o == operator T ( );
 		}
 
 		template<class T>
-		bool equals( const T& o ) const
-		{
+		bool equals( const T& o ) const {
 			return o == *reinterpret_cast< const T* >( get( ) );
 		}
 
@@ -220,10 +211,9 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template<class T>
-	class rvholder : public base_rvholder
-	{
+	class rvholder : public base_rvholder {
 	public:
-		rvholder( T t, T c ) :base_rvholder( ), v( t ), check( c ) {}
+		rvholder( T t, T c ) :base_rvholder( ), v( t ), check( c ) { }
 		~rvholder( ) = default;
 		virtual const void* get( ) const override { return reinterpret_cast< const void* >( &v ); }
 	private:
@@ -232,8 +222,7 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	/* what the RETURN/BREAK/CONTINUE will return while running from inside a loop block*/
-	enum class next_step
-	{
+	enum class next_step {
 		ns_break,
 		ns_continue,
 		ns_return,
@@ -241,48 +230,41 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 		ns_unused
 	};
 
-	struct next_step_functor_base
-	{
+	struct next_step_functor_base {
 		virtual next_step run( ) = 0;
 	};
 
 	template <class T>
-	struct next_step_functor final : public next_step_functor_base
-	{
-		next_step_functor( T r ) : runner( r ) {}
+	struct next_step_functor final : public next_step_functor_base {
+		next_step_functor( T r ) : runner( r ) { }
 		virtual next_step run( ) { return runner( ); }
 
 	private:
 		T runner;
 	};
 
-	struct bool_functor_base
-	{
+	struct bool_functor_base {
 		virtual bool run( ) = 0;
 	};
 
 	template <class T>
-	struct bool_functor final : public bool_functor_base
-	{
-		bool_functor( T r ) : runner( r ) {}
+	struct bool_functor final : public bool_functor_base {
+		bool_functor( T r ) : runner( r ) { }
 		virtual bool run( ) { return runner( ); }
 
 	private:
 		T runner;
 	};
 
-	struct any_functor_base
-	{
+	struct any_functor_base {
 		virtual void run( void* ) const = 0;
 	};
 
 	template <class T>
-	struct any_functor final : public any_functor_base
-	{
-		any_functor( T r ) : runner( r ) {}
+	struct any_functor final : public any_functor_base {
+		any_functor( T r ) : runner( r ) { }
 
-		virtual void run( void* retv ) const override
-		{
+		virtual void run( void* retv ) const override {
 			auto r = runner( );
 			*reinterpret_cast< decltype( r )* >( retv ) = r;
 		}
@@ -295,21 +277,17 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 	/* supporting implementation for the REPEAT/AS_LONG_AS macros*/
 
-	class repeat_wrapper final
-	{
+	class repeat_wrapper final {
 	public:
-		repeat_wrapper( ) :body( nullptr ), condition( nullptr ) {}
+		repeat_wrapper( ) :body( nullptr ), condition( nullptr ) { }
 
-		void run( )
-		{
-			do
-			{
-				try
-				{
+		void run( ) {
+			do {
+				try {
 					next_step c = body->run( );
 				}
-				catch ( next_step & c )
-				{
+				// file deepcode ignore IgnoredExceptionInCatch: <please specify a reason of ignoring this>
+				catch ( next_step& c ) {
 					if ( c == next_step::ns_break ) break;
 					if ( c == next_step::ns_continue ) continue;
 				}
@@ -330,28 +308,23 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 	/* supporting implementation for the FOR macro */
 
-	class for_wrapper final
-	{
+	class for_wrapper final {
 	public:
 
 		template<class INIT, class COND, class INCR>
-		explicit for_wrapper( INIT lambda_init, COND lambda_cond, INCR lambda_incr )
-		{
+		explicit for_wrapper( INIT lambda_init, COND lambda_cond, INCR lambda_incr ) {
 			condition.reset( new bool_functor<COND>( lambda_cond ) );
 			initializer.reset( new next_step_functor<INIT>( lambda_init ) );
 			increment.reset( new next_step_functor<INCR>( lambda_incr ) );
 		}
 
-		void run( )
-		{
-			for ( initializer->run( ); condition->run( ); increment->run( ) )
-			{
-				try
-				{
+		void run( ) {
+			for ( initializer->run( ); condition->run( ); increment->run( ) ) {
+				try {
 					next_step c = body->run( );
 				}
-				catch ( next_step & c )
-				{
+				// deepcode ignore IgnoredExceptionInCatch: <please specify a reason of ignoring this>
+				catch ( next_step& c ) {
 					if ( c == next_step::ns_break ) break;
 					if ( c == next_step::ns_continue ) continue;
 				}
@@ -371,25 +344,19 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 	/* supporting implementation for the WHILE macro */
 
-	class while_wrapper final
-	{
+	class while_wrapper final {
 	public:
 		template<class T>
-		explicit while_wrapper( T lambda ) :body( nullptr ), condition( nullptr )
-		{
+		explicit while_wrapper( T lambda ) :body( nullptr ), condition( nullptr ) {
 			condition.reset( new bool_functor<T>( lambda ) );
 		}
 
-		void run( )
-		{
-			while ( condition->run( ) )
-			{
-				try
-				{
+		void run( ) {
+			while ( condition->run( ) ) {
+				try {
 					next_step c = body->run( );
 				}
-				catch ( next_step & c )
-				{
+				catch ( next_step& c ) {
 					if ( c == next_step::ns_break ) break;
 					if ( c == next_step::ns_continue ) continue;
 				}
@@ -408,14 +375,12 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 	/* supporting implementation for the IF macro */
 
-	class if_wrapper final
-	{
+	class if_wrapper final {
 	public:
 		template<class T>
 		if_wrapper( T lambda ) { condition.reset( new bool_functor<T>( lambda ) ); }
 
-		void run( )
-		{
+		void run( ) {
 			if ( condition->run( ) ) {
 				if ( thens ) {
 					thens->run( );
@@ -443,8 +408,7 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 
 	/* select ... case helper */
 
-	class case_instruction
-	{
+	class case_instruction {
 	public:
 		case_instruction( ) = default;
 		virtual ~case_instruction( ) = default;
@@ -452,19 +416,16 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template<class CT>
-	class branch final : public case_instruction
-	{
+	class branch final : public case_instruction {
 	public:
 		template<class T>
 		branch( T lambda ) { condition.reset( new any_functor<T>( lambda ) ); }
 
-		bool equals( const base_rvholder& rv, CT lv ) const
-		{
+		bool equals( const base_rvholder& rv, CT lv ) const {
 			return rv.equals( lv );
 		}
 
-		virtual next_step execute( const base_rvholder& against ) const override
-		{
+		virtual next_step execute( const base_rvholder& against ) const override {
 			CT retv {};
 			condition->run( const_cast< void* >( reinterpret_cast< const void* >( &retv ) ) );
 			// this looks funny, however we cannot use the operator ==
@@ -476,14 +437,12 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 		std::unique_ptr<any_functor_base> condition;
 	};
 
-	class body final : public case_instruction
-	{
+	class body final : public case_instruction {
 	public:
 		template<class T>
 		body( T lambda ) { instructions.reset( new next_step_functor<T>( lambda ) ); }
 
-		virtual next_step execute( const base_rvholder& ) const override
-		{
+		virtual next_step execute( const base_rvholder& ) const override {
 			return instructions->run( );
 		}
 	private:
@@ -491,60 +450,49 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template <class CT>
-	class case_wrapper_base
-	{
+	class case_wrapper_base {
 	public:
-		explicit case_wrapper_base( const CT& v ) : check( v ), default_step( nullptr ) {}
+		explicit case_wrapper_base( const CT& v ) : check( v ), default_step( nullptr ) { }
 
-		case_wrapper_base& add_entry( const case_instruction& lambda_holder )
-		{
+		case_wrapper_base& add_entry( const case_instruction& lambda_holder ) {
 			steps.push_back( &lambda_holder );
 			return *this;
 		}
 
-		case_wrapper_base& add_default( const case_instruction& lambda_holder )
-		{
+		case_wrapper_base& add_default( const case_instruction& lambda_holder ) {
 			default_step = &lambda_holder;
 			return *this;
 		}
 
-		case_wrapper_base& join( )
-		{
+		case_wrapper_base& join( ) {
 			return *this;
 		}
 
-		void run( ) const
-		{
+		void run( ) const {
 			auto it = steps.begin( );
-			while ( it != steps.end( ) )
-			{
+			while ( it != steps.end( ) ) {
 				bool increased = false;
 				// see if  this is a branch or body
-				if ( dynamic_cast< const branch<CT>* >( *it ) || dynamic_cast< const branch<const CT>* >( *it ) )
-				{
+				// file deepcode ignore CopyPasteError: <please specify a reason of ignoring this>
+				if ( dynamic_cast< const branch<CT>* >( *it ) || dynamic_cast< const branch<const CT>* >( *it ) ) {
 					// branch. Execute it, see if it returns true or false
 					next_step enter = ( *it )->execute( rvholder<CT>( check, check ) );
-					if ( enter == next_step::ns_continue )
-					{
+					if ( enter == next_step::ns_continue ) {
 						// step to the next branch
 						++it;
 						increased = true;
 					}
-					else
-					{
+					else {
 						// now fast forward and find the first body,
 						// and from that point on run all the bodies, unless one of them breaks
-						while ( !dynamic_cast< const body* >( *it ) && it != steps.end( ) )
-						{
+						while ( !dynamic_cast< const body* >( *it ) && it != steps.end( ) ) {
 							++it;
 							increased = true;
 						}
 
 						// found the first body.
-						while ( it != steps.end( ) )
-						{
-							if ( dynamic_cast< const body* >( *it ) )
-							{
+						while ( it != steps.end( ) ) {
+							if ( dynamic_cast< const body* >( *it ) ) {
 								( *it )->execute( rvholder<CT>( check, check ) );
 							}
 							increased = true;
@@ -552,20 +500,17 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 						}
 					}
 				}
-				else
-				{
+				else {
 					throw( std::string( "invalid type:" ) + typeid( *it ).name( ) );
 				}
 
 				// just for safety
-				if ( !increased )
-				{
+				if ( !increased ) {
 					++it;
 				}
 			}
 
-			if ( default_step )
-			{
+			if ( default_step ) {
 				default_step->execute( rvholder<CT>( check, check ) );
 			}
 		}
@@ -578,31 +523,27 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template<class CT>
-	class case_wrapper final : public case_wrapper_base<CT>
-	{
+	class case_wrapper final : public case_wrapper_base<CT> {
 	public:
-		explicit case_wrapper( const CT& v ) : case_wrapper_base<CT>( v ) {}
+		explicit case_wrapper( const CT& v ) : case_wrapper_base<CT>( v ) { }
 	};
 
 	template<class CT>
-	class case_wrapper <const CT> final : public case_wrapper_base<CT>
-	{
+	class case_wrapper <const CT> final : public case_wrapper_base<CT> {
 	public:
-		explicit case_wrapper( const CT& v ) : case_wrapper_base<CT>( v ) {}
+		explicit case_wrapper( const CT& v ) : case_wrapper_base<CT>( v ) { }
 	};
 
 	/* syntactic sugar */
 
-	class stream_helper {};
+	class stream_helper { };
 	template <typename T>
-	refholder<T> operator << ( stream_helper, T& a )
-	{
+	refholder<T> operator << ( stream_helper, T& a ) {
 		return refholder<T>( a );
 	}
 
 	/* The bogus operations allowed */
-	class basic_extra
-	{
+	class basic_extra {
 	public:
 		basic_extra( ) = default;
 		~basic_extra( ) = default;
@@ -613,16 +554,13 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template <class T>
-	class extra_xor final : public basic_extra
-	{
+	class extra_xor final : public basic_extra {
 	public:
-		extra_xor( T& a ) : v( a )
-		{
+		extra_xor( T& a ) : v( a ) {
 			volatile T lv = MetaRandom<__COUNTER__, 4096>::value;
 			v ^= lv;
 		}
-		virtual ~extra_xor( )
-		{
+		virtual ~extra_xor( ) {
 			volatile T lv = MetaRandom<__COUNTER__ - 1, 4096>::value;
 			v ^= lv;
 		}
@@ -632,23 +570,19 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template <class T>
-	class extra_xor <const T> final : public basic_extra
-	{
+	class extra_xor <const T> final : public basic_extra {
 	public:
-		extra_xor( const T& ) {}
+		extra_xor( const T& ) { }
 	};
 
 	template <class T>
-	class extra_addition final : public basic_extra
-	{
+	class extra_addition final : public basic_extra {
 	public:
-		extra_addition( T& a ) : v( a )
-		{
+		extra_addition( T& a ) : v( a ) {
 			volatile T lv = MetaRandom<__COUNTER__, 4096>::value;
 			v += lv;
 		}
-		virtual ~extra_addition( )
-		{
+		virtual ~extra_addition( ) {
 			volatile T lv = MetaRandom<__COUNTER__ - 1, 4096>::value;
 			v -= lv;
 		}
@@ -657,15 +591,13 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template <class T>
-	class extra_addition <const T> final : public basic_extra
-	{
+	class extra_addition <const T> final : public basic_extra {
 	public:
-		extra_addition( const T& ) {}
+		extra_addition( const T& ) { }
 	};
 
 	template <class T>
-	class extra_substraction final : public basic_extra
-	{
+	class extra_substraction final : public basic_extra {
 	public:
 		extra_substraction( T& a ) : v( a ) { v -= MetaRandom<__COUNTER__, 4096>::value; }
 		virtual ~extra_substraction( ) { v += MetaRandom<__COUNTER__ - 1, 4096>::value; }
@@ -675,26 +607,22 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 	};
 
 	template <class T>
-	class extra_substraction <const T> final : public basic_extra
-	{
+	class extra_substraction <const T> final : public basic_extra {
 	public:
-		extra_substraction( const T& ) {}
+		extra_substraction( const T& ) { }
 	};
 
 	template <typename T, int N>
-	class extra_chooser final
-	{
+	class extra_chooser final {
 		using type = basic_extra; // intentionally private
 	};
 
 	/* Constant obfuscation implementer */
 
-	template<typename T, T n> class Num final
-	{
+	template<typename T, T n> class Num final {
 	public:
 		enum { value = ( ( n & 0x01 ) | ( Num < T, ( n >> 1 )>::value << 1 ) ) };
-		Num( ) : v( 0 )
-		{
+		Num( ) : v( 0 ) {
 			v = value ^ MetaRandom<32, 4096>::value;
 		}
 		T get( ) const { T x = v ^ MetaRandom<32, 4096>::value; return x; }
@@ -729,44 +657,44 @@ template <class T> refholder<T> operator x (refholder<T>& ls, const refholder<T>
 		OBF_TYPE( long long int )
 		OBF_TYPE( unsigned long long int )
 
-#if defined OBF_DEBUG
+	#if defined OBF_DEBUG
 
-#define OBF_BEGIN
-#define OBF_END
+	#define OBF_BEGIN
+	#define OBF_END
 
-#define V(x) x
-#define N(x) x
+	#define V(x) x
+	#define N(x) x
 
-#define RETURN(x) return x;
+	#define RETURN(x) return x;
 
-#define BREAK break;
-#define CONTINUE continue;
+	#define BREAK break;
+	#define CONTINUE continue;
 
-#define IF(x) if(x) {
-#define ELSE } else {
-#define ENDIF }
+	#define IF(x) if(x) {
+	#define ELSE } else {
+	#define ENDIF }
 
-#define FOR(init,cond,inc) for(init;cond;inc) {
-#define ENDFOR }
+	#define FOR(init,cond,inc) for(init;cond;inc) {
+	#define ENDFOR }
 
-#define WHILE(x) while(x) {
-#define ENDWHILE }
+	#define WHILE(x) while(x) {
+	#define ENDWHILE }
 
-#define REPEAT   do {
-#define AS_LONG_AS(x) } while ((x));
+	#define REPEAT   do {
+	#define AS_LONG_AS(x) } while ((x));
 
-#define CASE(a) switch (a) {
-#define ENDCASE }
-#define WHEN(c) case c:
-#define DO {
-#define DONE }
-#define OR
-#define DEFAULT default:
+	#define CASE(a) switch (a) {
+	#define ENDCASE }
+	#define WHEN(c) case c:
+	#define DO {
+	#define DONE }
+	#define OR
+	#define DEFAULT default:
 
-#else
-#define _JOIN(a,b) a##b
-#define N(a) (obf::Num<decltype(a), obf::MetaRandom<__COUNTER__, 4096>::value ^ a>().get() ^ obf::MetaRandom<__COUNTER__ - 1, 4096>::value)
-#define DEFINE_EXTRA(N,implementer) template <typename T> struct extra_chooser<T,N> { using type = implementer<T>; }
+	#else
+	#define _JOIN(a,b) a##b
+	#define N(a) (obf::Num<decltype(a), obf::MetaRandom<__COUNTER__, 4096>::value ^ a>().get() ^ obf::MetaRandom<__COUNTER__ - 1, 4096>::value)
+	#define DEFINE_EXTRA(N,implementer) template <typename T> struct extra_chooser<T,N> { using type = implementer<T>; }
 		DEFINE_EXTRA( 0, extra_xor );
 	DEFINE_EXTRA( 1, extra_substraction );
 	DEFINE_EXTRA( 2, extra_addition );

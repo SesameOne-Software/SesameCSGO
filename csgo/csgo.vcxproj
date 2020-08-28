@@ -19,14 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="animations\animations.cpp" />
+    <ClCompile Include="animations\animation_system.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="features\antiaim.cpp" />
+    <ClCompile Include="features\blockbot.cpp" />
     <ClCompile Include="features\chams.cpp" />
     <ClCompile Include="features\clantag.cpp" />
     <ClCompile Include="features\esp.cpp" />
     <ClCompile Include="features\glow.cpp" />
     <ClCompile Include="features\lagcomp.cpp" />
+    <ClCompile Include="features\legitbot.cpp" />
     <ClCompile Include="features\movement.cpp" />
     <ClCompile Include="features\nade_prediction.cpp" />
     <ClCompile Include="features\other_visuals.cpp" />
@@ -61,7 +63,7 @@
     <ClCompile Include="hooks\should_skip_anim_frame.cpp" />
     <ClCompile Include="hooks\wnd_proc.cpp" />
     <ClCompile Include="hooks\write_usercmd_delta_to_buffer.cpp" />
-    <ClCompile Include="javascript\duktape.c" />
+    <ClCompile Include="javascript\duktape.cpp" />
     <ClCompile Include="javascript\js_api.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu\d3d9_render.cpp" />
@@ -80,15 +82,17 @@
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="animations\animations.hpp" />
+    <ClInclude Include="animations\animation_system.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="features\antiaim.hpp" />
     <ClInclude Include="features\autowall.hpp" />
+    <ClInclude Include="features\blockbot.hpp" />
     <ClInclude Include="features\chams.hpp" />
     <ClInclude Include="features\clantag.hpp" />
     <ClInclude Include="features\esp.hpp" />
     <ClInclude Include="features\glow.hpp" />
     <ClInclude Include="features\lagcomp.hpp" />
+    <ClInclude Include="features\legitbot.hpp" />
     <ClInclude Include="features\movement.hpp" />
     <ClInclude Include="features\nade_prediction.hpp" />
     <ClInclude Include="features\other_visuals.hpp" />
@@ -124,8 +128,8 @@
     <ClInclude Include="hooks\should_skip_anim_frame.hpp" />
     <ClInclude Include="hooks\wnd_proc.hpp" />
     <ClInclude Include="hooks\write_usercmd_delta_to_buffer.hpp" />
-    <ClInclude Include="javascript\duktape.h" />
-    <ClInclude Include="javascript\duk_config.h" />
+    <ClInclude Include="javascript\duktape.hpp" />
+    <ClInclude Include="javascript\duk_config.hpp" />
     <ClInclude Include="javascript\js_api.hpp" />
     <ClInclude Include="menu\d3d9_render.hpp" />
     <ClInclude Include="menu\logo.hpp" />
@@ -134,7 +138,6 @@
     <ClInclude Include="menu\sesui.hpp" />
     <ClInclude Include="menu\sesui_custom.hpp" />
     <ClInclude Include="minhook\minhook.h" />
-    <ClInclude Include="player_images.h" />
     <ClInclude Include="plusaes.hpp" />
     <ClInclude Include="renderer\d3d9.hpp" />
     <ClInclude Include="resource.h" />
@@ -279,9 +282,10 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>false</ControlFlowGuard>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalOptions>/Zc:threadSafeInit- %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

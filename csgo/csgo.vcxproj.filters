@@ -224,9 +224,6 @@
     <ClInclude Include="features\autowall.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
-    <ClInclude Include="animations\animations.hpp">
-      <Filter>Header Files\animations</Filter>
-    </ClInclude>
     <ClInclude Include="features\antiaim.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
@@ -283,15 +280,6 @@
     </ClInclude>
     <ClInclude Include="hitsounds.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="player_images.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="javascript\duk_config.h">
-      <Filter>Header Files\javascript</Filter>
-    </ClInclude>
-    <ClInclude Include="javascript\duktape.h">
-      <Filter>Header Files\javascript</Filter>
     </ClInclude>
     <ClInclude Include="javascript\js_api.hpp">
       <Filter>Header Files\javascript</Filter>
@@ -413,6 +401,21 @@
     <ClInclude Include="plusaes.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="animations\animation_system.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="features\legitbot.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="features\blockbot.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="javascript\duktape.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="javascript\duk_config.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -454,9 +457,6 @@
     <ClCompile Include="features\ragebot.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
-    <ClCompile Include="animations\animations.cpp">
-      <Filter>Source Files\animations</Filter>
-    </ClCompile>
     <ClCompile Include="features\antiaim.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
@@ -483,9 +483,6 @@
     </ClCompile>
     <ClCompile Include="features\other_visuals.cpp">
       <Filter>Source Files\features</Filter>
-    </ClCompile>
-    <ClCompile Include="javascript\duktape.c">
-      <Filter>Source Files\javascript</Filter>
     </ClCompile>
     <ClCompile Include="javascript\js_api.cpp">
       <Filter>Source Files\javascript</Filter>
@@ -590,6 +587,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="menu\sesui_custom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\animation_system.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="features\legitbot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="features\blockbot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="javascript\duktape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

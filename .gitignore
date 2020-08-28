@@ -32,3 +32,8 @@
 *.app
 csgo/.vs
 csgo/Release
+
+*.pdb
+*.idb
+*.exp
+bin

@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Include"
+            ],
+            "defines": [
+                "_MBCS",
+                "_WINDLL",
+                "_CRT_SECURE_NO_WARNINGS",
+                "JM_XORSTR_DISABLE_AVX_INTRINSICS",
+                "ANTI_DEBUG",
+                "DEV_BUILD"
+            ],
+            "windowsSdkVersion": "10.0.18362.0",
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.23.28105/bin/Hostx64/x64/cl.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "msvc-x86"
+        }
+    ],
+    "version": 4
+}
