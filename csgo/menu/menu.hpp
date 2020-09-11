@@ -12,4 +12,12 @@ namespace gui {
 	void antiaim_controls( const std::string& antiaim_name );
 	void player_visuals_controls( const std::string& visual_name );
 	void draw( );
+
+	namespace watermark {
+		void draw( );
+	}
+
+	namespace keybinds {
+		void draw( );
+	}
 }

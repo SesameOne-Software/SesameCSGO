@@ -20,7 +20,7 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 	static auto write_ucmd = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 51 53 56 8B D9 8B 0D" ) ).get< void( __fastcall* )( void*, ucmd_t*, ucmd_t* ) >( );
 	static auto cl_sendmove_ret = pattern::search( _( "engine.dll" ), _( "84 C0 74 04 B0 01 EB 02 32 C0 8B FE 46 3B F3 7E C9 84 C0 0F 84" ) ).get< void* >( );
 
-	if ( /*_ReturnAddress( ) != cl_sendmove_ret ||*/ g::dt_ticks_to_shift <= 0 || !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) ) {
+	if ( /*_ReturnAddress( ) != cl_sendmove_ret ||*/ g::dt_ticks_to_shift <= 0 || !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) || !g::local ) {
 		return old::write_usercmd_delta_to_buffer( REG_OUT, slot, buf, from, to, new_cmd );
 	}
 
@@ -45,11 +45,8 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 	const auto shift_amount_clamped = std::clamp( g::dt_ticks_to_shift, 0, 16 );
 
 	from = -1;
-	*m_new_commands = shift_amount_clamped;
-	*m_backup_commands = 0;
 
-	int new_cmdnr = next_cmdnr - backup_new_commands + 1;
-	for ( to = new_cmdnr; to <= next_cmdnr; to++ ) {
+	for ( to = next_cmdnr - backup_new_commands + 1; to <= next_cmdnr; to++ ) {
 		if ( !old::write_usercmd_delta_to_buffer( REG_OUT, slot, buf, from, to, true ) )
 			return false;
 
@@ -69,7 +66,8 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 
 	m_tocmd = m_fromcmd;
 	m_tocmd.m_cmdnum++;
-	m_tocmd.m_tickcount += 666;
+	m_tocmd.m_tickcount += static_cast< int > ( 3.0f * csgo::time2ticks( 1.0f ) );
+	//m_tocmd.m_tickcount += 666;
 
 	g::shifted_amount = g::dt_ticks_to_shift;
 
@@ -90,7 +88,12 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 	//if ( features::ragebot::active_config.dt_teleport )
 	g::shifted_tickbase = m_tocmd.m_cmdnum;
 
+	g::tickbase_at_shift = g::local->tick_base( );
+
 	g::next_tickbase_shot = true;
+
+	*m_new_commands = shift_amount_clamped;
+	*m_backup_commands = 0;
 
 	return true;
 }

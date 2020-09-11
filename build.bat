@@ -9,7 +9,7 @@ if exist "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxi
     )
 )
 
-set compilerflags=/Fo".\\bin\\" /LD /GS- /ZI /Gm /Od /MP /EHsc /Ob3 /fp:fast /std:c++17
+set compilerflags=/Fo".\\bin\\" /LD /GS- /ZI /Gm /Od /MP /EHsc /std:c++17
 
 set linkerflags=/DLL /NXCOMPAT:NO /INCREMENTAL /OUT:bin\hack.dll
 

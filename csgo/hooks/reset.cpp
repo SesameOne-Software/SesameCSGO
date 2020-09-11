@@ -35,7 +35,7 @@ long __fastcall hooks::reset( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETE
 
 	if ( SUCCEEDED( hr ) ) {
 		render::create_font( ( void** )&features::esp::dbg_font, _( L"sesame_ui" ), N( 12 ), false );
-		render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 14 ), false );
+		render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 15 ), false );
 		render::create_font( ( void** )&features::esp::indicator_font, _( L"sesame_ui" ), N( 32 ), false );
 		render::create_font( ( void** )&features::esp::watermark_font, _( L"sesame_ui" ), N( 18 ), false );
 

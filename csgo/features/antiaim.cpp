@@ -8,6 +8,8 @@
 
 extern int g_refresh_counter;
 
+bool features::antiaim::antiaiming = false;
+
 namespace lby {
 	float spawn_time = 0.0f;
 	float last_breaker_time = 0.0f;
@@ -313,7 +315,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		static auto last_final_shift_amount = 0;
 		auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
 
-		if ( !features::ragebot::active_config.dt_key )
+		if ( !features::ragebot::active_config.dt_enabled || !utils::keybind_active( features::ragebot::active_config.dt_key, features::ragebot::active_config.dt_key_mode ) )
 			final_shift_amount_max = 0;
 
 		/* dont shift tickbase with revolver */
@@ -442,11 +444,15 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		|| !g::local->weapon( )->data( )
 		|| ( g::local->weapon( )->data( )->m_type == 0 && ucmd->m_buttons & 2048 )
 		//|| g::local->weapon( )->data( )->m_type == 0
-		|| g::round == round_t::starting )
+		|| g::round == round_t::starting ) {
+		antiaiming = false;
 		return;
+	}
 
-	if ( ( g::local->weapon( )->data( )->m_type == 9 ) ? ( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) : ( ucmd->m_buttons & 1 ) )
+	if ( ( g::local->weapon( )->data( )->m_type == 9 ) ? ( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) : ( ucmd->m_buttons & 1 ) ) {
+		antiaiming = false;
 		return;
+	}
 
 	const auto target_player = looking_at( );
 	//update_anti_bruteforce ( );
@@ -559,6 +565,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( rotation_range_air )
 					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
+
+				antiaiming = true;
+			}
+			else {
+				antiaiming = false;
 			}
 		}
 		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
@@ -625,6 +636,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( rotation_range_slow_walk )
 					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
+
+				antiaiming = true;
 			}
 			else if ( move ) {
 				process_base_yaw( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
@@ -689,6 +702,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( rotation_range_move )
 					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
+
+				antiaiming = true;
+			}
+			else {
+				antiaiming = false;
 			}
 		}
 		else if ( stand ) {
@@ -799,6 +817,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 			if ( rotation_range_stand )
 				ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
+
+			antiaiming = true;
+		}
+		else {
+			antiaiming = false;
 		}
 	}
 }

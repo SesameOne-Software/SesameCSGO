@@ -25,6 +25,7 @@ int restore_ticks = 0;
 bool last_attack = false;
 bool last_tickbase_shot = false;
 int g_refresh_counter = 0;
+bool delay_tick = false;
 vec3_t old_angles;
 
 bool hooks::vars::in_refresh = false;
@@ -49,6 +50,14 @@ void fix_event_delay( ucmd_t* ucmd ) {
 decltype( &hooks::create_move ) hooks::old::create_move = nullptr;
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
+	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
+
+	if ( !ucmd || !ucmd->m_cmdnum )
+		return ret;
+
+	if ( ret )
+		csgo::i::engine->set_viewangles( ucmd->m_angs );
+
 	ducking = ucmd->m_buttons & 4;
 	in_cm = true;
 
@@ -63,27 +72,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		g::cock_ticks = 0;
 	}
 
-	if ( !ucmd || !ucmd->m_cmdnum ) {
-		in_cm = false;
-		return false;
-	}
-
 	security_handler::update( );
-
-	features::prediction::update_curtime ( );
-
-	/* thanks chambers */
-	if ( csgo::i::client_state->choked ( ) ) {
-		prediction::disable_sounds = true;
-
-		csgo::i::pred->update (
-			csgo::i::client_state->delta_tick ( ),
-			csgo::i::client_state->delta_tick ( ) > 0,
-			csgo::i::client_state->last_command_ack ( ),
-			csgo::i::client_state->last_outgoing_cmd ( ) + csgo::i::client_state->choked ( ) );
-
-		prediction::disable_sounds = false;
-	}
 
 	if ( g_refresh_counter < g::shifted_amount ) {
 		ucmd->m_buttons &= ~1;
@@ -99,6 +88,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		return false;
 	}
 	else {
+		g::shifted_amount = 0;
 		vars::in_refresh = false;
 	}
 
@@ -115,8 +105,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	//	"features::esp::handle_dynamic_updates",
 	features::esp::handle_dynamic_updates( );
 	//);
-
-	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
 
 	g::ucmd = ucmd;
 
@@ -201,21 +189,28 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	fix_event_delay( ucmd );
 
+	if ( delay_tick ) {
+		g_refresh_counter = 0;
+		g::next_tickbase_shot = false;
+		last_tickbase_shot = false;
+		delay_tick = false;
+	}
+
 	if ( ucmd->m_buttons & 1 )
 		g::next_tickbase_shot = false;
 
 	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
-		g_refresh_counter = 0;
-		g::next_tickbase_shot = false;
-		last_tickbase_shot = false;
+		/* disables refreshing tickbase after shot */
+		//g::shifted_amount = 0;
+		delay_tick = true;
 	}
-
+	//
 	last_tickbase_shot = g::next_tickbase_shot;
 
 	if ( !vars::in_refresh && g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
-		if ( csgo::time2ticks( features::prediction::predicted_curtime ) > g::cock_ticks ) {
+		if ( csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~1;
-			g::cock_ticks = csgo::time2ticks( features::prediction::predicted_curtime + 0.25f ) - 2;
+			g::cock_ticks = csgo::time2ticks( csgo::i::globals->m_curtime + 0.25f ) - 2;
 			g::can_fire_revolver = true;
 		}
 		else {
@@ -262,6 +257,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -450.0f, 450.0f );
 	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -450.0f, 450.0f );
+
+	anims::new_tick = true;
 
 	in_cm = false;
 	return false;

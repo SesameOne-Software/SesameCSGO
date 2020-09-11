@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include "../sdk/sdk.hpp"
 
 struct fire_bullet_data_t {
@@ -13,6 +14,8 @@ struct fire_bullet_data_t {
 };
 
 namespace autowall {
+#pragma optimize( "2", on )
+
 	__forceinline void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
 		if ( !entity->valid( ) )
 			return;
@@ -419,4 +422,123 @@ namespace autowall {
 
 		return 0.0f;
 	}
+
+	__forceinline bool trace_ray( const vec3_t& min, const vec3_t& max, const matrix3x4_t& mat, float r, const vec3_t& src, const vec3_t& dst ) {
+		static auto vector_rotate = [ ] ( const vec3_t& in1, const matrix3x4_t& in2, vec3_t& out ) {
+			out [ 0 ] = in1 [ 0 ] * in2 [ 0 ][ 0 ] + in1 [ 1 ] * in2 [ 1 ][ 0 ] + in1 [ 2 ] * in2 [ 2 ][ 0 ];
+			out [ 1 ] = in1 [ 0 ] * in2 [ 0 ][ 1 ] + in1 [ 1 ] * in2 [ 1 ][ 1 ] + in1 [ 2 ] * in2 [ 2 ][ 1 ];
+			out [ 2 ] = in1 [ 0 ] * in2 [ 0 ][ 2 ] + in1 [ 1 ] * in2 [ 1 ][ 2 ] + in1 [ 2 ] * in2 [ 2 ][ 2 ];
+		};
+
+		static auto vector_transform = [ ] ( const vec3_t& in1, const matrix3x4_t& in2, vec3_t& out ) {
+			vec3_t in1t;
+
+			in1t [ 0 ] = in1 [ 0 ] - in2 [ 0 ][ 3 ];
+			in1t [ 1 ] = in1 [ 1 ] - in2 [ 1 ][ 3 ];
+			in1t [ 2 ] = in1 [ 2 ] - in2 [ 2 ][ 3 ];
+
+			vector_rotate( in1t, in2, out );
+		};
+
+		static auto trace_aabb = [ ] ( const vec3_t& src, const vec3_t& dst, const vec3_t& min, const vec3_t& max ) -> bool {
+			auto dir = ( dst - src ).normalized( );
+
+			if ( !dir.is_valid( ) )
+				return false;
+
+			float tmin, tmax, tymin, tymax, tzmin, tzmax;
+
+			if ( dir.x >= 0.0f ) {
+				tmin = ( min.x - src.x ) / dir.x;
+				tmax = ( max.x - src.x ) / dir.x;
+			}
+			else {
+				tmin = ( max.x - src.x ) / dir.x;
+				tmax = ( min.x - src.x ) / dir.x;
+			}
+
+			if ( dir.y >= 0.0f ) {
+				tymin = ( min.y - src.y ) / dir.y;
+				tymax = ( max.y - src.y ) / dir.y;
+			}
+			else {
+				tymin = ( max.y - src.y ) / dir.y;
+				tymax = ( min.y - src.y ) / dir.y;
+			}
+
+			if ( tmin > tymax || tymin > tmax )
+				return false;
+
+			if ( tymin > tmin )
+				tmin = tymin;
+
+			if ( tymax < tmax )
+				tmax = tymax;
+
+			if ( dir.z >= 0.0f ) {
+				tzmin = ( min.z - src.z ) / dir.z;
+				tzmax = ( max.z - src.z ) / dir.z;
+			}
+			else {
+				tzmin = ( max.z - src.z ) / dir.z;
+				tzmax = ( min.z - src.z ) / dir.z;
+			}
+
+			if ( tmin > tzmax || tzmin > tmax )
+				return false;
+
+			if ( tmin < 0.0f || tmax < 0.0f )
+				return false;
+
+			return true;
+		};
+
+		static auto trace_obb = [ & ] ( const vec3_t& src, const vec3_t& dst, const vec3_t& min, const vec3_t& max, const matrix3x4_t& mat ) -> bool {
+			const auto dir = ( dst - src ).normalized( );
+
+			vec3_t ray_trans, dir_trans;
+			vector_transform( src, mat, ray_trans );
+			vector_rotate( dir, mat, dir_trans );
+
+			return trace_aabb( ray_trans, dir_trans, min, max );
+		};
+
+		static auto trace_sphere = [ ] ( const vec3_t& src, const vec3_t& dst, const vec3_t& sphere, float rad ) -> bool {
+			auto delta = ( dst - src ).normalized( );
+
+			if ( !delta.is_valid( ) )
+				return false;
+
+			auto q = sphere - src;
+
+			if ( !q.is_valid( ) )
+				return false;
+
+			auto v = q.dot_product( delta );
+			auto d = ( rad * rad ) - ( q.length_sqr( ) - v * v );
+
+			if ( d < FLT_EPSILON )
+				return false;
+
+			return true;
+		};
+
+		if ( r == -1.0f ) {
+			return trace_obb( src, dst, min, max, mat );
+		}
+		else {
+			auto delta = ( max - min ).normalized( );
+
+			const auto hitbox_delta = floorf( min.dist_to( max ) );
+
+			for ( auto i = 0.0f; i <= hitbox_delta; i += 1.0f ) {
+				if ( trace_sphere( src, dst, min + delta * i, r ) )
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+#pragma optimize( "2", off )
 }

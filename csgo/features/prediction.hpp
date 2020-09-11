@@ -3,11 +3,10 @@
 
 namespace features {
 	namespace prediction {
-		extern float predicted_curtime;
-
+		float curtime( );
+		
 		int shift ( const int& cur );
-
-		void update_curtime ( );
+		void update( int stage );
 		void run( const std::function< void( ) >& fn );
 	}
 }

@@ -36,7 +36,7 @@ namespace features {
 					return false;
 
 				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, 0.2f );
-				const auto dt = correct - ( csgo::i::globals->m_curtime - ( use_tick ? csgo::ticks2time( m_tick ) : m_simtime ) );
+				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? csgo::ticks2time( m_tick ) : m_simtime ) );
 
 				return std::abs( dt ) < 0.2f;
 			}
@@ -75,7 +75,7 @@ namespace features {
 		const std::pair< std::deque< lag_record_t >&, bool > get_all( player_t* pl );
 		const std::pair< lag_record_t&, bool > get_extrapolated( player_t* pl );
 		const std::pair< lag_record_t&, bool > get_shot( player_t* pl );
-		void cache( player_t* pl );
+		void cache( player_t* pl, bool predicted );
 		bool breaking_lc( player_t* pl );
 		bool has_onshot( player_t* pl );
 

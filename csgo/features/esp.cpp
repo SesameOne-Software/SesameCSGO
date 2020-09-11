@@ -58,7 +58,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x - cur_offset_left - 5, box.y, 5, box.h, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+						render::text( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
 					cur_offset_left += 7;
 					break;
 				case features::esp_placement_right:
@@ -66,7 +66,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x + box.w + cur_offset_right, box.y, 5, box.h, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+						render::text( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
 					cur_offset_right += 7;
 					break;
 				case features::esp_placement_bottom:
@@ -74,7 +74,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x, box.y + box.h + cur_offset_bottom, box.w, 5, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
 					cur_offset_bottom += 7;
 					break;
 				case features::esp_placement_top:
@@ -82,7 +82,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x, box.y - cur_offset_top - 5, box.w, 5, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, false, true );
+						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
 					cur_offset_top += 7;
 					break;
 			}
@@ -181,7 +181,9 @@ void features::esp::handle_dynamic_updates( ) {
 
 		esp_data [ pl->idx( ) ].m_pos = end_pos;
 		esp_data [ pl->idx( ) ].m_dormant = true;
-		esp_data [ pl->idx( ) ].m_last_seen = csgo::i::globals->m_curtime;
+		esp_data [ pl->idx( ) ].m_last_seen = prediction::curtime( );
+
+		//dbg_print( _( "sound\n" ) );
 	}
 }
 
@@ -224,16 +226,8 @@ void features::esp::render( ) {
 		vec3_t min = e->mins( );
 		vec3_t max = e->maxs( );
 
-		const auto recs = lagcomp::get_all( e );
-
-		if ( recs.second ) {
-			min += recs.first.front( ).m_origin;
-			max += recs.first.front( ).m_origin;
-		}
-		else {
-			min += e->abs_origin( );
-			max += e->abs_origin( );
-		}
+		min += e->abs_origin( );
+		max += e->abs_origin( );
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
@@ -294,15 +288,12 @@ void features::esp::render( ) {
 		esp_data [ e->idx( ) ].m_dormant = e->dormant( );
 
 		if ( !e->dormant( ) ) {
-			if ( recs.second )
-				esp_data [ e->idx( ) ].m_pos = recs.first.front( ).m_origin;
-			else
-				esp_data [ e->idx( ) ].m_pos = e->abs_origin( );
+			esp_data [ e->idx( ) ].m_pos = e->abs_origin( );
 
 			if ( esp_data [ e->idx( ) ].m_first_seen == 0.0f )
-				esp_data [ e->idx( ) ].m_first_seen = csgo::i::globals->m_curtime;
+				esp_data [ e->idx( ) ].m_first_seen = prediction::curtime( );
 
-			esp_data [ e->idx( ) ].m_last_seen = csgo::i::globals->m_curtime;
+			esp_data [ e->idx( ) ].m_last_seen = prediction::curtime( );
 
 			if ( e && e->weapon( ) && e->weapon( )->data( ) ) {
 				std::string hud_name = e->weapon( )->data( )->m_weapon_name;
@@ -331,9 +322,9 @@ void features::esp::render( ) {
 
 		auto dormant_time = std::max< float >( 9.0f/*esp_fade_time*/, 0.1f );
 
-		if ( esp_data [ e->idx( ) ].m_pl && std::fabsf( csgo::i::globals->m_curtime - esp_data [ e->idx( ) ].m_last_seen ) < dormant_time ) {
+		if ( esp_data [ e->idx( ) ].m_pl && std::fabsf( prediction::curtime( ) - esp_data [ e->idx( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
-				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( csgo::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf( csgo::i::globals->m_curtime - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
+				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( prediction::curtime( ) - time ), 0.0f, dormant_time ) ) : std::fabsf( prediction::curtime( ) - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
 			};
 
 			if ( !esp_data [ e->idx( ) ].m_dormant )

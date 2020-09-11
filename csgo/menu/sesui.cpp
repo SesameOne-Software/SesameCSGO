@@ -136,6 +136,76 @@ void sesui::render( ) {
 	draw_list.render( );
 }
 
+void sesui::text( const ses_string& name ) {
+	const auto window = globals::window_ctx.find( globals::cur_window );
+
+	if ( window == globals::window_ctx.end( ) )
+		throw "Current window context not valid.";
+
+	const auto same_line_backup = window->second.cursor_stack.back( );
+
+	if ( window->second.same_line ) {
+		window->second.cursor_stack.back( ).y -= window->second.last_cursor_offset;
+		window->second.cursor_stack.back( ).x += style.same_line_offset;
+	}
+
+	const rect check_rect { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y, style.button_size.x, style.button_size.y };
+	const auto frametime = draw_list.get_frametime( );
+
+	/* don't draw objects we don't need so our fps doesnt go to shit */
+	auto should_draw = true;
+
+	if ( !window->second.group_ctx.empty( )
+		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y ) )
+		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y + scale_dpi( 60.0f ) ) ) )
+		should_draw = false;
+
+	const auto parts = split( name.get( ) );
+	const auto title = ses_string( parts.first.data( ) );
+	const auto& id = parts.second;
+
+	vec2 text_size;
+	draw_list.get_text_size( style.control_font, title, text_size );
+
+	const auto max_height = std::max< float >( scale_dpi( check_rect.h ), text_size.y );
+	const auto in_region = input::mouse_in_region( check_rect );
+
+	if ( in_region && !window->second.tooltip.empty( ) )
+		window->second.hover_time [ window->second.cur_index ] += frametime;
+	else
+		window->second.hover_time [ window->second.cur_index ] = 0.0f;
+
+	if ( window->second.hover_time [ window->second.cur_index ] > style.tooltip_hover_time ) {
+		window->second.tooltip_anim_time += frametime * style.animation_speed;
+		window->second.selected_tooltip = window->second.tooltip;
+	}
+
+	const auto active = in_region && input::key_down( VK_LBUTTON );
+
+	if ( in_region && input::key_pressed( VK_LBUTTON ) ) {
+		window->second.anim_time [ window->second.cur_index ] = 1.0f;
+	}
+
+	window->second.anim_time [ window->second.cur_index ] = std::clamp< float >( window->second.anim_time [ window->second.cur_index ] + -frametime * style.animation_speed, 0.0f, 1.0f );
+	window->second.anim_time [ window->second.cur_index + 1 ] = std::clamp< float >( window->second.anim_time [ window->second.cur_index + 1 ] + ( in_region ? frametime : -frametime ) * style.animation_speed, 0.0f, 1.0f );
+
+	if ( should_draw ) {
+		//draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_background.lerp( style.control_accent, window->second.anim_time [ window->second.cur_index ] ), true );
+		//draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_borders.lerp( active ? style.control_accent_borders : style.control_accent, window->second.anim_time [ window->second.cur_index + 1 ] ), false );
+		draw_list.add_text( vec2( check_rect.x /*+ scale_dpi( style.button_size.x ) * 0.5f - text_size.x * 0.5f*/, check_rect.y + scale_dpi( style.button_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+	}
+
+	window->second.last_cursor_offset = scale_dpi( style.button_size.y );
+	window->second.cursor_stack.back( ).y += window->second.last_cursor_offset;
+	window->second.cur_index += 2;
+	window->second.tooltip.clear( );
+
+	if ( window->second.same_line ) {
+		window->second.cursor_stack.back( ) = same_line_backup;
+		window->second.same_line = false;
+	}
+}
+
 bool sesui::button( const ses_string& name ) {
 	auto pressed = false;
 
@@ -854,25 +924,25 @@ void sesui::end_group( ) {
 
 /* credits to zxvnme */
 std::array< std::basic_string < sesui::ses_char >, 256 > key_names {
-	L"-", L"Mouse 1", L"Mouse 2", L"Break", L"Mouse 3", L"Mouse 4", L"Mouse 5",
-	L"ERROR", L"Backspace", L"TAB", L"ERROR", L"ERROR", L"ERROR", L"Enter", L"ERROR", L"ERROR", L"Shift",
-	L"Control", L"ALT", L"Pause", L"Caps Lock", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"Space Bar", L"Page Up", L"Page Down", L"End", L"Home", L"Left",
-	L"Up", L"Right", L"Down", L"ERROR", L"Print", L"ERROR", L"Print Screen", L"Insert", L"Delete", L"ERROR", L"0", L"1",
+	L"-", L"M1", L"M2", L"Brk", L"M3", L"M4", L"M5",
+	L"ERROR", L"Back", L"Tab", L"ERROR", L"ERROR", L"ERROR", L"Enter", L"ERROR", L"ERROR", L"Shift",
+	L"Control", L"ALT", L"Pause", L"Caps", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
+	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"Space", L"PgUp", L"PgDown", L"End", L"Home", L"Left",
+	L"Up", L"Right", L"Down", L"ERROR", L"Print", L"ERROR", L"PrntSc", L"Ins", L"Del", L"ERROR", L"0", L"1",
 	L"2", L"3", L"4", L"5", L"6", L"7", L"8", L"9", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
 	L"ERROR", L"A", L"B", L"C", L"D", L"E", L"F", L"G", L"H", L"I", L"J", L"K", L"L", L"M", L"N", L"O", L"P", L"Q", L"R", L"S", L"T", L"U",
-	L"V", L"W", L"X", L"Y", L"Z", L"Left Windows", L"Right Windows", L"ERROR", L"ERROR", L"ERROR", L"NUM 0", L"NUM 1",
+	L"V", L"W", L"X", L"Y", L"Z", L"LWin", L"RWin", L"ERROR", L"ERROR", L"ERROR", L"NUM 0", L"NUM 1",
 	L"NUM 2", L"NUM 3", L"NUM 4", L"NUM 5", L"NUM 6", L"NUM 7", L"NUM 8", L"NUM 9", L"*", L"+", L"_", L"-", L".", L"/", L"F1", L"F2", L"F3",
 	L"F4", L"F5", L"F6", L"F7", L"F8", L"F9", L"F10", L"F11", L"F12", L"F13", L"F14", L"F15", L"F16", L"F17", L"F18", L"F19", L"F20", L"F21",
 	L"F22", L"F23", L"F24", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"NUM Lock", L"Scroll Lock", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"Left Shift", L"Right Shift", L"Left Control",
-	L"Right Control", L"Left Menu", L"Right Menu", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"Next Track", L"Previous Track", L"Stop", L"Play / Pause", L"ERROR", L"ERROR",
+	L"NumLk", L"ScrLk", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
+	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"LShift", L"RShift", L"LCtrl",
+	L"RCtrl", L"LMenu", L"RMenu", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
+	L"ERROR", L"ERROR", L"ERROR", L"NTrack", L"PTrack", L"Stop", L"Play", L"ERROR", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L";", L"+", L",", L"-", L".", L"/?", L"~", L"ERROR", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"[{", L"\\|", L"}]", L"'\"", L"ERROR",
+	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"[", L"\\", L"]", L"'", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
 	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
@@ -919,6 +989,9 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 		should_draw = false;
 
 	auto key_name = ses_string( key_names [ key ].data( ) );
+
+	if ( mode == 2 )
+		key_name = L"Always";
 
 	vec2 key_name_size;
 	draw_list.get_text_size( style.control_font, key_name, key_name_size );
@@ -1008,6 +1081,10 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 	}
 	else {
 		key_name = ses_string( key_names [ key ].data( ) );
+
+		if ( mode == 2 )
+			key_name = L"Always";
+
 		draw_list.get_text_size( style.control_font, key_name, key_name_size );
 	}
 
@@ -1686,15 +1763,8 @@ bool sesui::begin_window( const ses_string& name, const rect& bounds, bool& open
 	const auto exit_rect = rect( window_entry->second.bounds.x + scale_dpi( window_entry->second.bounds.w - 16.0f - 8.0f ), window_entry->second.bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - scale_dpi( 8.0f ), 16.0f, 16.0f );
 
 	/* window rect */
-	draw_list.add_rounded_rect( titlebar_rect, style.rounding, style.window_accent, true );
-	draw_list.add_rounded_rect( titlebar_rect, style.rounding, style.window_accent_borders, false );
-	draw_list.add_rounded_rect( window_rect, style.rounding, style.window_background, true );
-	draw_list.add_rounded_rect( window_rect, style.rounding, style.window_borders, false );
-
-	/* covering rounding for top part of main window */
-	draw_list.add_rect( remove_rounding_rect, style.window_background, true );
-	draw_list.add_rect( remove_rounding_rect, style.window_borders, false );
-	draw_list.add_rect( remove_rounding_rect_filler, style.window_background, true );
+	draw_list.add_rect( titlebar_rect, style.window_foreground, true );
+	draw_list.add_rect( window_rect, style.window_background, true );
 
 	if ( !( flags & window_flags::no_title ) ) {
 		vec2 text_size;

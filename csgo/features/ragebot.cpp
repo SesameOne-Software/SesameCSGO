@@ -15,31 +15,12 @@ std::array< vec3_t, 65 > shot_pos { vec3_t( ) };
 std::array< int, 65 > hits { 0 };
 std::array< int, 65 > shots { 0 };
 std::array< int, 65 > hitbox { 0 };
-std::array< float, 65 > features::ragebot::hitchances { 0.0f };
 std::array< features::lagcomp::lag_record_t, 65 > cur_lag_rec { 0 };
 features::ragebot::weapon_config_t features::ragebot::active_config;
 
-struct recorded_scans_t {
-	recorded_scans_t( const features::lagcomp::lag_record_t& rec, const vec3_t& target, float dmg, int tick, int hitbox, int priority ) {
-		m_rec = rec;
-		m_target = target;
-		m_dmg = dmg;
-		m_tick = tick;
-		m_hitbox = hitbox;
-		m_priority = priority;
-	}
+features::ragebot::c_scan_points features::ragebot::scan_points;
 
-	~recorded_scans_t( ) {
-
-	}
-
-	features::lagcomp::lag_record_t m_rec;
-	vec3_t m_target;
-	float m_dmg;
-	int m_tick, m_hitbox, m_priority;
-};
-
-std::array< std::vector< recorded_scans_t >, 65 > previous_scanned_records { { } };
+#pragma optimize( "2", on )
 
 void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 	if ( !g::local || !g::local->alive( ) || !g::local->weapon( ) || !g::local->weapon( )->data( ) )
@@ -493,13 +474,13 @@ int& features::ragebot::get_hitbox( int pl ) {
 	return hitbox [ pl ];
 }
 
-bool run_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox ) {
+bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox ) {
 	auto weapon = g::local->weapon( );
 
-	if ( !weapon || !weapon->data( ) ) {
-		features::ragebot::hitchances [ pl->idx( ) ] = 0.0f;
+	if ( !weapon || !weapon->data( ) )
 		return false;
-	}
+
+	weapon->update_accuracy( );
 
 	auto src = g::local->eyes( );
 
@@ -514,80 +495,10 @@ bool run_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox
 	right.normalize( );
 	up.normalize( );
 
-	auto hits = 0;
-	auto needed_hits = static_cast< int >( static_cast< float > ( rays ) * ( features::ragebot::active_config.hit_chance / 100.0f ) );
-
-	weapon->update_accuracy( );
+	if ( !forward.is_valid( ) || !right.is_valid( ) || !up.is_valid( ) )
+		return false;
 
 	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
-
-	const auto as_hitgroup = autowall::hitbox_to_hitgroup( hitbox );
-
-	auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
-		auto q = sphere - from;
-		auto v = q.dot_product( ( to - from ).normalized( ) );
-		auto d = ( rad * rad ) - ( q.length_sqr( ) - v * v );
-
-		return d >= FLT_EPSILON;
-	};
-
-	auto get_hitbox = [ & ] ( vec3_t& pos_out ) -> float {
-		pos_out = vec3_t( 0.0f, 0.0f, 0.0f );
-
-		auto mdl = pl->mdl( );
-
-		if ( !mdl )
-			return 0.0f;
-
-		auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
-
-		if ( !studio_mdl )
-			return 0.0f;
-
-		auto s = studio_mdl->hitbox_set( 0 );
-
-		if ( !s )
-			return 0.0f;
-
-		auto hb = s->hitbox( hitbox );
-
-		if ( !hb )
-			return 0.0f;
-
-		auto vmin = hb->m_bbmin;
-		auto vmax = hb->m_bbmax;
-
-		VEC_TRANSFORM( hb->m_bbmin, pl->bone_cache( ) [ hb->m_bone ], vmin );
-		VEC_TRANSFORM( hb->m_bbmax, pl->bone_cache( ) [ hb->m_bone ], vmax );
-
-		pos_out = ( vmin + vmax ) * 0.5f;
-
-		return hb->m_radius;
-	};
-
-	vec3_t hitbox_center;
-	const auto hitbox_rad = get_hitbox( hitbox_center );
-
-	hitbox_center = point;
-
-	if ( !hitbox_rad )
-		return false;
-
-	/* normal hitchance */
-	for ( auto i = 0; i < rays; i++ ) {
-		const auto spread_x = -weap_spread * 0.5f + ( ( static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX ) ) * weap_spread );
-		const auto spread_y = -weap_spread * 0.5f + ( ( static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX ) ) * weap_spread );
-		const auto spread_z = -weap_spread * 0.5f + ( ( static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX ) ) * weap_spread );
-		const auto final_pos = src + ( ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon->data( )->m_range );
-
-		if ( ray_intersects_sphere( src, final_pos, hitbox_center, hitbox_rad ) )
-			hits++;
-	}
-
-	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
-
-	if ( calc_chance < features::ragebot::active_config.hit_chance )
-		return false;
 
 	/* check damage accuracy */
 	const auto spread_coeff = weap_spread * 0.5f * ( features::ragebot::active_config.dmg_accuracy / 100.0f );
@@ -596,899 +507,120 @@ bool run_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox
 	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
 	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
 
+	//dbg_print( _( "damage hitchance L: %d\n" ), dmg_left >= features::ragebot::active_config.min_dmg );
+	//dbg_print( _( "damage hitchance R: %d\n" ), dmg_right >= features::ragebot::active_config.min_dmg );
+
 	return dmg_left >= features::ragebot::active_config.min_dmg && dmg_right >= features::ragebot::active_config.min_dmg;
 }
 
-void features::ragebot::hitscan( player_t* pl, vec3_t& point, float& dmg, lagcomp::lag_record_t& rec_out, int& hitbox_out ) {
-	const auto recs = lagcomp::get( pl );
-	auto shot = lagcomp::get_shot( pl );
+bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, lagcomp::lag_record_t& rec ) {
+	auto weapon = g::local->weapon( );
 
-	dmg = 0.0f;
+	if ( !weapon || !weapon->data( ) )
+		return false;
 
-	if ( !g::local || !g::local->weapon( ) || !pl->valid( ) || !pl->weapon( ) || !pl->weapon( )->data( ) || !pl->bone_cache( ) || !pl->layers( ) || !pl->animstate( ) || ( !recs.second && !shot.second ) )
-		return;
+	auto src = g::local->eyes( );
 
-	const auto backup_origin = pl->origin( );
-	auto backup_abs_origin = pl->abs_origin( );
-	const auto backup_min = pl->mins( );
-	const auto backup_max = pl->maxs( );
-	matrix3x4_t backup_bones [ 128 ];
-	std::memcpy( backup_bones, pl->bone_cache( ), sizeof matrix3x4_t * pl->bone_count( ) );
+	ang = csgo::calc_angle( src, point );
+	csgo::clamp( ang );
 
-	auto newest_moving_tick = 0;
-	std::deque < lagcomp::lag_record_t > best_recs { };
+	auto forward = csgo::angle_vec( ang );
+	auto right = csgo::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
+	auto up = csgo::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
 
-	auto head_only = false;
+	forward.normalize( );
+	right.normalize( );
+	up.normalize( );
 
-	if ( shot.second ) {
-		best_recs.push_back( shot.first );
-		best_recs.push_back( recs.first.back( ) );
-		head_only = true;
-	}
-	else {
-		/*if ( !lagcomp::data::extrapolated_records [ pl->idx ( ) ].empty ( ) && csgo::time2ticks ( csgo::i::globals->m_curtime - pl->simtime ( ) ) > 2 ) {
-			best_recs.push_back ( lagcomp::data::extrapolated_records [ pl->idx ( ) ].front ( ) );
-		}
-		else*/ if ( recs.first.size( ) >= 2 ) {
-			best_recs.push_back( recs.first.back( ) );
-		}
+	if ( !forward.is_valid( ) || !right.is_valid( ) || !up.is_valid( ) )
+		return false;
 
-		best_recs.push_back( recs.first.front( ) );
-	}
+	auto hits = 0;
+	auto needed_hits = static_cast< int >( static_cast< float > ( rays ) * ( features::ragebot::active_config.hit_chance / 100.0f ) );
 
-	if ( best_recs.empty( ) )
-		return;
+	weapon->update_accuracy( );
 
-	lagcomp::lag_record_t now_rec;
+	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
 
-	std::deque< int > hitboxes { };
-
-	if ( active_config.scan_pelvis )
-		hitboxes.push_back( 2 ); // pelvis
-
-	if ( active_config.scan_head )
-		hitboxes.push_back( 0 ); // head
-
-	if ( active_config.scan_neck )
-		hitboxes.push_back( 1 ); // neck
-
-	if ( active_config.scan_feet ) {
-		hitboxes.push_back( 11 ); // right foot
-		hitboxes.push_back( 12 ); // left foot
-	}
-
-	if ( active_config.scan_chest ) {
-		hitboxes.push_back( 6 ); // chest
-	}
-
-	if ( active_config.scan_legs ) {
-		hitboxes.push_back( 7 ); // right thigh
-		hitboxes.push_back( 8 ); // left thigh
-	}
-
-	if ( active_config.scan_arms ) {
-		hitboxes.push_back( 18 ); // right forearm
-		hitboxes.push_back( 16 ); // left forearm
-	}
-
-	/* skip all hitboxes but head if we have their onshot */
-	//if ( head_only ) {
-	//	hitboxes.clear( );
-	//	hitboxes.push_back( 2 ); // pelvis
-	//	hitboxes.push_front( 0 );
-	//}
-
-	if ( active_config.headshot_only ) {
-		hitboxes.clear( );
-		hitboxes.push_front( 0 );
-	}
-
-	auto should_baim = false;
-
-	/* override to baim if we can doubletap */ {
-		/* tickbase manip controller */
-
-		auto can_shoot = [ & ] ( ) {
-			if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
-				return false;
-
-			if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
-				return false;
-
-			return csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
-		};
-
-		const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
-		const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-		auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
-
-		if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
-			tickbase_as_int = 0;
-
-		if ( tickbase_as_int && ( ( can_shoot( ) && ( std::abs( g::ucmd->m_tickcount - g::dt_recharge_time ) >= tickbase_as_int && !g::dt_ticks_to_shift ) ) || g::next_tickbase_shot ) && g::local->weapon( )->item_definition_index( ) != 64 ) {
-			should_baim = true;
-		}
-	}
-
-	auto scan_safe_points = true;
-
-	/* retry with safe points if they aren't valid */
-retry_without_safe_points:
-
-	auto best_priority = 0;
-	auto best_point = vec3_t( );
-	auto best_dmg = 0.0f;
-	lagcomp::lag_record_t best_rec;
-	int best_hitbox = 0;
-
-	/* only keep previous scan records which are still valid */
-	if ( !previous_scanned_records [ pl->idx( ) ].empty( ) ) {
-		int cur_scan_record = 0;
-
-		for ( auto& previous_scans : previous_scanned_records [ pl->idx( ) ] ) {
-			if ( !previous_scans.m_rec.valid( ) ) {
-				previous_scanned_records [ pl->idx( ) ].erase( previous_scanned_records [ pl->idx( ) ].begin( ) + cur_scan_record );
-				continue;
-			}
-
-			cur_scan_record++;
-		}
-	}
-
-	/* optimization - increases our framerate by a shit ton, but decreases ragebot performance by a bit */
-	auto is_similar_scan = [ ] ( const recorded_scans_t& scan_record, const lagcomp::lag_record_t& lag_rec ) {
-		return scan_record.m_rec.m_pl && ( std::abs( scan_record.m_tick - lag_rec.m_tick ) <= 2 || scan_record.m_rec.m_origin.dist_to( lag_rec.m_origin ) < 5.0f );
-	};
-
-	std::array< matrix3x4_t, 128 > safe_point_bones;
-
-	/* find best record */
-	for ( auto& rec_it : best_recs ) {
-		if ( rec_it.m_needs_matrix_construction || rec_it.m_priority < best_priority )
-			continue;
-
-		/* if we already scanned this before, or is within close proximity of another record we scanned, let's consider it the same record for now */
-		/* this should drastically speed up the ragebot */
-		auto record_existed = false;
-
-		//if ( !previous_scanned_records [ pl->idx( ) ].empty( ) ) {
-		//	recorded_scans_t* similar_scan = nullptr;
-		//	//
-		//	for ( auto& scan_record : previous_scanned_records [ pl->idx( ) ] ) {
-		//		if ( is_similar_scan( scan_record, rec_it ) ) {
-		//			similar_scan = &scan_record;
-		//			break;
-		//		}
-		//	}
-		//	//
-		//	if ( similar_scan ) {
-		//		/* if they become shootable soon, maybe we should rescan them to make sure we can shoot as soon as possible */ {
-		//			const auto eyes_max = pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
-		//			const auto fwd = csgo::angle_vec( eyes_max - g::local->eyes( ) );
-		//			const auto right_dir = fwd.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
-		//			const auto left_dir = -right_dir;
-		//			const auto dmg_left = autowall::dmg( g::local, pl, g::local->eyes( ) + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
-		//			const auto dmg_right = autowall::dmg( g::local, pl, g::local->eyes( ) + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
-		//			//
-		//								/* scan this record again to make sure we might be able to hit this one if state changed */
-		//			if ( dmg_left || dmg_right ) {
-		//				similar_scan->m_rec.m_pl = nullptr;
-		//				similar_scan = nullptr;
-		//				record_existed = false;
-		//			}
-		//		}
-		//		//
-		//		if ( similar_scan ) {
-		//			if ( /* double check validity i guess */ similar_scan->m_rec.valid( )
-		//				/* make sure overwriting this record is worth it, would probably be a good thing */ && similar_scan->m_dmg > best_dmg
-		//				/* if the shot is fatal, it doesn't matter */ || best_dmg >= pl->health( ) ) {
-		//				best_dmg = similar_scan->m_dmg;
-		//				best_point = similar_scan->m_target;
-		//				best_rec = similar_scan->m_rec;
-		//				best_hitbox = similar_scan->m_hitbox;
-		//				best_priority = similar_scan->m_priority;
-		//				record_existed = true;
-		//			}
-		//			//
-		//			if ( best_dmg >= pl->health( ) ) {
-		//				pl->mins( ) = backup_min;
-		//				pl->maxs( ) = backup_max;
-		//				pl->origin( ) = backup_origin;
-		//				pl->set_abs_origin( backup_abs_origin );
-		//				std::memcpy( pl->bone_cache( ), backup_bones, sizeof matrix3x4_t * pl->bone_count( ) );
-		//				//
-		//				point = best_point;
-		//				dmg = best_dmg;
-		//				rec_out = best_rec;
-		//				hitbox_out = best_hitbox;
-		//				//
-		//				return;
-		//			}
-		//			else {
-		//				continue;
-		//			}
-		//		}
-		//	}
-		//}
-
-		/* for safe point scanning */
-		/* override aim matrix with safe point matrix so we scan safe points from safe point matrix on current aim matrix */
-		if ( active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode ) && scan_safe_points ) {
-			const auto next_resolve = get_misses( pl->idx( ) ).bad_resolve + 1;
-
-			if ( next_resolve % 3 == 0 )
-				std::memcpy( &safe_point_bones, rec_it.m_bones1, sizeof matrix3x4_t * pl->bone_count( ) );
-			else if ( next_resolve % 3 == 1 )
-				std::memcpy( &safe_point_bones, rec_it.m_bones2, sizeof matrix3x4_t * pl->bone_count( ) );
-			else
-				std::memcpy( &safe_point_bones, rec_it.m_bones3, sizeof matrix3x4_t * pl->bone_count( ) );
-		}
-
-		pl->mins( ) = rec_it.m_min;
-		pl->maxs( ) = rec_it.m_max;
-		pl->origin( ) = rec_it.m_origin;
-		pl->set_abs_origin( rec_it.m_origin );
-
-		if ( get_misses( pl->idx( ) ).bad_resolve % 3 == 0 )
-			std::memcpy( pl->bone_cache( ), rec_it.m_bones1, sizeof matrix3x4_t * pl->bone_count( ) );
-		else if ( get_misses( pl->idx( ) ).bad_resolve % 3 == 1 )
-			std::memcpy( pl->bone_cache( ), rec_it.m_bones2, sizeof matrix3x4_t * pl->bone_count( ) );
-		else
-			std::memcpy( pl->bone_cache( ), rec_it.m_bones3, sizeof matrix3x4_t * pl->bone_count( ) );
-
-		auto best_hitbox_this_rec = 0;
-		auto best_dmg_this_rec = 0.0f;
-		auto best_point_this_rec = vec3_t( 0.0f, 0.0f, 0.0f );
-
-		/* find best point on best hitbox */
-		for ( auto& hb : hitboxes ) {
-			auto mdl = pl->mdl( );
-
-			if ( !mdl )
-				continue;
-
-			auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
-
-			if ( !studio_mdl )
-				continue;
-
-			auto s = studio_mdl->hitbox_set( 0 );
-
-			if ( !s )
-				continue;
-
-			auto hitbox = s->hitbox( hb );
-
-			if ( !hitbox )
-				continue;
-
-			auto get_hitbox_pos = [ & ] ( bool force_safe_point = false ) {
-				vec3_t vmin, vmax;
-
-				auto safe_point_on = true;
-
-				/* override aim matrix with safe point matrix so we scan safe points from safe point matrix on current aim matrix */
-				if ( active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode ) && scan_safe_points /*&& ( hb != 0 || force_safe_point )*/ ) {
-					VEC_TRANSFORM( hitbox->m_bbmin, safe_point_bones [ hitbox->m_bone ], vmin );
-					VEC_TRANSFORM( hitbox->m_bbmax, safe_point_bones [ hitbox->m_bone ], vmax );
-				}
-				else {
-					VEC_TRANSFORM( hitbox->m_bbmin, pl->bone_cache( ) [ hitbox->m_bone ], vmin );
-					VEC_TRANSFORM( hitbox->m_bbmax, pl->bone_cache( ) [ hitbox->m_bone ], vmax );
-				}
-
-				auto pos = ( vmin + vmax ) * 0.5f;
-
-				return pos;
-			};
-
-			auto a1 = csgo::calc_angle( get_hitbox_pos( ), g::local->eyes( ) );
-			auto fwd = csgo::angle_vec( a1 );
-			auto right = fwd.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
-			auto left = -right;
-			auto top = vec3_t( 0.0f, 0.0f, 1.0f );
-
-			auto pointscale = 0.5f;
-
-			/* handle pointscale */
-			if ( hb == 0 )
-				pointscale = static_cast< float >( active_config.head_pointscale ) / 100.0f;
-			else
-				pointscale = static_cast< float >( active_config.body_pointscale ) / 100.0f;
-
-			auto rad_coeff = pointscale * hitbox->m_radius;
-			auto can_tickbase = false;
-
-			/* try to baim */
-			if ( hb == 2 ) {
-				auto body = get_hitbox_pos( );
-				auto body_left = body + left * rad_coeff;
-				auto body_right = body + right * rad_coeff;
-				auto dmg1 = autowall::dmg( g::local, pl, g::local->eyes( ), body, -1 /* do not scan floating points */ );
-				auto dmg2 = autowall::dmg( g::local, pl, g::local->eyes( ), body_left, -1 /* do not scan floating points */ );
-				auto dmg3 = autowall::dmg( g::local, pl, g::local->eyes( ), body_right, -1 /* do not scan floating points */ );
-
-				if ( dmg1 > best_dmg || dmg2 > best_dmg || dmg3 > best_dmg ) {
-					if ( dmg1 > dmg2 && dmg1 > dmg3 || ( dmg1 == dmg2 && dmg1 == dmg3 ) ) {
-						best_dmg = dmg1;
-						best_point = body;
-						best_rec = rec_it;
-						best_hitbox = hb;
-						best_priority = rec_it.m_priority;
-					}
-					else if ( dmg2 > dmg1 && dmg2 > dmg3 ) {
-						best_dmg = dmg2;
-						best_point = body_left;
-						best_rec = rec_it;
-						best_hitbox = hb;
-						best_priority = rec_it.m_priority;
-					}
-					else if ( dmg3 > dmg1 && dmg3 > dmg2 ) {
-						best_dmg = dmg3;
-						best_point = body_right;
-						best_rec = rec_it;
-						best_hitbox = hb;
-						best_priority = rec_it.m_priority;
-					}
-				}
-
-				if ( best_dmg >= pl->health( ) || ( ( should_baim || misses [ pl->idx( ) ].bad_resolve >= active_config.baim_after_misses ) && ( best_dmg /** 1.666f*/ >= active_config.min_dmg || best_dmg /** 1.666f*/ >= pl->health( ) ) ) ) {
-					pl->mins( ) = backup_min;
-					pl->maxs( ) = backup_max;
-					pl->origin( ) = backup_origin;
-					pl->set_abs_origin( backup_abs_origin );
-					std::memcpy( pl->bone_cache( ), backup_bones, sizeof matrix3x4_t * pl->bone_count( ) );
-
-					point = best_point;
-					dmg = best_dmg;
-					rec_out = best_rec;
-					hitbox_out = best_hitbox;
-
-					if ( !record_existed )
-						previous_scanned_records [ pl->idx( ) ].push_back( recorded_scans_t( best_rec, best_point, best_dmg, best_rec.m_tick, best_hitbox, rec_it.m_priority ) );
-
-					return;
-				}
-			}
-
-			// calculate best points on hitbox
-			switch ( hb ) {
-				// aim above head to try to hit
-				case 0: {
-					auto head = get_hitbox_pos( );
-					auto head_top = head + top * rad_coeff;
-					auto dmg1 = autowall::dmg( g::local, pl, g::local->eyes( ), head, -1 /* do not scan floating points */ );
-					auto dmg2 = autowall::dmg( g::local, pl, g::local->eyes( ), head_top, -1 /* do not scan floating points */ );
-
-					if ( dmg1 > best_dmg || dmg2 > best_dmg ) {
-						if ( dmg2 > dmg1 ) {
-							best_dmg = dmg2;
-							best_point = head_top;
-							best_rec = rec_it;
-							best_hitbox = hb;
-							best_priority = rec_it.m_priority;
-						}
-						else {
-							best_dmg = dmg1;
-							best_point = head;
-							best_rec = rec_it;
-							best_hitbox = hb;
-							best_priority = rec_it.m_priority;
-						}
-					}
-
-					if ( dmg1 > best_dmg_this_rec || dmg2 > best_dmg_this_rec ) {
-						if ( dmg2 > dmg1 ) {
-							best_point_this_rec = head_top;
-							best_dmg_this_rec = dmg2;
-						}
-						else {
-							best_point_this_rec = head;
-							best_dmg_this_rec = dmg1;
-						}
-
-						best_hitbox_this_rec = hb;
-					}
-
-					/* prefer safe point on head if available, else fall back to normal point */
-					if ( active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode ) && scan_safe_points ) {
-						auto head = get_hitbox_pos( true );
-						auto head_top = head + top * rad_coeff;
-						auto dmg1 = autowall::dmg( g::local, pl, g::local->eyes( ), head, -1 /* do not scan floating points */ );
-						auto dmg2 = autowall::dmg( g::local, pl, g::local->eyes( ), head_top, -1 /* do not scan floating points */ );
-
-						if ( dmg1 >= best_dmg || dmg2 >= best_dmg ) {
-							if ( dmg2 > dmg1 ) {
-								best_dmg = dmg2;
-								best_point = head_top;
-								best_rec = rec_it;
-								best_hitbox = hb;
-								best_priority = rec_it.m_priority;
-							}
-							else {
-								best_dmg = dmg1;
-								best_point = head;
-								best_rec = rec_it;
-								best_hitbox = hb;
-								best_priority = rec_it.m_priority;
-							}
-						}
-
-						if ( dmg1 >= best_dmg_this_rec || dmg2 >= best_dmg_this_rec ) {
-							if ( dmg2 > dmg1 ) {
-								best_point_this_rec = head_top;
-								best_dmg_this_rec = dmg2;
-							}
-							else {
-								best_point_this_rec = head;
-								best_dmg_this_rec = dmg1;
-							}
-
-							best_hitbox_this_rec = hb;
-						}
-					}
-				} break;
-					// body stuff (aim outwards)
-				case 2:
-				case 11:
-				case 12:
-				case 6:
-				case 7:
-				case 8: {
-					auto body = get_hitbox_pos( );
-					auto body_left = body + left * rad_coeff;
-					auto body_right = body + right * rad_coeff;
-					auto dmg1 = autowall::dmg( g::local, pl, g::local->eyes( ), body, -1 /* do not scan floating points */ );
-					auto dmg2 = autowall::dmg( g::local, pl, g::local->eyes( ), body_left, -1 /* do not scan floating points */ );
-					auto dmg3 = autowall::dmg( g::local, pl, g::local->eyes( ), body_right, -1 /* do not scan floating points */ );
-
-					if ( dmg1 > best_dmg || dmg2 > best_dmg || dmg3 > best_dmg ) {
-						if ( ( dmg1 > dmg2 && dmg1 > dmg3 ) || ( dmg1 == dmg2 && dmg1 == dmg3 ) ) {
-							best_dmg = dmg1;
-							best_point = body;
-							best_rec = rec_it;
-							best_hitbox = hb;
-							best_priority = rec_it.m_priority;
-						}
-						else if ( dmg2 > dmg1 && dmg2 > dmg3 ) {
-							best_dmg = dmg2;
-							best_point = body_left;
-							best_rec = rec_it;
-							best_hitbox = hb;
-							best_priority = rec_it.m_priority;
-						}
-						else if ( dmg3 > dmg1 && dmg3 > dmg2 ) {
-							best_dmg = dmg3;
-							best_point = body_right;
-							best_rec = rec_it;
-							best_hitbox = hb;
-							best_priority = rec_it.m_priority;
-						}
-					}
-
-					if ( dmg1 > best_dmg_this_rec || dmg2 > best_dmg_this_rec || dmg3 > best_dmg_this_rec ) {
-						if ( dmg3 > dmg1 && dmg3 > dmg2 ) {
-							best_point_this_rec = body_right;
-							best_dmg_this_rec = dmg3;
-						}
-						else if ( dmg2 > dmg1 && dmg2 > dmg3 ) {
-							best_point_this_rec = body_left;
-							best_dmg_this_rec = dmg2;
-						}
-						else {
-							best_point_this_rec = body;
-							best_dmg_this_rec = dmg1;
-						}
-
-						best_hitbox_this_rec = hb;
-					}
-				} break;
-					// no need to test multiple points on these
-				case 18:
-				case 16:
-				case 1: {
-					auto hitbox_pos = get_hitbox_pos( );
-					auto dmg = autowall::dmg( g::local, pl, g::local->eyes( ), hitbox_pos, -1 /* do not scan floating points */ );
-
-					if ( dmg > best_dmg ) {
-						best_dmg = dmg;
-						best_point = hitbox_pos;
-						best_rec = rec_it;
-						best_hitbox = hb;
-						best_priority = rec_it.m_priority;
-					}
-
-					if ( dmg > best_dmg_this_rec ) {
-						best_point_this_rec = hitbox_pos;
-						best_dmg_this_rec = dmg;
-						best_hitbox_this_rec = hb;
-					}
-				} break;
-			}
-		}
-
-		if ( !record_existed )
-			previous_scanned_records [ pl->idx( ) ].push_back( recorded_scans_t( rec_it, best_point_this_rec, best_dmg_this_rec, rec_it.m_tick, best_hitbox_this_rec, rec_it.m_priority ) );
-	}
-
-	pl->mins( ) = backup_min;
-	pl->maxs( ) = backup_max;
-	pl->origin( ) = backup_origin;
-	pl->set_abs_origin( backup_abs_origin );
-	std::memcpy( pl->bone_cache( ), backup_bones, sizeof matrix3x4_t * pl->bone_count( ) );
-
-	if ( best_dmg > 0.0f && ( best_dmg >= active_config.min_dmg || best_dmg >= pl->health( ) ) ) {
-		point = best_point;
-		dmg = best_dmg;
-		rec_out = best_rec;
-		hitbox_out = best_hitbox;
-	}
-	/* only retry if it's our first pass, or else we will freeze the game by looping indefinitely */
-	else if ( active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode ) && scan_safe_points ) {
-		/* retry, but this time w/out safe points since they weren't valid */
-		scan_safe_points = false;
-		goto retry_without_safe_points;
-	}
-}
-
-void meleebot( ucmd_t* ucmd ) {
-	if ( g::local->weapon( )->item_definition_index( ) == 31 && !features::ragebot::active_config.zeus_bot )
-		return;
-	else if ( g::local->weapon( )->data( )->m_type == 0 && !features::ragebot::active_config.knife_bot )
-		return;
-
-	/*auto can_shoot = [ & ] ( ) {
-		return g::local->weapon ( ) && g::local->weapon ( )->next_primary_attack ( ) <= csgo::i::globals->m_curtime && g::local->weapon ( )->ammo ( );
-	};
-
-	if ( !can_shoot ( ) )
-		return;*/
-
-	vec3_t engine_ang;
-	csgo::i::engine->get_viewangles( engine_ang );
-
-	features::lagcomp::lag_record_t* best_rec = nullptr;
-	player_t* best_pl = nullptr;
-	float best_fov = 180.0f;
-	vec3_t best_point, best_ang;
-
-	csgo::for_each_player( [ & ] ( player_t* pl ) {
-		if ( pl->team( ) == g::local->team( ) || pl->immune( ) )
-			return;
-
-		auto rec = features::lagcomp::get( pl );
-
-		if ( !rec.second )
-			return;
-
+	static auto hits_hitbox = [ & ] ( const vec3_t& src, const vec3_t& dst, int hitbox ) -> bool {
 		auto mdl = pl->mdl( );
 
 		if ( !mdl )
-			return;
+			return false;
 
 		auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
 
 		if ( !studio_mdl )
-			return;
+			return false;
 
 		auto s = studio_mdl->hitbox_set( 0 );
 
 		if ( !s )
-			return;
-
-		auto hitbox = s->hitbox( 2 );
-
-		if ( !hitbox )
-			return;
-
-		auto get_hitbox_pos = [ & ] ( ) {
-			vec3_t vmin, vmax;
-
-			if ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 3 == 0 ) {
-				VEC_TRANSFORM( hitbox->m_bbmin, rec.first [ 0 ].m_bones1 [ hitbox->m_bone ], vmin );
-				VEC_TRANSFORM( hitbox->m_bbmax, rec.first [ 0 ].m_bones1 [ hitbox->m_bone ], vmax );
-			}
-			else if ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 3 == 1 ) {
-				VEC_TRANSFORM( hitbox->m_bbmin, rec.first [ 0 ].m_bones2 [ hitbox->m_bone ], vmin );
-				VEC_TRANSFORM( hitbox->m_bbmax, rec.first [ 0 ].m_bones2 [ hitbox->m_bone ], vmax );
-			}
-			else {
-				VEC_TRANSFORM( hitbox->m_bbmin, rec.first [ 0 ].m_bones3 [ hitbox->m_bone ], vmin );
-				VEC_TRANSFORM( hitbox->m_bbmax, rec.first [ 0 ].m_bones3 [ hitbox->m_bone ], vmax );
-			}
-
-			auto pos = ( vmin + vmax ) * 0.5f;
-
-			return pos;
-		};
-
-		const auto hitbox_pos = get_hitbox_pos( );
-
-		auto ang = csgo::calc_angle( g::local->eyes( ), hitbox_pos );
-		csgo::clamp( ang );
-
-		const auto fov = csgo::calc_fov( ang, engine_ang );
-
-		auto can_use = false;
-
-		if ( g::local->weapon( )->item_definition_index( ) == 31 ) {
-			can_use = g::local->eyes( ).dist_to( hitbox_pos ) < 150.0f;
-		}
-		else {
-			can_use = g::local->origin( ).dist_to( rec.first [ 0 ].m_origin ) < 48.0f;
-		}
-
-		if ( csgo::is_visible( hitbox_pos ) && fov < best_fov && can_use ) {
-			best_pl = pl;
-			best_fov = fov;
-			best_point = hitbox_pos;
-			best_ang = ang;
-			best_rec = &rec.first [ 0 ];
-		}
-		} );
-
-	if ( !features::ragebot::active_config.auto_shoot && ( ( g::local->weapon( )->data( )->m_type == 0 ) ? !( ucmd->m_buttons & 1 ) : !( ucmd->m_buttons & 2048 ) ) )
-		return;
-
-	if ( !best_pl )
-		return;
-
-	csgo::clamp( best_ang );
-
-	ucmd->m_angs = best_ang;
-
-	if ( !features::ragebot::active_config.silent )
-		csgo::i::engine->set_viewangles( best_ang );
-
-	( *best_rec ).backtrack( ucmd );
-
-	features::ragebot::get_target_pos( best_pl->idx( ) ) = best_point;
-	features::ragebot::get_target( ) = best_pl;
-	features::ragebot::get_shots( best_pl->idx( ) )++;
-	features::ragebot::get_shot_pos( best_pl->idx( ) ) = g::local->eyes( );
-	features::ragebot::get_lag_rec( best_pl->idx( ) ) = *best_rec;
-	features::ragebot::get_target_idx( ) = best_pl->idx( );
-	features::ragebot::get_hitbox( best_pl->idx( ) ) = 5;
-
-	if ( features::ragebot::active_config.auto_shoot && g::local->weapon( )->item_definition_index( ) != 31 ) {
-		auto back = best_pl->angles( );
-		back.y = csgo::normalize( back.y + 180.0f );
-		auto backstab = best_ang.dist_to( back ) < 45.0f;
-
-		if ( backstab ) {
-			ucmd->m_buttons |= 2048;
-		}
-		else {
-			auto hp = best_pl->health( );
-			auto armor = best_pl->armor( ) > 1;
-			auto min_dmg1 = armor ? 34 : 40;
-			auto min_dmg2 = armor ? 55 : 65;
-
-			if ( hp <= min_dmg2 )
-				ucmd->m_buttons |= 2048;
-			else
-				ucmd->m_buttons |= 1;
-		}
-
-		g::send_packet = true;
-	}
-	else if ( features::ragebot::active_config.auto_shoot ) {
-		ucmd->m_buttons |= 1;
-		g::send_packet = true;
-	}
-}
-
-void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
-	security_handler::update( );
-
-	revolver_firing = false;
-	//get_target ( ) = nullptr;
-
-	if ( g::round == round_t::starting )
-		return;
-
-	if ( active_config.main_switch && g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && ( g::local->weapon( )->item_definition_index( ) == 31 || g::local->weapon( )->data( )->m_type == 0 ) ) {
-		meleebot( ucmd );
-		return;
-	}
-
-	if ( !active_config.main_switch || !g::local || !g::local->weapon( ) || !g::local->weapon( )->data( ) || g::local->weapon( )->data( )->m_type == 9 || g::local->weapon( )->data( )->m_type == 7 || g::local->weapon( )->data( )->m_type == 0 )
-		return;
-
-	vec3_t engine_ang;
-	csgo::i::engine->get_viewangles( engine_ang );
-
-	auto can_shoot = [ & ] ( ) {
-		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
 			return false;
 
-		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+		auto hb = s->hitbox( hitbox );
+
+		if ( !hb )
 			return false;
 
-		//if ( g::shifted_tickbase )
-		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
+		const auto misses = get_misses( pl->idx( ) ).bad_resolve;
 
-		return ( csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( ) ) || g::next_tickbase_shot;
+		matrix3x4_t* bone_matrix = nullptr;
+
+		if ( misses % 3 == 0 )
+			bone_matrix = rec.m_bones1;
+		else if ( misses % 3 == 1 )
+			bone_matrix = rec.m_bones2;
+		else
+			bone_matrix = rec.m_bones3;
+
+		auto vmin = hb->m_bbmin;
+		auto vmax = hb->m_bbmax;
+
+		VEC_TRANSFORM( hb->m_bbmin, bone_matrix [ hb->m_bone ], vmin );
+		VEC_TRANSFORM( hb->m_bbmax, bone_matrix [ hb->m_bone ], vmax );
+
+		return autowall::trace_ray( vmin, vmax, bone_matrix [ hb->m_bone ], hb->m_radius, src, dst );
 	};
 
-	static const auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
-		auto q = sphere - from;
-		auto v = q.dot_product( csgo::angle_vec( csgo::calc_angle( from, to ) ).normalized( ) );
-		auto d = rad - ( q.length_sqr( ) - v * v );
+	static bool rand_table = false;
+	static float rand_flt1 [ 255 ];
+	static float rand_flt2 [ 255 ];
+	static float rand_flt3 [ 255 ];
 
-		return d >= FLT_EPSILON;
-	};
+	if ( !rand_table ) {
+		for ( auto& flt : rand_flt1 )
+			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
 
-	lagcomp::lag_record_t best_rec;
-	player_t* best_pl = nullptr;
-	auto best_ang = vec3_t( );
-	auto best_point = vec3_t( );
-	auto best_fov = 180.0f;
-	auto best_dmg = 0.0f;
-	auto best_hitbox = 0;
+		for ( auto& flt : rand_flt2 )
+			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
 
-	struct potential_target_t {
-		player_t* m_ent;
-		float m_fov;
-		float m_dist;
-		int m_health;
-	};
+		for ( auto& flt : rand_flt3 )
+			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
 
-	std::vector < potential_target_t > targets { };
-
-	csgo::for_each_player( [ & ] ( player_t* pl ) {
-		if ( pl->team( ) == g::local->team( ) || pl->immune( ) )
-			return;
-
-		targets.push_back( {
-			pl,
-			csgo::calc_fov( engine_ang, csgo::calc_angle( g::local->eyes( ), pl->eyes( ) ) ),
-			g::local->origin( ).dist_to( pl->origin( ) ),
-			pl->health( )
-			} );
-
-		auto ang = csgo::calc_angle( g::local->eyes( ), pl->origin( ) );
-		} );
-
-	if ( targets.empty( ) )
-		return;
-
-	std::sort( targets.begin( ), targets.end( ), [ & ] ( potential_target_t& lhs, potential_target_t& rhs ) {
-		if ( fabsf( lhs.m_fov - rhs.m_fov ) < 20.0f )
-			return lhs.m_health < rhs.m_health;
-
-		return lhs.m_fov < rhs.m_fov;
-		} );
-
-	std::for_each( targets.begin( ), targets.end( ), [ & ] ( potential_target_t& target ) {
-		vec3_t point;
-		float dmg = 0.0f;
-
-		hitscan( target.m_ent, point, dmg, best_rec, best_hitbox );
-
-		if ( dmg && target.m_fov < best_fov ) {
-			best_pl = target.m_ent;
-			best_dmg = dmg;
-			best_fov = target.m_fov;
-			best_ang = csgo::calc_angle( g::local->eyes( ), point );
-			csgo::clamp( best_ang );
-			best_point = point;
-		}
-		} );
-
-	if ( !best_pl )
-		return;
-
-	if ( active_config.auto_shoot && !can_shoot( ) ) {
-		ucmd->m_buttons &= ~1;
+		rand_table = true;
 	}
-	else if ( can_shoot( ) ) {
-		//const auto backup_origin = best_pl->origin( );
-		//auto backup_abs_origin = best_pl->abs_origin( );
-		//const auto backup_min = best_pl->mins( );
-		//const auto backup_max = best_pl->maxs( );
-		//matrix3x4_t backup_bones [ 128 ];
-		//std::memcpy( backup_bones, best_pl->bone_cache( ), sizeof matrix3x4_t * best_pl->bone_count( ) );
-//
-		//best_pl->mins( ) = best_rec.m_min;
-		//best_pl->maxs( ) = best_rec.m_max;
-		//best_pl->origin( ) = best_rec.m_origin;
-		//best_pl->set_abs_origin( best_rec.m_origin );
-//
-		//if ( get_misses( best_pl->idx( ) ).bad_resolve % 3 == 0 )
-		//	std::memcpy( best_pl->bone_cache( ), best_rec.m_bones1, sizeof matrix3x4_t * best_pl->bone_count( ) );
-		//else if ( get_misses( best_pl->idx( ) ).bad_resolve % 3 == 1 )
-		//	std::memcpy( best_pl->bone_cache( ), best_rec.m_bones2, sizeof matrix3x4_t * best_pl->bone_count( ) );
-		//else
-		//	std::memcpy( best_pl->bone_cache( ), best_rec.m_bones3, sizeof matrix3x4_t * best_pl->bone_count( ) );
 
-		auto hc = run_hitchance( best_ang, best_pl, best_point, 150, best_hitbox );
-		auto should_aim = best_dmg && hc;
+	/* normal hitchance */
+	for ( auto i = 0; i < rays; i++ ) {
+		const auto spread_x = -weap_spread * 0.5f + ( rand_flt1 [ i ] * weap_spread );
+		const auto spread_y = -weap_spread * 0.5f + ( rand_flt2 [ i ] * weap_spread );
+		const auto spread_z = -weap_spread * 0.5f + ( rand_flt3 [ i ] * weap_spread );
+		const auto final_pos = src + ( ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon->data( )->m_range );
 
-		//best_pl->mins( ) = backup_min;
-		//best_pl->maxs( ) = backup_max;
-		//best_pl->origin( ) = backup_origin;
-		//best_pl->set_abs_origin( backup_abs_origin );
-		//std::memcpy( best_pl->bone_cache( ), backup_bones, sizeof matrix3x4_t * best_pl->bone_count( ) );
-
-		/* TODO: EXTRAPOLATE POSITION TO SLOW DOWN EXACTLY WHEN WE SHOOT */
-		if ( active_config.auto_slow && best_dmg && !hc && g::local->vel( ).length_2d( ) > 0.1f ) {
-			const auto vec_move = vec3_t( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
-			const auto magnitude = vec_move.length_2d( );
-			const auto max_speed = g::local->weapon( )->data( )->m_max_speed;
-			const auto move_to_button_ratio = 250.0f / 450.0f;
-			const auto speed_ratio = ( max_speed * 0.34f ) * 0.7f;
-			const auto move_ratio = speed_ratio * move_to_button_ratio;
-
-			if ( g::local->vel( ).length_2d( ) > g::local->weapon( )->data( )->m_max_speed * 0.34f ) {
-				auto vel_ang = csgo::vec_angle( vec_move );
-				vel_ang.y = csgo::normalize( vel_ang.y + 180.0f );
-
-				const auto normal = csgo::angle_vec( vel_ang ).normalized( );
-				const auto speed_2d = g::local->vel( ).length_2d( );
-
-				old_fmove = normal.x * speed_2d;
-				old_smove = normal.y * speed_2d;
-			}
-			else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
-				old_fmove = ( old_fmove / magnitude ) * move_ratio;
-				old_smove = ( old_smove / magnitude ) * move_ratio;
-			}
-		}
-
-		if ( !active_config.auto_shoot )
-			should_aim = ucmd->m_buttons & 1 && best_dmg;
-
-		if ( !active_config.auto_shoot && g::local->weapon( )->item_definition_index( ) == 64 )
-			should_aim = ucmd->m_buttons & 1 && !revolver_cocking && should_aim;
-		else if ( g::local->weapon( )->item_definition_index( ) == 64 )
-			should_aim = should_aim && !revolver_cocking;
-
-		if ( should_aim ) {
-			revolver_firing = true;
-
-			if ( active_config.auto_shoot ) {
-				ucmd->m_buttons |= 1;
-				g::send_packet = true;
-			}
-
-			if ( active_config.auto_scope && !g::local->scoped( ) &&
-				( g::local->weapon( )->item_definition_index( ) == 9
-					|| g::local->weapon( )->item_definition_index( ) == 40
-					|| g::local->weapon( )->item_definition_index( ) == 38
-					|| g::local->weapon( )->item_definition_index( ) == 11 ) )
-				ucmd->m_buttons |= 2048;
-
-			auto ang = best_ang - g::local->aim_punch( ) * 2.0f;
-			csgo::clamp( ang );
-
-			ucmd->m_angs = ang;
-
-			if ( !active_config.silent )
-				csgo::i::engine->set_viewangles( ang );
-
-			best_rec.backtrack( ucmd );
-
-			get_target_pos( best_pl->idx( ) ) = best_point;
-			get_target( ) = best_pl;
-			get_shots( best_pl->idx( ) )++;
-			get_shot_pos( best_pl->idx( ) ) = g::local->eyes( );
-			get_lag_rec( best_pl->idx( ) ) = best_rec;
-			get_target_idx( ) = best_pl->idx( );
-			get_hitbox( best_pl->idx( ) ) = best_hitbox;
-		}
-		else if ( best_dmg ) {
-			if ( g::local->weapon( )->item_definition_index( ) == 9
-				|| g::local->weapon( )->item_definition_index( ) == 40
-				|| g::local->weapon( )->item_definition_index( ) == 38
-				|| g::local->weapon( )->item_definition_index( ) == 11 ) {
-				if ( active_config.auto_scope && !g::local->scoped( ) )
-					ucmd->m_buttons |= 2048;
-				else if ( active_config.auto_scope && g::local->scoped( ) )
-					ucmd->m_buttons &= ~2048;
-			}
-		}
+		if ( hits_hitbox( src, final_pos, hitbox ) )
+			hits++;
 	}
+
+	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
+
+	//dbg_print( _( "calculated chance: %.1f\n" ), calc_chance );
+
+	if ( calc_chance < ( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
+		return false;
+
+	return true;
+	//return dmg_hitchance( ang, pl, point, rays, hitbox );
 }
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
@@ -1501,7 +633,7 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 		//if ( g::shifted_tickbase )
 		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
-		return csgo::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= features::prediction::predicted_curtime;
+		return csgo::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= csgo::i::globals->m_curtime;
 	};
 
 	/* tickbase manip controller */
@@ -1512,7 +644,8 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+	//auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
+	auto tickbase_as_int = std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
@@ -1522,3 +655,651 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 		g::dt_recharge_time = ucmd->m_cmdnum + tickbase_as_int;
 	}
 }
+
+bool features::ragebot::can_shoot( ) {
+	if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
+		return false;
+
+	if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+		return false;
+
+	return csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
+}
+
+void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out ) {
+	vec3_t engine_angles;
+	csgo::i::engine->get_viewangles( engine_angles );
+
+	csgo::clamp( engine_angles );
+
+	csgo::for_each_player( [ & ] ( player_t* ent ) {
+		if ( ent->team( ) == g::local->team( ) || ent->immune( ) )
+			return;
+
+		auto angle_to = csgo::calc_angle( g::local->eyes( ), ent->eyes( ) );
+
+		csgo::clamp( angle_to );
+
+		targets_out.push_back( {
+			ent,
+			csgo::calc_fov( engine_angles, angle_to ),
+			g::local->origin( ).dist_to( ent->origin( ) ),
+			ent->health( )
+			}
+		);
+
+		}
+	);
+
+	if ( targets_out.empty( ) )
+		return;
+
+	/* sort targets by relevance, to aim at most effective target */
+	/* prioritize entity by fov, but select those that are easier to kill if they are both valid options*/
+	std::sort( targets_out.begin( ), targets_out.end( ), [ & ] ( aim_target_t& lhs, aim_target_t& rhs ) {
+		if ( fabsf( lhs.m_fov - rhs.m_fov ) < 20.0f )
+			return lhs.m_health < rhs.m_health;
+
+		return lhs.m_fov < rhs.m_fov;
+		}
+	);
+}
+
+void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
+	if ( !active_config.main_switch || !g::local || !g::local->alive( ) )
+		return;
+
+	if ( !can_shoot( ) ) {
+		if ( active_config.auto_shoot )
+			ucmd->m_buttons &= ~1;
+
+		return;
+	}
+
+	/* get potential ragebot targets */
+	/* sanity checks and sorting is already done here automatically */
+	std::deque < aim_target_t > targets {};
+	select_targets( targets );
+
+	if ( targets.empty( ) )
+		return;
+
+	/* make static, save some space on the stack */
+	struct {
+		player_t* m_ent = nullptr;
+		vec3_t m_point = vec3_t( );
+		int m_hitbox = 0;
+		lagcomp::lag_record_t m_record;
+		float m_dmg = 0.0f;
+	} static best;
+
+	memset( &best, 0, sizeof( best ) );
+
+	scan_points.clear( );
+
+	for ( auto& target : targets ) {
+		/* create only once, save some space on the stack */
+		static vec3_t point = vec3_t( );
+		static int hitbox_out = 0;
+		static lagcomp::lag_record_t record_out;
+		static float dmg_out = 0.0f;
+
+		point = vec3_t( );
+		hitbox_out = 0;
+		memset( &record_out, 0, sizeof( record_out ) );
+		dmg_out = 0.0f;
+
+		idealize_shot( target.m_ent, point, hitbox_out, record_out, dmg_out );
+
+		if ( dmg_out > 0.0f && dmg_out > best.m_dmg ) {
+			best.m_ent = target.m_ent;
+			best.m_point = point;
+			best.m_hitbox = hitbox_out;
+			best.m_record = record_out;
+			best.m_dmg = dmg_out;
+		}
+	}
+
+	scan_points.sync( );
+
+	if ( !best.m_ent )
+		return;
+
+	auto angle_to = csgo::calc_angle( g::local->eyes( ), best.m_point );
+	csgo::clamp( angle_to );
+
+	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 255, best.m_hitbox, best.m_record );
+	auto should_aim = best.m_dmg && hc;
+
+	/* TODO: EXTRAPOLATE POSITION TO SLOW DOWN EXACTLY WHEN WE SHOOT */
+	if ( active_config.auto_slow && best.m_dmg && !hc && g::local->vel( ).length_2d( ) > 0.1f ) {
+		const auto vec_move = vec3_t( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
+		const auto magnitude = vec_move.length_2d( );
+		const auto max_speed = g::local->weapon( )->data( )->m_max_speed;
+		const auto move_to_button_ratio = 250.0f / 450.0f;
+		const auto speed_ratio = ( max_speed * 0.34f ) * 0.7f;
+		const auto move_ratio = speed_ratio * move_to_button_ratio;
+
+		if ( g::local->vel( ).length_2d( ) > g::local->weapon( )->data( )->m_max_speed * 0.34f ) {
+			auto vel_ang = csgo::vec_angle( vec_move );
+			vel_ang.y = csgo::normalize( vel_ang.y + 180.0f );
+
+			const auto normal = csgo::angle_vec( vel_ang ).normalized( );
+			const auto speed_2d = g::local->vel( ).length_2d( );
+
+			old_fmove = normal.x * speed_2d;
+			old_smove = normal.y * speed_2d;
+		}
+		else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
+			old_fmove = ( old_fmove / magnitude ) * move_ratio;
+			old_smove = ( old_smove / magnitude ) * move_ratio;
+		}
+	}
+
+	if ( !active_config.auto_shoot )
+		should_aim = ucmd->m_buttons & 1 && best.m_dmg;
+
+	if ( should_aim ) {
+		if ( active_config.auto_shoot ) {
+			ucmd->m_buttons |= 1;
+			g::send_packet = true;
+		}
+
+		if ( active_config.auto_scope && !g::local->scoped( ) &&
+			( g::local->weapon( )->item_definition_index( ) == 9
+				|| g::local->weapon( )->item_definition_index( ) == 40
+				|| g::local->weapon( )->item_definition_index( ) == 38
+				|| g::local->weapon( )->item_definition_index( ) == 11 ) )
+			ucmd->m_buttons |= 2048;
+
+		auto ang = angle_to - g::local->aim_punch( ) * 2.0f;
+		csgo::clamp( ang );
+
+		ucmd->m_angs = ang;
+
+		if ( !active_config.silent )
+			csgo::i::engine->set_viewangles( ang );
+
+		best.m_record.backtrack( ucmd );
+
+		get_target_pos( best.m_ent->idx( ) ) = best.m_point;
+		get_target( ) = best.m_ent;
+		get_shots( best.m_ent->idx( ) )++;
+		get_shot_pos( best.m_ent->idx( ) ) = g::local->eyes( );
+		get_lag_rec( best.m_ent->idx( ) ) = best.m_record;
+		get_target_idx( ) = best.m_ent->idx( );
+		get_hitbox( best.m_ent->idx( ) ) = best.m_hitbox;
+	}
+	else if ( best.m_dmg ) {
+		if ( g::local->weapon( )->item_definition_index( ) == 9
+			|| g::local->weapon( )->item_definition_index( ) == 40
+			|| g::local->weapon( )->item_definition_index( ) == 38
+			|| g::local->weapon( )->item_definition_index( ) == 11 ) {
+			if ( active_config.auto_scope && !g::local->scoped( ) )
+				ucmd->m_buttons |= 2048;
+			else if ( active_config.auto_scope && g::local->scoped( ) )
+				ucmd->m_buttons &= ~2048;
+		}
+	}
+}
+
+bool features::ragebot::create_points( lagcomp::lag_record_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side ) {
+	vec3_t hitbox_pos = vec3_t( 0.0f, 0.0f, 0.0f );
+	float hitbox_rad = 0.0f;
+	float hitbox_zrad = 0.0f;
+
+	if ( !get_hitbox( rec, i, hitbox_pos, hitbox_rad, hitbox_zrad ) )
+		return false;
+
+	uint32_t multipoint_mask = mp_none;
+
+	/* enable multipoint for these_hitboxes */
+	multipoint_mask |= mp_center;
+
+	float pointscale = 0.0f;
+
+	if ( i == hitbox_head ) {
+		multipoint_mask |= mp_top;
+		pointscale = active_config.head_pointscale;
+	}
+	else if ( i >= hitbox_pelvis && i <= hitbox_upper_chest ) {
+		/* we can optimize and save quite a bit of points to scan by just guessing what points we wont be able to hit*/
+		/* all we need to do is see if we can hit most points on either side before scanning all of them */
+		/* (scan 1 point which will help us rule out one side completely... maybe even 9+ points saved) */
+		switch ( multipoint_side ) {
+			case mp_side_none: multipoint_mask |= mp_none; break;
+			case mp_side_left: multipoint_mask |= mp_left; break;
+			case mp_side_right: multipoint_mask |= mp_right; break;
+		}
+
+		pointscale = active_config.body_pointscale;
+	}
+	else {
+		/* no need to multipoint*/
+		pointscale = 0.0f;
+	}
+
+	/* forgot this last time, we need a scalar, but pointscale goes from 0 - 100 */
+	pointscale /= 100.0f;
+
+	auto fwd_vec = g::local->eyes( ) - hitbox_pos;
+	fwd_vec.normalize( );
+
+	auto side_vec = fwd_vec.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
+
+	/* force multipoint to only center if pointscale is 0 */
+	if ( !pointscale )
+		multipoint_mask = mp_none | mp_center;
+
+	if ( multipoint_mask & mp_center )
+		points.push_back( hitbox_pos );
+
+	if ( multipoint_mask & mp_left )
+		points.push_back( hitbox_pos + side_vec * hitbox_rad * pointscale );
+
+	if ( multipoint_mask & mp_right )
+		points.push_back( hitbox_pos + vec3_t( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale );
+
+	if ( multipoint_mask & mp_bottom )
+		points.push_back( hitbox_pos - vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
+
+	if ( multipoint_mask & mp_top )
+		points.push_back( hitbox_pos + vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
+
+	for ( auto& point : points )
+		scan_points.emplace( point );
+
+	return true;
+}
+
+bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& pos_out, float& rad_out, float& zrad_out ) {
+	auto mdl = rec.m_pl->mdl( );
+
+	if ( !mdl )
+		return false;
+
+	auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
+
+	if ( !studio_mdl )
+		return false;
+
+	auto set = studio_mdl->hitbox_set( 0 );
+
+	if ( !set )
+		return false;
+
+	auto hitbox = set->hitbox( i );
+
+	if ( !hitbox )
+		return false;
+
+	matrix3x4_t* bone_matrix = nullptr;
+
+	const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve;
+
+	if ( misses % 3 == 0 )
+		bone_matrix = rec.m_bones1;
+	else if ( misses % 3 == 1 )
+		bone_matrix = rec.m_bones2;
+	else
+		bone_matrix = rec.m_bones3;
+
+	vec3_t vmin, vmax;
+	VEC_TRANSFORM( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
+	VEC_TRANSFORM( hitbox->m_bbmax, bone_matrix [ hitbox->m_bone ], vmax );
+
+	pos_out = ( vmin + vmax ) * 0.5f;
+	rad_out = hitbox->m_radius;
+	zrad_out = fabsf( vmax.z - vmin.z + hitbox->m_radius * 2.0f ) * 0.5f;
+
+	return true;
+}
+
+bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg ) {
+	const auto weapon = g::local->weapon( );
+
+	if ( !weapon )
+		return false;
+
+	const auto weapon_data = weapon->data( );
+
+	if ( !weapon_data )
+		return false;
+
+	/* select side to multipoint on (only one side at a time, saves a shit ton of frames) */
+	multipoint_side_t multipoint_side = mp_side_none;
+
+	const auto src = g::local->eyes( );
+
+	auto eyes_max = rec.m_origin + vec3_t( 0.0f, 0.0f, 64.0f );
+	auto fwd = eyes_max - src;
+	fwd.normalize( );
+
+	if ( !fwd.is_valid( ) )
+		return false;
+
+	auto right_dir = fwd.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
+	auto left_dir = -right_dir;
+	auto dmg_center = autowall::dmg( g::local, rec.m_pl, src, eyes_max, 0 /* pretend player would be there */ );
+	auto dmg_left = autowall::dmg( g::local, rec.m_pl, src + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
+	auto dmg_right = autowall::dmg( g::local, rec.m_pl, src + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
+
+	/* will we most likely not do damage at all? then let's cancel target selection altogether i guess */
+	if ( !dmg_center && !dmg_left && !dmg_right )
+		return false;
+
+	std::deque< int > hitboxes { };
+
+	if ( active_config.scan_pelvis )
+		hitboxes.push_back( hitbox_pelvis );
+
+	if ( active_config.scan_chest ) {
+		hitboxes.push_back( hitbox_chest );
+	}
+
+	if ( active_config.scan_head )
+		hitboxes.push_back( hitbox_head );
+
+	if ( active_config.scan_neck )
+		hitboxes.push_back( hitbox_neck );
+
+	if ( active_config.scan_feet ) {
+		hitboxes.push_back( hitbox_right_foot );
+		hitboxes.push_back( hitbox_left_foot );
+	}
+
+	if ( active_config.scan_legs ) {
+		hitboxes.push_back( hitbox_right_calf );
+		hitboxes.push_back( hitbox_left_calf );
+	}
+
+	if ( active_config.scan_arms ) {
+		hitboxes.push_back( hitbox_right_forearm );
+		hitboxes.push_back( hitbox_left_forearm );
+	}
+
+	if ( active_config.headshot_only ) {
+		hitboxes.clear( );
+		hitboxes.push_front( hitbox_head );
+	}
+
+	/* force baim, literally removes head hitbox from hitscan  */
+	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
+	autowall::scale_dmg( rec.m_pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
+
+	if ( get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses
+		|| ( active_config.baim_air && !( rec.m_flags & 1 ) )
+		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) ) ) {
+		const auto head_entry = std::find_if( hitboxes.begin( ), hitboxes.end( ), [ ] ( int& hitbox ) { return hitbox == hitbox_head; } );
+
+		if ( head_entry != hitboxes.end( ) )
+			hitboxes.erase( head_entry, head_entry );
+	}
+
+	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
+	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
+	const auto damage_scalar = g::next_tickbase_shot ? 1.0f : 1.0f;
+
+	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;
+//
+	///* put body hitbox at front of queue if it is prioritized */
+	//if ( body_priority && !hitboxes.empty( ) ) {
+	//	const auto body_element = std::find_if( hitboxes.begin( ), hitboxes.end( ), [ ] ( int& hitbox ) { return hitbox == hitbox_pelvis; } );
+//
+	//	if ( body_element != hitboxes.end( ) ) {
+	//		/* erase body element and place at front of queue to be scanned first */
+	//		hitboxes.erase( body_element, body_element );
+	//		hitboxes.push_front( hitbox_pelvis );
+	//	}
+	//}
+
+	if ( hitboxes.empty( ) )
+		return false;
+
+	/* select side to multipoint on (only one side at a time, saves a shit ton of frames) */
+	if ( !dmg_left && !dmg_right )
+		multipoint_side = mp_side_none;
+	else if ( dmg_left > dmg_right )
+		multipoint_side = mp_side_left;
+	else if ( dmg_right > dmg_left )
+		multipoint_side = mp_side_right;
+
+	const auto safe_point_active = active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode );
+
+	/* use other matrix with same points, trying to find alignments in the two matricies */
+	/* shift over by 1 entry in our records */
+	matrix3x4_t* dmg_scan_matrix = nullptr;
+
+	if ( safe_point_active ) {
+		const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve + 1;
+
+		if ( misses % 3 == 0 )
+			dmg_scan_matrix = rec.m_bones1;
+		else if ( misses % 3 == 1 )
+			dmg_scan_matrix = rec.m_bones2;
+		else
+			dmg_scan_matrix = rec.m_bones3;
+	}
+	else {
+		const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve;
+
+		if ( misses % 3 == 0 )
+			dmg_scan_matrix = rec.m_bones1;
+		else if ( misses % 3 == 1 )
+			dmg_scan_matrix = rec.m_bones2;
+		else
+			dmg_scan_matrix = rec.m_bones3;
+	}
+
+	auto backup_abs_origin = rec.m_pl->abs_origin( );
+	const auto backup_origin = rec.m_pl->origin( );
+	const auto backup_min = rec.m_pl->mins( );
+	const auto backup_max = rec.m_pl->maxs( );
+
+	/* making this static might save a ton of repetitive allocation*/
+	static std::array< matrix3x4_t, 128 > backup_bones { };
+	memcpy( backup_bones.data( ), rec.m_pl->bone_cache( ), sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+
+	/* set playter data required for autowall and hitscan to work */
+	rec.m_pl->mins( ) = rec.m_min;
+	rec.m_pl->maxs( ) = rec.m_max;
+	rec.m_pl->origin( ) = rec.m_origin;
+	rec.m_pl->set_abs_origin( rec.m_origin );
+	memcpy( rec.m_pl->bone_cache( ), dmg_scan_matrix, sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+
+	float best_dmg_tmp = 0.0f;
+	vec3_t best_pos;
+	int best_hitbox;
+
+	/* select best point on all hitboxes */
+	for ( auto& hitbox : hitboxes ) {
+		std::deque< vec3_t > points { };
+
+		if ( !create_points( rec, hitbox, points, multipoint_side ) )
+			continue;
+
+		if ( points.empty( ) )
+			continue;
+
+		vec3_t best_point = vec3_t( );
+		float best_points_damage = 0.0f;
+
+		/* select best point on hitbox */
+		/* scan all selected points and take first one we find, there's no point in scanning for more */
+		for ( auto& point : points ) {
+			const auto dmg = autowall::dmg( g::local, rec.m_pl, src, point, -1 ) * damage_scalar;
+
+			if ( dmg > best_points_damage ) {
+				best_point = point;
+				best_points_damage = dmg;
+			}
+		}
+
+		if ( best_points_damage > best_dmg_tmp ) {
+			/* save best data */
+			best_pos = best_point;
+			best_hitbox = hitbox;
+
+			best_dmg_tmp = best_points_damage;
+		}
+
+		/* if we meet min dmg requirement or shot will be fatal, we can immediately break out */
+		//if ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
+		//	best_dmg = best_dmg_tmp;
+		//	break;
+		//}
+	}
+
+	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) ) {
+		/* save best data */
+		pos_out = best_pos;
+		hitbox_out = best_hitbox;
+		best_dmg = best_dmg_tmp;
+	}
+
+	/* restore player data to what it was before so we dont fuck up anything */
+	rec.m_pl->mins( ) = backup_min;
+	rec.m_pl->maxs( ) = backup_max;
+	rec.m_pl->origin( ) = backup_origin;
+	rec.m_pl->set_abs_origin( backup_abs_origin );
+	memcpy( rec.m_pl->bone_cache( ), backup_bones.data( ), sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+
+	return best_dmg_tmp > 0.0f;
+}
+
+void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, lagcomp::lag_record_t& rec_out, float& best_dmg ) {
+	const auto recs = lagcomp::get( ent );
+	const auto shot = lagcomp::get_shot( ent );
+
+	if ( !ent->valid( ) )
+		return;
+
+	std::deque < lagcomp::lag_record_t > best_recs { };
+
+	///* prefer onshot */
+	if ( shot.second ) {
+		best_recs.push_back( shot.first );
+		//
+		float oldest_simtime = FLT_MAX;
+		//
+		lagcomp::lag_record_t* oldest_rec = nullptr;
+		//
+		if ( recs.second ) {
+			for ( auto& rec : recs.first ) {
+				if ( rec.m_simtime < oldest_simtime && !rec.m_extrapolated ) {
+					oldest_rec = &rec;
+					oldest_simtime = rec.m_simtime;
+				}
+			}
+		}
+		//
+		if ( oldest_rec )
+			best_recs.push_back( *oldest_rec );
+	}
+	else if ( recs.second ) {
+		float newest_simtime = 0.0f;
+		float newest_simulated_simtime = 0.0f;
+		float oldest_simtime = FLT_MAX;
+		float highest_speed = 0.0f;
+		float highest_sideways_amount = 0.0f;
+
+		//
+		lagcomp::lag_record_t* newest_rec = nullptr;
+		lagcomp::lag_record_t* oldest_rec = nullptr;
+		lagcomp::lag_record_t* simulated_rec = nullptr;
+		lagcomp::lag_record_t* speed_rec = nullptr;
+		lagcomp::lag_record_t* ang_diff_rec = nullptr;
+
+		const auto at_target_yaw = csgo::normalize( csgo::calc_angle( g::local->eyes( ), ent->eyes( ) ).y );
+		//
+		for ( auto& rec : recs.first ) {
+			if ( rec.m_simtime < oldest_simtime && !rec.m_extrapolated ) {
+				oldest_rec = &rec;
+				oldest_simtime = rec.m_simtime;
+			}
+			//
+			if ( rec.m_simtime > newest_simtime && !rec.m_extrapolated ) {
+				newest_rec = &rec;
+				newest_simtime = rec.m_simtime;
+			}
+
+			const auto speed2d = rec.m_vel.length_2d( );
+
+			if ( rec.m_flags & 1 && speed2d > highest_speed && !rec.m_extrapolated ) {
+				speed_rec = &rec;
+				highest_speed = speed2d;
+			}
+
+			const auto ang_diff = fabsf( csgo::normalize( at_target_yaw - csgo::normalize( rec.m_abs_yaw ) ) );
+
+			if ( ang_diff > highest_sideways_amount && !rec.m_extrapolated ) {
+				ang_diff_rec = &rec;
+				highest_sideways_amount = ang_diff;
+			}
+			//
+						/* removed for now because lag prediction is causing inaccracies */
+						//if ( rec.m_simtime > newest_simulated_simtime && rec.m_extrapolated ) {
+						//	simulated_rec = &rec;
+						//	newest_simulated_simtime = rec.m_simtime;
+						//}
+		}
+
+		if ( ang_diff_rec ) {
+			if ( speed_rec && abs( speed_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+				speed_rec = nullptr;
+
+			if ( newest_rec && abs( newest_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+				newest_rec = nullptr;
+
+			if ( oldest_rec && abs( oldest_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+				oldest_rec = nullptr;
+
+			best_recs.push_back( *ang_diff_rec );
+		}
+
+		if ( speed_rec ) {
+			if ( newest_rec && abs( newest_rec->m_tick - speed_rec->m_tick ) <= 3 )
+				newest_rec = nullptr;
+
+			if ( oldest_rec && abs( oldest_rec->m_tick - speed_rec->m_tick ) <= 3 )
+				oldest_rec = nullptr;
+
+			best_recs.push_back( *speed_rec );
+		}
+
+		//
+		if ( newest_rec != oldest_rec && newest_rec )
+			best_recs.push_back( *newest_rec );
+		//
+		if ( oldest_rec )
+			best_recs.push_back( *oldest_rec );
+		//
+		if ( simulated_rec )
+			best_recs.push_back( *simulated_rec );
+	}
+
+	/* manually fix annoying airstuckers */
+	//if ( fabsf( csgo::i::globals->m_curtime - ent->simtime( ) ) > 1.0f ) {
+	//	lagcomp::lag_record_t rec;
+	//	rec.store( ent, ent->origin( ), false );
+//
+	//	rec.m_tick = csgo::time2ticks( csgo::i::globals->m_curtime );
+	//	rec.m_simtime = csgo::i::globals->m_curtime;
+//
+	//	best_recs.clear( );
+	//	best_recs.push_back( rec );
+	//}
+
+	if ( best_recs.empty( ) )
+		return;
+
+	/* scan for a good shot in one of the records we have */
+	for ( auto& record : best_recs ) {
+		if ( hitscan( record, pos_out, hitbox_out, best_dmg ) ) {
+			rec_out = record;
+			break;
+		}
+	}
+}
+
+#pragma optimize( "2", off )

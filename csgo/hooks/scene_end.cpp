@@ -23,7 +23,7 @@ void __fastcall hooks::scene_end( REG ) {
 		features::chams::old_origin = g::local->origin( );
 
 	if ( g::local ) {
-		for ( auto i = 1; i <= 200; i++ ) {
+		for ( auto i = 1; i <= csgo::i::ent_list->get_highest_index( ); i++ ) {
 			const auto ent = csgo::i::ent_list->get < entity_t* >( i );
 
 			if ( !ent || !ent->client_class( ) || ( ent->client_class( )->m_class_id != 40 && ent->client_class( )->m_class_id != 42 ) )

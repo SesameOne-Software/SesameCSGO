@@ -10,6 +10,8 @@
 #include "../animations/resolver.hpp"
 #include "../javascript/js_api.hpp"
 #include "../menu/options.hpp"
+#include "../features/prediction.hpp"
+#include "../menu/d3d9_render.hpp"
 
 void* find_hud_element( const char* name ) {
 	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08" ) ).add( 1 ).deref( ).get< void* >( );
@@ -65,6 +67,9 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
+	if ( stage == 5 )
+		sesui::binds::frame_time = csgo::i::globals->m_frametime;
+
 	/* reset tickbase shift data if not in game. */
 	if ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) {
 		g::dt_ticks_to_shift = 0;
@@ -78,125 +83,129 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	float old_flashalpha;
 	float old_flashtime;
 
-	anims::run( stage );
+	if ( csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
+		anims::run( stage );
 
-	RUN_SAFE(
-		"set_aspect_ratio",
-		set_aspect_ratio( );
-	);
-
-	if ( stage == 5 && g::local ) {
-		RUN_SAFE(
-			"animations::resolver::create_beams",
-			animations::resolver::create_beams( );
-		);
+		features::prediction::update( stage );
 
 		RUN_SAFE(
-			"features::nade_prediction::draw_beam",
-			features::nade_prediction::draw_beam( );
+			"set_aspect_ratio",
+			set_aspect_ratio( );
 		);
 
-		//RUN_SAFE (
-		//	"run_preserve_death_notices",
-		//	run_preserve_death_notices ( );
-		//);
+		if ( stage == 5 && g::local ) {
+			RUN_SAFE(
+				"animations::resolver::create_beams",
+				animations::resolver::create_beams( );
+			);
 
-		if ( g::local->alive( ) ) {
-			old_aimpunch = g::local->aim_punch( );
-			old_viewpunch = g::local->view_punch( );
+			//RUN_SAFE(
+			//	"features::nade_prediction::draw_beam",
+			//	features::nade_prediction::draw_beam( );
+			//);
 
-			if ( removals [ 3 ] )
-				g::local->aim_punch( ) = vec3_t( 0.0f, 0.0f, 0.0f );
+			//RUN_SAFE (
+			//	"run_preserve_death_notices",
+			//	run_preserve_death_notices ( );
+			//);
 
-			if ( removals [ 4 ] )
-				g::local->view_punch( ) = vec3_t( 0.0f, 0.0f, 0.0f );
-		}
+			if ( g::local->alive( ) ) {
+				old_aimpunch = g::local->aim_punch( );
+				old_viewpunch = g::local->view_punch( );
 
-		static const std::vector< const char* > smoke_mats = {
-			"particle/vistasmokev1/vistasmokev1_fire",
-			"particle/vistasmokev1/vistasmokev1_smokegrenade",
-			"particle/vistasmokev1/vistasmokev1_emods",
-			"particle/vistasmokev1/vistasmokev1_emods_impactdust",
-		};
+				if ( removals [ 3 ] )
+					g::local->aim_punch( ) = vec3_t( 0.0f, 0.0f, 0.0f );
 
-		for ( auto mat_s : smoke_mats ) {
-			const auto mat = csgo::i::mat_sys->findmat( mat_s, _( "Other textures" ) );
-
-			if ( mat )
-				mat->set_material_var_flag( 4, removals [ 0 ] );
-		}
-
-		static auto smoke_count = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 8B 15 ? ? ? ? 0F 57 C0" ) ).add( 8 ).deref( ).get< int* >( );
-
-		if ( removals [ 0 ] )
-			*smoke_count = 0;
-
-		static sesui::color last_prop_clr = prop_color;
-		static sesui::color last_clr = world_color;
-		static bool last_alive = false;
-
-		if ( g::local && ( g::local->alive( ) != last_alive || ( last_clr.r != world_color.r || last_clr.g != world_color.g || last_clr.b != world_color.b || last_clr.a != world_color.a ) || ( last_prop_clr.r != prop_color.r || last_prop_clr.g != prop_color.g || last_prop_clr.b != prop_color.b || last_prop_clr.a != prop_color.a ) ) ) {
-			static auto load_named_sky = pattern::search( _( "engine.dll" ), _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void( __fastcall* )( const char* ) >( );
-
-			load_named_sky( _( "sky_csgo_night02" ) );
-
-			for ( auto i = csgo::i::mat_sys->first_material( ); i != csgo::i::mat_sys->invalid_material( ); i = csgo::i::mat_sys->next_material( i ) ) {
-				auto mat = csgo::i::mat_sys->get_material( i );
-
-				if ( !mat || mat->is_error_material( ) )
-					continue;
-
-				const auto is_prop = strstr( mat->get_texture_group_name( ), _( "StaticProp" ) );
-
-				if ( is_prop ) {
-					mat->color_modulate( prop_color.r * 255.0f, prop_color.g * 255.0f, prop_color.b * 255.0f );
-					mat->alpha_modulate( prop_color.a * 255.0f );
-				}
-				else if ( strstr( mat->get_texture_group_name( ), _( "World" ) ) ) {
-					mat->color_modulate( world_color.r * 255.0f, world_color.g * 255.0f, world_color.b * 255.0f );
-					mat->alpha_modulate( world_color.a * 255.0f );
-				}
+				if ( removals [ 4 ] )
+					g::local->view_punch( ) = vec3_t( 0.0f, 0.0f, 0.0f );
 			}
 
-			last_prop_clr = prop_color;
-			last_clr = world_color;
+			static const std::vector< const char* > smoke_mats = {
+				"particle/vistasmokev1/vistasmokev1_fire",
+				"particle/vistasmokev1/vistasmokev1_smokegrenade",
+				"particle/vistasmokev1/vistasmokev1_emods",
+				"particle/vistasmokev1/vistasmokev1_emods_impactdust",
+			};
+
+			for ( auto mat_s : smoke_mats ) {
+				const auto mat = csgo::i::mat_sys->findmat( mat_s, _( "Other textures" ) );
+
+				if ( mat )
+					mat->set_material_var_flag( 4, removals [ 0 ] );
+			}
+
+			static auto smoke_count = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 8B 15 ? ? ? ? 0F 57 C0" ) ).add( 8 ).deref( ).get< int* >( );
+
+			if ( removals [ 0 ] )
+				*smoke_count = 0;
+
+			static sesui::color last_prop_clr = prop_color;
+			static sesui::color last_clr = world_color;
+			static bool last_alive = false;
+
+			if ( g::local && ( g::local->alive( ) != last_alive || ( last_clr.r != world_color.r || last_clr.g != world_color.g || last_clr.b != world_color.b || last_clr.a != world_color.a ) || ( last_prop_clr.r != prop_color.r || last_prop_clr.g != prop_color.g || last_prop_clr.b != prop_color.b || last_prop_clr.a != prop_color.a ) ) ) {
+				static auto load_named_sky = pattern::search( _( "engine.dll" ), _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void( __fastcall* )( const char* ) >( );
+
+				load_named_sky( _( "sky_csgo_night02" ) );
+
+				for ( auto i = csgo::i::mat_sys->first_material( ); i != csgo::i::mat_sys->invalid_material( ); i = csgo::i::mat_sys->next_material( i ) ) {
+					auto mat = csgo::i::mat_sys->get_material( i );
+
+					if ( !mat || mat->is_error_material( ) )
+						continue;
+
+					const auto is_prop = strstr( mat->get_texture_group_name( ), _( "StaticProp" ) );
+
+					if ( is_prop ) {
+						mat->color_modulate( prop_color.r * 255.0f, prop_color.g * 255.0f, prop_color.b * 255.0f );
+						mat->alpha_modulate( prop_color.a * 255.0f );
+					}
+					else if ( strstr( mat->get_texture_group_name( ), _( "World" ) ) ) {
+						mat->color_modulate( world_color.r * 255.0f, world_color.g * 255.0f, world_color.b * 255.0f );
+						mat->alpha_modulate( world_color.a * 255.0f );
+					}
+				}
+
+				last_prop_clr = prop_color;
+				last_clr = world_color;
+			}
+
+			last_alive = g::local && g::local->alive( );
+
+			for ( int i = 1; i <= csgo::i::ent_list->get_highest_index( ); i++ ) {
+				const auto pl = csgo::i::ent_list->get < player_t* >( i );
+
+				if ( !pl || pl->dormant( ) || !pl->client_class( ) || pl->client_class( )->m_class_id != 42 )
+					continue;
+
+				pl->force( ) *= ragdoll_force;
+				pl->ragdoll_vel( ) *= ragdoll_force;
+			}
 		}
 
-		last_alive = g::local && g::local->alive( );
+		if ( stage == 2 && g::local ) {
+			if ( removals [ 1 ] ) {
+				g::local->flash_alpha( ) = 0.0f;
+				g::local->flash_duration( ) = 0.0f;
+			}
 
-		for ( int i = 1; i <= 200; i++ ) {
-			const auto pl = csgo::i::ent_list->get < player_t* >( i );
-
-			if ( !pl || pl->dormant( ) || !pl->client_class( ) || pl->client_class( )->m_class_id != 42 )
-				continue;
-
-			pl->force( ) *= ragdoll_force;
-			pl->ragdoll_vel( ) *= ragdoll_force;
-		}
-	}
-
-	if ( stage == 2 && g::local ) {
-		if ( removals [ 1 ] ) {
-			g::local->flash_alpha( ) = 0.0f;
-			g::local->flash_duration( ) = 0.0f;
+			RUN_SAFE(
+				"js::process_net_update_callbacks",
+				js::process_net_update_callbacks( );
+			);
 		}
 
-		RUN_SAFE(
-			"js::process_net_update_callbacks",
-			js::process_net_update_callbacks( );
-		);
-	}
-
-	if ( stage == 2 && g::local ) {
-		RUN_SAFE(
-			"js::process_net_update_end_callbacks",
-			js::process_net_update_end_callbacks( );
-		);
+		if ( stage == 2 && g::local ) {
+			RUN_SAFE(
+				"js::process_net_update_end_callbacks",
+				js::process_net_update_end_callbacks( );
+			);
+		}
 	}
 
 	old::frame_stage_notify( REG_OUT, stage );
 
-	if ( stage == 5 && g::local ) {
+	if ( stage == 5 && g::local && csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
 		if ( g::local->alive( ) ) {
 			g::local->aim_punch( ) = old_aimpunch;
 			g::local->view_punch( ) = old_viewpunch;

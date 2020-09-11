@@ -15,7 +15,7 @@ struct custom_vtx_t {
 
 void render::create_font( void** font, const std::wstring_view& family, int size, bool bold ) {
 	ID3DXFont* d3d_font = nullptr;
-	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_NORMAL, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
+	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : 525, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
 	*font = d3d_font;
 }
 
@@ -86,25 +86,25 @@ void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 
 void render::text( int x, int y, std::uint32_t color, void* font, const std::wstring_view& text, bool shadow, bool outline ) {
 	RECT rect;
-	SetRect ( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
-	
+	SetRect( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
+
 	if ( shadow ) {
-		SetRect ( &rect, x - 0.5f + 1, y - 0.5f + 1, x - 0.5f + 1, y - 0.5f + 1 );
-		reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		SetRect( &rect, x - 0.5f + 1, y - 0.5f + 1, x - 0.5f + 1, y - 0.5f + 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
 	}
 	else if ( outline ) {
-		SetRect ( &rect, x - 0.5f, y - 0.5f + 1, x - 0.5f, y - 0.5f + 1 );
-		reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-		SetRect ( &rect, x - 0.5f + 1, y - 0.5f, x - 0.5f + 1, y - 0.5f );
-		reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-		SetRect ( &rect, x - 0.5f - 1, y - 0.5f, x - 0.5f - 1, y - 0.5f );
-		reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-		SetRect ( &rect, x - 0.5f, y - 0.5f - 1, x - 0.5f, y - 0.5f - 1 );
-		reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		SetRect( &rect, x - 0.5f, y - 0.5f + 1, x - 0.5f, y - 0.5f + 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
+		SetRect( &rect, x - 0.5f + 1, y - 0.5f, x - 0.5f + 1, y - 0.5f );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
+		SetRect( &rect, x - 0.5f - 1, y - 0.5f, x - 0.5f - 1, y - 0.5f );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
+		SetRect( &rect, x - 0.5f, y - 0.5f - 1, x - 0.5f, y - 0.5f - 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
 	}
 
-	SetRect ( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
-	reinterpret_cast< ID3DXFont* >( font )->DrawTextW ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, color );
+	SetRect( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
+	reinterpret_cast< ID3DXFont* >( font )->DrawTextW( nullptr, text.data( ), text.length( ), &rect, DT_LEFT | DT_NOCLIP, color );
 }
 
 void render::circle( int x, int y, int radius, int segments, std::uint32_t color, int fraction, float rotation, bool outline ) {
@@ -113,9 +113,9 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 	auto pi = D3DX_PI;
 	const auto angle = rotation * D3DX_PI / 180.0f;
 
-	if ( fraction == 0 ) pi = D3DX_PI;     
-	if ( fraction == 2 ) pi = D3DX_PI / 2.0f; 
-	if ( fraction == 4 ) pi = D3DX_PI / 4.0f; 
+	if ( fraction == 0 ) pi = D3DX_PI;
+	if ( fraction == 2 ) pi = D3DX_PI / 2.0f;
+	if ( fraction == 4 ) pi = D3DX_PI / 4.0f;
 
 	if ( !outline ) {
 		circle [ 0 ].x = static_cast< float > ( x ) - 0.5f;
@@ -126,8 +126,8 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 	}
 
 	for ( auto i = outline ? 0 : 1; i < segments + 2; i++ ) {
-		circle [ i ].x = ( float ) ( x - radius * std::cosf( pi * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
-		circle [ i ].y = ( float ) ( y - radius * std::sinf( pi * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
+		circle [ i ].x = ( float )( x - radius * std::cosf( pi * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
+		circle [ i ].y = ( float )( y - radius * std::sinf( pi * ( ( i - 1 ) / ( segments / 2.0f ) ) ) ) - 0.5f;
 		circle [ i ].z = 0;
 		circle [ i ].rhw = 1;
 		circle [ i ].color = color;
@@ -145,7 +145,7 @@ void render::circle( int x, int y, int radius, int segments, std::uint32_t color
 	csgo::i::dev->CreateVertexBuffer( ( segments + 2 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
 
 	void* verticies;
-	vb->Lock( 0, ( segments + 2 ) * sizeof( vtx_t ), ( void** ) &verticies, 0 );
+	vb->Lock( 0, ( segments + 2 ) * sizeof( vtx_t ), ( void** )&verticies, 0 );
 	std::memcpy( verticies, &circle [ 0 ], ( segments + 2 ) * sizeof( vtx_t ) );
 	vb->Unlock( );
 
@@ -189,15 +189,15 @@ void render::polygon( const std::vector< std::pair< float, float > >& verticies,
 
 	IDirect3DVertexBuffer9* vb = nullptr;
 
-	csgo::i::dev->CreateVertexBuffer( ( verticies.size ( ) + 1 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+	csgo::i::dev->CreateVertexBuffer( ( verticies.size( ) + 1 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
 
 	void* verticies1;
-	vb->Lock( 0, ( verticies.size ( ) + 1 ) * sizeof( vtx_t ), ( void** ) &verticies1, 0 );
-	std::memcpy( verticies1, &vtx [ 0 ], ( verticies.size ( ) + 1 ) * sizeof( vtx_t ) );
+	vb->Lock( 0, ( verticies.size( ) + 1 ) * sizeof( vtx_t ), ( void** )&verticies1, 0 );
+	std::memcpy( verticies1, &vtx [ 0 ], ( verticies.size( ) + 1 ) * sizeof( vtx_t ) );
 	vb->Unlock( );
 
 	csgo::i::dev->SetStreamSource( 0, vb, 0, sizeof( vtx_t ) );
-	csgo::i::dev->DrawPrimitive( outline ? D3DPT_LINESTRIP : D3DPT_TRIANGLEFAN, 0, verticies.size ( ) );
+	csgo::i::dev->DrawPrimitive( outline ? D3DPT_LINESTRIP : D3DPT_TRIANGLEFAN, 0, verticies.size( ) );
 
 	if ( vb )
 		vb->Release( );
@@ -224,22 +224,22 @@ void render::polygon( const std::vector< std::pair< float, float > >& verticies,
 //	polygon( 4 * vertices, round, col );
 //}
 
-void render::clip( int x, int y, int width, int height, const std::function< void ( ) >& func ) {
+void render::clip( int x, int y, int width, int height, const std::function< void( ) >& func ) {
 	RECT backup_scissor_rect;
-	csgo::i::dev->GetScissorRect ( &backup_scissor_rect );
+	csgo::i::dev->GetScissorRect( &backup_scissor_rect );
 
 	RECT rect { x, y, x + width, y + height };
-	csgo::i::dev->SetRenderState ( D3DRS_SCISSORTESTENABLE, true );
-	csgo::i::dev->SetScissorRect ( &rect );
+	csgo::i::dev->SetRenderState( D3DRS_SCISSORTESTENABLE, true );
+	csgo::i::dev->SetScissorRect( &rect );
 
-	func ( );
+	func( );
 
-	csgo::i::dev->SetScissorRect ( &backup_scissor_rect );
-	csgo::i::dev->SetRenderState ( D3DRS_SCISSORTESTENABLE, false );
+	csgo::i::dev->SetScissorRect( &backup_scissor_rect );
+	csgo::i::dev->SetRenderState( D3DRS_SCISSORTESTENABLE, false );
 }
 
 bool render::key_pressed( const std::uint32_t key ) {
-	return utils::key_state ( key );
+	return utils::key_state( key );
 }
 
 void render::mouse_pos( pos& position ) {
@@ -248,15 +248,15 @@ void render::mouse_pos( pos& position ) {
 	position = pos { x, y };
 }
 
-void render::circle3d ( const vec3_t& pos, int rad, int segments, std::uint32_t color, bool outline ) {
+void render::circle3d( const vec3_t& pos, int rad, int segments, std::uint32_t color, bool outline ) {
 	std::vector< std::pair< float, float > > points { };
-	
+
 	auto src_point = pos;
 	src_point.y += static_cast< float > ( rad );
 
 	auto rotate_point = [ ] ( vec3_t pivot, vec3_t point, float ang ) -> vec3_t {
-		const auto s = std::sinf ( ang );
-		const auto c = std::cosf ( ang );
+		const auto s = std::sinf( ang );
+		const auto c = std::cosf( ang );
 
 		point.x -= pivot.x;
 		point.y -= pivot.y;
@@ -273,31 +273,31 @@ void render::circle3d ( const vec3_t& pos, int rad, int segments, std::uint32_t 
 	auto segment_num = 0;
 
 	for ( auto i = 0.0f; i < csgo::pi * 2.0f; i += ( csgo::pi * 2.0f ) / static_cast< float > ( segments ) ) {
-		auto new_point = rotate_point ( pos, src_point, i );
+		auto new_point = rotate_point( pos, src_point, i );
 		vec3_t screen;
 
-		csgo::render::world_to_screen ( screen, new_point );
+		csgo::render::world_to_screen( screen, new_point );
 
-		points.push_back ( { screen.x - 0.5f, screen.y - 0.5f } );
+		points.push_back( { screen.x - 0.5f, screen.y - 0.5f } );
 	}
 
-	polygon ( points, color, outline );
+	polygon( points, color, outline );
 }
 
-void render::gradient_rounded_rect ( int x, int y, int width, int height, int rad, int resolution, std::uint32_t color, std::uint32_t color1, bool outline ) {
+void render::gradient_rounded_rect( int x, int y, int width, int height, int rad, int resolution, std::uint32_t color, std::uint32_t color1, bool outline ) {
 	if ( resolution < 2 )
 		return;
 
-	circle ( x + width - rad, y + rad, rad, resolution, color, 4, 90.0f );
+	circle( x + width - rad, y + rad, rad, resolution, color, 4, 90.0f );
 
 	//gradient ( x, y + rad, width, height - rad * 2, color, color1, false );
 }
 
-void render::rounded_alpha_rect ( int x, int y, int width, int height, int rad, int resolution ) {
+void render::rounded_alpha_rect( int x, int y, int width, int height, int rad, int resolution ) {
 	if ( resolution < 2 )
 		return;
 
-	std::vector< std::pair< std::pair< float, float >, uint32_t > > verticies ( 4 * resolution + 4 );
+	std::vector< std::pair< std::pair< float, float >, uint32_t > > verticies( 4 * resolution + 4 );
 
 	for ( auto i = 0; i < 4; i++ ) {
 		const auto _x = x + ( ( i < 2 ) ? ( width - rad ) : rad );
@@ -305,18 +305,18 @@ void render::rounded_alpha_rect ( int x, int y, int width, int height, int rad, 
 		const auto a = 90.0f * i;
 
 		for ( auto j = 0; j < resolution; j++ ) {
-			const auto _a = csgo::deg2rad ( a + ( j / ( float ) ( resolution - 1 ) ) * 90.0f );
-			verticies [ i * resolution + j ].first = { _x + rad * std::sinf ( _a ) - 0.5f, _y - rad * std::cosf ( _a ) - 0.5f };
-			verticies [ i * resolution + j ].second = ( i % 2 ) ? D3DCOLOR_RGBA ( 255, 255, 255, 255 ) : D3DCOLOR_RGBA ( 112, 112, 112, 255 );
+			const auto _a = csgo::deg2rad( a + ( j / ( float )( resolution - 1 ) ) * 90.0f );
+			verticies [ i * resolution + j ].first = { _x + rad * std::sinf( _a ) - 0.5f, _y - rad * std::cosf( _a ) - 0.5f };
+			verticies [ i * resolution + j ].second = ( i % 2 ) ? D3DCOLOR_RGBA( 255, 255, 255, 255 ) : D3DCOLOR_RGBA( 112, 112, 112, 255 );
 		}
 
-		verticies [ i * resolution + resolution ].first = { ( x + width / 2 ) + width / 2 * std::sinf ( a ) - 0.5f, ( y + height / 2 ) - height / 2 * std::cosf ( a ) - 0.5f };
-		verticies [ i * resolution + resolution ].second = ( i % 2 ) ? D3DCOLOR_RGBA ( 255, 255, 255, 255 ) : D3DCOLOR_RGBA ( 112, 112, 112, 255 );
+		verticies [ i * resolution + resolution ].first = { ( x + width / 2 ) + width / 2 * std::sinf( a ) - 0.5f, ( y + height / 2 ) - height / 2 * std::cosf( a ) - 0.5f };
+		verticies [ i * resolution + resolution ].second = ( i % 2 ) ? D3DCOLOR_RGBA( 255, 255, 255, 255 ) : D3DCOLOR_RGBA( 112, 112, 112, 255 );
 	}
 
-	std::vector< vtx_t > vtx ( verticies.size ( ) + 1 );
+	std::vector< vtx_t > vtx( verticies.size( ) + 1 );
 
-	for ( auto i = 0; i < verticies.size ( ); i++ ) {
+	for ( auto i = 0; i < verticies.size( ); i++ ) {
 		vtx [ i ].x = verticies [ i ].first.first;
 		vtx [ i ].y = verticies [ i ].first.second;
 		vtx [ i ].z = 0;
@@ -324,29 +324,29 @@ void render::rounded_alpha_rect ( int x, int y, int width, int height, int rad, 
 		vtx [ i ].color = verticies [ i ].second;
 	}
 
-	vtx [ verticies.size ( ) ] = vtx [ 0 ];
+	vtx [ verticies.size( ) ] = vtx [ 0 ];
 
 	IDirect3DVertexBuffer9* vb = nullptr;
 
-	csgo::i::dev->CreateVertexBuffer ( ( verticies.size ( ) + 1 ) * sizeof ( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+	csgo::i::dev->CreateVertexBuffer( ( verticies.size( ) + 1 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
 
 	void* verticies1;
-	vb->Lock ( 0, ( verticies.size ( ) + 1 ) * sizeof ( vtx_t ), ( void** ) &verticies1, 0 );
-	std::memcpy ( verticies1, &vtx [ 0 ], ( verticies.size ( ) + 1 ) * sizeof ( vtx_t ) );
-	vb->Unlock ( );
+	vb->Lock( 0, ( verticies.size( ) + 1 ) * sizeof( vtx_t ), ( void** )&verticies1, 0 );
+	std::memcpy( verticies1, &vtx [ 0 ], ( verticies.size( ) + 1 ) * sizeof( vtx_t ) );
+	vb->Unlock( );
 
-	csgo::i::dev->SetStreamSource ( 0, vb, 0, sizeof ( vtx_t ) );
-	csgo::i::dev->DrawPrimitive ( D3DPT_TRIANGLEFAN, 0, verticies.size ( ) );
+	csgo::i::dev->SetStreamSource( 0, vb, 0, sizeof( vtx_t ) );
+	csgo::i::dev->DrawPrimitive( D3DPT_TRIANGLEFAN, 0, verticies.size( ) );
 
 	if ( vb )
-		vb->Release ( );
+		vb->Release( );
 }
 
-void render::rounded_rect ( int x, int y, int width, int height, int rad, int resolution, std::uint32_t color, bool outline ) {
+void render::rounded_rect( int x, int y, int width, int height, int rad, int resolution, std::uint32_t color, bool outline ) {
 	if ( resolution < 2 )
 		return;
 
-	std::vector< std::pair< float, float > > vtx ( 4 * resolution );
+	std::vector< std::pair< float, float > > vtx( 4 * resolution );
 
 	for ( auto i = 0; i < 4; i++ ) {
 		const auto _x = x + ( ( i < 2 ) ? ( width - rad ) : rad );
@@ -354,15 +354,15 @@ void render::rounded_rect ( int x, int y, int width, int height, int rad, int re
 		const auto a = 90.0f * i;
 
 		for ( auto j = 0; j < resolution; j++ ) {
-			const auto _a = csgo::deg2rad ( a + ( j / ( float ) ( resolution - 1 ) ) * 90.0f );
-			vtx [ i * resolution + j ] = { _x + rad * std::sinf ( _a ) - 0.5f, _y - rad * std::cosf ( _a ) - 0.5f };
+			const auto _a = csgo::deg2rad( a + ( j / ( float )( resolution - 1 ) ) * 90.0f );
+			vtx [ i * resolution + j ] = { _x + rad * std::sinf( _a ) - 0.5f, _y - rad * std::cosf( _a ) - 0.5f };
 		}
 	}
 
-	polygon ( vtx, color, outline );
+	polygon( vtx, color, outline );
 }
 
-void render::cube ( const vec3_t& pos, int size, std::uint32_t color ) {
+void render::cube( const vec3_t& pos, int size, std::uint32_t color ) {
 	static vec3_t scrn_one;
 	static vec3_t scrn_two;
 	static vec3_t scrn_three;
@@ -384,39 +384,39 @@ void render::cube ( const vec3_t& pos, int size, std::uint32_t color ) {
 	const auto mdist = static_cast< float >( size ) / 2.0f;
 
 	one = vec3_t( pos.x - mdist, pos.y - mdist, pos.z - mdist );
-	two = vec3_t ( pos.x - mdist, pos.y - mdist, pos.z + mdist );
-	three = vec3_t ( pos.x - mdist, pos.y + mdist, pos.z + mdist );
-	four = vec3_t ( pos.x - mdist, pos.y + mdist, pos.z - mdist );
-	five = vec3_t ( pos.x + mdist, pos.y - mdist, pos.z - mdist );
-	six = vec3_t ( pos.x + mdist, pos.y - mdist, pos.z + mdist );
-	seven = vec3_t ( pos.x + mdist, pos.y + mdist, pos.z + mdist );
-	eight = vec3_t ( pos.x + mdist, pos.y + mdist, pos.z - mdist );
+	two = vec3_t( pos.x - mdist, pos.y - mdist, pos.z + mdist );
+	three = vec3_t( pos.x - mdist, pos.y + mdist, pos.z + mdist );
+	four = vec3_t( pos.x - mdist, pos.y + mdist, pos.z - mdist );
+	five = vec3_t( pos.x + mdist, pos.y - mdist, pos.z - mdist );
+	six = vec3_t( pos.x + mdist, pos.y - mdist, pos.z + mdist );
+	seven = vec3_t( pos.x + mdist, pos.y + mdist, pos.z + mdist );
+	eight = vec3_t( pos.x + mdist, pos.y + mdist, pos.z - mdist );
 
-	if ( !csgo::render::world_to_screen ( scrn_one, one )
-		|| !csgo::render::world_to_screen ( scrn_two, two )
-		|| !csgo::render::world_to_screen ( scrn_three, three )
-		|| !csgo::render::world_to_screen ( scrn_four, four )
-		|| !csgo::render::world_to_screen ( scrn_five, five )
-		|| !csgo::render::world_to_screen ( scrn_six, six )
-		|| !csgo::render::world_to_screen ( scrn_seven, seven )
-		|| !csgo::render::world_to_screen ( scrn_eight, eight ) )
+	if ( !csgo::render::world_to_screen( scrn_one, one )
+		|| !csgo::render::world_to_screen( scrn_two, two )
+		|| !csgo::render::world_to_screen( scrn_three, three )
+		|| !csgo::render::world_to_screen( scrn_four, four )
+		|| !csgo::render::world_to_screen( scrn_five, five )
+		|| !csgo::render::world_to_screen( scrn_six, six )
+		|| !csgo::render::world_to_screen( scrn_seven, seven )
+		|| !csgo::render::world_to_screen( scrn_eight, eight ) )
 		return;
 
 	/* back */
-	line ( scrn_one.x, scrn_one.y, scrn_two.x, scrn_two.y, color );
-	line ( scrn_two.x, scrn_two.y, scrn_three.x, scrn_three.y, color );
-	line ( scrn_three.x, scrn_three.y, scrn_four.x, scrn_four.y, color );
-	line ( scrn_four.x, scrn_four.y, scrn_one.x, scrn_one.y, color );
+	line( scrn_one.x, scrn_one.y, scrn_two.x, scrn_two.y, color );
+	line( scrn_two.x, scrn_two.y, scrn_three.x, scrn_three.y, color );
+	line( scrn_three.x, scrn_three.y, scrn_four.x, scrn_four.y, color );
+	line( scrn_four.x, scrn_four.y, scrn_one.x, scrn_one.y, color );
 
 	/* front */
-	line ( scrn_five.x, scrn_five.y, scrn_six.x, scrn_six.y, color );
-	line ( scrn_six.x, scrn_six.y, scrn_seven.x, scrn_seven.y, color );
-	line ( scrn_seven.x, scrn_seven.y, scrn_eight.x, scrn_eight.y, color );
-	line ( scrn_eight.x, scrn_eight.y, scrn_five.x, scrn_five.y, color );
-	
+	line( scrn_five.x, scrn_five.y, scrn_six.x, scrn_six.y, color );
+	line( scrn_six.x, scrn_six.y, scrn_seven.x, scrn_seven.y, color );
+	line( scrn_seven.x, scrn_seven.y, scrn_eight.x, scrn_eight.y, color );
+	line( scrn_eight.x, scrn_eight.y, scrn_five.x, scrn_five.y, color );
+
 	/* connect sides */
-	line ( scrn_one.x, scrn_one.y, scrn_five.x, scrn_five.y, color );
-	line ( scrn_two.x, scrn_two.y, scrn_six.x, scrn_six.y, color );
-	line ( scrn_three.x, scrn_three.y, scrn_seven.x, scrn_seven.y, color );
-	line ( scrn_four.x, scrn_four.y, scrn_eight.x, scrn_eight.y, color );
+	line( scrn_one.x, scrn_one.y, scrn_five.x, scrn_five.y, color );
+	line( scrn_two.x, scrn_two.y, scrn_six.x, scrn_six.y, color );
+	line( scrn_three.x, scrn_three.y, scrn_seven.x, scrn_seven.y, color );
+	line( scrn_four.x, scrn_four.y, scrn_eight.x, scrn_eight.y, color );
 }

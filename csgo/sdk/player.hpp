@@ -227,11 +227,11 @@ public:
 	}
 
 	void pre_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 317 )( this );
 	}
 
 	void post_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 319 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
 	}
 
 	vec3_t world_space( ) {

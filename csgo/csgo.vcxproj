@@ -82,6 +82,7 @@
     <ClCompile Include="utils\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\animation_system.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="features\antiaim.hpp" />

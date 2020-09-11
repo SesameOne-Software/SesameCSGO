@@ -55,7 +55,7 @@ void hooks::init( ) {
 
 	/* create fonts */
 	render::create_font( ( void** )&features::esp::dbg_font, _( L"sesame_ui" ), N( 12 ), false );
-	render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 14 ), false );
+	render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 15 ), false );
 	render::create_font( ( void** )&features::esp::indicator_font, _( L"sesame_ui" ), N( 32 ), false );
 	render::create_font( ( void** )&features::esp::watermark_font, _( L"sesame_ui" ), N( 18 ), false );
 
@@ -102,8 +102,16 @@ void hooks::init( ) {
 #define to_string( func ) #func
 #define dbg_hook( a, b, c ) print_and_hook ( a, b, c, _( to_string ( b ) ) )
 	auto print_and_hook = [ ] ( void* from, void* to, void** original, const char* func_name ) {
-		MH_CreateHook( from, to, original );
-		MH_EnableHook( from );
+		if ( !from )
+			return dbg_print( _( "Invalid target function: %s" ), func_name );
+
+		//MessageBoxA( nullptr, func_name, func_name, 0 );
+
+		if ( MH_CreateHook( from, to, original ) != MH_OK )
+			return dbg_print( _( "Hook creation failed: %s" ), func_name );
+
+		if ( MH_EnableHook( from ) != MH_OK )
+			return dbg_print( _( "Hook enabling failed: %s" ), func_name );
 		// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
 		//std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
 	};
@@ -126,12 +134,12 @@ void hooks::init( ) {
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
 	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
-	//dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
+	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
 	dbg_hook( _send_net_msg, send_net_msg, ( void** )&old::send_net_msg );
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
 	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
-	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
+	//dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_command, run_command, ( void** )&old::run_command );
 
 	event_handler = std::make_unique< c_event_handler >( );

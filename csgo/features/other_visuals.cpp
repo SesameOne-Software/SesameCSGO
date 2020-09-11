@@ -220,7 +220,7 @@ void features::offscreen_esp::draw( ) {
 
 	const auto calc_distance = offscreen_esp_distance / 100.0f * ( h * 0.5f );
 
-	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
+	for ( auto i = 1; i <= csgo::i::ent_list->get_highest_index( ); i++ ) {
 		const auto pl = csgo::i::ent_list->get< player_t* >( i );
 
 		if ( !pl || !pl->client_class( ) )
@@ -278,12 +278,12 @@ void features::offscreen_esp::draw( ) {
 									render::rectangle( 0, 5, w * defuse_fraction, 4, D3DCOLOR_RGBA( 84, 195, 255, 255 ) );
 
 								render::dim text_dim;
-								render::text_size( features::esp::indicator_font, time_left_str, text_dim );
-								render::text( w / 2 - text_dim.w / 2, 65, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::indicator_font, time_left_str, true );
+								render::text_size( features::esp::esp_font, time_left_str, text_dim );
+								render::text( w / 2 - text_dim.w / 2, 65, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::esp_font, time_left_str, true );
 							}
 
 							if ( bomb_esp ) {
-								auto c4_origin = as_bomb->origin ( ) + vec3_t ( 0.0f, 0.0f, 8.0f );
+								auto c4_origin = as_bomb->origin( ) + vec3_t( 0.0f, 0.0f, 8.0f );
 
 								vec3_t bomb_screen;
 								const auto transformed = csgo::render::world_to_screen( bomb_screen, c4_origin );

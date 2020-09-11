@@ -42,8 +42,10 @@ const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get
 }
 
 void features::lagcomp::lag_record_t::backtrack( ucmd_t* ucmd ) {
-	if ( ragebot::active_config.fix_fakelag )
-		ucmd->m_tickcount = csgo::time2ticks( m_simtime ) + csgo::time2ticks( lerp( ) );
+	//if ( ragebot::active_config.fix_fakelag )
+	//dbg_print( "1: %d\n", ucmd->m_tickcount );
+	ucmd->m_tickcount = csgo::time2ticks( m_simtime ) + csgo::time2ticks( lerp( ) );
+	//dbg_print( "2: %d\n", ucmd->m_tickcount );
 }
 
 bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_origin, bool simulated ) {
@@ -53,7 +55,7 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 		return false;
 
 	m_priority = 0;
-	m_extrapolated = false;
+	m_extrapolated = simulated;
 	m_needs_matrix_construction = false;
 	m_tick = csgo::time2ticks( pl->simtime( ) );
 	m_simtime = pl->simtime( );
@@ -77,16 +79,16 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 	*/
 
 	std::memcpy( m_layers, pl->layers( ), sizeof animlayer_t * 15 );
-	std::memcpy( m_bones1, anims::frames [ pl->idx( ) ].front( ).m_matrix1.data( ), sizeof matrix3x4_t * 128 );
-	std::memcpy( m_bones2, anims::frames [ pl->idx( ) ].front( ).m_matrix2.data( ), sizeof matrix3x4_t * 128 );
-	std::memcpy( m_bones3, anims::frames [ pl->idx( ) ].front( ).m_matrix3.data( ), sizeof matrix3x4_t * 128 );
+	std::memcpy( m_bones1, anims::frames [ pl->idx( ) ].back( ).m_matrix1.data( ), sizeof matrix3x4_t * 128 );
+	std::memcpy( m_bones2, anims::frames [ pl->idx( ) ].back( ).m_matrix2.data( ), sizeof matrix3x4_t * 128 );
+	std::memcpy( m_bones3, anims::frames [ pl->idx( ) ].back( ).m_matrix3.data( ), sizeof matrix3x4_t * 128 );
 	std::memcpy( &m_state, pl->animstate( ), sizeof( animstate_t ) );
 	std::memcpy( m_poses, &pl->poses( ), sizeof( float ) * 24 );
 
 	return true;
 }
 
-void features::lagcomp::cache( player_t* pl ) {
+void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	if ( pl && pl->dormant( ) ) {
 		if ( !data::records [ pl->idx( ) ].empty( ) )
 			data::records [ pl->idx( ) ].clear( );
@@ -197,7 +199,7 @@ void features::lagcomp::cache( player_t* pl ) {
 
 	lag_record_t rec;
 
-	if ( rec.store( pl, data::old_origins [ pl->idx( ) ] ) ) {
+	if ( rec.store( pl, data::old_origins [ pl->idx( ) ], predicted ) ) {
 		///* simulate 1 tick of movement */ {
 		//	const auto backup_origin = rec.m_origin;
 		//
@@ -227,19 +229,25 @@ void features::lagcomp::cache( player_t* pl ) {
 			}
 		*/
 
-		if ( std::fabsf( pl->angles( ).x ) < 50.0f && pl->weapon( )->last_shot_time( ) > pl->old_simtime( ) ) {
-			//if ( animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
-			data::shot_records [ pl->idx( ) ] = rec;
-			data::shot_count [ pl->idx( ) ]++;
-			data::shot_records [ pl->idx( ) ].m_priority = 1;
-			//data::shot_records [ pl->idx ( ) ].m_simtime = pl->weapon ( )->last_shot_time ( );
+		if ( !predicted ) {
+			if ( std::fabsf( pl->angles( ).x ) < 50.0f && pl->weapon( )->last_shot_time( ) > pl->old_simtime( ) ) {
+				//if ( animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
+				data::shot_records [ pl->idx( ) ] = rec;
+				data::shot_count [ pl->idx( ) ]++;
+				data::shot_records [ pl->idx( ) ].m_priority = 1;
+				//data::shot_records [ pl->idx ( ) ].m_simtime = pl->weapon ( )->last_shot_time ( );
+			}
+
+			data::all_records [ pl->idx( ) ].push_front( rec );
 		}
 
-		data::all_records [ pl->idx( ) ].push_front( rec );
 		data::records [ pl->idx( ) ].push_front( rec );
 	}
 
-	data::old_origins [ pl->idx( ) ] = pl->origin( );
+	if ( !predicted )
+		data::old_origins [ pl->idx( ) ] = pl->origin( );
+
+	pop( pl );
 }
 
 bool features::lagcomp::breaking_lc( player_t* pl ) {

@@ -416,6 +416,9 @@
     <ClInclude Include="javascript\duk_config.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="animations\animations.hpp">
+      <Filter>Header Files\animations</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">

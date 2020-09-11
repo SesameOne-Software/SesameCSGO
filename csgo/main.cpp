@@ -191,13 +191,16 @@ int __stdcall init( uintptr_t mod ) {
 	/* initialize hack */
 	csgo::init( );
 	erase::erase_func( csgo::init );
+	
 	netvars::init( );
 	erase::erase_func( netvars::init );
+	
 	js::init( );
 	erase::erase_func( js::init );
+	
 	hooks::init( );
 	erase::erase_func( hooks::init );
-
+	
 	erase::erase_headers( mod );
 
 	END_FUNC
@@ -211,14 +214,14 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 #else
 	init( uintptr_t( loader_info ) );
 #endif
-
+	
 	security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
 	while ( !g::unload )
 		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
-
+	
 	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( hooks::old::wnd_proc ) );
 
 	MH_RemoveHook( MH_ALL_HOOKS );

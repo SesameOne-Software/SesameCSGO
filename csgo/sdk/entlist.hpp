@@ -15,4 +15,9 @@ public:
 		using getcliententityfromhandle_fn = t( __thiscall* )( void*, std::uint32_t );
 		return vfunc< getcliententityfromhandle_fn >( this, 4 )( this, h );
 	}
+
+	int get_highest_index ( ) {
+		using gethighestentityindex_fn = int ( __thiscall* )( void* );
+		return vfunc< gethighestentityindex_fn > ( this, 6 )( this );
+	}
 };

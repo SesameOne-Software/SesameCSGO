@@ -6,12 +6,20 @@
 std::array< matrix3x4_t, 128 > anims::fake_matrix { };
 std::array< matrix3x4_t, 128 > anims::aim_matrix { };
 std::array< std::deque< anims::animation_frame_t >, 65 > anims::frames { {{}} };
+std::map< std::string, std::array< std::deque< int >, 65 > > anims::choke_sequences {
+    {"air", {{}} },
+    {"moving_slow", {{}} },
+    {"moving", {{}} },
+    {"shot", {{}} }
+};
+
+bool anims::new_tick = false;
 
 void anims::animation_frame_t::store( player_t* ent, bool anim_update ) {
     memcpy( m_animlayers.data( ), ent->layers( ), sizeof( m_animlayers ) );
     m_poses = ent->poses( );
     m_simtime = ent->simtime( );
-    m_old_simtime = ent->simtime( );
+    m_old_simtime = ent->old_simtime( );
     m_animstate = *ent->animstate( );
     m_flags = ent->flags( );
 
@@ -20,6 +28,8 @@ void anims::animation_frame_t::store( player_t* ent, bool anim_update ) {
 
     m_anim_update = anim_update;
 }
+
+#pragma optimize( "2", on )
 
 bool anims::build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
     /* vfunc indices */
@@ -141,42 +151,45 @@ void anims::calc_local_exclusive( float& ground_fraction_out, float& air_time_ou
 
     static float ground_fractions = 0.0f;
     static bool old_not_walking = false;
+    static bool last_ground = false;
 
     static float old_ground_time = 0.0f;
 
     auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t( g::local ) + 0x94 );
 
-    const auto old_ground_fraction = ground_fractions;
+    const auto twotickstime = g::local->animstate( )->m_last_clientside_anim_update_time_delta * 2.0f;
+    const auto speed = std::fminf( abs_vel.length_2d( ), 260.0f );
 
-    if ( old_ground_fraction > 0.0f && old_ground_fraction < 1.0f ) {
-        const auto twotickstime = g::local->animstate( )->m_last_clientside_anim_update_time_delta * 2.0f;
-
+    /* ground fraction */
+    if ( g::local->flags( ) & 1 ) {
         if ( old_not_walking )
-            ground_fractions = old_ground_fraction - twotickstime;
+            ground_fractions -= twotickstime;
         else
-            ground_fractions = twotickstime + old_ground_fraction;
+            ground_fractions += twotickstime;
 
-        ground_fractions = std::clamp< float >( ground_fractions, 0.0f, 1.0f );
+        if ( speed > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && old_not_walking )
+            old_not_walking = false;
+        else if ( speed < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !old_not_walking )
+            old_not_walking = true;
     }
 
-    if ( abs_vel.length_2d( ) > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && old_not_walking ) {
-        old_not_walking = false;
-        ground_fractions = std::max< float >( ground_fractions, 0.01f );
-    }
-    else if ( abs_vel.length_2d( ) < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !old_not_walking ) {
-        old_not_walking = true;
-        ground_fractions = std::min< float >( ground_fractions, 0.99f );
-    }
-
+    ground_fractions = std::clamp< float >( ground_fractions, 0.0f, 1.0f );
     ground_fraction_out = ground_fractions;
 
+    /* layer 4 cycle*/
     if ( g::local->flags( ) & 1 ) {
-        old_ground_time = csgo::i::globals->m_curtime;
+        old_ground_time = features::prediction::curtime( );
         air_time_out = 0.0f;
     }
     else {
-        air_time_out = csgo::i::globals->m_curtime - old_ground_time;
+        air_time_out = features::prediction::curtime( ) - old_ground_time;
+        ground_fraction_out = 0.0f;
     }
+
+    if ( !last_ground && g::local->flags( ) & 1 )
+        ground_fraction_out = 0.0f;
+
+    last_ground = g::local->flags( ) & 1;
 }
 
 void anims::calc_animlayers( player_t* ent ) {
@@ -185,9 +198,6 @@ void anims::calc_animlayers( player_t* ent ) {
 
     if ( !state || !layers )
         return;
-
-    if ( ent == g::local )
-        calc_local_exclusive( layers [ 6 ].m_weight, layers [ 4 ].m_cycle );
 
     layers [ 12 ].m_weight = 0.0f;
 }
@@ -212,13 +222,62 @@ void anims::calc_poses( player_t* ent ) {
 
     state->m_jump_fall_pose.set_value( ent, jump_fall( layers [ 4 ].m_cycle ) );
 
-    state->m_move_blend_walk_pose.set_value( ent, ( 1.0f - layers [ 6 ].m_weight ) * ( 1.0f - ent->crouch_amount( ) ) );
-    state->m_move_blend_run_pose.set_value( ent, ( 1.0f - ent->crouch_amount( ) ) * layers [ 6 ].m_weight );
+    state->m_move_blend_walk_pose.set_value( ent, ( 1.0f - state->m_ground_fraction ) * ( 1.0f - ent->crouch_amount( ) ) );
+    state->m_move_blend_run_pose.set_value( ent, ( 1.0f - ent->crouch_amount( ) ) * state->m_ground_fraction );
     state->m_move_blend_crouch_pose.set_value( ent, ent->crouch_amount( ) );
 
     state->m_body_pitch_pose.set_value( ent, ( csgo::normalize( state->m_pitch ) + 90.0f ) / 180.0f );
     //state->m_lean_yaw_pose.set_value( ent, csgo::normalize( state->m_eye_yaw ) / 360.0f + 0.5f );
     state->m_body_yaw_pose.set_value( ent, std::clamp( csgo::normalize( csgo::normalize( state->m_eye_yaw ) - csgo::normalize( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f );
+}
+
+/* ghetto last minute decision: associate a certain velocity range with a fakelag factor and apply this fakelag factor when we reach a similar velocity */
+int anims::predict_choke_sequence( player_t* ent ) {
+    /* predicts amount of commands player will choke next */
+    /* constant amounds are easier to predict, but fluctuating or other amounts are much harder to predict */
+    /* this breaks our cheat, because we will predict 1 tick while they actually choke 14 */
+    /* this is because we predict using the last amount of choked commands */
+    /* 14 1 14 1 14 1 */
+    /* if we are able to predict the amount of commands the play will choke next... for ex: */
+    /* 1 2 4 8 ? */
+    /* if we calculate it as 16, and amount they choke is 16 or around there, we have a very high chance to hit the enemy */
+
+    const auto current_choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, 16 );
+
+    static auto predict_choke = [ & ] ( const std::deque< int >& sequence ) -> int {
+        //const auto entries = sequence.size( );
+//
+        //if ( entries < 3 )
+        //    return current_choked;
+//
+        //const auto last_entry_1 = sequence [ entries - 1 ];
+        //const auto last_entry_2 = sequence [ entries - 2 ];
+        //const auto last_entry_3 = sequence [ entries - 3 ];
+//
+        //for ( auto i = 0; i < entries; i++ ) {
+        //    if ( sequence [ i ]] )
+        //}
+//
+        //return current_choked;
+
+        const auto entries = sequence.size( );
+
+        if ( !entries )
+            return current_choked;
+
+        return sequence.back( );
+    };
+
+    if ( !( ent->flags( ) & 1 ) )
+        return predict_choke( choke_sequences [ _( "air" ) ][ ent->idx( ) ] );
+    else if ( ent->weapon( ) && ent->weapon( )->last_shot_time( ) > ent->old_simtime( ) )
+        return predict_choke( choke_sequences [ _( "shot" ) ][ ent->idx( ) ] );
+    else if ( ent->weapon( ) && ent->weapon( )->data( ) && ent->vel( ).length_2d( ) > 5.0f && ent->vel( ).length_2d( ) <= ent->weapon( )->data( )->m_max_speed * 0.34f )
+        return predict_choke( choke_sequences [ _( "moving_slow" ) ][ ent->idx( ) ] );
+    else if ( ent->weapon( ) && ent->weapon( )->data( ) && ent->vel( ).length_2d( ) > 5.0f && ent->vel( ).length_2d( ) > ent->weapon( )->data( )->m_max_speed * 0.34f )
+        return predict_choke( choke_sequences [ _( "moving" ) ][ ent->idx( ) ] );
+
+    return current_choked;
 }
 
 void anims::update( player_t* ent ) {
@@ -244,19 +303,19 @@ void anims::update( player_t* ent ) {
     if ( !state )
         return;
 
-    if ( ent != g::local )
-        csgo::i::globals->m_curtime = ent->old_simtime( ) + csgo::ticks2time( 1 );
+    //if ( ent != g::local )
+    //    csgo::i::globals->m_curtime = ent->old_simtime( ) + csgo::ticks2time( 1 );
 
     csgo::i::globals->m_frametime = csgo::ticks2time( 1 );
 
     /* fix other players' velocity */
-    if ( ent != g::local ) {
+    //if ( ent != g::local ) {
         /* skip call to C_BaseEntity::CalcAbsoluteVelocity */
         *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xe8 ) &= ~0x1000;
 
         /* replace abs velocity (to be recalculated) */
         abs_vel = ent->vel( );
-    }
+    //}
 
     /* fix abs velocity rounding errors */
     if ( fabsf( abs_vel.x ) < 0.001f )
@@ -270,9 +329,18 @@ void anims::update( player_t* ent ) {
 
     /* fix foot spin */
     state->m_feet_yaw_rate = 0.0f;
+    state->m_feet_yaw = state->m_abs_yaw;
 
     /* force animation update */
     state->m_force_update = true;
+
+    //state->m_on_ground = ent->flags( ) & 1;
+
+    if ( state->m_hit_ground )
+        state->m_time_in_air = 0.0f;
+
+    /* fix on ground */
+    //state->m_on_ground = g::local->flags( ) & 1;
 
     /* remove anim and bone interpolation */
     *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xf0 ) |= 8;
@@ -280,8 +348,10 @@ void anims::update( player_t* ent ) {
     state->m_last_clientside_anim_framecount = 0;
 
     /* fix pitch */
-    if ( ent != g::local )
+    if ( ent != g::local ) {
         state->m_pitch = ent->angles( ).x;
+        //state->m_eye_yaw = ent->angles( ).y;
+    }
 
     /* recalculate animlayers */
     calc_animlayers( ent );
@@ -291,7 +361,8 @@ void anims::update( player_t* ent ) {
     ent->update( );
 
     /* rebuild poses */
-    calc_poses( ent );
+    if ( ent != g::local )
+        calc_poses( ent );
 
     /* stop animating */
     ent->animate( ) = false;
@@ -301,7 +372,7 @@ void anims::update( player_t* ent ) {
     abs_vel = backup_abs_vel;
     *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xf0 ) = backup_effects;
 
-    csgo::i::globals->m_curtime = backup_curtime;
+    //csgo::i::globals->m_curtime = backup_curtime;
     csgo::i::globals->m_frametime = backup_frametime;
 }
 
@@ -312,7 +383,8 @@ void anims::store_frame( player_t* ent, bool anim_update ) {
     if ( !state || !animlayers )
         return;
 
-    animation_frame_t animation_frame;
+    /* make static, allocating too much memory on stack rn, this might be more efficient */
+    static animation_frame_t animation_frame;
 
     animation_frame.store( ent, anim_update );
 
@@ -321,23 +393,17 @@ void anims::store_frame( player_t* ent, bool anim_update ) {
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
     calc_poses( ent );
-    build_bones( ent, animation_frame.m_matrix1.data( ), 256, ent->abs_angles( ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix1.data( ), 256, vec3_t( 0.0f, abs_yaw1, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
     calc_poses( ent );
-    build_bones( ent, animation_frame.m_matrix2.data( ), 256, ent->abs_angles( ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix2.data( ), 256, vec3_t( 0.0f, abs_yaw2, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
     calc_poses( ent );
-    build_bones( ent, animation_frame.m_matrix3.data( ), 256, ent->abs_angles( ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix3.data( ), 256, vec3_t( 0.0f, abs_yaw3, 0.0f ), ent->origin( ), ent->simtime( ) );
 
-    frames [ ent->idx( ) ].push_front( animation_frame );
-
-    /* if recieved information on entity from server, store record */
-    //
-    //if ( anim_update ) {
-    features::lagcomp::cache( ent );
-    //}
+    frames [ ent->idx( ) ].push_back( animation_frame );
 }
 
 void anims::animate_player( player_t* ent ) {
@@ -362,9 +428,37 @@ void anims::animate_player( player_t* ent ) {
         return;
     }
 
+    const auto choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, 16 );
+
     if ( ent->simtime( ) > last_update [ ent->idx( ) ] ) {
         old_origin [ ent->idx( ) ] = last_origin [ ent->idx( ) ];
         old_velocity [ ent->idx( ) ] = last_velocity [ ent->idx( ) ];
+
+        auto& air_choke = choke_sequences [ _( "air" ) ][ ent->idx( ) ];
+        auto& shot_choke = choke_sequences [ _( "shot" ) ][ ent->idx( ) ];
+        auto& moving_slow_choke = choke_sequences [ _( "moving_slow" ) ][ ent->idx( ) ];
+        auto& moving_choke = choke_sequences [ _( "moving" ) ][ ent->idx( ) ];
+
+        if ( !( ent->flags( ) & 1 ) )
+            air_choke.push_back( choked );
+        else if ( ent->weapon( ) && ent->weapon( )->last_shot_time( ) > ent->old_simtime( ) )
+            shot_choke.push_back( choked );
+        else if ( ent->weapon( ) && ent->weapon( )->data( ) && ent->vel( ).length_2d( ) > 5.0f && ent->vel( ).length_2d( ) <= ent->weapon( )->data( )->m_max_speed * 0.34f )
+            moving_slow_choke.push_back( choked );
+        else if ( ent->weapon( ) && ent->weapon( )->data( ) && ent->vel( ).length_2d( ) > 5.0f && ent->vel( ).length_2d( ) > ent->weapon( )->data( )->m_max_speed * 0.34f )
+            moving_choke.push_back( choked );
+
+        while ( air_choke.size( ) > 32 )
+            air_choke.pop_back( );
+
+        while ( shot_choke.size( ) > 32 )
+            shot_choke.pop_back( );
+
+        while ( moving_slow_choke.size( ) > 32 )
+            moving_slow_choke.pop_back( );
+
+        while ( moving_choke.size( ) > 32 )
+            moving_choke.pop_back( );
     }
 
     last_origin [ ent->idx( ) ] = ent->origin( );
@@ -374,189 +468,310 @@ void anims::animate_player( player_t* ent ) {
     if ( ent->simtime( ) > last_update [ ent->idx( ) ] ) {
         /* clear animation frames once we recieve one that matches server... */
         /* we can use this one from now on */
-        frames [ ent->idx( ) ].clear( );
+        if ( !frames [ ent->idx( ) ].empty( ) )
+            frames [ ent->idx( ) ].clear( );
 
         update( ent );
-
-        float abs_yaw1 = 0.0f, abs_yaw2 = 0.0f, abs_yaw3 = 0.0f;
-        animations::resolver::resolve( ent, abs_yaw1, abs_yaw2, abs_yaw3 );
-
-        if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 0 )
-            state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
-        else if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 0 )
-            state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
-        else
-            state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
-
         calc_poses( ent );
 
         store_frame( ent, true );
+        features::lagcomp::cache( ent, false );
 
         last_update [ ent->idx( ) ] = ent->simtime( );
 
-        return;
+        const auto predicted_choke = predict_choke_sequence( ent );
+
+        //if ( predicted_choke > 0 ) /* only if entity needs resimulation */ {
+        //    /* backup animation data */
+        //    std::array< animlayer_t, 13 > backup_animlayers { {} };
+        //    const auto backup_curtime = csgo::i::globals->m_curtime;
+        //    const auto backup_poses = ent->poses( );
+        //    const auto backup_simtime = ent->simtime( );
+        //    const auto backup_old_simtime = ent->simtime( );
+        //    const auto backup_animstate = *ent->animstate( );
+        //    const auto backup_flags = ent->flags( );
+        //    const auto backup_velocity = ent->vel( );
+        //    const auto backup_origin = ent->origin( );
+        //    const auto backup_abs_origin = ent->abs_origin( );
+        //    memcpy( backup_animlayers.data( ), ent->layers( ), sizeof( backup_animlayers ) );
+//
+        //    /* estimate player velocity */
+        //    ent->vel( ) = ( ent->origin( ) - old_origin [ ent->idx( ) ] ) / ( ent->simtime( ) - ent->old_simtime( ) );
+//
+        //    /* apply acceleration */
+        //    const auto accel = ( ent->vel( ) - old_velocity [ ent->idx( ) ] ) / ( ent->simtime( ) - ent->old_simtime( ) );
+//
+        //    static auto predict = [ & ] ( player_t* player, vec3_t& origin, vec3_t& velocity, uint32_t& flags, bool was_in_air ) {
+        //     constexpr const auto sv_gravity = 800.0f;
+        //     constexpr const auto sv_jump_impulse = 301.993377f;
+
+        //     if ( !( flags & 1 ) )
+        //         velocity.z -= csgo::ticks2time( 1 ) * sv_gravity;
+        //     else if ( was_in_air )
+        //         velocity.z = sv_jump_impulse;
+
+        //     const auto src = origin;
+        //     auto end = src + velocity * csgo::ticks2time( 1 );
+
+        //     ray_t r;
+        //     r.init( src, end, player->mins( ), player->maxs( ) );
+
+        //     trace_t t { };
+        //     trace_filter_t filter;
+        //     filter.m_skip = player;
+
+        //     csgo::util_tracehull( src, end, player->mins( ), player->maxs( ), mask_playersolid, player, &t );
+
+        //     if ( t.m_fraction != 1.0f ) {
+        //         for ( auto i = 0; i < 2; i++ ) {
+        //             velocity -= t.m_plane.m_normal * velocity.dot_product( t.m_plane.m_normal );
+
+        //             const auto dot = velocity.dot_product( t.m_plane.m_normal );
+
+        //             if ( dot < 0.0f )
+        //                 velocity -= vec3_t( dot * t.m_plane.m_normal.x, dot * t.m_plane.m_normal.y, dot * t.m_plane.m_normal.z );
+
+        //             end = t.m_endpos + velocity * ( csgo::ticks2time( 1 ) * ( 1.0f - t.m_fraction ) );
+
+        //             r.init( t.m_endpos, end, player->mins( ), player->maxs( ) );
+
+        //             csgo::util_tracehull( t.m_endpos, end, player->mins( ), player->maxs( ), mask_playersolid, player, &t );
+
+        //             if ( t.m_fraction == 1.0f )
+        //                 break;
+        //         }
+        //     }
+
+        //     origin = end = t.m_endpos;
+
+        //     end.z -= 2.0f;
+
+        //     csgo::util_tracehull( origin, end, player->mins( ), player->maxs( ), mask_playersolid, player, &t );
+
+        //     flags &= ~1;
+
+        //     if ( t.did_hit( ) && t.m_plane.m_normal.z > 0.7f )
+        //         flags |= 1;
+        // };
+//
+        //   constexpr auto CS_PLAYER_SPEED_DUCK_MODIFIER = 0.340f;
+        //   constexpr auto CS_PLAYER_SPEED_WALK_MODIFIER = 0.520f;
+        //   constexpr auto CS_PLAYER_SPEED_RUN = 260.0f;
+//
+        //   static auto solve_ground_fraction = [ & ] ( player_t* ent, bool& not_walking, float& ground_fraction_out ) {
+        //     auto ground_fractions = ground_fraction_out;
+
+        //     if ( ground_fraction_out > 0.0f && ground_fraction_out < 1.0f ) {
+        //         const auto twotickstime = state->m_last_clientside_anim_update_time_delta * 2.0f;
+
+        //         if ( not_walking )
+        //             ground_fractions = ground_fraction_out - twotickstime;
+        //         else
+        //             ground_fractions = twotickstime + ground_fraction_out;
+
+        //         ground_fractions = std::clamp< float >( ground_fractions, 0.0f, 1.0f );
+        //     }
+
+        //     if ( ent->vel( ).length_2d( ) > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && not_walking ) {
+        //         not_walking = false;
+        //         ground_fractions = std::max< float >( ground_fractions, 0.01f );
+        //     }
+        //     else if ( ent->vel( ).length_2d( ) < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !not_walking ) {
+        //         not_walking = true;
+        //         ground_fractions = std::min< float >( ground_fractions, 0.99f );
+        //     }
+
+        //     ground_fraction_out = ground_fractions;
+        // };
+//
+        //    bool not_walking = ent->vel( ).length_2d( ) > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER );
+//
+        //    for ( auto tick = 0; tick < predicted_choke - 1; tick++ ) {
+                /* accelerate player */
+   //    ent->vel( ) += accel * csgo::ticks2time( 1 );
+
+   //    /* set current time to animate player at */
+   //    ent->simtime( ) = csgo::i::globals->m_curtime = ent->old_simtime( ) + csgo::ticks2time( tick + 1 );
+
+   //    /* set previous update to previous tick */
+   //    state->m_last_clientside_anim_update = csgo::i::globals->m_curtime - csgo::ticks2time( 1 );
+
+   //    /* update time one tick */
+   //    state->m_last_clientside_anim_update_time_delta = csgo::ticks2time( 1 );
+
+   //    /* predict player data */
+   //    predict( ent, ent->origin( ), ent->vel( ), ent->flags( ), !( backup_flags & 1 ) );
+
+   //    /* fix layer 4 cycle (time in air) */
+   //    ent->layers( ) [ 4 ].m_cycle += csgo::ticks2time( 1 );
+
+   //    if ( ent->flags( ) & 1 )
+   //        ent->layers( ) [ 4 ].m_cycle = 0.0f;
+
+   //    if ( ent->flags( ) & 1 )
+   //        solve_ground_fraction( ent, not_walking, ent->layers( ) [ 6 ].m_weight );
+
+   //    ent->abs_origin( ) = ent->origin( );
+
+   //    update( ent );
+
+   //    store_frame( ent, tick == predicted_choke - 1 );
+   //}
+    //
+            //    //features::lagcomp::cache( ent, true );
+    //
+            //    /* restore animation data */
+            //    csgo::i::globals->m_curtime = backup_curtime;
+            //    ent->simtime( ) = backup_simtime;
+            //    ent->old_simtime( ) = backup_old_simtime;
+            //    ent->poses( ) = backup_poses;
+            //    *ent->animstate( ) = backup_animstate;
+            //    ent->flags( ) = backup_flags;
+            //    ent->vel( ) = backup_velocity;
+            //    ent->origin( ) = backup_origin;
+            //    ent->abs_origin( ) = backup_abs_origin;
+            //    memcpy( ent->layers( ), backup_animlayers.data( ), sizeof( backup_animlayers ) );
+            //}
     }
 
-    const auto choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, 62 ) - 1;
+    float abs_yaw1 = 0.0f, abs_yaw2 = 0.0f, abs_yaw3 = 0.0f;
+    animations::resolver::resolve( ent, abs_yaw1, abs_yaw2, abs_yaw3 );
 
-    if ( choked > 0 /* only if entity choking packets */
-        && !frames [ ent->idx( ) ].empty( ) /* only if we have recieved animation frame(s) */
-        && frames [ ent->idx( ) ].front( ).m_anim_update ) /* only if entity needs resimulation */ {
-        /* backup animation data */
-        std::array< animlayer_t, 13 > backup_animlayers { {} };
-        const auto backup_poses = ent->poses( );
-        const auto backup_simtime = ent->simtime( );
-        const auto backup_old_simtime = ent->simtime( );
-        const auto backup_animstate = *ent->animstate( );
-        const auto backup_flags = ent->flags( );
-        const auto backup_velocity = ent->vel( );
-        const auto backup_origin = ent->origin( );
-        auto backup_abs_origin = ent->abs_origin( );
-        memcpy( backup_animlayers.data( ), ent->layers( ), sizeof( backup_animlayers ) );
+    if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 0 )
+        state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
+    else if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 1 )
+        state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
+    else
+        state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
 
-        /* estimate player velocity */
-        ent->vel( ) = ( ent->origin( ) - old_origin [ ent->idx( ) ] ) / ( ent->simtime( ) - ent->old_simtime( ) );
+    ent->set_abs_angles( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
+}
 
-        /* apply acceleration */
-        const auto accel = ( ent->vel( ) - old_velocity [ ent->idx( ) ] ) / ( ent->simtime( ) - ent->old_simtime( ) );
-
-        static auto predict = [ & ] ( player_t* player, vec3_t& origin, vec3_t& velocity, uint32_t& flags ) {
-            constexpr const auto sv_gravity = 800.0f;
-            constexpr const auto sv_jump_impulse = 301.993377f;
-
-            if ( !( flags & 1 ) )
-                velocity.z -= csgo::ticks2time( sv_gravity );
-
-            const auto src = origin;
-            auto end = src + velocity * csgo::ticks2time( 1 );
-
-            ray_t r;
-            r.init( src, end, player->mins( ), player->maxs( ) );
-
-            trace_t t { };
-            trace_filter_t filter;
-            filter.m_skip = player;
-
-            csgo::util_tracehull( src, end, player->mins( ), player->maxs( ), 0x201400B, player, &t );
-
-            if ( t.m_fraction != 1.0f ) {
-                for ( auto i = 0; i < 2; i++ ) {
-                    velocity -= t.m_plane.m_normal * velocity.dot_product( t.m_plane.m_normal );
-
-                    const auto dot = velocity.dot_product( t.m_plane.m_normal );
-
-                    if ( dot < 0.0f )
-                        velocity -= vec3_t( dot * t.m_plane.m_normal.x, dot * t.m_plane.m_normal.y, dot * t.m_plane.m_normal.z );
-
-                    end = t.m_endpos + velocity * ( csgo::ticks2time( 1 ) * ( 1.0f - t.m_fraction ) );
-
-                    r.init( t.m_endpos, end, player->mins( ), player->maxs( ) );
-
-                    csgo::util_tracehull( t.m_endpos, end, player->mins( ), player->maxs( ), 0x201400B, player, &t );
-
-                    if ( t.m_fraction == 1.0f )
-                        break;
-                }
-            }
-
-            origin = end = t.m_endpos;
-
-            end.z -= 2.0f;
-
-            csgo::util_tracehull( origin, end, player->mins( ), player->maxs( ), 0x201400B, player, &t );
-
-            flags &= 1;
-
-            if ( t.did_hit( ) && t.m_plane.m_normal.z > 0.7f )
-                flags |= 1;
-        };
-
-        for ( auto tick = 0; tick < choked; tick++ ) {
-            /* accelerate player */
-            ent->vel( ) += accel * csgo::ticks2time( 1 );
-
-            /* set current time to animate player at */
-            ent->old_simtime( ) = ent->simtime( );
-            ent->simtime( ) += csgo::ticks2time( 1 );
-
-            /* set previous update to previous tick */
-            state->m_last_clientside_anim_update = ent->old_simtime( );
-
-            /* update time one tick */
-            state->m_last_clientside_anim_update_time_delta = csgo::ticks2time( 1 );
-
-            /* predict player data */
-            predict( ent, ent->origin( ), ent->vel( ), ent->flags( ) );
-
-            ent->set_abs_origin( ent->origin( ) );
-
-            update( ent );
-
-            store_frame( ent, false );
-        }
-
-        /* restore animation data */
-        ent->simtime( ) = backup_simtime;
-        ent->old_simtime( ) = backup_old_simtime;
-        ent->poses( ) = backup_poses;
-        *ent->animstate( ) = backup_animstate;
-        ent->flags( ) = backup_flags;
-        ent->vel( ) = backup_velocity;
-        ent->origin( ) = backup_origin;
-        ent->set_abs_origin( backup_abs_origin );
-        memcpy( ent->layers( ), backup_animlayers.data( ), sizeof( backup_animlayers ) );
-    }
+namespace lby {
+    extern bool in_update;
 }
 
 void anims::animate_fake( ) {
-    static int curtick = 0;
-    static bool should_reset = true;
-    static float spawn_time = 0.0f;
-    static animstate_t fake_state;
+    /* https://github.com/ValveSoftware/halflife/blob/master/ricochet/pm_shared/pm_math.c#L21 */
+    static auto angle_mod = [ ] ( float a ) {
+        return ( 360.0 / 65536 ) * ( ( int )( a * ( 65536 / 360.0 ) ) & 65535 );
+    };
 
-    if ( !g::local || !g::local->alive( ) || !g::local->layers( ) || !g::local->renderable( ) ) {
-        should_reset = true;
+    /* https://github.com/VSES/SourceEngine2007/blob/43a5c90a5ada1e69ca044595383be67f40b33c61/src_main/mathlib/mathlib_base.cpp#L3327 */
+    static auto approach_angle = [ ] ( float target, float value, float speed ) {
+        target = angle_mod( target );
+        value = angle_mod( value );
+
+        float delta = target - value;
+
+        if ( speed < 0.0f )
+            speed = -speed;
+
+        if ( delta < -180.0f )
+            delta += 360.0f;
+        else if ( delta > 180.0f )
+            delta -= 360.0f;
+
+        if ( delta > speed )
+            value += speed;
+        else if ( delta < -speed )
+            value -= speed;
+        else
+            value = target;
+
+        return value;
+    };
+
+    static auto jump_fall = [ ] ( float air_time ) {
+        const float recalc_air_time = ( air_time - 0.72f ) * 1.25f;
+        const float clamped = recalc_air_time >= 0.0f ? std::min< float >( recalc_air_time, 1.0f ) : 0.0f;
+        float out = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
+
+        if ( out >= 0.0f )
+            out = std::min< float >( out, 1.0f );
+
+        return out;
+    };
+
+    static float abs_yaw = 0.0f;
+    static float lby = 0.0f;
+    static int curtick = 0;
+    static float spawn_time = 0.0f;
+    static float ground_time = 0.0f;
+
+    if ( !g::local || !g::local->alive( ) || !g::local->animstate( ) || !g::local->layers( ) ) {
+        abs_yaw = g::angles.y;
+        lby = g::angles.y;
+        spawn_time = features::prediction::curtime( );
+        ground_time = features::prediction::curtime( );
         curtick = 0;
         return;
     }
 
-    if ( should_reset || spawn_time != g::local->spawn_time( ) ) {
+    const auto state = g::local->animstate( );
+
+    if ( spawn_time != g::local->spawn_time( ) ) {
+        abs_yaw = g::angles.y;
+        lby = g::angles.y;
         spawn_time = g::local->spawn_time( );
-        g::local->create_animstate( &fake_state );
-        should_reset = false;
+        ground_time = g::local->spawn_time( );
         curtick = 0;
     }
 
-    if ( g::send_packet && csgo::i::globals->m_tickcount != curtick ) {
-        curtick = csgo::i::globals->m_tickcount;
+    if ( lby::in_update )
+        lby = g::angles.y;
 
+    if ( g::send_packet && new_tick ) {
+        /* calculate airtime only on sent info */
+        if ( g::local->flags( ) & 1 )
+            ground_time = features::prediction::curtime( );
+
+        auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t( g::local ) + 0x94 );
+
+        if ( abs_vel.length_2d( ) > 0.1f || fabsf( abs_vel.z ) > 100.0f ) {
+            abs_yaw = approach_angle(
+                g::angles.y,
+                abs_yaw,
+                ( ( state->m_ground_fraction * 20.0f ) + 30.0f )
+                * csgo::ticks2time( csgo::time2ticks( features::prediction::curtime( ) ) - curtick ) );
+        }
+        else {
+            abs_yaw = approach_angle(
+                lby,
+                abs_yaw,
+                csgo::ticks2time( csgo::time2ticks( features::prediction::curtime( ) ) - curtick ) * 100.0f );
+        }
+
+        /* backup vars */
         std::array< animlayer_t, 13 > backup_animlayers {};
-
-        const float backup_frametime = csgo::i::globals->m_frametime;
         const auto backup_poses = g::local->poses( );
-        auto backup_abs_angles = g::local->abs_angles( );
-
         memcpy( backup_animlayers.data( ), g::local->layers( ), sizeof( backup_animlayers ) );
 
-        fake_state.m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, csgo::i::globals->m_curtime - fake_state.m_last_clientside_anim_update_time_delta );
+        /* remove lean / body sway */
+        g::local->layers( ) [ 12 ].m_weight = 0.0f;
 
-        fake_state.m_feet_yaw_rate = 0.0f;
-        fake_state.m_unk_feet_speed_ratio = 0.0f;
-        fake_state.m_last_clientside_anim_framecount = 0;
-        csgo::i::globals->m_frametime = csgo::i::globals->m_ipt;
-        fake_state.update( g::sent_cmd.m_angs );
-        csgo::i::globals->m_frametime = backup_frametime;
+        const auto body_yaw = std::clamp( csgo::normalize( csgo::normalize( g::angles.y ) - csgo::normalize( abs_yaw ) ), -60.0f, 60.0f );
 
-        g::local->setup_bones( fake_matrix.data( ), 128, 0x7ff00, csgo::i::globals->m_curtime );
+        /* set up fake poses */
+        state->m_jump_fall_pose.set_value( g::local, jump_fall( features::prediction::curtime( ) - ground_time ) );
+        state->m_body_pitch_pose.set_value( g::local, ( csgo::normalize( g::angles.x ) + 90.0f ) / 180.0f );
+        state->m_lean_yaw_pose.set_value( g::local, csgo::normalize( g::angles.y ) / 360.0f + 0.5f );
+        state->m_body_yaw_pose.set_value( g::local, body_yaw / 120.0f + 0.5f );
 
+        /* build fake bone matrix */
+        build_bones( g::local, fake_matrix.data( ), 0x7ff00, vec3_t( 0.0f, csgo::normalize( g::angles.y - body_yaw ), 0.0f ), g::local->render_origin( ), features::prediction::curtime( ) );
+
+        /* remove render origin from matrix so we can change it later */
         const auto render_origin = g::local->render_origin( );
 
         for ( auto i = 0; i < 128; i++ )
             fake_matrix [ i ].set_origin( fake_matrix [ i ].origin( ) - render_origin );
 
+        /* restore vars */
         memcpy( g::local->layers( ), backup_animlayers.data( ), sizeof( backup_animlayers ) );
-        g::local->abs_angles( ) = backup_abs_angles;
         g::local->poses( ) = backup_poses;
+
+        curtick = csgo::time2ticks( features::prediction::curtime( ) );
     }
 }
 
@@ -567,22 +782,46 @@ void anims::animate_local( ) {
     if ( !state || !animlayers || !g::ucmd )
         return;
 
+    static auto jump_fall = [ ] ( float air_time ) {
+        const float recalc_air_time = ( air_time - 0.72f ) * 1.25f;
+        const float clamped = recalc_air_time >= 0.0f ? std::min< float >( recalc_air_time, 1.0f ) : 0.0f;
+        float out = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
+
+        if ( out >= 0.0f )
+            out = std::min< float >( out, 1.0f );
+
+        return out;
+    };
+
     static int last_update_tick = 0;
     static float latest_abs_yaw = 0.0f;
     static std::array< float, 24 > latest_poses { 0.0f };
     static std::array< animlayer_t, 13 > latest_animlayers { {} };
     static float old_simtime = 0.0f;
 
-    /* recieved new animlayers, try to use these.. .else, use old ones */
-    if ( g::local->simtime( ) != old_simtime ) {
-        memcpy( latest_animlayers.data( ), animlayers, sizeof( latest_animlayers ) );
-        old_simtime = g::local->simtime( );
-    }
-    else {
-        memcpy( animlayers, latest_animlayers.data( ), sizeof( latest_animlayers ) );
-    }
+    static float calc_weight = 0.0f;
+    static float calc_cycle = 0.0f;
+    static float synced_weight = 0.0f;
+    static float synced_cycle = 0.0f;
 
-    if ( last_update_tick != csgo::i::globals->m_tickcount ) {
+    if ( new_tick ) {
+        calc_local_exclusive( calc_weight, calc_cycle );
+
+        //animlayers [ 6 ].m_weight = synced_weight;
+        //animlayers [ 4 ].m_cycle = synced_cycle;
+        animlayers [ 12 ].m_weight = 0.0f;
+
+        memcpy( latest_animlayers.data( ), animlayers, sizeof( latest_animlayers ) );
+
+        //if ( g::send_packet ) {
+        //    synced_weight = calc_weight;
+        //    synced_cycle = calc_cycle;
+//
+        //    latest_animlayers [ 6 ].m_weight = animlayers [ 6 ].m_weight = synced_weight;
+        //    latest_animlayers [ 4 ].m_cycle = animlayers [ 4 ].m_cycle = synced_cycle;
+        //    latest_animlayers [ 12 ].m_weight = animlayers [ 12 ].m_weight = 0.0f;
+        //}
+
         /* recreate what holdaim var does */
         /* TODO: check if holdaim cvar is enaled */
         if ( g::ucmd->m_buttons & 1 ) {
@@ -594,19 +833,23 @@ void anims::animate_local( ) {
             g::angles = g::ucmd->m_angs;
         }
 
-        state->m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, csgo::i::globals->m_curtime - state->m_last_clientside_anim_update );
+        state->m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, features::prediction::curtime( ) - state->m_last_clientside_anim_update );
 
         update( g::local );
 
         if ( g::send_packet ) {
+            //state->m_jump_fall_pose.set_value( g::local, jump_fall( synced_cycle ) );
+
             memcpy( latest_poses.data( ), g::local->poses( ).data( ), sizeof( latest_poses ) );
             latest_abs_yaw = state->m_abs_yaw;
             g::hold_aim = false;
         }
 
-        build_bones( g::local, aim_matrix.data( ), 0x7ff00, vec3_t( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin( ), csgo::i::globals->m_curtime );
+        build_bones( g::local, aim_matrix.data( ), 0x7ff00, vec3_t( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin( ), features::prediction::curtime( ) );
 
-        last_update_tick = csgo::i::globals->m_tickcount;
+        last_update_tick = csgo::time2ticks( features::prediction::curtime( ) );
+
+        old_simtime = g::local->simtime( );
     }
 
     memcpy( animlayers, latest_animlayers.data( ), sizeof( latest_animlayers ) );
@@ -622,6 +865,8 @@ void anims::copy_data( player_t* ent ) {
     if ( !state || !animlayers || frames [ ent->idx( ) ].empty( ) )
         return;
 
+    ent->set_abs_angles( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
+
     /* get animation update, use this record to render */
     const auto target_frame = std::find_if( frames [ ent->idx( ) ].begin( ), frames [ ent->idx( ) ].end( ), [ & ] ( const animation_frame_t& frame ) { return frame.m_anim_update; } );
 
@@ -633,9 +878,6 @@ void anims::copy_data( player_t* ent ) {
 }
 
 void anims::run( int stage ) {
-    if ( stage == 5 )
-        sesui::binds::frame_time = csgo::i::globals->m_frametime;
-
     if ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) )
         return;
 
@@ -646,19 +888,23 @@ void anims::run( int stage ) {
 
                 const auto ent = csgo::i::ent_list->get< player_t* >( i );
 
-                if ( ent && ent->alive( ) && !ent->dormant( ) )
+                if ( ent && ent->alive( ) && !ent->dormant( ) ) {
+                    *reinterpret_cast< int* >( uintptr_t( ent ) + 0xA30 ) = csgo::i::globals->m_framecount;
+                    *reinterpret_cast< int* >( uintptr_t( ent ) + 0xA28 ) = 0;
                     copy_data( ent );
+                }
             }
 
-            animate_fake( );
             animate_local( );
+            animate_fake( );
+            new_tick = false;
         } break;
         case 4: { /* FRAME_NET_UPDATE_END */
             csgo::for_each_player( [ & ] ( player_t* ent ) {
                 if ( ent == g::local )
                     return;
 
-                interpolate( ent, false );
+                //interpolate( ent, false );
                 animate_player( ent );
                 } );
         } break;
@@ -667,7 +913,7 @@ void anims::run( int stage ) {
                 if ( ent == g::local )
                     return;
 
-                interpolate( ent, false );
+                //interpolate( ent, false );
                 } );
         } break;
         case 3: { /* FRAME_NET_UPDATE_POSTDATAUPDATE_END */
@@ -682,3 +928,5 @@ void anims::run( int stage ) {
         } break;
     }
 }
+
+#pragma optimize( "2", off )

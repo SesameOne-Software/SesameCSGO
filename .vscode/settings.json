@@ -66,6 +66,7 @@
         "thread": "cpp",
         "unordered_map": "cpp",
         "xhash": "cpp",
-        "stack": "cpp"
+        "stack": "cpp",
+        "optional": "cpp"
     }
 }

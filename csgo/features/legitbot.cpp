@@ -35,10 +35,10 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
         if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
             return false;
 
-        if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( features::prediction::predicted_curtime ) > g::cock_ticks ) )
+        if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
             return false;
 
-        return ( features::prediction::predicted_curtime >= g::local->next_attack( ) && features::prediction::predicted_curtime >= g::local->weapon( )->next_primary_attack( ) ) || g::next_tickbase_shot;
+        return ( csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( ) ) || g::next_tickbase_shot;
     };
 
     const auto hit_pl = reinterpret_cast< player_t* >( tr.m_hit_entity );

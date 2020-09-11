@@ -1,7 +1,8 @@
 ﻿#include "prediction.hpp"
 #include "../globals.hpp"
+#include "../hooks/in_prediction.hpp"
 
-float features::prediction::predicted_curtime = 0.0f;
+float predicted_curtime = 0.0f;
 
 namespace prediction_util {
 	float frametime;
@@ -13,52 +14,35 @@ namespace prediction_util {
 	uintptr_t prediction_player;
 	uintptr_t prediction_seed;
 
-	void post_think( player_t* local ) {
-		static auto post_think_vphysics = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 8B D9 56 57 83 BB ? ? ? ? ? 75 50" ) ).get< bool( __thiscall* )( entity_t* ) >( );
-		static auto simulate_player_simulated_entities = pattern::search( _( "client.dll" ), _( "56 8B F1 57 8B BE ? ? ? ? 83 EF 01 78 72 90 8B 86" ) ).get< void( __thiscall* )( entity_t* ) >( );
-
-		//MDLCACHE_CRITICAL_SECTION( );
-
-		if ( local->health( ) > 0 || *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uint32_t >( local ) + 0x3A81 ) ) {
-			vfunc< void( __thiscall* )( void* ) >( local, 339 )( local );
-
-			if ( local->flags( ) & 1 )
-				*reinterpret_cast< std::uintptr_t* >( std::uintptr_t( local ) + 0x3014 ) = 0;
-
-			if ( *reinterpret_cast< int* >( std::uintptr_t( local ) + 0x28BC ) == -1 )
-				vfunc< void( __thiscall* )( void*, int ) >( local, 218 )( local, 0 );
-
-			vfunc< void( __thiscall* )( void* ) >( local, 219 )( local );
-
-			post_think_vphysics( local );
-		}
-
-		simulate_player_simulated_entities( local );
-
-		vfunc< int( __thiscall* )( void* ) >( csgo::i::mdl_cache, 34 )( csgo::i::mdl_cache );
-	}
-
 	void start( ucmd_t* ucmd ) {
 		auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
 		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
-		//if ( csgo::i::client_state->delta_tick( ) > 0 ) {
-		//	csgo::i::pred->update(
-		//		csgo::i::client_state->delta_tick( ),
-		//		csgo::i::client_state->delta_tick( ) > 0,
-		//		csgo::i::client_state->last_command_ack( ),
-		//		csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( ) );
-		//}
-
 		if ( !movedata )
-			movedata = std::malloc( 182 );
+			movedata = std::malloc( 256 ); // 182
 
 		if ( !prediction_player || !prediction_seed ) {
 			prediction_seed = pattern::search( _( "client.dll" ), _( "8B 47 40 A3" ) ).add( 4 ).deref( ).get< std::uintptr_t >( );
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
+
+		if ( csgo::i::client_state->choked( ) > 0 ) {
+			hooks::prediction::disable_sounds = true;
+			//
+			csgo::i::pred->update(
+				csgo::i::client_state->delta_tick( ),
+				csgo::i::client_state->delta_tick( ) > 0,
+				csgo::i::client_state->last_command_ack( ),
+				csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( )
+			);
+			//
+			hooks::prediction::disable_sounds = false;
+		}
+
+		const auto first_time_pred = csgo::i::pred->m_is_first_time_predicted;
+		const auto in_pred = csgo::i::pred->m_in_prediction;
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
 		*reinterpret_cast< int* >( prediction_player ) = reinterpret_cast< int >( local );
@@ -71,21 +55,9 @@ namespace prediction_util {
 		frametime = csgo::i::globals->m_frametime;
 		tickcount = csgo::i::globals->m_tickcount;
 
-		/*
-		@CBRS
-			so here's the thing...
-			a) tickbase is never modified in any of these called functions, so why are you backing it up and restoring it?
-			b) you should predict what your tickbase will be (i.e. after shifting back due to doubletap) and set it here so that you don't try to exploit + fire at a time when you actually can't,
-			thus causing ghost-shots on the server
-		*/
-
-		const int old_tickbase = local->tick_base( );
-		const bool old_in_prediction = csgo::i::pred->m_in_prediction;
-		const bool old_first_prediction = csgo::i::pred->m_is_first_time_predicted;
-
-		csgo::i::globals->m_curtime = features::prediction::predicted_curtime;
+		csgo::i::globals->m_curtime = predicted_curtime = csgo::ticks2time( local->tick_base( ) );
 		csgo::i::globals->m_frametime = csgo::i::pred->m_engine_paused ? 0.0f : csgo::i::globals->m_ipt;
-		csgo::i::globals->m_tickcount = csgo::time2ticks( features::prediction::predicted_curtime );
+		csgo::i::globals->m_tickcount = local->tick_base( );
 
 		csgo::i::pred->m_is_first_time_predicted = false;
 		csgo::i::pred->m_in_prediction = true;
@@ -93,51 +65,29 @@ namespace prediction_util {
 		if ( ucmd->m_impulse )
 			*reinterpret_cast< std::uint32_t* >( std::uintptr_t( local ) + 0x31FC ) = ucmd->m_impulse;
 
-		ucmd->m_buttons |= ( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3330 ) );
-		ucmd->m_buttons &= ~( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3334 ) );
+		ucmd->m_buttons |= ( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3334 ) );
+		ucmd->m_buttons &= ~( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3330 ) );
 
 		const auto v16 = ucmd->m_buttons;
 		const auto unk02 = reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F8 );
 		const auto v17 = v16 ^ *unk02;
 
 		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31EC ) = *unk02;
-		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F8 ) = v16;
+		*unk02 = v16;
 		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F0 ) = v16 & v17;
 		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F4 ) = v17 & ~v16;
 
-		csgo::i::pred->check_moving_ground( local, csgo::i::globals->m_frametime );
-
-		// local->set_local_viewangles( g::last_real );
-
-		/*
-		if ( local->physics_run_think( 0 ) )
-			local->pre_think( );
-			*/
-		const auto next_think = reinterpret_cast< int* >( std::uintptr_t( local ) + 0xFC );
-
-		if ( *next_think != -1 && *next_think > 0 && *next_think <= local->tick_base( ) ) {
-			*next_think = -1;
-
-			static auto unknown_fn = pattern::search( _( "client.dll" ), _( "55 8B EC 56 57 8B F9 8B B7 ? ? ? ? 8B" ) ).get< void( __thiscall* )( int ) >( );
-			unknown_fn( 0 );
-
-			local->think( );
-		}
-
-		csgo::i::move->start_track_prediction_errors( local );
-
 		csgo::i::move_helper->set_host( local );
+		csgo::i::move->start_track_prediction_errors( local );
 		csgo::i::pred->setup_move( local, ucmd, csgo::i::move_helper, movedata );
 		csgo::i::move->process_movement( local, movedata );
 		csgo::i::pred->finish_move( local, ucmd, movedata );
 		csgo::i::move_helper->process_impacts( );
+		csgo::i::move->finish_track_prediction_errors( local );
+		csgo::i::move_helper->set_host( nullptr );
 
-		local->post_think( );
-
-		local->tick_base( ) = old_tickbase;
-
-		csgo::i::pred->m_is_first_time_predicted = old_first_prediction;
-		csgo::i::pred->m_in_prediction = old_in_prediction;
+		csgo::i::pred->m_is_first_time_predicted = first_time_pred;
+		csgo::i::pred->m_in_prediction = in_pred;
 	}
 
 	void end( ucmd_t* ucmd ) {
@@ -146,20 +96,15 @@ namespace prediction_util {
 		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
-		csgo::i::move->finish_track_prediction_errors( local );
-		csgo::i::move_helper->set_host( nullptr );
-		csgo::i::move->reset( );
-
-		//if ( csgo::i::globals->m_frametime > 0.0f )
-		//	local->tick_base ( )++;
-
 		csgo::i::globals->m_curtime = curtime;
 		csgo::i::globals->m_frametime = frametime;
 		csgo::i::globals->m_tickcount = tickcount;
 
-		*reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3334 ) = 0;
-		*reinterpret_cast< int* >( prediction_seed ) = 0xffffffff;
+		*reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3338 ) = 0;
+		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;
+
+		csgo::i::move->reset( );
 	}
 }
 
@@ -172,7 +117,7 @@ int features::prediction::shift( const int& cur ) {
 	if ( g::shifted_amount ) {
 		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
 		auto expected_shift = std::min< int >( 14, g::shifted_amount );
-		auto first_tick_in_batch_tc = ideal_server_start - std::min<int>( 16, csgo::i::client_state->choked( ) + 1 + expected_shift ) + 1;
+		auto first_tick_in_batch_tc = ideal_server_start + std::min<int>( 16, csgo::i::client_state->choked( ) + 1 + expected_shift ) + 1;
 
 		return first_tick_in_batch_tc + csgo::i::client_state->choked( );
 	}
@@ -187,16 +132,17 @@ int features::prediction::shift( const int& cur ) {
 	return cur;
 }
 
-void features::prediction::update_curtime( ) {
-	static int g_tick = 0;
-	static ucmd_t* last_cmd = nullptr;
+float features::prediction::curtime( ) {
+	return predicted_curtime;
+}
 
-	if ( !g::local )
+void features::prediction::update( int stage ) {
+	//if ( m_stored_variables.m_flVelocityModifier < 1.0 ) {
+	//	*reinterpret_cast< int* >( uintptr_t( csgo::i::pred ) + 36 ) = 1;
+	//}
+
+	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) || stage != 4 )
 		return;
-
-	g_tick = ( !last_cmd || last_cmd->m_hasbeenpredicted ) ? g::local->tick_base( ) : ( g_tick + 1 );
-	last_cmd = g::ucmd;
-	predicted_curtime = csgo::ticks2time( g_tick );
 }
 
 void features::prediction::run( const std::function< void( ) >& fn ) {

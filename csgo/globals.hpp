@@ -42,6 +42,7 @@ namespace g {
 	extern int dt_ticks_to_shift;
 	extern int dt_recharge_time;
 	extern int cock_ticks;
+	extern int tickbase_at_shift;
 	extern bool can_fire_revolver;
 	extern round_t round;
 	extern PLoader_Info loader_data;

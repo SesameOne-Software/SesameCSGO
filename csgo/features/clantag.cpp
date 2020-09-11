@@ -1,6 +1,7 @@
 ﻿#include "../menu/menu.hpp"
 #include "clantag.hpp"
 #include "../menu/options.hpp"
+#include "prediction.hpp"
 
 int iter = 0;
 std::string last_tag = _( "" );
@@ -28,7 +29,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 		return;
 	}
 
-	auto iter = static_cast< int >( csgo::i::globals->m_curtime * 4.0f );
+	auto iter = static_cast< int >( prediction::curtime() * 4.0f );
 	const std::string tag = std::string( clantag_text, clantag_text + wcslen( clantag_text ) );
 
 	if ( player_to_steal_tag_from ) {

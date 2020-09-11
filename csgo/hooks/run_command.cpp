@@ -15,10 +15,17 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* cmd, c_move_help
 	}
 
 	auto backup_tb = ent->tick_base( );
+	auto backup_curtime = csgo::i::globals->m_curtime;
 
 	if ( g::shifted_tickbase == cmd->m_cmdnum ) {
-		g::local->tick_base( ) = features::prediction::shift( g::local->tick_base( ) );
-		csgo::i::globals->m_curtime = csgo::ticks2time( g::local->tick_base( ) );
+		const auto latency_ticks = std::max<int>( 0, csgo::time2ticks( csgo::i::engine->get_net_channel_info( )->get_latency( 0 ) ) );
+
+		//ent->tick_base( ) = g::tickbase_at_shift /*+ latency_ticks*/ - g::shifted_amount + 1;
+		//ent->tick_base( )++;
+
+		ent->tick_base( ) = features::prediction::shift( ent->tick_base( ) );
+
+		csgo::i::globals->m_curtime = csgo::ticks2time( ent->tick_base( ) );
 	}
 
 	old::run_command( REG_OUT, ent, cmd, move_helper );
@@ -26,7 +33,7 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* cmd, c_move_help
 	/* TODO: run local animfix here */
 
 	if ( g::shifted_tickbase == cmd->m_cmdnum ) {
-		g::local->tick_base( ) = backup_tb + 1;
-		csgo::i::globals->m_curtime = csgo::ticks2time( g::local->tick_base( ) );
+		ent->tick_base( ) = backup_tb;
+		csgo::i::globals->m_curtime = backup_curtime;
 	}
 }
