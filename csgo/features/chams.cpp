@@ -272,20 +272,20 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				//	mat->set_material_var_flag( 0x8000, true );
 				//	mat->set_material_var_flag( 0x1000, false );
 				//	csgo::i::mdl_render->force_mat( mat );
-////
+				//	////
 				//	for ( auto& frame : anims::frames [ e->idx( ) ] ) {
 				//		/* only render predicted data */
 				//		//if ( frame.m_anim_update )
 				//		//	continue;
-////
-				//		if ( features::ragebot::get_misses( e->idx( ) ).bad_resolve % 3 == 0 )
-				//			hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix1.data( ) );
-				//		else if ( features::ragebot::get_misses( e->idx( ) ).bad_resolve % 3 == 1 )
-				//			hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix2.data( ) );
-				//		else
-				//			hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix3.data( ) );
+////////
+				//		csgo::i::render_view->set_color( 255, 50, 50 );
+				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix1.data( ) );
+				//		csgo::i::render_view->set_color( 50, 255, 50 );
+				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix2.data( ) );
+				//		csgo::i::render_view->set_color( 50, 50, 255 );
+				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix3.data( ) );
 				//	}
-////
+				//	////
 				//	csgo::i::mdl_render->force_mat( nullptr );
 				//}
 

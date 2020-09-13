@@ -20,6 +20,6 @@ set library_dirs=/LIBPATH:"C:\\Program Files (x86)\\Microsoft DirectX SDK (June 
 
 set compile_dirs=csgo\*.cpp csgo\animations\*.cpp csgo\features\*.cpp csgo\hooks\*.cpp csgo\javascript\*.cpp csgo\menu\*.cpp csgo\renderer\*.cpp csgo\sdk\*.cpp csgo\security\*.cpp csgo\tinyxml2\*.cpp csgo\utils\*.cpp
 
-set preprocessor=/D _MBCS /D _WINDLL /D _CRT_SECURE_NO_WARNINGS /D JM_XORSTR_DISABLE_AVX_INTRINSICS /D ANTI_DEBUG /D DEV_BUILD
+set preprocessor=/D _MBCS /D _WINDLL /D _CRT_SECURE_NO_WARNINGS /D JM_XORSTR_DISABLE_AVX_INTRINSICS /D ANTI_DEBUG
 
 cl.exe %preprocessor% %compilerflags% %include_dirs% %compile_dirs% /link %library_dirs% %libs% %linkerflags%

@@ -276,14 +276,14 @@ void sesui::custom::end_tabs( ) {
 	const auto window_rect = rect( titlebar_rect.x, titlebar_rect.y + scale_dpi( titlebar_rect.h ), window->second.bounds.w, window->second.bounds.h - titlebar_rect.h );
 
 	/* pfp */
-	//const auto tabs_w = window_rect.w * static_cast< float > ( 0.2f/*width*/ );
-	//draw_list.add_texture( std::vector< uint8_t >( g_pfp_data.data( ), g_pfp_data.data( ) + g_pfp_data.length( ) ), vec2( window->second.bounds.x + tabs_w * 0.5f - scale_dpi( 48.0f * 0.7f ) * 0.5f, window->second.bounds.y + scale_dpi( window->second.bounds.h - 100.0f ) - scale_dpi( 48.0f * 0.7f ) * 0.5f ), vec2( 48.0f, 48.0f ), vec2( 0.7f, 0.7f ), color( 1.0f, 1.0f, 1.0f, tab_open_timer ), true );
+	const auto tabs_w = window_rect.w * static_cast< float > ( 0.2f/*width*/ );
+	draw_list.add_texture( std::vector< uint8_t >( g_pfp_data.data( ), g_pfp_data.data( ) + g_pfp_data.length( ) ), vec2( window->second.bounds.x + tabs_w * 0.5f - scale_dpi( 48.0f * 0.7f ) * 0.5f, window->second.bounds.y + scale_dpi( window->second.bounds.h - 100.0f ) - scale_dpi( 48.0f * 0.7f ) * 0.5f ), vec2( 48.0f, 48.0f ), vec2( 0.7f, 0.7f ), color( 1.0f, 1.0f, 1.0f, tab_open_timer ), true );
 //
-	////draw_list.add_rect ( rect( window->second.bounds.x + tabs_w * 0.5f - scale_dpi ( 48.0f * 0.7f ) * 0.5f, window->second.bounds.y + scale_dpi ( window->second.bounds.h - 100.0f ) - scale_dpi ( 48.0f * 0.7f ) * 0.5f, 48.0f * 0.7f, 48.0f * 0.7f ), color( 1.0f, 1.0f, 1.0f, 1.0f ), false, true );
+	//draw_list.add_rect ( rect( window->second.bounds.x + tabs_w * 0.5f - scale_dpi ( 48.0f * 0.7f ) * 0.5f, window->second.bounds.y + scale_dpi ( window->second.bounds.h - 100.0f ) - scale_dpi ( 48.0f * 0.7f ) * 0.5f, 48.0f * 0.7f, 48.0f * 0.7f ), color( 1.0f, 1.0f, 1.0f, 1.0f ), false, true );
 //
-	//vec2 username_text_size;
-	//draw_list.get_text_size( style.control_font, g_username.data( ), username_text_size );
-	//draw_list.add_text( vec2( window->second.bounds.x + tabs_w * 0.5f - username_text_size.x * 0.5f, window->second.bounds.y + scale_dpi( window->second.bounds.h - 100.0f ) - scale_dpi( 48.0f * 0.7f ) * 0.5f + scale_dpi( style.padding ) + scale_dpi( 48.0f ) ), style.control_font, g_username.data( ), false, color( 1.0f, 1.0f, 1.0f, tab_open_timer ), true );
+	vec2 username_text_size;
+	draw_list.get_text_size( style.control_font, g_username.data( ), username_text_size );
+	draw_list.add_text( vec2( window->second.bounds.x + tabs_w * 0.5f - username_text_size.x * 0.5f, window->second.bounds.y + scale_dpi( window->second.bounds.h - 100.0f ) - scale_dpi( 48.0f * 0.7f ) * 0.5f + scale_dpi( style.padding ) + scale_dpi( 48.0f ) ), style.control_font, g_username.data( ), false, color( 1.0f, 1.0f, 1.0f, tab_open_timer ), true );
 
 	draw_list.remove_clip( true );
 

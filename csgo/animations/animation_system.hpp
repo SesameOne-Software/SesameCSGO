@@ -6,7 +6,9 @@
 namespace anims {
     struct animation_frame_t {
         std::array< animlayer_t, 13 > m_animlayers { {} };
-        std::array< float, 24 > m_poses;
+        std::array< float, 24 > m_poses1;
+        std::array< float, 24 > m_poses2;
+        std::array< float, 24 > m_poses3;
         float m_simtime;
         float m_old_simtime;
         animstate_t m_animstate;
@@ -29,6 +31,9 @@ namespace anims {
     extern std::map< std::string, std::array< std::deque< int >, 65 > > choke_sequences;
     extern bool new_tick;
 
+    float angle_mod( float a );
+    float approach_angle( float target, float value, float speed );
+    float angle_diff( float dst, float src );
     bool build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
     void interpolate( player_t* ent, bool should_interp );
     void calc_animlayers( player_t* ent );

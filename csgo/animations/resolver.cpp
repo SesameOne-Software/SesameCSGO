@@ -370,6 +370,15 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			}
 
 			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+
+			if ( features::ragebot::get_lag_rec( pl_idx ).m_priority == 1 ) {
+				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( ", " ) );
+				print_console( sesui::color( 0.34f, 0.34f, 1.0f, 1.0f ), _( "On Shot Backtrack" ) );
+				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+			}
+			else {
+				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+			}
 		}
 
 		rdata::impacts [ pl_idx ] = vec3_t( 0.0f, 0.0f, 0.0f );
@@ -416,7 +425,14 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			}
 
 			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " for " ) );
-			print_console( sesui::color( 1.0f, 0.34f, 0.34f, 1.0f ), _( "%d\n" ), rdata::player_dmg [ pl_idx ] );
+
+			if ( features::ragebot::get_lag_rec( pl_idx ).m_priority == 1 ) {
+				print_console( sesui::color( 1.0f, 0.34f, 0.34f, 1.0f ), _( "%d" ), rdata::player_dmg [ pl_idx ] );
+				print_console( sesui::color( 0.34f, 0.34f, 1.0f, 1.0f ), _( " (On Shot Backtrack)\n" ) );
+			}
+			else {
+				print_console( sesui::color( 1.0f, 0.34f, 0.34f, 1.0f ), _( "%d\n" ), rdata::player_dmg [ pl_idx ] );
+			}
 		}
 
 		rdata::impacts [ pl_idx ] = vec3_t( 0.0f, 0.0f, 0.0f );
@@ -667,6 +683,7 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 	player_info_t pl_info;
 	csgo::i::engine->get_player_info( pl->idx( ), &pl_info );
 
+	/* bot check */
 	if ( pl_info.m_fake_player ) {
 		yaw1 = pl->angles( ).y;
 		yaw2 = pl->angles( ).y;
@@ -693,12 +710,12 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 	if ( std::fabsf( pl->angles( ).x ) >= 60.0f )
 		initial_pitch_time [ pl->idx( ) ] = csgo::i::globals->m_curtime;
 
-	if ( std::fabsf( pl->angles( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx( ) ] ) < 0.33f ) {
-		yaw1 = last_recorded_resolve1 [ pl->idx( ) ];
-		yaw2 = last_recorded_resolve2 [ pl->idx( ) ];
-		yaw3 = last_recorded_resolve3 [ pl->idx( ) ];
-		return;
-	}
+	//if ( std::fabsf( pl->angles( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx( ) ] ) < 0.33f ) {
+	//	yaw1 = last_recorded_resolve1 [ pl->idx( ) ];
+	//	yaw2 = last_recorded_resolve2 [ pl->idx( ) ];
+	//	yaw3 = last_recorded_resolve3 [ pl->idx( ) ];
+	//	return;
+	//}
 
 	//if ( animations::data::choke [ pl->idx ( ) ] ) {
 		/* attempt to resolve player with the data we have */

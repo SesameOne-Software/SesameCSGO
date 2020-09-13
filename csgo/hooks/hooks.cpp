@@ -30,6 +30,8 @@
 #include "write_usercmd_delta_to_buffer.hpp"
 #include "setup_bones.hpp"
 #include "run_command.hpp"
+#include "run_simulation.hpp"
+#include "build_transformations.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -96,6 +98,8 @@ void hooks::init( ) {
 	const auto _modify_eye_pos = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 	const auto _setup_bones = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
 	const auto _run_command = vfunc<void*>( csgo::i::pred, 19 );
+	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 53 8B 5D 10 56" ) ).get< void* >( );
+	const auto _build_transformations = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* >( );
 
 	MH_Initialize( );
 
@@ -113,7 +117,6 @@ void hooks::init( ) {
 		if ( MH_EnableHook( from ) != MH_OK )
 			return dbg_print( _( "Hook enabling failed: %s" ), func_name );
 		// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
-		//std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
 	};
 
 	dbg_hook( _paint_traverse, paint_traverse, ( void** )&old::paint_traverse );
@@ -141,6 +144,8 @@ void hooks::init( ) {
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	//dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_command, run_command, ( void** )&old::run_command );
+	//dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
+	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 
 	event_handler = std::make_unique< c_event_handler >( );
 

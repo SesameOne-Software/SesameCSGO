@@ -17,7 +17,7 @@ bool anims::new_tick = false;
 
 void anims::animation_frame_t::store( player_t* ent, bool anim_update ) {
     memcpy( m_animlayers.data( ), ent->layers( ), sizeof( m_animlayers ) );
-    m_poses = ent->poses( );
+    //m_poses = ent->poses( );
     m_simtime = ent->simtime( );
     m_old_simtime = ent->old_simtime( );
     m_animstate = *ent->animstate( );
@@ -30,6 +30,51 @@ void anims::animation_frame_t::store( player_t* ent, bool anim_update ) {
 }
 
 #pragma optimize( "2", on )
+
+/* https://github.com/ValveSoftware/halflife/blob/master/ricochet/pm_shared/pm_math.c#L21 */
+float anims::angle_mod( float a ) {
+    return ( 360.0 / 65536 ) * ( ( int )( a * ( 65536 / 360.0 ) ) & 65535 );
+};
+
+/* https://github.com/VSES/SourceEngine2007/blob/43a5c90a5ada1e69ca044595383be67f40b33c61/src_main/mathlib/mathlib_base.cpp#L3327 */
+float anims::approach_angle( float target, float value, float speed ) {
+    target = angle_mod( target );
+    value = angle_mod( value );
+
+    float delta = target - value;
+
+    if ( speed < 0.0f )
+        speed = -speed;
+
+    if ( delta < -180.0f )
+        delta += 360.0f;
+    else if ( delta > 180.0f )
+        delta -= 360.0f;
+
+    if ( delta > speed )
+        value += speed;
+    else if ( delta < -speed )
+        value -= speed;
+    else
+        value = target;
+
+    return value;
+};
+
+float anims::angle_diff( float dst, float src ) {
+    auto delta = fmodf( dst - src, 360.0f );
+
+    if ( dst > src ) {
+        if ( delta >= 180.0f )
+            delta -= 360.0f;
+    }
+    else {
+        if ( delta <= -180.0f )
+            delta += 360.0f;
+    }
+
+    return delta;
+}
 
 bool anims::build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time ) {
     /* vfunc indices */
@@ -222,13 +267,24 @@ void anims::calc_poses( player_t* ent ) {
 
     state->m_jump_fall_pose.set_value( ent, jump_fall( layers [ 4 ].m_cycle ) );
 
-    state->m_move_blend_walk_pose.set_value( ent, ( 1.0f - state->m_ground_fraction ) * ( 1.0f - ent->crouch_amount( ) ) );
-    state->m_move_blend_run_pose.set_value( ent, ( 1.0f - ent->crouch_amount( ) ) * state->m_ground_fraction );
-    state->m_move_blend_crouch_pose.set_value( ent, ent->crouch_amount( ) );
+    state->m_move_blend_walk_pose.set_value( ent, ( 1.0f - state->m_ground_fraction ) * ( 1.0f - state->m_duck_amount ) );
+    state->m_move_blend_run_pose.set_value( ent, ( 1.0f - state->m_duck_amount ) * state->m_ground_fraction );
+    state->m_move_blend_crouch_pose.set_value( ent, state->m_duck_amount );
+    // TODO: FIX THIS MOVE YAW
+    auto move_yaw = csgo::normalize( angle_diff( csgo::normalize( csgo::vec_angle( ent->vel( ) ).y ), csgo::normalize( state->m_abs_yaw ) ) );
+    if ( move_yaw < 0.0f )
+        move_yaw += 360.0f;
+    state->m_move_yaw_pose.set_value( ent, move_yaw / 360.0f );
+    state->m_speed_pose.set_value( ent, ent->vel( ).length_2d( ) );
+    state->m_stand_pose.set_value( ent, 1.0f - ( state->m_duck_amount * state->m_unk_fraction ) );
+
+    auto lean_yaw = csgo::normalize( state->m_eye_yaw + 180.0f );
+    if ( lean_yaw < 0.0f )
+        lean_yaw += 360.0f;
 
     state->m_body_pitch_pose.set_value( ent, ( csgo::normalize( state->m_pitch ) + 90.0f ) / 180.0f );
-    //state->m_lean_yaw_pose.set_value( ent, csgo::normalize( state->m_eye_yaw ) / 360.0f + 0.5f );
-    state->m_body_yaw_pose.set_value( ent, std::clamp( csgo::normalize( csgo::normalize( state->m_eye_yaw ) - csgo::normalize( state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f );
+    //state->m_lean_yaw_pose.set_value( ent, lean_yaw / 360.0f );
+    state->m_body_yaw_pose.set_value( ent, std::clamp( csgo::normalize( angle_diff( csgo::normalize( state->m_eye_yaw ), csgo::normalize( state->m_abs_yaw ) ) ), -60.0f, 60.0f ) / 120.0f + 0.5f );
 }
 
 /* ghetto last minute decision: associate a certain velocity range with a fakelag factor and apply this fakelag factor when we reach a similar velocity */
@@ -311,10 +367,10 @@ void anims::update( player_t* ent ) {
     /* fix other players' velocity */
     //if ( ent != g::local ) {
         /* skip call to C_BaseEntity::CalcAbsoluteVelocity */
-        *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xe8 ) &= ~0x1000;
+    *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xe8 ) &= ~0x1000;
 
-        /* replace abs velocity (to be recalculated) */
-        abs_vel = ent->vel( );
+    /* replace abs velocity (to be recalculated) */
+    abs_vel = ent->vel( );
     //}
 
     /* fix abs velocity rounding errors */
@@ -393,14 +449,17 @@ void anims::store_frame( player_t* ent, bool anim_update ) {
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
     calc_poses( ent );
+    memcpy( animation_frame.m_poses1.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
     build_bones( ent, animation_frame.m_matrix1.data( ), 256, vec3_t( 0.0f, abs_yaw1, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
     calc_poses( ent );
+    memcpy( animation_frame.m_poses2.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
     build_bones( ent, animation_frame.m_matrix2.data( ), 256, vec3_t( 0.0f, abs_yaw2, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
     calc_poses( ent );
+    memcpy( animation_frame.m_poses3.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
     build_bones( ent, animation_frame.m_matrix3.data( ), 256, vec3_t( 0.0f, abs_yaw3, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     frames [ ent->idx( ) ].push_back( animation_frame );
@@ -633,18 +692,6 @@ void anims::animate_player( player_t* ent ) {
             //    memcpy( ent->layers( ), backup_animlayers.data( ), sizeof( backup_animlayers ) );
             //}
     }
-
-    float abs_yaw1 = 0.0f, abs_yaw2 = 0.0f, abs_yaw3 = 0.0f;
-    animations::resolver::resolve( ent, abs_yaw1, abs_yaw2, abs_yaw3 );
-
-    if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 0 )
-        state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
-    else if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 1 )
-        state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
-    else
-        state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
-
-    ent->set_abs_angles( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
 }
 
 namespace lby {
@@ -652,36 +699,6 @@ namespace lby {
 }
 
 void anims::animate_fake( ) {
-    /* https://github.com/ValveSoftware/halflife/blob/master/ricochet/pm_shared/pm_math.c#L21 */
-    static auto angle_mod = [ ] ( float a ) {
-        return ( 360.0 / 65536 ) * ( ( int )( a * ( 65536 / 360.0 ) ) & 65535 );
-    };
-
-    /* https://github.com/VSES/SourceEngine2007/blob/43a5c90a5ada1e69ca044595383be67f40b33c61/src_main/mathlib/mathlib_base.cpp#L3327 */
-    static auto approach_angle = [ ] ( float target, float value, float speed ) {
-        target = angle_mod( target );
-        value = angle_mod( value );
-
-        float delta = target - value;
-
-        if ( speed < 0.0f )
-            speed = -speed;
-
-        if ( delta < -180.0f )
-            delta += 360.0f;
-        else if ( delta > 180.0f )
-            delta -= 360.0f;
-
-        if ( delta > speed )
-            value += speed;
-        else if ( delta < -speed )
-            value -= speed;
-        else
-            value = target;
-
-        return value;
-    };
-
     static auto jump_fall = [ ] ( float air_time ) {
         const float recalc_air_time = ( air_time - 0.72f ) * 1.25f;
         const float clamped = recalc_air_time >= 0.0f ? std::min< float >( recalc_air_time, 1.0f ) : 0.0f;
@@ -804,6 +821,8 @@ void anims::animate_local( ) {
     static float synced_weight = 0.0f;
     static float synced_cycle = 0.0f;
 
+    state->m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, features::prediction::curtime( ) - state->m_last_clientside_anim_update );
+
     if ( new_tick ) {
         calc_local_exclusive( calc_weight, calc_cycle );
 
@@ -833,11 +852,9 @@ void anims::animate_local( ) {
             g::angles = g::ucmd->m_angs;
         }
 
-        state->m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, features::prediction::curtime( ) - state->m_last_clientside_anim_update );
-
         update( g::local );
 
-        if ( g::send_packet ) {
+        if ( !csgo::i::client_state->choked( ) ) {
             //state->m_jump_fall_pose.set_value( g::local, jump_fall( synced_cycle ) );
 
             memcpy( latest_poses.data( ), g::local->poses( ).data( ), sizeof( latest_poses ) );
@@ -865,7 +882,7 @@ void anims::copy_data( player_t* ent ) {
     if ( !state || !animlayers || frames [ ent->idx( ) ].empty( ) )
         return;
 
-    ent->set_abs_angles( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
+    //ent->set_abs_angles( vec3_t( 0.0f, state->m_abs_yaw, 0.0f ) );
 
     /* get animation update, use this record to render */
     const auto target_frame = std::find_if( frames [ ent->idx( ) ].begin( ), frames [ ent->idx( ) ].end( ), [ & ] ( const animation_frame_t& frame ) { return frame.m_anim_update; } );
@@ -874,7 +891,19 @@ void anims::copy_data( player_t* ent ) {
         return;
 
     memcpy( ent->layers( ), target_frame->m_animlayers.data( ), sizeof( target_frame->m_animlayers ) );
-    memcpy( ent->poses( ).data( ), target_frame->m_poses.data( ), sizeof( target_frame->m_poses ) );
+
+    if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 0 ) {
+        ent->set_abs_angles( vec3_t( 0.0f, csgo::normalize( csgo::normalize( target_frame->m_animstate.m_eye_yaw ) - ( ( target_frame->m_poses1 [ 11 ] - 0.5f ) * 120.0f ) ), 0.0f ) );
+        memcpy( ent->poses( ).data( ), target_frame->m_poses1.data( ), sizeof( ent->poses( ) ) );
+    }
+    else if ( features::ragebot::get_misses( ent->idx( ) ).bad_resolve % 3 == 1 ) {
+        ent->set_abs_angles( vec3_t( 0.0f, csgo::normalize( csgo::normalize( target_frame->m_animstate.m_eye_yaw ) - ( ( target_frame->m_poses2 [ 11 ] - 0.5f ) * 120.0f ) ), 0.0f ) );
+        memcpy( ent->poses( ).data( ), target_frame->m_poses2.data( ), sizeof( ent->poses( ) ) );
+    }
+    else {
+        ent->set_abs_angles( vec3_t( 0.0f, csgo::normalize( csgo::normalize( target_frame->m_animstate.m_eye_yaw ) - ( ( target_frame->m_poses3 [ 11 ] - 0.5f ) * 120.0f ) ), 0.0f ) );
+        memcpy( ent->poses( ).data( ), target_frame->m_poses3.data( ), sizeof( ent->poses( ) ) );
+    }
 }
 
 void anims::run( int stage ) {

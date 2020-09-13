@@ -752,8 +752,16 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				switch ( selected_desync_type ) {
 					case 0: /* real around fake */ {
+						static float last_update_time = csgo::i::globals->m_curtime;
+
 						/* micro movements */
 						old_fmove += aa::move_flip ? -3.3f : 3.3f;
+
+						if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
+							old_fmove = 0.0f;
+							last_update_time = csgo::i::globals->m_curtime;
+						}
+
 						aa::move_flip = !aa::move_flip;
 
 						desync_amnt *= 0.5f;
