@@ -98,19 +98,19 @@ std::string g_pfp_data;
 std::wstring g_username;
 
 void gui::init( ) {
-	if ( g::loader_data && g::loader_data->username ) {
-		wchar_t wstr [ 64 ];
-		memset( wstr, '\0', sizeof wstr );
-		mbstowcs( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
-		g_username = wstr;
-	}
-	else
-		g_username = _( L"Developer" );
-
-	if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
-		g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
-	else
-		g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
+	//if ( g::loader_data && g::loader_data->username ) {
+	//	wchar_t wstr [ 64 ];
+	//	memset( wstr, '\0', sizeof wstr );
+	//	mbstowcs( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
+	//	g_username = wstr;
+	//}
+	//else
+	//	g_username = _( L"Developer" );
+//
+	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
+	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
+	//else
+	//	g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
 
 	/* initialize cheat config */
 	options::init( );
