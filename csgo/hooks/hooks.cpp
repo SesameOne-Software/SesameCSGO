@@ -107,15 +107,15 @@ void hooks::init( ) {
 #define dbg_hook( a, b, c ) print_and_hook ( a, b, c, _( to_string ( b ) ) )
 	auto print_and_hook = [ ] ( void* from, void* to, void** original, const char* func_name ) {
 		if ( !from )
-			return dbg_print( _( "Invalid target function: %s" ), func_name );
+			return dbg_print( _( "Invalid target function: %s\n" ), func_name );
 
 		//MessageBoxA( nullptr, func_name, func_name, 0 );
 
 		if ( MH_CreateHook( from, to, original ) != MH_OK )
-			return dbg_print( _( "Hook creation failed: %s" ), func_name );
+			return dbg_print( _( "Hook creation failed: %s\n" ), func_name );
 
 		if ( MH_EnableHook( from ) != MH_OK )
-			return dbg_print( _( "Hook enabling failed: %s" ), func_name );
+			return dbg_print( _( "Hook enabling failed: %s\n" ), func_name );
 		// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
 	};
 

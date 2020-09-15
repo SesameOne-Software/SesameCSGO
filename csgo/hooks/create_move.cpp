@@ -41,8 +41,8 @@ void fix_event_delay( ucmd_t* ucmd ) {
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !csgo::is_valve_server( ) )
-		g::send_packet = true;
+	//if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !csgo::is_valve_server( ) )
+	//	g::send_packet = true;
 
 	last_attack = ucmd->m_buttons & 1;
 }
@@ -255,8 +255,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		//animations::fake::simulate( );
 	}
 
-	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -450.0f, 450.0f );
-	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -450.0f, 450.0f );
+	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
+	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -g::cvars::cl_sidespeed->get_float(), g::cvars::cl_sidespeed->get_float ( ) );
 
 	anims::new_tick = true;
 

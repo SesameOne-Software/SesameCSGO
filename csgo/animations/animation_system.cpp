@@ -298,7 +298,7 @@ int anims::predict_choke_sequence( player_t* ent ) {
     /* 1 2 4 8 ? */
     /* if we calculate it as 16, and amount they choke is 16 or around there, we have a very high chance to hit the enemy */
 
-    const auto current_choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, 16 );
+    const auto current_choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int() );
 
     static auto predict_choke = [ & ] ( const std::deque< int >& sequence ) -> int {
         //const auto entries = sequence.size( );
@@ -487,7 +487,7 @@ void anims::animate_player( player_t* ent ) {
         return;
     }
 
-    const auto choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, 16 );
+    const auto choked = std::clamp< int >( csgo::time2ticks( ent->simtime( ) - ent->old_simtime( ) ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int() );
 
     if ( ent->simtime( ) > last_update [ ent->idx( ) ] ) {
         old_origin [ ent->idx( ) ] = last_origin [ ent->idx( ) ];
@@ -561,8 +561,11 @@ void anims::animate_player( player_t* ent ) {
         //    const auto accel = ( ent->vel( ) - old_velocity [ ent->idx( ) ] ) / ( ent->simtime( ) - ent->old_simtime( ) );
 //
         //    static auto predict = [ & ] ( player_t* player, vec3_t& origin, vec3_t& velocity, uint32_t& flags, bool was_in_air ) {
-        //     constexpr const auto sv_gravity = 800.0f;
-        //     constexpr const auto sv_jump_impulse = 301.993377f;
+		// const auto sv_gravity = g::cvars::sv_gravity;
+		// const auto sv_jump_impulse = g::cvars::sv_jump_impulse;
+
+        //     constexpr const auto sv_gravity = sv_gravity->get_float();
+        //     constexpr const auto sv_jump_impulse = sv_jump_impulse->get_float();
 
         //     if ( !( flags & 1 ) )
         //         velocity.z -= csgo::ticks2time( 1 ) * sv_gravity;
@@ -843,14 +846,19 @@ void anims::animate_local( ) {
 
         /* recreate what holdaim var does */
         /* TODO: check if holdaim cvar is enaled */
-        if ( g::ucmd->m_buttons & 1 ) {
-            g::angles = g::ucmd->m_angs;
-            g::hold_aim = true;
-        }
+		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+			if ( g::ucmd->m_buttons & 1 ) {
+				g::angles = g::ucmd->m_angs;
+				g::hold_aim = true;
+			}
+		}
+		else {
+			g::hold_aim = false;
+		}
 
-        if ( !g::hold_aim ) {
-            g::angles = g::ucmd->m_angs;
-        }
+		if ( !g::hold_aim ) {
+			g::angles = g::ucmd->m_angs;
+		}
 
         update( g::local );
 
@@ -916,6 +924,9 @@ void anims::run( int stage ) {
                 animations::resolver::process_event_buffer( i );
 
                 const auto ent = csgo::i::ent_list->get< player_t* >( i );
+
+				if (!ent || !ent->is_player() || !ent->alive())
+					features::ragebot::get_misses ( i ).bad_resolve = 0;
 
                 if ( ent && ent->alive( ) && !ent->dormant( ) ) {
                     *reinterpret_cast< int* >( uintptr_t( ent ) + 0xA30 ) = csgo::i::globals->m_framecount;

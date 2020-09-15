@@ -40,12 +40,12 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 				if ( !( g::local->flags ( ) & 1 ) ) {
 					//	manually turning
 					if ( abs ( ucmd->m_mousedx ) > 2 ) {
-						ucmd->m_smove = ucmd->m_mousedx < 0 ? -450.0f : 450.0f;
+						ucmd->m_smove = ucmd->m_mousedx < 0 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
 						return;
 					}
 
 					//	keeps us fast when moving almost straight
-					ucmd->m_fmove = std::clamp< float > ( 5850.f / vel.length_2d ( ), -450.f, 450.f );
+					ucmd->m_fmove = std::clamp< float > ( 5850.f / vel.length_2d ( ), -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float() );
 
 					//	easy strafe direction selection (4dir)
 					{
@@ -140,7 +140,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 					auto change_diff = std::clamp< float > ( csgo::rad2deg ( std::asinf ( 15.0f / vel.length_2d ( ) ) ), 0.0f, 90.0f );
 
 					old_angs.y = vel_dir - ( target_vel_diff > 0.0f ? -change_diff : change_diff );
-					ucmd->m_smove = ( target_vel_diff > 0.0f ) ? -450.0f : 450.0f;
+					ucmd->m_smove = ( target_vel_diff > 0.0f ) ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
 
 					if ( fabsf ( target_vel_diff ) > change_diff )
 						ucmd->m_fmove = 0.0f;
@@ -148,14 +148,14 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 			}
 			else {
 				if ( std::abs( ucmd->m_mousedx ) > 2 ) {
-					ucmd->m_smove = ucmd->m_mousedx < 0 ? -450.0f : 450.0f;
+					ucmd->m_smove = ucmd->m_mousedx < 0 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
 					return;
 				}
 				else
-					ucmd->m_smove = ucmd->m_cmdnum % 2 ? -450.0f : 450.0f;
+					ucmd->m_smove = ucmd->m_cmdnum % 2 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
 
 				if ( auto_forward )
-					ucmd->m_fmove = 450.0f;
+					ucmd->m_fmove = g::cvars::cl_forwardspeed->get_float ( );
 			}
 		}
 	}

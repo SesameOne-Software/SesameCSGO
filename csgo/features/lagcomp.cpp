@@ -20,9 +20,20 @@ namespace features::lagcomp::data {
 }
 
 float features::lagcomp::lerp( ) {
-	constexpr const auto cv_lerp = 0.031000f;
-	constexpr const auto cv_ratio = 2.0f;
-	return std::max< float >( cv_lerp, 2.0f * csgo::i::globals->m_ipt );
+	auto ud_rate = static_cast<float>( g::cvars::cl_updaterate->get_int ( ) );
+
+	if ( g::cvars::sv_minupdaterate && g::cvars::sv_maxupdaterate )
+		ud_rate = static_cast< float >( g::cvars::sv_maxupdaterate->get_int ( ));
+
+	auto ratio = g::cvars::cl_interp_ratio->get_float();
+
+	if ( ratio == 0 )
+		ratio = 1.0f;
+
+	if ( g::cvars::sv_client_min_interp_ratio && g::cvars::sv_client_max_interp_ratio && g::cvars::sv_client_min_interp_ratio->get_float ( ) != 1 )
+		ratio = std::clamp ( ratio, g::cvars::sv_client_min_interp_ratio->get_float ( ), g::cvars::sv_client_max_interp_ratio->get_float ( ) );
+
+	return std::max<float> ( g::cvars::cl_interp->get_float ( ), ratio / ud_rate );
 };
 
 const std::pair< std::deque< features::lagcomp::lag_record_t >&, bool > features::lagcomp::get( player_t* pl ) {

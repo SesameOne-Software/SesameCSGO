@@ -419,6 +419,15 @@
     <ClInclude Include="animations\animations.hpp">
       <Filter>Header Files\animations</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\build_transformations.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\run_simulation.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\cvar.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -602,6 +611,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="javascript\duktape.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\build_transformations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\run_simulation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -184,7 +184,7 @@ bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t
 			break;
 		case 46:
 		case 48:
-			if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > 0.7f || time > 3.5f )
+			if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > cosf(csgo::deg2rad( g::cvars::weapon_molotov_maxdetonateslope->get_float() )) || time > g::cvars::molotov_throw_detonate_time->get_float() )
 				return true;
 			break;
 		case 47:
@@ -381,7 +381,7 @@ void features::nade_prediction::draw_beam( ) {
 	beam_info_t beam_info;
 
 	beam_info.m_type = 0;
-	beam_info.m_model_name = "sprites/physbeam.vmt";
+	beam_info.m_model_name = _("sprites/physbeam.vmt");
 	beam_info.m_model_idx = -1;
 	beam_info.m_halo_scale = 0.0f;
 	beam_info.m_life = csgo::i::globals->m_frametime;

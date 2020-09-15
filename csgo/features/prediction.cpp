@@ -109,15 +109,14 @@ namespace prediction_util {
 }
 
 int features::prediction::shift( const int& cur ) {
-	auto clock_correction = csgo::time2ticks( 0.03f );
+	auto clock_correction = csgo::time2ticks( g::cvars::sv_clockcorrection_msecs->get_int() / 1000.0f );
 	auto latency_ticks = std::max<int>( 0, csgo::time2ticks( csgo::i::engine->get_net_channel_info( )->get_avg_latency( 0 ) ) );
 	auto tick_base = csgo::i::client_state->server_tickcount( ) + latency_ticks + 1;
 	auto ideal_server_start = tick_base + clock_correction;
 
 	if ( g::shifted_amount ) {
 		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
-		auto expected_shift = std::min< int >( 14, g::shifted_amount );
-		auto first_tick_in_batch_tc = ideal_server_start + std::min<int>( 16, csgo::i::client_state->choked( ) + 1 + expected_shift ) + 1;
+		auto first_tick_in_batch_tc = ideal_server_start + std::min<int>( g::cvars::sv_maxusrcmdprocessticks->get_int(), csgo::i::client_state->choked( ) + 1 + g::shifted_amount ) + 1;
 
 		return first_tick_in_batch_tc + csgo::i::client_state->choked( );
 	}

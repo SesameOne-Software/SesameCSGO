@@ -47,14 +47,13 @@ void set_aspect_ratio( ) {
 	static auto& aspect_ratio = options::vars [ _( "visuals.other.aspect_ratio" ) ].val.f;
 	static auto& prop_color = options::vars [ _( "visuals.other.prop_color" ) ].val.c;
 
-	static auto r_drawstaticprops = pattern::search( _( "engine.dll" ), _( "B9 ? ? ? ? FF 50 34 85 C0 0F 84 ? ? ? ? 8B 0D ? ? ? ? 81 F9 ? ? ? ? 75 0C A1 ? ? ? ? 35 ? ? ? ? EB 05 8B 01 FF 50 34 83 F8 02" ) ).add( 1 ).deref( ).get< void* >( );
-	auto fval = ( prop_color.r == 1.0f && prop_color.g == 1.0f && prop_color.b == 1.0f && prop_color.a == 1.0f ) ? 1.0f : 3.0f;
-	*reinterpret_cast< uintptr_t* > ( uintptr_t( r_drawstaticprops ) + 0x2c ) = *reinterpret_cast < uintptr_t* > ( uintptr_t( &fval ) ) ^ uintptr_t( r_drawstaticprops );
-	*reinterpret_cast< uintptr_t* > ( uintptr_t( r_drawstaticprops ) + 0x2c + 0x4 ) = static_cast < int > ( fval ) ^ uintptr_t( r_drawstaticprops );
+	g::cvars::r_drawstaticprops->set_value (3 );
+	g::cvars::r_drawstaticprops->no_callback();
 
-	static auto r_aspect_ratio = pattern::search( _( "engine.dll" ), _( "81 F9 ? ? ? ? 75 16 F3 0F 10 0D ? ? ? ? F3 0F 11 4D ? 81 75 ? ? ? ? ? EB 18 8B 01 8B 40 30 FF D0 F3 0F 10 0D ? ? ? ? 8B 0D ? ? ? ? D9 5D FC F3 0F 10 45 ? 0F 2F 05 ? ? ? ? 76 34" ) ).add( 2 ).deref( ).get< void* >( );
 	auto as_float = aspect_ratio * 1.7777777f;
-	*reinterpret_cast< uintptr_t* > ( uintptr_t( r_aspect_ratio ) + 0x2c ) = *reinterpret_cast< uintptr_t* > ( &as_float ) ^ uintptr_t( r_aspect_ratio );
+
+	g::cvars::r_aspectratio->set_value ( aspect_ratio * 1.7777777f );
+	g::cvars::r_aspectratio->no_callback ( );
 }
 
 decltype( &hooks::frame_stage_notify ) hooks::old::frame_stage_notify = nullptr;
@@ -78,6 +77,16 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	security_handler::update( );
 
+	///* fix rate problems */ {
+	//	const auto rate = csgo::time2ticks ( 1.0f);
+	//
+	//	g::cvars::cl_updaterate->set_value ( rate );
+	//	g::cvars::cl_cmdrate->set_value ( rate );
+	//
+	//	g::cvars::cl_updaterate->no_callback ( );
+	//	g::cvars::cl_cmdrate->no_callback ( );
+	//}
+
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
 	float old_flashalpha;
@@ -88,10 +97,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 		features::prediction::update( stage );
 
-		RUN_SAFE(
-			"set_aspect_ratio",
-			set_aspect_ratio( );
-		);
+		set_aspect_ratio ( );
 
 		if ( stage == 5 && g::local ) {
 			RUN_SAFE(
@@ -104,10 +110,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			//	features::nade_prediction::draw_beam( );
 			//);
 
-			//RUN_SAFE (
-			//	"run_preserve_death_notices",
-			//	run_preserve_death_notices ( );
-			//);
+			RUN_SAFE (
+				"run_preserve_death_notices",
+				run_preserve_death_notices ( );
+			);
 
 			if ( g::local->alive( ) ) {
 				old_aimpunch = g::local->aim_punch( );

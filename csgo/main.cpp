@@ -234,9 +234,8 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 
 	csgo::i::input->m_camera_in_thirdperson = false;
 
-	static auto r_aspect_ratio = pattern::search( _( "engine.dll" ), _( "81 F9 ? ? ? ? 75 16 F3 0F 10 0D ? ? ? ? F3 0F 11 4D ? 81 75 ? ? ? ? ? EB 18 8B 01 8B 40 30 FF D0 F3 0F 10 0D ? ? ? ? 8B 0D ? ? ? ? D9 5D FC F3 0F 10 45 ? 0F 2F 05 ? ? ? ? 76 34" ) ).add( 2 ).deref( ).get< void* >( );
-	auto as_float = 1.777777f;
-	*reinterpret_cast< uintptr_t* > ( uintptr_t( r_aspect_ratio ) + 0x2c ) = *reinterpret_cast< uintptr_t* > ( &as_float ) ^ uintptr_t( r_aspect_ratio );
+	g::cvars::r_aspectratio->set_value ( 1.777777f );
+	g::cvars::r_aspectratio->no_callback ( );
 
 	/* reset world color */ {
 		static auto load_named_sky = pattern::search( _( "engine.dll" ), _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void( __fastcall* )( const char* ) >( );

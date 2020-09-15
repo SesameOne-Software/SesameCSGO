@@ -21,7 +21,7 @@ c_move_helper* csgo::i::move_helper = nullptr;
 c_movement* csgo::i::move = nullptr;
 mdl_cache_t* csgo::i::mdl_cache = nullptr;
 c_input* csgo::i::input = nullptr;
-void* csgo::i::cvar = nullptr;
+c_cvar* csgo::i::cvar = nullptr;
 c_game_event_mgr* csgo::i::events = nullptr;
 c_view_render_beams* csgo::i::beams = nullptr;
 IDirect3DDevice9* csgo::i::dev = nullptr;
@@ -148,12 +148,14 @@ bool csgo::init( ) {
 	i::mdl_cache = create_interface< mdl_cache_t* >( _( "client.dll" ), _( "MDLCache004" ) );
 	i::events = create_interface< c_game_event_mgr* >( _( "engine.dll" ), _( "GAMEEVENTSMANAGER002" ) );
 	i::input = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? FF 60 60" ) ).add( 1 ).deref( ).get< c_input* >( );
-	i::cvar = create_interface< void* >( _( "vstdlib.dll" ), _( "VEngineCvar007" ) );
+	i::cvar = create_interface< c_cvar* >( _( "vstdlib.dll" ), _( "VEngineCvar007" ) );
 	i::move_helper = **reinterpret_cast< c_move_helper*** >( pattern::search( _( "client.dll" ), _( "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" ) ).add( 2 ).get< std::uintptr_t >( ) );
 	i::client_state = **reinterpret_cast< c_clientstate*** >( reinterpret_cast< std::uintptr_t >( vfunc< void* >( i::engine, 12 ) ) + 16 );
 	i::beams = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 56 8B F1 B9 ? ? ? ? FF 50 08" ) ).add ( 1 ).deref ( ).get< c_view_render_beams* > ( );
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" ) ), _( "g_pMemAlloc" ) );
 	i::dev = pattern::search( _( "shaderapidx9.dll" ), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C" ) ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
+
+	g::cvars::init ( );
 
 	END_FUNC
 

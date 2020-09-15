@@ -6,6 +6,7 @@
 struct ucmd_t;
 class vec3_t;
 class player_t;
+class cvar_t;
 
 enum class round_t : int {
 	starting = 0,
@@ -46,4 +47,33 @@ namespace g {
 	extern bool can_fire_revolver;
 	extern round_t round;
 	extern PLoader_Info loader_data;
+
+	namespace cvars {
+		inline cvar_t* r_drawstaticprops = nullptr;
+		inline cvar_t* r_aspectratio = nullptr;
+		inline cvar_t* cl_updaterate = nullptr;
+		inline cvar_t* cl_cmdrate = nullptr;
+		inline cvar_t* sv_gravity = nullptr;
+		inline cvar_t* sv_jump_impulse = nullptr;
+		inline cvar_t* sv_maxusrcmdprocessticks = nullptr;
+		inline cvar_t* sv_maxusrcmdprocessticks_holdaim = nullptr;
+		inline cvar_t* molotov_throw_detonate_time = nullptr;
+		inline cvar_t* weapon_molotov_maxdetonateslope = nullptr;
+		inline cvar_t* weapon_accuracy_nospread = nullptr;
+		inline cvar_t* cl_sidespeed = nullptr;
+		inline cvar_t* cl_forwardspeed = nullptr;
+		inline cvar_t* mp_solid_teammates = nullptr;
+		inline cvar_t* sv_clockcorrection_msecs = nullptr;
+		inline cvar_t* weapon_recoil_scale = nullptr;
+		inline cvar_t* mp_friendlyfire = nullptr;
+		inline cvar_t* sv_maxunlag = nullptr;
+		inline cvar_t* sv_minupdaterate = nullptr;
+		inline cvar_t* sv_maxupdaterate = nullptr;
+		inline cvar_t* cl_interp_ratio = nullptr;
+		inline cvar_t* cl_interp = nullptr;
+		inline cvar_t* sv_client_min_interp_ratio = nullptr;
+		inline cvar_t* sv_client_max_interp_ratio = nullptr;
+
+		void init ( );
+	}
 }

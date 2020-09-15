@@ -88,8 +88,8 @@ namespace autowall {
 	}
 
 	__forceinline bool is_breakable_entity( player_t* entity ) {
-		static auto __rtdynamiccast_fn = pattern::search( "client.dll", "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08" ).get < void* >( );
-		static auto is_breakable_entity_fn = pattern::search( "client.dll", "55 8B EC 51 56 8B F1 85 F6 74 68 83 BE" ).get < void* >( );
+		static auto __rtdynamiccast_fn = pattern::search( _("client.dll"),_( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08") ).get < void* >( );
+		static auto is_breakable_entity_fn = pattern::search( _("client.dll"), _("55 8B EC 51 56 8B F1 85 F6 74 68 83 BE") ).get < void* >( );
 		static auto multiplayerphysics_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0x4F );
 		static auto baseentity_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0x54 );
 		static auto breakablewithpropdata_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0xD4 );
@@ -337,13 +337,13 @@ namespace autowall {
 				data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
 				data.current_damage *= weapon_data->m_range_modifier;
 
-				//if ( data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) ) {
-				//	data.enter_trace.m_hitgroup = hitgroup;
-				//	data.current_damage = 0.0f;
-				//	return true;
-				//}
+				if ( data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player() && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && !g::cvars::mp_friendlyfire->get_bool() ) {
+					data.enter_trace.m_hitgroup = hitgroup;
+					data.current_damage = 0.0f;
+					return true;
+				}
 
-				if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && data.enter_trace.m_hit_entity == dst_entity && hitgroup == -1 ) {
+				if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player ( ) && data.enter_trace.m_hit_entity == dst_entity && hitgroup == -1 ) {
 					autowall::scale_dmg( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
 					return true;
 				}

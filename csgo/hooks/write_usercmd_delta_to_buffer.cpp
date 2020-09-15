@@ -42,7 +42,7 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 	if ( num_cmd > 62 )
 		num_cmd = 62;
 
-	const auto shift_amount_clamped = std::clamp( g::dt_ticks_to_shift, 0, 16 );
+	const auto shift_amount_clamped = std::clamp( g::dt_ticks_to_shift, 0, g::cvars::sv_maxusrcmdprocessticks->get_int() );
 
 	from = -1;
 

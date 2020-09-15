@@ -271,7 +271,7 @@ void animations::resolver::process_hurt( event_t* event ) {
 void animations::resolver::process_event_buffer( int pl_idx ) {
 	static auto& logs = options::vars [ _( "visuals.other.logs" ) ].val.l;
 
-	if ( !g::local || !g::local->weapon( ) || !g::local->weapon( )->data( ) )
+	if ( !g::local )
 		return;
 
 	auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
@@ -288,7 +288,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 	}
 
 	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
-		if ( rdata::impact_dmg [ pl_idx ] <= 0.0f ) {
+		if ( rdata::impact_dmg [ pl_idx ] <= 0.0f && !g::cvars::weapon_accuracy_nospread->get_bool() ) {
 			features::ragebot::get_misses( pl_idx ).spread++;
 			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( L"spread ( " ) + std::to_wstring( features::ragebot::get_misses( pl_idx ).spread ) + _( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
@@ -543,7 +543,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 	if ( pl->weapon( ) && pl->weapon( )->data( ) )
 		has_slow_walk = std::fabsf( pl->vel( ).length_2d( ) - animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] ) < 10.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] > 20.0f && pl->vel( ).length_2d( ) > 20.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] < pl->weapon( )->data( )->m_max_speed * 0.33f && pl->vel( ).length_2d( ) < pl->weapon( )->data( )->m_max_speed * 0.33f;
 
-	/*if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
+	if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
 		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * ( ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
 		switch_delta = ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
 		correction_amount = switch_delta;
@@ -554,7 +554,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 		record_correction = false;
 	}
-	else*/ {
+	else {
 	//if ( has_slow_walk || std::fabsf( eye_feet_delta ) <= 35.0f ) {
 	//	yaw1 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? 0.333f : -1.0f ) );
 	//	yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 0.33f ) );
@@ -787,7 +787,7 @@ void animations::resolver::create_beams( ) {
 			beam_info_t beam_info;
 
 			beam_info.m_type = 0;
-			beam_info.m_model_name = "sprites/physbeam.vmt";
+			beam_info.m_model_name = _("sprites/physbeam.vmt");
 			beam_info.m_model_idx = -1;
 			beam_info.m_halo_scale = 0.0f;
 			beam_info.m_start = impact.m_dst;

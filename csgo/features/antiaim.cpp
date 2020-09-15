@@ -232,7 +232,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 	security_handler::update( );
 
-	const auto choke_limit = csgo::is_valve_server( ) ? 8 : 16;
+	const auto choke_limit = g::cvars::sv_maxusrcmdprocessticks->get_int();
 
 	if ( !left_key && side == 1 )
 		side = -1;
@@ -333,7 +333,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		/* allow 1 extra tick just for when we land (if we are in air) */
 		if ( !( g::local->flags( ) & 1 ) ) {
-			max_lag = std::clamp< int >( max_lag, 1, 15 );
+			max_lag = std::clamp< int >( max_lag, 1, g::cvars::sv_maxusrcmdprocessticks->get_int() - 1 );
 		}
 
 		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) ) {
@@ -378,7 +378,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			const auto vec_move = vec3_t( old_fmove, old_smove, ucmd->m_umove );
 			const auto magnitude = vec_move.length_2d( );
 			const auto max_speed = g::local->weapon( )->data( )->m_max_speed;
-			const auto move_to_button_ratio = 250.0f / 450.0f;
+			const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float();
 			const auto move_ratio = target_speed * move_to_button_ratio;
 
 			if ( !target_speed ) {
@@ -390,8 +390,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					as_ang.y = csgo::normalize( as_ang.y + 180.0f );
 					const auto inverted_move = csgo::angle_vec( as_ang );
 
-					old_fmove = inverted_move.x * 450.0f;
-					old_smove = inverted_move.y * 450.0f;
+					old_fmove = inverted_move.x * g::cvars::cl_forwardspeed->get_float ( );
+					old_smove = inverted_move.y * g::cvars::cl_forwardspeed->get_float ( );
 				}
 			}
 			else if ( std::fabsf( old_fmove ) > 3.0f || std::fabsf( old_smove ) > 3.0f ) {
@@ -758,7 +758,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						old_fmove += aa::move_flip ? -3.3f : 3.3f;
 
 						if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
-							old_fmove = 0.0f;
+							old_fmove = copysignf ( 15.0f, old_fmove );
 							last_update_time = csgo::i::globals->m_curtime;
 						}
 

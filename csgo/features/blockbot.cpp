@@ -2,7 +2,8 @@
 #include "../menu/options.hpp"
 
 void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
-    constexpr auto max_movement_speed = 450.0f;
+	if ( !g::cvars::mp_solid_teammates->get_int ( ) )
+		return;
 
     static auto& blockbot = options::vars [ _( "misc.movement.block_bot" ) ].val.b;
     static auto& blockbot_key = options::vars [ _( "misc.movement.block_bot_key" ) ].val.i;
@@ -11,8 +12,8 @@ void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
     if ( !g::local || !blockbot || !utils::keybind_active( blockbot_key, blockbot_key_mode ) )
         return;
 
-    vec3_t nearest_pos;
-    player_t* nearest_ent;
+    vec3_t nearest_pos = vec3_t( 0.0f, 0.0f, 0.0f );
+    player_t* nearest_ent = nullptr;
     float nearest_dist = FLT_MAX;
 
     for ( auto i = 1; i < csgo::i::globals->m_max_clients; i++ ) {
@@ -38,7 +39,7 @@ void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
                 return;
 
             move_ang.y = csgo::calc_angle( g::local->abs_origin( ), extrap_pos ).y;
-            ucmd->m_fmove = max_movement_speed;
+            ucmd->m_fmove = g::cvars::cl_forwardspeed->get_float ( );
         }
         else {
             vec3_t client_ang;
@@ -50,7 +51,7 @@ void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
             if ( fabsf( yaw_delta ) < 5.0f )
                 return;
 
-            ucmd->m_smove = yaw_delta < 0.0f ? max_movement_speed : -max_movement_speed;
+            ucmd->m_smove = yaw_delta < 0.0f ? g::cvars::cl_sidespeed->get_float() : -g::cvars::cl_sidespeed->get_float ( );
         }
     }
 }

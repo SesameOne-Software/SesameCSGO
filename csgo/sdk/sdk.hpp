@@ -28,6 +28,7 @@
 #include "events.hpp"
 #include "effects.hpp"
 #include "beams.hpp"
+#include "cvar.hpp"
 
 namespace csgo {
 	constexpr auto pi = 3.14159265358979f;
@@ -52,7 +53,7 @@ namespace csgo {
 		extern c_movement* move;
 		extern mdl_cache_t* mdl_cache;
 		extern c_input* input;
-		extern void* cvar;
+		extern c_cvar* cvar;
 		extern c_game_event_mgr* events;
 		extern c_view_render_beams* beams;
 		extern IDirect3DDevice9* dev;

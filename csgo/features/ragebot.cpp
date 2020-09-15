@@ -514,10 +514,16 @@ bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, i
 }
 
 bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, lagcomp::lag_record_t& rec ) {
+	if ( g::cvars::weapon_accuracy_nospread->get_bool ( ) )
+		return true;
+
 	auto weapon = g::local->weapon( );
 
 	if ( !weapon || !weapon->data( ) )
 		return false;
+
+	if ( weapon->item_definition_index ( ) == 40 && weapon->inaccuracy ( ) < 0.009f )
+		return true;
 
 	auto src = g::local->eyes( );
 
@@ -644,8 +650,8 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	//auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 ) );
-	auto tickbase_as_int = std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, csgo::is_valve_server( ) ? 8 : 16 );
+	//auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, sv_maxusrcmdprocessticks->get_int() ) );
+	auto tickbase_as_int = std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
@@ -705,6 +711,33 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 	);
 }
 
+void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
+	if ( !active_config.auto_slow || !( g::local->flags ( ) & 1 ) )
+		return;
+
+	const auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
+	const auto magnitude = vec_move.length_2d ( );
+	const auto max_speed = g::local->weapon ( )->data ( )->m_max_speed;
+	const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float ( );
+	const auto speed_ratio = ( max_speed * 0.34f ) * 0.7f;
+	const auto move_ratio = speed_ratio * move_to_button_ratio;
+
+	if ( g::local->vel ( ).length_2d ( ) > g::local->weapon ( )->data ( )->m_max_speed * 0.34f ) {
+		auto vel_ang = csgo::vec_angle ( vec_move );
+		vel_ang.y = csgo::normalize ( vel_ang.y + 180.0f );
+
+		const auto normal = csgo::angle_vec ( vel_ang ).normalized ( );
+		const auto speed_2d = g::local->vel ( ).length_2d ( );
+
+		old_fmove = normal.x * speed_2d;
+		old_smove = normal.y * speed_2d;
+	}
+	else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
+		old_fmove = ( old_fmove / magnitude ) * move_ratio;
+		old_smove = ( old_smove / magnitude ) * move_ratio;
+	}
+}
+
 void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
 	if ( !active_config.main_switch || !g::local || !g::local->alive( ) )
 		return;
@@ -762,6 +795,56 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 	scan_points.sync( );
 
+	/* extrapolate autostop */ {
+		static auto looking_at = [ ] ( ) -> player_t* {
+			player_t* ret = nullptr;
+
+			vec3_t angs;
+			csgo::i::engine->get_viewangles ( angs );
+			csgo::clamp ( angs );
+
+			auto best_fov = 180.0f;
+
+			csgo::for_each_player ( [ & ] ( player_t* pl ) {
+				if ( pl->team ( ) == g::local->team ( ) )
+					return;
+
+				auto angle_to = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) );
+				csgo::clamp ( angle_to );
+				auto fov = csgo::calc_fov ( angle_to, angs );
+
+				if ( fov < best_fov ) {
+					ret = pl;
+					best_fov = fov;
+				}
+			} );
+
+			return ret;
+		};
+
+		const auto at_target = looking_at ( );
+
+		if ( at_target ) {
+			constexpr auto autostop_threshhold = 0.1f;
+
+			const auto vel = g::local->vel ( );
+			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;
+			const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+
+			const auto ent_vel = at_target->vel ( );
+			const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( at_target ->simtime() - at_target ->old_simtime() + autostop_threshhold - csgo::ticks2time(1) );
+			const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+
+			trace_t tr;
+			csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
+
+			if ( tr.m_fraction > 0.97f
+				|| tr.m_hit_entity == at_target ) {
+				slow ( ucmd, old_smove, old_fmove );
+			}
+		}
+	}
+
 	if ( !best.m_ent )
 		return;
 
@@ -771,30 +854,8 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 255, best.m_hitbox, best.m_record );
 	auto should_aim = best.m_dmg && hc;
 
-	/* TODO: EXTRAPOLATE POSITION TO SLOW DOWN EXACTLY WHEN WE SHOOT */
-	if ( active_config.auto_slow && best.m_dmg && !hc && g::local->vel( ).length_2d( ) > 0.1f ) {
-		const auto vec_move = vec3_t( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
-		const auto magnitude = vec_move.length_2d( );
-		const auto max_speed = g::local->weapon( )->data( )->m_max_speed;
-		const auto move_to_button_ratio = 250.0f / 450.0f;
-		const auto speed_ratio = ( max_speed * 0.34f ) * 0.7f;
-		const auto move_ratio = speed_ratio * move_to_button_ratio;
-
-		if ( g::local->vel( ).length_2d( ) > g::local->weapon( )->data( )->m_max_speed * 0.34f ) {
-			auto vel_ang = csgo::vec_angle( vec_move );
-			vel_ang.y = csgo::normalize( vel_ang.y + 180.0f );
-
-			const auto normal = csgo::angle_vec( vel_ang ).normalized( );
-			const auto speed_2d = g::local->vel( ).length_2d( );
-
-			old_fmove = normal.x * speed_2d;
-			old_smove = normal.y * speed_2d;
-		}
-		else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
-			old_fmove = ( old_fmove / magnitude ) * move_ratio;
-			old_smove = ( old_smove / magnitude ) * move_ratio;
-		}
-	}
+	if ( best.m_dmg && !hc && g::local->vel ( ).length_2d ( ) > 0.1f )
+		slow ( ucmd, old_smove, old_fmove);
 
 	if ( !active_config.auto_shoot )
 		should_aim = ucmd->m_buttons & 1 && best.m_dmg;
@@ -812,7 +873,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 				|| g::local->weapon( )->item_definition_index( ) == 11 ) )
 			ucmd->m_buttons |= 2048;
 
-		auto ang = angle_to - g::local->aim_punch( ) * 2.0f;
+		auto ang = angle_to - g::local->aim_punch( ) * g::cvars::weapon_recoil_scale->get_float();
 		csgo::clamp( ang );
 
 		ucmd->m_angs = ang;

@@ -35,7 +35,7 @@ namespace features {
 				if ( !nci || !g::local )
 					return false;
 
-				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, 0.2f );
+				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, g::cvars::sv_maxunlag->get_float() );
 				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? csgo::ticks2time( m_tick ) : m_simtime ) );
 
 				return std::abs( dt ) < 0.2f;
@@ -106,7 +106,7 @@ namespace features {
 			while ( !data::records [ pl->idx( ) ].empty( ) && !data::records [ pl->idx( ) ].back( ).valid( ) )
 				data::records [ pl->idx( ) ].pop_back( );
 
-			while ( !data::all_records [ pl->idx( ) ].empty( ) && data::all_records [ pl->idx( ) ].size( ) > 24 )
+			while ( !data::all_records [ pl->idx( ) ].empty( ) && data::all_records [ pl->idx( ) ].size( ) > csgo::time2ticks(0.5f) )
 				data::all_records [ pl->idx( ) ].pop_back( );
 
 			if ( !data::shot_records [ pl->idx( ) ].valid( ) )
