@@ -43,7 +43,7 @@ namespace anims {
     void update( player_t* ent );
     void store_frame( player_t* ent, bool anim_update );
     void animate_player( player_t* ent );
-    void animate_local( );
+    void animate_local( bool copy = false );
     void animate_fake( );
     void copy_data( player_t* ent );
     void run( int stage );

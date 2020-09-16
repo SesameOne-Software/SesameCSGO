@@ -77,15 +77,15 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	security_handler::update( );
 
-	///* fix rate problems */ {
-	//	const auto rate = csgo::time2ticks ( 1.0f);
-	//
-	//	g::cvars::cl_updaterate->set_value ( rate );
-	//	g::cvars::cl_cmdrate->set_value ( rate );
-	//
-	//	g::cvars::cl_updaterate->no_callback ( );
-	//	g::cvars::cl_cmdrate->no_callback ( );
-	//}
+	/* fix rate problems */ {
+		const auto rate = csgo::time2ticks ( 1.0f);
+
+		g::cvars::cl_updaterate->no_callback ( );
+		g::cvars::cl_cmdrate->no_callback ( );
+
+		g::cvars::cl_updaterate->set_value ( rate );
+		g::cvars::cl_cmdrate->set_value ( rate );
+	}
 
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;

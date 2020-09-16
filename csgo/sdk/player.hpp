@@ -310,7 +310,7 @@ public:
 
 	vec3_t eyes( );
 	std::uint32_t& bone_count( );
-	matrix3x4_t* bone_cache( );
+	matrix3x4_t*& bone_cache( );
 	weapon_t* weapon( );
 
 	float desync_amount( ) {

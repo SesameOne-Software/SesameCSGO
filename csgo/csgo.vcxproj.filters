@@ -428,6 +428,9 @@
     <ClInclude Include="sdk\cvar.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cjson\cJSON.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -617,6 +620,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\run_simulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cjson\cJSON.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -54,7 +54,7 @@ public:
 	float m_min;
 	int m_has_max;
 	float m_max;
-	//CUtlVector< void* >   m_callbacks;
+	void* m_callbacks;
 
 public:
 	const char* get_string ( ) {
@@ -90,7 +90,7 @@ public:
 	}
 
 	void no_callback ( ) {
-		m_callback = nullptr;
+		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( &m_callbacks ) + 0xc ) = 0;
 	}
 };
 

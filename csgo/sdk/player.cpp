@@ -111,7 +111,7 @@ std::uint32_t& player_t::bone_count( ) {
 	return *( uint32_t* )( std::uintptr_t( renderable( ) ) + offset );
 }
 
-matrix3x4_t* player_t::bone_cache( ) {
+matrix3x4_t*& player_t::bone_cache( ) {
 	static auto offset = pattern::search( _( "client.dll" ), _( "FF B7 ? ? ? ? 52" ) ).add( 2 ).deref( ).get< std::uint32_t >( );
 	return *( matrix3x4_t** )( std::uintptr_t( renderable( ) ) + offset );
 }

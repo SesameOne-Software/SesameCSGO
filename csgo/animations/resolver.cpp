@@ -156,20 +156,19 @@ void animations::resolver::process_impact( event_t* event ) {
 		const auto backup_origin = target->origin( );
 		const auto backup_min = target->mins( );
 		const auto backup_max = target->maxs( );
-		matrix3x4_t backup_bones [ 128 ];
-		std::memcpy( backup_bones, target->bone_cache( ), sizeof matrix3x4_t * target->bone_count( ) );
+		const auto backup_bones = target->bone_cache ( );
 
 		target->mins( ) = target_rec.m_min;
 		target->maxs( ) = target_rec.m_max;
 		target->origin( ) = target_rec.m_origin;
-		target->set_abs_origin( target_rec.m_origin );
+		//target->set_abs_origin( target_rec.m_origin );
 
 		if ( features::ragebot::get_misses( target->idx( ) ).bad_resolve % 3 == 0 )
-			std::memcpy( target->bone_cache( ), target_rec.m_bones1, sizeof matrix3x4_t * target->bone_count( ) );
+			target->bone_cache ( ) = target_rec.m_bones1;
 		else if ( features::ragebot::get_misses( target->idx( ) ).bad_resolve % 3 == 1 )
-			std::memcpy( target->bone_cache( ), target_rec.m_bones2, sizeof matrix3x4_t * target->bone_count( ) );
+			target->bone_cache ( ) = target_rec.m_bones2;
 		else
-			std::memcpy( target->bone_cache( ), target_rec.m_bones3, sizeof matrix3x4_t * target->bone_count( ) );
+			target->bone_cache ( ) = target_rec.m_bones3;
 
 		auto hit_hitgroup = -1;
 		vec3_t impact_out = impact_pos;
@@ -179,8 +178,8 @@ void animations::resolver::process_impact( event_t* event ) {
 		target->mins( ) = backup_min;
 		target->maxs( ) = backup_max;
 		target->origin( ) = backup_origin;
-		target->set_abs_origin( backup_abs_origin );
-		std::memcpy( target->bone_cache( ), backup_bones, sizeof matrix3x4_t * target->bone_count( ) );
+		//target->set_abs_origin( backup_abs_origin );
+		target->bone_cache ( ) = backup_bones;
 
 		rdata::impact_dmg [ target->idx( ) ] = dmg;
 		rdata::impacts [ target->idx( ) ] = impact_pos;

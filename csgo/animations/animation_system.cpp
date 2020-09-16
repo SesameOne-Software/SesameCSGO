@@ -795,7 +795,10 @@ void anims::animate_fake( ) {
     }
 }
 
-void anims::animate_local( ) {
+std::array< animlayer_t, 13 > latest_animlayers { {} };
+float old_simtime = 0.0f;
+
+void anims::animate_local( bool copy ) {
     const auto state = g::local->animstate( );
     const auto animlayers = g::local->layers( );
 
@@ -816,36 +819,35 @@ void anims::animate_local( ) {
     static int last_update_tick = 0;
     static float latest_abs_yaw = 0.0f;
     static std::array< float, 24 > latest_poses { 0.0f };
-    static std::array< animlayer_t, 13 > latest_animlayers { {} };
-    static float old_simtime = 0.0f;
 
     static float calc_weight = 0.0f;
     static float calc_cycle = 0.0f;
     static float synced_weight = 0.0f;
     static float synced_cycle = 0.0f;
 
-    state->m_last_clientside_anim_update_time_delta = std::max< float >( 0.0f, features::prediction::curtime( ) - state->m_last_clientside_anim_update );
+	if ( !copy ) {
+		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
 
-    if ( new_tick ) {
-        calc_local_exclusive( calc_weight, calc_cycle );
+		state->m_last_clientside_anim_update_time_delta = std::max< float > ( 0.0f, features::prediction::curtime ( ) - state->m_last_clientside_anim_update );
 
-        //animlayers [ 6 ].m_weight = synced_weight;
-        //animlayers [ 4 ].m_cycle = synced_cycle;
-        animlayers [ 12 ].m_weight = 0.0f;
+		//if ( new_tick ) {
+		calc_local_exclusive ( calc_weight, calc_cycle );
 
-        memcpy( latest_animlayers.data( ), animlayers, sizeof( latest_animlayers ) );
+		//animlayers [ 6 ].m_weight = synced_weight;
+		//animlayers [ 4 ].m_cycle = synced_cycle;
+		animlayers [ 12 ].m_weight = 0.0f;
 
-        //if ( g::send_packet ) {
-        //    synced_weight = calc_weight;
-        //    synced_cycle = calc_cycle;
+		//if ( g::send_packet ) {
+		//    synced_weight = calc_weight;
+		//    synced_cycle = calc_cycle;
 //
-        //    latest_animlayers [ 6 ].m_weight = animlayers [ 6 ].m_weight = synced_weight;
-        //    latest_animlayers [ 4 ].m_cycle = animlayers [ 4 ].m_cycle = synced_cycle;
-        //    latest_animlayers [ 12 ].m_weight = animlayers [ 12 ].m_weight = 0.0f;
-        //}
+		//    latest_animlayers [ 6 ].m_weight = animlayers [ 6 ].m_weight = synced_weight;
+		//    latest_animlayers [ 4 ].m_cycle = animlayers [ 4 ].m_cycle = synced_cycle;
+		//    latest_animlayers [ 12 ].m_weight = animlayers [ 12 ].m_weight = 0.0f;
+		//}
 
-        /* recreate what holdaim var does */
-        /* TODO: check if holdaim cvar is enaled */
+		/* recreate what holdaim var does */
+		/* TODO: check if holdaim cvar is enaled */
 		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
 			if ( g::ucmd->m_buttons & 1 ) {
 				g::angles = g::ucmd->m_angs;
@@ -860,27 +862,31 @@ void anims::animate_local( ) {
 			g::angles = g::ucmd->m_angs;
 		}
 
-        update( g::local );
+		update ( g::local );
 
-        if ( !csgo::i::client_state->choked( ) ) {
-            //state->m_jump_fall_pose.set_value( g::local, jump_fall( synced_cycle ) );
+		if ( g::send_packet ) {
+			//state->m_jump_fall_pose.set_value( g::local, jump_fall( synced_cycle ) );
 
-            memcpy( latest_poses.data( ), g::local->poses( ).data( ), sizeof( latest_poses ) );
-            latest_abs_yaw = state->m_abs_yaw;
-            g::hold_aim = false;
-        }
+			memcpy ( latest_poses.data ( ), g::local->poses ( ).data ( ), sizeof ( latest_poses ) );
+			latest_abs_yaw = state->m_abs_yaw;
+			g::hold_aim = false;
+		}
 
-        build_bones( g::local, aim_matrix.data( ), 0x7ff00, vec3_t( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin( ), features::prediction::curtime( ) );
+		build_bones ( g::local, aim_matrix.data ( ), 0x7ff00, vec3_t ( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin ( ), features::prediction::curtime ( ) );
 
-        last_update_tick = csgo::time2ticks( features::prediction::curtime( ) );
+		last_update_tick = csgo::time2ticks ( features::prediction::curtime ( ) );
 
-        old_simtime = g::local->simtime( );
-    }
+		animate_fake ( );
 
-    memcpy( animlayers, latest_animlayers.data( ), sizeof( latest_animlayers ) );
+		//	new_tick = false;
+		//}
+	}
+	else {
+		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
 
-    g::local->poses( ) = latest_poses;
-    g::local->set_abs_angles( vec3_t( 0.0f, latest_abs_yaw, 0.0f ) );
+		g::local->poses ( ) = latest_poses;
+		g::local->set_abs_angles ( vec3_t ( 0.0f, latest_abs_yaw, 0.0f ) );
+	}
 }
 
 void anims::copy_data( player_t* ent ) {
@@ -935,16 +941,14 @@ void anims::run( int stage ) {
                 }
             }
 
-            animate_local( );
-            animate_fake( );
-            new_tick = false;
+            animate_local( true );
         } break;
         case 4: { /* FRAME_NET_UPDATE_END */
             csgo::for_each_player( [ & ] ( player_t* ent ) {
                 if ( ent == g::local )
                     return;
 
-                //interpolate( ent, false );
+                interpolate( ent, false );
                 animate_player( ent );
                 } );
         } break;
@@ -953,8 +957,15 @@ void anims::run( int stage ) {
                 if ( ent == g::local )
                     return;
 
-                //interpolate( ent, false );
+                interpolate( ent, false );
                 } );
+
+			if ( g::local && g::local->simtime ( ) != old_simtime ) {
+				if( g::local->layers ( ) )
+					memcpy ( latest_animlayers.data ( ), g::local->layers ( ), sizeof ( latest_animlayers ) );
+
+				old_simtime = g::local->simtime ( );
+			}
         } break;
         case 3: { /* FRAME_NET_UPDATE_POSTDATAUPDATE_END */
             csgo::for_each_player( [ & ] ( player_t* ent ) {

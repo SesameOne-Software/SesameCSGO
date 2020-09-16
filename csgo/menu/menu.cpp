@@ -5,10 +5,24 @@
 #include "../utils/networking.hpp"
 #include "../features/antiaim.hpp"
 #include "../features/ragebot.hpp"
+#include "../utils/networking.hpp"
+#include "../cjson/cJSON.h"
 
+#include <functional>
 #include <filesystem>
 #include <ShlObj.h>
 #include <codecvt>
+#include <fstream>
+
+int config_access = 0;
+std::wstring config_code = _ ( L"" );
+std::wstring config_description = _ ( L"" );
+
+std::wstring config_user = _ ( L"" );
+uint64_t last_update_time = 0;
+
+cJSON* selected_cloud_config = nullptr;
+cJSON* cloud_config_list = nullptr;
 
 bool gui::opened = false;
 bool open_button_pressed = false;
@@ -96,21 +110,25 @@ int misc_subtab_idx = misc_subtabs_none;
 
 std::string g_pfp_data;
 std::wstring g_username;
+std::string g_susername;
 
 void gui::init( ) {
-	//if ( g::loader_data && g::loader_data->username ) {
-	//	wchar_t wstr [ 64 ];
-	//	memset( wstr, '\0', sizeof wstr );
-	//	mbstowcs( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
-	//	g_username = wstr;
-	//}
-	//else
-	//	g_username = _( L"Developer" );
+	if ( g::loader_data && g::loader_data->username ) {
+		wchar_t wstr [ 64 ];
+		memset( wstr, '\0', sizeof wstr );
+		mbstowcs( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
+		g_username = wstr;
+		g_susername = g::loader_data->username;
+	}
+	else {
+		g_username = _ ( L"sesame" );
+		g_susername = _ ( "sesame" );
+	}
 //
-	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
-	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
-	//else
-	//	g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
+	if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
+		g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
+	else
+		g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
 
 	/* initialize cheat config */
 	options::init( );
@@ -746,7 +764,7 @@ void gui::draw( ) {
 							}
 						} break;
 						case misc_subtabs_configs: {
-							if ( gui::begin_group( L"Configs", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+							if ( gui::begin_group( L"Configs", sesui::rect( 0.0f, 0.0f, 0.5f, 0.5f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
 								for ( const auto& config : configs ) {
 									if ( sesui::button( config.data( ) ) )
 										selected_config = config;
@@ -755,7 +773,37 @@ void gui::draw( ) {
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group( L"Config Actions", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+							if ( gui::begin_group ( L"Cloud Configs", sesui::rect ( 0.0f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								if ( cloud_config_list ) {
+									cJSON* iter = nullptr;
+
+									cJSON_ArrayForEach ( iter, cloud_config_list ) {
+										const auto config_id = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "config_id" ) );
+										const auto description = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "description" ) );
+										const auto creation_date = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "creation_date" ) );
+										const auto data = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "data" ) );
+
+										if ( !cJSON_IsNumber ( config_id ) || !config_id->valueint )
+											continue;
+
+										if ( !cJSON_IsString ( creation_date ) || !creation_date->valuestring )
+											continue;
+
+										if ( !cJSON_IsString ( description ) || !description->valuestring )
+											continue;
+
+										if ( !cJSON_IsString ( data ) || !data->valuestring )
+											continue;
+
+										if ( sesui::button ( std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).from_bytes ( data->valuestring ).c_str ( ) ) )
+											selected_cloud_config = iter;
+									}
+								}
+
+								gui::end_group ( );
+							}
+
+							if ( gui::begin_group( L"Config Actions", sesui::rect( 0.5f, 0.0f, 0.5f, 0.5f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
 								sesui::textbox( _( L"Config Name" ), selected_config );
 
 								if ( sesui::button( _( L"Save" ) ) ) {
@@ -807,6 +855,139 @@ void gui::draw( ) {
 								}
 
 								gui::end_group( );
+							}
+
+							if ( gui::begin_group ( L"Cloud Config Actions", sesui::rect ( 0.5f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::textbox ( _ ( L"Search By User" ), config_user );
+
+								if ( sesui::button ( _ ( L"My Configs" ) ) )
+									config_user = g_username;
+
+								// make refresh automatically every 2 seconds if in this tab
+								static auto reload_config_list = [ & ] ( ) {
+									if ( cloud_config_list )
+										cJSON_Delete ( cloud_config_list );
+
+									const auto post_obj = cJSON_CreateObject ( );
+
+									cJSON_AddStringToObject ( post_obj, _ ( "username" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( config_user ).c_str ( ) );
+
+									const auto out = networking::post (
+										_ ( "sesame.one/api/cloud_configs/list.php" ),
+										cJSON_Print ( post_obj )
+									);
+
+									if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
+										dbg_print ( _ ( "Failed to grab config list from cloud.\n" ) );
+									}
+									else {
+										if ( out == _ ( "1" ) )
+											dbg_print ( _ ( "User was not specified.\n" ) );
+										else if ( out == _ ( "2" ) )
+											dbg_print ( _ ( "User or configs by this user were not found.\n" ) );
+										else if ( out == _ ( "0" ) );
+											//dbg_print ( _ ( "Config list loaded.\n" ) );
+									}
+
+									cJSON_Delete ( post_obj );
+
+									cloud_config_list = cJSON_Parse ( out.data() );
+								};
+
+								// run in separate thread
+								if ( last_update_time != time ( nullptr ) ) {
+									reload_config_list ( );
+
+									last_update_time = time ( nullptr );
+								}
+
+								sesui::textbox ( _ ( L"Config Code" ), config_code );
+								sesui::textbox ( _ ( L"Config Description" ), config_description );
+								sesui::combobox ( _ ( L"Config Access" ), config_access, { _ ( L"Public" ) , _ ( L"Private" ) , _ ( L"Unlisted" ) } );
+
+								if ( sesui::button ( _ ( L"Save To Cloud" ) ) ) {
+									char appdata [ MAX_PATH ];
+
+									if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+										LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
+										LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+									}
+
+									std::ifstream cfg_file ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( selected_config ) + _ ( ".xml" ) );
+
+									if ( cfg_file.is_open ( ) ) {
+										std::string total = _ ( "" );
+										std::string line = _ ( "" );
+
+										while ( std::getline ( cfg_file, line ) )
+											total += line;
+
+										const auto post_obj = cJSON_CreateObject ( );
+
+										if ( post_obj ) {
+											cJSON_AddStringToObject ( post_obj, _ ( "config_name" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( selected_config ).c_str ( ) );
+											cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_susername.c_str ( ) );
+											cJSON_AddStringToObject ( post_obj, _ ( "description" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( config_description ).c_str ( ) );
+											cJSON_AddNumberToObject ( post_obj, _ ( "access" ), config_access );
+											cJSON_AddStringToObject ( post_obj, _ ( "data" ), total.c_str ( ) );
+
+											const auto out_str = cJSON_Print ( post_obj );
+
+											const auto out = networking::post (
+												_ ( "sesame.one/api/cloud_configs/upload.php" ),
+												out_str
+											);
+
+											if ( !out.empty ( ) ) {
+												if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
+													dbg_print ( _ ( "Failed to upload config to cloud.\n" ) );
+												}
+												else {
+													if ( out == _ ( "1" ) )
+														dbg_print ( _ ( "User has too many saved configurations (maximum 16).\n" ) );
+													else if ( out == _ ( "2" ) )
+														dbg_print ( _ ( "Config name is too long (maximum 64 characters).\n" ) );
+													else if ( out == _ ( "3" ) )
+														dbg_print ( _ ( "Config size is too large (maximum 2MB).\n" ) );
+													else if ( out == _ ( "4" ) )
+														dbg_print ( _ ( "Config description is too long (maximum 64 characters).\n" ) );
+													else if ( out == _ ( "5" ) )
+														dbg_print ( _ ( "Incomplete request.\n" ) );
+													else if ( out == _ ( "6" ) )
+														dbg_print ( _ ( "User not found.\n" ) );
+													else if ( out == _ ( "7" ) )
+														dbg_print ( _ ( "Unauthorized request.\n" ) );
+													else {
+														config_code = std::wstring_convert<std::codecvt_utf8<wchar_t>> ( ).from_bytes ( out );
+
+														dbg_print ( _ ( "Uploaded config to cloud successfully! Config code: %s.\n" ), out.data ( ) );
+														csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+													}
+												}
+											}
+											else {
+												dbg_print ( _ ( "Empty response from server.\n" ) );
+											}
+
+											cJSON_Delete ( post_obj );
+										}
+
+										cfg_file.close ( );
+									}
+								}
+
+								if ( sesui::button ( _ ( L"Load Config" ) ) ) {
+									char appdata [ MAX_PATH ];
+
+									if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+										LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
+										LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+									}
+
+
+								}
+
+								gui::end_group ( );
 							}
 						} break;
 						case misc_subtabs_scripts: {

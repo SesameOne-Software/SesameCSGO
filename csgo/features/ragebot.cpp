@@ -1158,15 +1158,14 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 	const auto backup_max = rec.m_pl->maxs( );
 
 	/* making this static might save a ton of repetitive allocation*/
-	static std::array< matrix3x4_t, 128 > backup_bones { };
-	memcpy( backup_bones.data( ), rec.m_pl->bone_cache( ), sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+	const auto backup_bones = rec.m_pl->bone_cache ( );
 
 	/* set playter data required for autowall and hitscan to work */
 	rec.m_pl->mins( ) = rec.m_min;
 	rec.m_pl->maxs( ) = rec.m_max;
 	rec.m_pl->origin( ) = rec.m_origin;
-	rec.m_pl->set_abs_origin( rec.m_origin );
-	memcpy( rec.m_pl->bone_cache( ), dmg_scan_matrix, sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+	//rec.m_pl->set_abs_origin( rec.m_origin );
+	rec.m_pl->bone_cache ( ) = dmg_scan_matrix;
 
 	float best_dmg_tmp = 0.0f;
 	vec3_t best_pos;
@@ -1222,8 +1221,8 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 	rec.m_pl->mins( ) = backup_min;
 	rec.m_pl->maxs( ) = backup_max;
 	rec.m_pl->origin( ) = backup_origin;
-	rec.m_pl->set_abs_origin( backup_abs_origin );
-	memcpy( rec.m_pl->bone_cache( ), backup_bones.data( ), sizeof( matrix3x4_t ) * rec.m_pl->bone_count( ) );
+	//rec.m_pl->set_abs_origin( backup_abs_origin );
+	rec.m_pl->bone_cache ( ) = backup_bones;
 
 	return best_dmg_tmp > 0.0f;
 }

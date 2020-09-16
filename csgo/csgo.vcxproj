@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="animations\animation_system.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
+    <ClCompile Include="cjson\cJSON.c" />
     <ClCompile Include="features\antiaim.cpp" />
     <ClCompile Include="features\blockbot.cpp" />
     <ClCompile Include="features\chams.cpp" />
@@ -87,6 +88,7 @@
     <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\animation_system.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
+    <ClInclude Include="cjson\cJSON.h" />
     <ClInclude Include="features\antiaim.hpp" />
     <ClInclude Include="features\autowall.hpp" />
     <ClInclude Include="features\blockbot.hpp" />

@@ -38,73 +38,146 @@ static const unsigned char ses_pfp[1227UL + 1] = {
   0x1B, 0x54, 0x71, 0xF7, 0xBA, 0xF3, 0xDF, 0x3D, 0x38, 0xE6, 0xAB, 0xAD, 0xC0, 0xDD, 0x11, 0x40, 0xB8, 0x24, 0x1E, 0x06, 0x47, 0xF5, 0xA4, 0x0D, 0x58, 0xFF, 0xD9, 0x00
 };
 
-//namespace networking {
-//	static std::string get ( const std::string& url ) {
-//		std::string data;
-//
-//		const auto slash = url.find ( _ ( "/" ) );
-//
-//		std::string split_url = url;
-//		std::string split_path = _ ( "/" );
-//
-//		if ( slash != std::string::npos ) {
-//			split_url = url.substr ( N ( 0 ), slash );
-//			split_path = url.substr ( slash );
-//		}
-//
-//		std::string request = _ ( "GET /" ) + split_path + _ ( " HTTP/1.1\r\n" );
-//		request += _ ( "Host: " ) + split_url + _ ( "\r\n" );
-//		//request += _ ( "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36\r\n" );
-//		request += _ ( "\r\n" );
-//
-//		WSADATA wsa_data;
-//		if ( WSAStartup ( MAKEWORD ( N ( 2 ), N ( 2 ) ), &wsa_data ) != N ( 0 ) ) {
-//			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
-//			return _ ( "ERROR" );
-//		}
-//
-//		const auto sock = socket ( N ( AF_INET ), N ( SOCK_STREAM ), N ( IPPROTO_TCP ) );
-//		const auto host = gethostbyname ( split_url.c_str ( ) );
-//
-//		SOCKADDR_IN sock_addr;
-//		sock_addr.sin_port = htons ( N ( 80 ) );
-//		sock_addr.sin_family = N ( AF_INET );
-//		sock_addr.sin_addr.s_addr = *( ( unsigned long* ) host->h_addr );
-//
-//		if ( connect ( sock, ( sockaddr* ) ( &sock_addr ), sizeof ( sock_addr ) ) != N ( 0 ) ) {
-//			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
-//			return _ ( "ERROR" );
-//		}
-//
-//		send ( sock, request.c_str ( ), strlen ( request.c_str ( ) ), N ( 0 ) );
-//
-//		auto buffer = new char [ N ( 10000 ) ];
-//		size_t data_len = N ( 0 );
-//
-//		while ( true ) {
-//			memset ( buffer, 0, N ( 10000 ) );
-//
-//			data_len = recv ( sock, buffer, N ( 10000 ), N( 0 ) );
-//
-//			if ( data_len <= 0 )
-//				break;
-//
-//			data += std::string ( buffer, data_len );
-//		}
-//
-//		delete [ ] buffer;
-//
-//		closesocket ( sock );
-//		WSACleanup ( );
-//
-//		/* remove header */
-//		const auto delim = data.find ( _ ( "\r\n\r\n" ) );
-//
-//		if ( delim == std::string::npos )
-//			return _ ( "ERROR" );
-//
-//		data = data.substr ( delim + 4 );
-//
-//		return data;
-//	}
-//}
+namespace networking {
+	static std::string get ( const std::string& url ) {
+		std::string data;
+
+		const auto slash = url.find ( _ ( "/" ) );
+
+		std::string split_url = url;
+		std::string split_path = _ ( "/" );
+
+		if ( slash != std::string::npos ) {
+			split_url = url.substr ( N ( 0 ), slash );
+			split_path = url.substr ( slash );
+		}
+
+		std::string request = _ ( "GET /" ) + split_path + _ ( " HTTP/1.1\r\n" );
+		request += _ ( "Host: " ) + split_url + _ ( "\r\n" );
+		//request += _ ( "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36\r\n" );
+		request += _ ( "\r\n" );
+
+		WSADATA wsa_data;
+		if ( WSAStartup ( MAKEWORD ( N ( 2 ), N ( 2 ) ), &wsa_data ) != N ( 0 ) ) {
+			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
+			return _ ( "ERROR" );
+		}
+
+		const auto sock = socket ( N ( AF_INET ), N ( SOCK_STREAM ), N ( IPPROTO_TCP ) );
+		const auto host = gethostbyname ( split_url.c_str ( ) );
+
+		SOCKADDR_IN sock_addr;
+		sock_addr.sin_port = htons ( N ( 80 ) );
+		sock_addr.sin_family = N ( AF_INET );
+		sock_addr.sin_addr.s_addr = *( ( unsigned long* ) host->h_addr );
+
+		if ( connect ( sock, ( sockaddr* ) ( &sock_addr ), sizeof ( sock_addr ) ) != N ( 0 ) ) {
+			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
+			return _ ( "ERROR" );
+		}
+
+		send ( sock, request.c_str ( ), strlen ( request.c_str ( ) ), N ( 0 ) );
+
+		auto buffer = new char [ N ( 10000 ) ];
+		size_t data_len = N ( 0 );
+
+		while ( true ) {
+			memset ( buffer, 0, N ( 10000 ) );
+
+			data_len = recv ( sock, buffer, N ( 10000 ), N( 0 ) );
+
+			if ( data_len <= 0 )
+				break;
+
+			data += std::string ( buffer, data_len );
+		}
+
+		delete [ ] buffer;
+
+		closesocket ( sock );
+		WSACleanup ( );
+
+		/* remove header */
+		const auto delim = data.find ( _ ( "\r\n\r\n" ) );
+
+		if ( delim == std::string::npos )
+			return _ ( "ERROR" );
+
+		data = data.substr ( delim + 4 );
+
+		return data;
+	}
+
+	static std::string post ( const std::string& url, const std::string& post_data ) {
+		std::string data;
+
+		const auto slash = url.find ( _ ( "/" ) );
+
+		std::string split_url = url;
+		std::string split_path = _ ( "/" );
+
+		if ( slash != std::string::npos ) {
+			split_url = url.substr ( N ( 0 ), slash );
+			split_path = url.substr ( slash );
+		}
+
+		std::string request = _ ( "POST " ) + split_path + _ ( " HTTP/1.1\r\n" );
+		request += _ ( "Host: " ) + split_url + _ ( "\r\n" );
+		request += _ ( "Content-Type: application/octet-stream\r\n" );
+		request += _ ( "Content-Encoding: binary\r\n" );
+		request += _ ( "Content-Length: ") + std::to_string( post_data.length() ) + _("\r\n" );
+		//request += _ ( "User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36\r\n" );
+		request += _ ( "\r\n" );
+
+		WSADATA wsa_data;
+		if ( WSAStartup ( MAKEWORD ( N ( 2 ), N ( 2 ) ), &wsa_data ) != N ( 0 ) ) {
+			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
+			return _ ( "ERROR" );
+		}
+
+		const auto sock = socket ( N ( AF_INET ), N ( SOCK_STREAM ), N ( IPPROTO_TCP ) );
+		const auto host = gethostbyname ( split_url.c_str ( ) );
+
+		SOCKADDR_IN sock_addr;
+		sock_addr.sin_port = htons ( N ( 80 ) );
+		sock_addr.sin_family = N ( AF_INET );
+		sock_addr.sin_addr.s_addr = *( ( unsigned long* ) host->h_addr );
+
+		if ( connect ( sock, ( sockaddr* ) ( &sock_addr ), sizeof ( sock_addr ) ) != N ( 0 ) ) {
+			dbg_print ( _ ( "Connection to sesame servers failed.\n" ) );
+			return _ ( "ERROR" );
+		}
+
+		send ( sock, request.c_str ( ), request.length(), N ( 0 ) );
+		send ( sock, post_data.c_str ( ), post_data.length(), N ( 0 ) );
+
+		auto buffer = new char [ N ( 10000 ) ];
+		size_t data_len = N ( 0 );
+
+		while ( true ) {
+			memset ( buffer, 0, N ( 10000 ) );
+
+			data_len = recv ( sock, buffer, N ( 10000 ), N ( 0 ) );
+
+			if ( data_len <= 0 )
+				break;
+
+			data += std::string ( buffer, data_len );
+		}
+
+		delete [ ] buffer;
+
+		closesocket ( sock );
+		WSACleanup ( );
+
+		/* remove header */
+		const auto delim = data.find ( _ ( "\r\n\r\n" ) );
+
+		if ( delim == std::string::npos )
+			return _ ( "ERROR" );
+
+		data = data.substr ( delim + 4 );
+
+		return data;
+	}
+}
