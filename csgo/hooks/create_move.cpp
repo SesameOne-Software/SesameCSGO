@@ -75,8 +75,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	security_handler::update( );
 
 	if ( g_refresh_counter < g::shifted_amount ) {
-		ucmd->m_buttons &= ~1;
-		ucmd->m_fmove = ucmd->m_smove = 0.0f;
+		//ucmd->m_buttons &= ~1;
+		//ucmd->m_fmove = ucmd->m_smove = 0.0f;
 		//ucmd->m_angs = old_angles;
 		//csgo::clamp( ucmd->m_angs );
 
@@ -189,20 +189,14 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	fix_event_delay( ucmd );
 
-	if ( delay_tick ) {
-		g_refresh_counter = 0;
-		g::next_tickbase_shot = false;
-		last_tickbase_shot = false;
-		delay_tick = false;
-	}
-
 	if ( ucmd->m_buttons & 1 )
 		g::next_tickbase_shot = false;
 
 	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
 		/* disables refreshing tickbase after shot */
+		g_refresh_counter = 0;
 		//g::shifted_amount = 0;
-		delay_tick = true;
+		//delay_tick = true;
 	}
 	//
 	last_tickbase_shot = g::next_tickbase_shot;

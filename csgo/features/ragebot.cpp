@@ -659,6 +659,7 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && std::abs( ucmd->m_cmdnum - g::dt_recharge_time ) > tickbase_as_int && !g::dt_ticks_to_shift && !( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) ) {
 		g::dt_ticks_to_shift = tickbase_as_int;
 		g::dt_recharge_time = ucmd->m_cmdnum + tickbase_as_int;
+		g::shifted_tickbase = ucmd->m_cmdnum;
 	}
 }
 
@@ -825,7 +826,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		const auto at_target = looking_at ( );
 
 		if ( at_target ) {
-			constexpr auto autostop_threshhold = 0.1f;
+			constexpr auto autostop_threshhold = 0.065f;
 
 			const auto vel = g::local->vel ( );
 			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;

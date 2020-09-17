@@ -573,7 +573,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 	else*/
 		auto cached_yaw = pl->angles( ).y;
 
-		if ( resolve_cached( pl->idx( ), cached_yaw ) ) {
+		/*if ( resolve_cached( pl->idx( ), cached_yaw ) ) {
 			switch ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 3 ) {
 				case 0:
 					yaw1 = csgo::normalize( cached_yaw );
@@ -594,7 +594,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 			record_correction = false;
 		}
-		else {
+		else */{
 			if ( has_slow_walk ) {
 				yaw1 = csgo::normalize( pl->angles( ).y + desync_amount * ( freestanding_dir > 0.0f ? 1.0f : -1.0f ) );
 				yaw2 = csgo::normalize( pl->angles( ).y + desync_amount * ( freestanding_dir > 0.0f ? -1.0f : 1.0f ) );

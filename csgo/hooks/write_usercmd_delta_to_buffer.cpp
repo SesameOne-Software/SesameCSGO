@@ -66,7 +66,7 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 
 	m_tocmd = m_fromcmd;
 	m_tocmd.m_cmdnum++;
-	m_tocmd.m_tickcount += static_cast< int > ( 3.0f * csgo::time2ticks( 1.0f ) );
+	m_tocmd.m_tickcount += 3 * csgo::time2ticks ( 1.0f );
 	//m_tocmd.m_tickcount += 666;
 
 	g::shifted_amount = g::dt_ticks_to_shift;
@@ -86,7 +86,7 @@ bool __fastcall hooks::write_usercmd_delta_to_buffer( REG, int slot, void* buf, 
 	g::dt_ticks_to_shift = 0;
 
 	//if ( features::ragebot::active_config.dt_teleport )
-	g::shifted_tickbase = m_tocmd.m_cmdnum;
+	//g::shifted_tickbase = m_tocmd.m_cmdnum;
 
 	g::tickbase_at_shift = g::local->tick_base( );
 
