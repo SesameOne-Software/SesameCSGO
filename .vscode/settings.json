@@ -1,6 +1,7 @@
 {
     "deepcode.uploadApproved": true,
     "files.associations": {
+        ".ixx": "cpp",
         "xtree": "cpp",
         "algorithm": "cpp",
         "array": "cpp",
@@ -67,6 +68,8 @@
         "unordered_map": "cpp",
         "xhash": "cpp",
         "stack": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "atomic": "cpp",
+        "compare": "cpp"
     }
 }
