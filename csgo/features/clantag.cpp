@@ -30,7 +30,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 	}
 
 	auto iter = static_cast< int >( prediction::curtime() * 4.0f );
-	const std::string tag = std::string( clantag_text, clantag_text + wcslen( clantag_text ) );
+	const std::string tag = clantag_text;
 
 	if ( player_to_steal_tag_from ) {
 		const auto player_rsc = *reinterpret_cast< uintptr_t* > ( player_rsc_ptr );

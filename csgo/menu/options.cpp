@@ -27,9 +27,9 @@ void options::option::add_float( const std::string& id, float val ) {
 	vars [ id ].val.f = val;
 }
 
-void options::option::add_str( const std::string& id, const wchar_t* val ) {
+void options::option::add_str( const std::string& id, const char* val ) {
 	vars [ id ].type = option_type_t::string;
-	wcscpy_s( vars [ id ].val.s, val );
+	strcpy_s( vars [ id ].val.s, val );
 }
 
 void options::option::add_color( const std::string& id, const sesui::color& val ) {
@@ -58,9 +58,9 @@ void options::option::add_script_float( const std::string& id, float val ) {
 	script_vars [ id ].val.f = val;
 }
 
-void options::option::add_script_str( const std::string& id, const wchar_t* val ) {
+void options::option::add_script_str( const std::string& id, const char* val ) {
 	script_vars [ id ].type = option_type_t::string;
-	wcscpy_s( script_vars [ id ].val.s, val );
+	strcpy_s ( script_vars [ id ].val.s, val );
 }
 
 void options::option::add_script_color( const std::string& id, const sesui::color& val ) {
@@ -203,13 +203,13 @@ void options::load( std::unordered_map< std::string, option >& options, const st
 			} break;
 			case option_type_t::string: {
 				const auto str = element->GetText( );
-
+				
 				if ( !str ) {
 					dbg_print( _( "Element found had invalid value.\n" ) );
 					continue;
 				}
 
-				wcscpy_s( option.second.val.s, std::wstring( str, str + wcslen( ( wchar_t* )str ) ).c_str( ) );
+				strcpy_s( option.second.val.s, str );
 			} break;
 			case option_type_t::color: {
 				const auto r_element = element->FirstChildElement( _( "r" ) );
@@ -465,7 +465,7 @@ void options::init( ) {
 	option::add_float( _( "misc.effects.ragdoll_force_scale" ), 1.0f );
 	option::add_bool( _( "misc.effects.clantag" ), false );
 	option::add_int( _( "misc.effects.clantag_animation" ), 0 ); /* static, marquee, capitalize, heart */
-	option::add_str( _( "misc.effects.clantag_text" ), _( L"sesame.one" ) );
+	option::add_str( _( "misc.effects.clantag_text" ), _( "sesame.one" ) );
 	option::add_float( _( "misc.effects.revolver_cock_volume" ), 1.0f );
 	option::add_float( _( "misc.effects.weapon_volume" ), 1.0f );
 

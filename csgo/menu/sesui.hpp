@@ -10,6 +10,8 @@
 #include <map>
 #include <unordered_map>
 
+#include "../fmt/core.h"
+
 /* do not modify */
 #define SESUI_API __declspec( dllexport )
 
@@ -36,52 +38,6 @@ namespace sesui {
 	/* ----------------------------- */
 	/* -- SESUI DEFINITIONS BELOW -- */
 	/* ----------------------------- */
-
-	/* character type */
-	using ses_char = wchar_t;
-
-	/* string type using the character type we chose */
-	class ses_string {
-		std::basic_string_view< ses_char > str;
-
-	public:
-		/* create string using the new string type we made (this is so we don't have to change the string type everywhere depending on what format we chose) */
-		ses_string( const wchar_t* data ) {
-			str = reinterpret_cast< const ses_char* > ( data );
-		}
-
-		ses_string( wchar_t* data ) {
-			str = reinterpret_cast< ses_char* > ( data );
-		}
-
-		ses_string( ) {
-			*this = ses_string( L"" );
-		}
-
-		auto get( ) const {
-			return str.data( );
-		}
-
-		auto len( ) const {
-			return str.length( );
-		}
-
-		bool empty( )const {
-			return !len( );
-		}
-
-		ses_string& operator=( const ses_string& other ) {
-			str = other.str;
-			return *this;
-		}
-
-		/* pls dont look at this ghetto ass shit ;-; */
-		ses_string operator+( const ses_string& other ) const {
-			return ses_string( ( std::basic_string< ses_char >( str ) + std::basic_string< ses_char >( other.str ) ).c_str( ) );
-		}
-	};
-
-	/* AUTOMATICALLY SCALE SHAPES USING DPI TO AVOID HEADACHES LATER */
 
 	/* 2d vector type used for storing positions */
 	struct vec2 {
@@ -247,11 +203,11 @@ namespace sesui {
 	/* font type, placeholder pointer to actual font type you will actually use (temporary for now) */
 	struct font {
 		void* data;
-		ses_string family;
+		std::string family;
 		int size, weight;
 		bool italic;
 
-		font( const ses_string& family, int size, int weight, bool italic ) {
+		font( std::string_view family, int size, int weight, bool italic ) {
 			this->family = family;
 			this->size = size;
 			this->weight = weight;
@@ -313,7 +269,7 @@ namespace sesui {
 
 		SESUI_API void get_scroll_amount( const float scroll_amount );
 
-		SESUI_API void get_input( const ses_string& window );
+		SESUI_API void get_input( std::string_view window );
 
 		SESUI_API bool key_pressed( int key );
 
@@ -343,10 +299,10 @@ namespace sesui {
 			vec2 click_offset;
 			std::array< float, 512 > anim_time;
 			std::array< float, 512 > hover_time;
-			std::basic_string < ses_char > selected_tooltip;
-			std::basic_string < ses_char > tooltip;
+			std::string selected_tooltip;
+			std::string tooltip;
 			std::vector< vec2 > cursor_stack;
-			std::map< std::basic_string < ses_char >, group_ctx_t > group_ctx;
+			std::map< std::string, group_ctx_t > group_ctx;
 			rect main_area;
 			float last_cursor_offset = 0.0f;
 			float tooltip_anim_time = 0.0f;
@@ -357,13 +313,13 @@ namespace sesui {
 			int cur_tab_index;
 			int cur_subtab_index;
 			bool same_line = false;
-			std::basic_string < ses_char > cur_group;
+			std::string cur_group;
 		};
 
 		extern rect clip;
 		extern bool clip_enabled;
-		extern std::map< std::basic_string< ses_char >, window_ctx_t > window_ctx;
-		extern std::basic_string< ses_char > cur_window;
+		extern std::map< std::string, window_ctx_t > window_ctx;
+		extern std::string cur_window;
 	}
 
 	struct style_t {
@@ -411,8 +367,8 @@ namespace sesui {
 		vec2 color_popup = vec2( 220.0f, 220.0f );
 		float color_bar_width = 10.0f;
 
-		font control_font = font( L"sesame_ui", 19, 525, false );
-		font tab_font = font( L"sesame_ui", 24, 260, false );
+		font control_font = font( "sesame_ui", 19, 525, false );
+		font tab_font = font( "sesame_ui", 24, 260, false );
 	};
 
 	extern style_t style;
@@ -462,7 +418,7 @@ namespace sesui {
 			/* text information */
 			vec2 text_pos;
 			font font;
-			std::basic_string < ses_char > text;
+			std::string text;
 			bool text_shadow;
 
 			std::vector< sesui::color > colors;
@@ -484,8 +440,8 @@ namespace sesui {
 		using draw_multicolor_polygon_fn = std::add_pointer_t< void( const std::vector< sesui::vec2 >& verticies, const std::vector< sesui::color >& colors, bool filled ) noexcept >;
 
 		/* text rendering */
-		using draw_text_fn = std::add_pointer_t< void( const vec2& pos, const font& font, const ses_string& text, const color& color ) noexcept >;
-		using get_text_size_fn = std::add_pointer_t< void( const font& font, const ses_string& text, vec2& dim_out ) noexcept >;
+		using draw_text_fn = std::add_pointer_t< void( const vec2& pos, const font& font, const std::string& text, const color& color ) noexcept >;
+		using get_text_size_fn = std::add_pointer_t< void( const font& font, const std::string& text, vec2& dim_out ) noexcept >;
 
 		/* other stuff */
 		using get_frametime_fn = std::add_pointer_t< float( ) noexcept >;
@@ -520,7 +476,7 @@ namespace sesui {
 				true,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				data,
@@ -558,7 +514,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -629,7 +585,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -657,7 +613,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -687,7 +643,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -722,7 +678,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				colors,
 				{},
@@ -757,7 +713,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				colors,
 				{},
@@ -780,7 +736,7 @@ namespace sesui {
 				false,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -818,7 +774,7 @@ namespace sesui {
 				filled,
 				{},
 				{},
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -826,7 +782,7 @@ namespace sesui {
 				} );
 		}
 
-		void add_text( const vec2& pos, const font& font, const ses_string& text, bool text_shadow, const color& color, bool topmost = false ) {
+		void add_text( const vec2& pos, const font& font, std::string_view text, bool text_shadow, const color& color, bool topmost = false ) {
 			if ( !font.data )
 				throw "Attempted to add text using invalid font to draw list.";
 
@@ -839,7 +795,7 @@ namespace sesui {
 				false,
 				pos,
 				font,
-				text.get( ),
+				text.data(),
 				text_shadow,
 				{},
 				{},
@@ -860,7 +816,7 @@ namespace sesui {
 				false,
 				{},
 				{ },
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -880,7 +836,7 @@ namespace sesui {
 				false,
 				{},
 				{ },
-				L"",
+				"",
 				false,
 				{},
 				{},
@@ -949,70 +905,71 @@ namespace sesui {
 	/* ------------------------------- */
 
 	/* splits text into 2 parts: 1. label 2. hidden id*/
-	std::pair< std::basic_string< sesui::ses_char >, std::basic_string< sesui::ses_char > > split( std::basic_string< sesui::ses_char > val );
+	std::pair< std::string, std::string > split( std::string val );
 
 	/* begins ui frame */
-	SESUI_API void begin_frame( const ses_string& window );
+	SESUI_API void begin_frame( std::string_view window );
 
 	/* ends ui frame */
 	SESUI_API void end_frame( );
 
 	/* creates new window */
-	SESUI_API bool begin_window( const ses_string& name, const rect& bounds, bool& opened, uint32_t flags = window_flags::none );
+	SESUI_API bool begin_window( std::string_view name, const rect& bounds, bool& opened, uint32_t flags = window_flags::none );
 
 	SESUI_API void end_window( );
 
 	SESUI_API void same_line( );
 
 	/* groups */
-	SESUI_API bool begin_group( const ses_string& name, const rect& fraction, const rect& extra );
+	SESUI_API bool begin_group( std::string_view name, const rect& fraction, const rect& extra );
 
 	SESUI_API void end_group( );
 
 	/* tabs */
 	SESUI_API bool begin_tabs( int count, float width = 0.2f );
 
-	SESUI_API void tab( const ses_string& name, int& selected );
+	SESUI_API void tab( std::string_view name, int& selected );
 
 	SESUI_API void end_tabs( );
 
 	/* other gui stuff */
-	SESUI_API void tooltip( const ses_string& tooltip );
+	SESUI_API void tooltip( std::string_view tooltip );
 
 	/* gui controls */
-	SESUI_API void checkbox( const ses_string& name, bool& option );
+	SESUI_API void checkbox( std::string_view name, bool& option );
 
-	SESUI_API void text( const ses_string& name );
+	SESUI_API void text( std::string_view name );
 
-	SESUI_API bool button( const ses_string& name );
+	SESUI_API bool button( std::string_view name );
 
-	SESUI_API void colorpicker( const ses_string& name, color& option );
+	SESUI_API void colorpicker( std::string_view name, color& option );
 
-	SESUI_API void combobox( const ses_string& name, int& option, const std::vector< ses_string >& list );
+	SESUI_API void combobox( std::string_view name, int& option, const std::vector< std::string_view >& list );
 
-	SESUI_API void textbox( const ses_string& name, std::basic_string< ses_char >& option );
+	SESUI_API void textbox( std::string_view name, std::string& option );
 
-	SESUI_API void multiselect( const ses_string& name, const std::vector< std::pair< ses_string, bool& > >& list );
+	SESUI_API void multiselect( std::string_view name, const std::vector< std::pair< std::string_view, bool& > >& list );
 
-	SESUI_API void slider_ex( const ses_string& name, float& option, float min, float max, const ses_string& value_str );
+	SESUI_API void slider_ex( std::string_view name, float& option, float min, float max, std::string_view value_str );
 
-	SESUI_API void keybind( const ses_string& name, int& key, int& mode );
+	SESUI_API void keybind( std::string_view name, int& key, int& mode );
 
 	template < typename type >
-	inline void slider( const ses_string& name, type& option, type min, type max, const ses_string fmt = L"" ) {
-		ses_string final_fmt = L"%d";
+	void slider( std::string_view name, type& option, type min, type max, std::string_view fmt = "" ) {
+		std::string formatted;
 
-		if constexpr ( std::is_floating_point< type >::value )
-			final_fmt = L"%.1f";
-
-		if ( !fmt.empty( ) )
-			final_fmt = fmt;
-
-		wchar_t value_str [ 32 ];
-		swprintf_s( value_str, final_fmt.get( ), option );
+		if ( !fmt.empty ( ) ) {
+			formatted = fmt::format ( fmt, option );
+		}
+		else {
+			if constexpr ( std::is_floating_point< type >::value )
+				formatted = fmt::format ( "{:.1f}", option );
+			else
+				formatted = fmt::format ( "{}", option );
+		}
 
 		float tmp = static_cast < float > ( option );
-		slider_ex( name, tmp, min, max, value_str );
+		slider_ex( name, tmp, min, max, formatted );
 		option = tmp;
 	}
 

@@ -35,6 +35,8 @@
     <ClCompile Include="features\other_visuals.cpp" />
     <ClCompile Include="features\prediction.cpp" />
     <ClCompile Include="features\ragebot.cpp" />
+    <ClCompile Include="fmt\format.cc" />
+    <ClCompile Include="fmt\os.cc" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hooks\build_transformations.cpp" />
     <ClCompile Include="hooks\create_move.cpp" />
@@ -103,6 +105,18 @@
     <ClInclude Include="features\other_visuals.hpp" />
     <ClInclude Include="features\prediction.hpp" />
     <ClInclude Include="features\ragebot.hpp" />
+    <ClInclude Include="fmt\chrono.h" />
+    <ClInclude Include="fmt\color.h" />
+    <ClInclude Include="fmt\compile.h" />
+    <ClInclude Include="fmt\core.h" />
+    <ClInclude Include="fmt\format-inl.h" />
+    <ClInclude Include="fmt\format.h" />
+    <ClInclude Include="fmt\locale.h" />
+    <ClInclude Include="fmt\os.h" />
+    <ClInclude Include="fmt\ostream.h" />
+    <ClInclude Include="fmt\posix.h" />
+    <ClInclude Include="fmt\printf.h" />
+    <ClInclude Include="fmt\ranges.h" />
     <ClInclude Include="globals.hpp" />
     <ClInclude Include="hitsounds.h" />
     <ClInclude Include="hooks\build_transformations.hpp" />
@@ -282,7 +296,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;JM_XORSTR_DISABLE_AVX_INTRINSICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;JM_XORSTR_DISABLE_AVX_INTRINSICS;DEV_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>

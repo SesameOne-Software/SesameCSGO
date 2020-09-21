@@ -1,3 +1,5 @@
+#include <codecvt>
+
 #include "d3d9_render.hpp"
 #include "../sdk/sdk.hpp"
 #include "../renderer/d3d9.hpp"
@@ -31,7 +33,7 @@ void sesui::binds::create_font ( sesui::font& font, bool force ) noexcept {
 	if ( font.data )
 		return;
 
-	D3DXCreateFontW ( csgo::i::dev, static_cast< int > ( static_cast< float >( font.size )* sesui::globals::dpi ), 0, font.weight, 0, font.italic, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, font.family.get ( ), reinterpret_cast< ID3DXFont** > ( &font.data ) );
+	D3DXCreateFontA ( csgo::i::dev, static_cast< int > ( static_cast< float >( font.size )* sesui::globals::dpi ), 0, font.weight, 0, font.italic, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, font.family.c_str ( ), reinterpret_cast< ID3DXFont** > ( &font.data ) );
 }
 
 void sesui::binds::polygon ( const std::vector< sesui::vec2 >& verticies, const sesui::color& color, bool filled ) noexcept {
@@ -80,18 +82,24 @@ void sesui::binds::multicolor_polygon ( const std::vector< sesui::vec2 >& vertic
 	delete [ ] vtx;
 }
 
-void sesui::binds::text ( const sesui::vec2& pos, const sesui::font& font, const sesui::ses_string& text, const sesui::color& color ) noexcept {
+void sesui::binds::text ( const sesui::vec2& pos, const sesui::font& font, const std::string& text, const sesui::color& color ) noexcept {
 	if ( !font.data )
 		return;
 
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+	const auto as_wide = convert.from_bytes ( text );
+	
 	RECT rect;
 	SetRect ( &rect, pos.x, pos.y, pos.x, pos.y );
-	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, text.get ( ), text.len ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( color.a * 255.0f ) ) );
+	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, as_wide.c_str(), as_wide.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( color.a * 255.0f ) ) );
 }
 
-void sesui::binds::get_text_size ( const sesui::font& font, const sesui::ses_string& text, sesui::vec2& dim_out ) noexcept {
+void sesui::binds::get_text_size ( const sesui::font& font, const std::string& text, sesui::vec2& dim_out ) noexcept {
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+	const auto as_wide = convert.from_bytes ( text );
+
 	RECT rect = { 0, 0, 0, 0 };
-	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, text.get ( ), text.len ( ), &rect, DT_CALCRECT, 0 );
+	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, as_wide.c_str ( ), as_wide.length ( ), &rect, DT_CALCRECT, 0 );
 	dim_out = { rect.right - rect.left, rect.bottom - rect.top };
 }
 

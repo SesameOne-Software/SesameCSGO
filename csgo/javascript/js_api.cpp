@@ -3,6 +3,7 @@
 #include <fstream>
 #include <mutex>
 #include <unordered_map>
+#include <codecvt>
 #include "js_api.hpp"
 #include "duktape.hpp"
 #include "../menu/menu.hpp"
@@ -44,7 +45,7 @@ struct option_data_t {
 	control_type_t control_type;
 	options::option* option_ptr;
 	float min, max;
-	std::vector< sesui::ses_string > names;
+	std::vector< std::string > names;
 };
 
 /* [option id, option name], option */
@@ -177,66 +178,6 @@ void js::process_create_move_callbacks( ) {
 		//if ( has_callback )
 		duk_pop( script.second );
 	}
-}
-
-std::wstring utf8_to_utf16( const std::string& utf8 ) {
-	std::vector<unsigned long> unicode;
-	size_t i = 0;
-	while ( i < utf8.size( ) ) {
-		unsigned long uni;
-		size_t todo;
-		bool error = false;
-		unsigned char ch = utf8 [ i++ ];
-		if ( ch <= 0x7F ) {
-			uni = ch;
-			todo = 0;
-		}
-		else if ( ch <= 0xBF ) {
-			throw std::logic_error( _( "not a UTF-8 string" ) );
-		}
-		else if ( ch <= 0xDF ) {
-			uni = ch & 0x1F;
-			todo = 1;
-		}
-		else if ( ch <= 0xEF ) {
-			uni = ch & 0x0F;
-			todo = 2;
-		}
-		else if ( ch <= 0xF7 ) {
-			uni = ch & 0x07;
-			todo = 3;
-		}
-		else {
-			throw std::logic_error( _( "not a UTF-8 string" ) );
-		}
-		for ( size_t j = 0; j < todo; ++j ) {
-			if ( i == utf8.size( ) )
-				throw std::logic_error( _( "not a UTF-8 string" ) );
-			unsigned char ch = utf8 [ i++ ];
-			if ( ch < 0x80 || ch > 0xBF )
-				throw std::logic_error( _( "not a UTF-8 string" ) );
-			uni <<= 6;
-			uni += ch & 0x3F;
-		}
-		if ( uni >= 0xD800 && uni <= 0xDFFF )
-			throw std::logic_error( _( "not a UTF-8 string" ) );
-		if ( uni > 0x10FFFF )
-			throw std::logic_error( _( "not a UTF-8 string" ) );
-		unicode.push_back( uni );
-	}
-	std::wstring utf16;
-	for ( size_t i = 0; i < unicode.size( ); ++i ) {
-		unsigned long uni = unicode [ i ];
-		if ( uni <= 0xFFFF ) {
-			utf16 += ( wchar_t )uni;
-		}
-		else {
-			uni -= 0x10000;
-			utf16 += ( wchar_t )( ( uni >> 10 ) + 0xD800 );
-			utf16 += ( wchar_t )( ( uni & 0x3FF ) + 0xDC00 );
-		}
-	}
-	return utf16;
 }
 
 namespace bindings {
@@ -402,7 +343,11 @@ namespace bindings {
 			if ( font == cached_fonts.end( ) )
 				return 0;
 
-			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, utf8_to_utf16( duk_require_string( ctx, 2 ) ) );
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+
+			const auto as_wide = convert.from_bytes ( duk_require_string ( ctx, 2 ) );
+
+			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, as_wide.c_str() );
 
 			return 0;
 		}
@@ -414,7 +359,11 @@ namespace bindings {
 			if ( font == cached_fonts.end( ) )
 				return 0;
 
-			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, utf8_to_utf16( duk_require_string( ctx, 2 ) ), true );
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+
+			const auto as_wide = convert.from_bytes ( duk_require_string ( ctx, 2 ) );
+
+			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, as_wide.c_str ( ), true );
 
 			return 0;
 		}
@@ -426,7 +375,11 @@ namespace bindings {
 			if ( font == cached_fonts.end( ) )
 				return 0;
 
-			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, utf8_to_utf16( duk_require_string( ctx, 2 ) ), false, true );
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+
+			const auto as_wide = convert.from_bytes ( duk_require_string ( ctx, 2 ) );
+
+			::render::text( duk_require_int( ctx, 0 ), duk_require_int( ctx, 1 ), duk_require_color( ctx, 3 ), font->second.font, as_wide.c_str ( ), false, true );
 
 			return 0;
 		}
@@ -561,7 +514,7 @@ namespace bindings {
 					}
 				}
 				else if ( !strcmp( element_type, _( "string" ) ) && element_ptr->type == options::option_type_t::string ) {
-					wcscpy_s( element_ptr->val.s, ( wchar_t* )duk_require_string( ctx, 0 ) );
+					strcpy_s( element_ptr->val.s, duk_require_string( ctx, 0 ) );
 				}
 				else if ( !strcmp( element_type, _( "color" ) ) && element_ptr->type == options::option_type_t::color ) {
 					const auto clr = renderer::duk_require_color( ctx, 0 );
@@ -818,7 +771,7 @@ namespace bindings {
 
 				const auto option_ptr = &options::script_vars [ item_id ];
 
-				std::vector< sesui::ses_string > items { };
+				std::vector< std::string > items { };
 
 				if ( !duk_is_array( ctx, 3 ) )
 					return 0;
@@ -827,7 +780,7 @@ namespace bindings {
 
 				for ( auto i = 0; i < len; i++ ) {
 					duk_get_prop_index( ctx, 3, i );
-					items.push_back( utf8_to_utf16( duk_require_string( ctx, -1 ) ).data( ) );
+					items.push_back( duk_require_string ( ctx, -1 ) );
 					duk_pop( ctx );
 				}
 
@@ -877,11 +830,11 @@ namespace bindings {
 
 				const auto option_ptr = &options::script_vars [ item_id ];
 
-				std::vector< sesui::ses_string > items { };
+				std::vector< std::string > items { };
 
 				for ( auto i = 0; i < len; i++ ) {
 					duk_get_prop_index( ctx, 2, i );
-					items.push_back( utf8_to_utf16( duk_require_string( ctx, -1 ) ).data( ) );
+					items.push_back( duk_require_string ( ctx, -1 ) );
 					duk_pop( ctx );
 				}
 

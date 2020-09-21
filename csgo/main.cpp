@@ -216,15 +216,17 @@ int __stdcall init( uintptr_t mod ) {
 		return 0;
 }
 
+extern std::string g_username;
 extern bool upload_to_cloud;
-extern std::wstring selected_config;
+extern std::string selected_config;
 extern cJSON* cloud_config_list;
-extern std::string g_susername;
 extern bool download_config_code;
 
-std::wstring last_config_user;
+std::string last_config_user;
 
 int __stdcall init_proxy( PLoader_Info loader_info ) {
+	std::locale::global ( std::locale ( _("en_US.UTF-8") ) );
+
 #ifndef DEV_BUILD
 	call_init( loader_info );
 #else
@@ -239,11 +241,11 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 			char appdata [ MAX_PATH ];
 
 			if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
 			}
 
-			std::ifstream cfg_file ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( selected_config ) + _ ( ".xml" ) );
+			std::ifstream cfg_file ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
 
 			if ( cfg_file.is_open ( ) ) {
 				std::string total = _ ( "" );
@@ -255,9 +257,9 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 				const auto post_obj = cJSON_CreateObject ( );
 
 				if ( post_obj ) {
-					cJSON_AddStringToObject ( post_obj, _ ( "config_name" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( selected_config ).c_str ( ) );
-					cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_susername.c_str ( ) );
-					cJSON_AddStringToObject ( post_obj, _ ( "description" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( gui::config_description ).c_str ( ) );
+					cJSON_AddStringToObject ( post_obj, _ ( "config_name" ), selected_config.c_str() );
+					cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+					cJSON_AddStringToObject ( post_obj, _ ( "description" ), gui::config_description.c_str ( ) );
 					cJSON_AddNumberToObject ( post_obj, _ ( "access" ), gui::config_access );
 					cJSON_AddStringToObject ( post_obj, _ ( "data" ), total.c_str ( ) );
 
@@ -288,9 +290,9 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 							else if ( out == _ ( "7" ) )
 								dbg_print ( _ ( "Unauthorized request.\n" ) );
 							else {
-								gui::config_code = std::wstring_convert<std::codecvt_utf8<wchar_t>> ( ).from_bytes ( out );
+								gui::config_code = out;
 
-								dbg_print ( _ ( "Uploaded config to cloud successfully! Config code: %s.\n" ), out.data ( ) );
+								dbg_print ( _ ( "Uploaded config to cloud successfully! Config code: %s.\n" ), out.c_str ( ) );
 								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 						}
@@ -311,8 +313,8 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 		/* sync data with server */
 		const auto post_obj = cJSON_CreateObject ( );
 
-		cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_susername.c_str ( ) );
-		cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( gui::config_user ).c_str ( ) );
+		cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+		cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user.c_str ( ) );
 
 		const auto out = networking::post (
 			_ ( "sesame.one/api/cloud_configs/list.php" ),
@@ -337,7 +339,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 		if ( cloud_config_list )
 			cJSON_Delete ( cloud_config_list );
 
-		cloud_config_list = cJSON_Parse ( out.data ( ) );
+		cloud_config_list = cJSON_Parse ( out.c_str ( ) );
 		last_config_user = gui::config_user;
 		gui::gui_mutex.unlock ( );
 
@@ -346,9 +348,9 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 			gui::gui_mutex.lock ( );
 			const auto post_obj = cJSON_CreateObject ( );
 
-			cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_susername.c_str ( ) );
-			cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( gui::config_user ).c_str ( ) );
-			cJSON_AddStringToObject ( post_obj, _ ( "config_code" ), std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).to_bytes ( gui::config_code ).c_str ( ) );
+			cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+			cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user.c_str ( ) );
+			cJSON_AddStringToObject ( post_obj, _ ( "config_code" ), gui::config_user.c_str ( ) );
 
 			const auto out = networking::post (
 				_ ( "sesame.one/api/cloud_configs/download.php" ),
@@ -361,7 +363,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 				dbg_print ( _ ( "Failed to download config from cloud.\n" ) );
 			}
 			else {
-				const auto as_json = cJSON_Parse ( out.data ( ) );
+				const auto as_json = cJSON_Parse ( out.c_str ( ) );
 
 				if ( as_json ) {
 					const auto config_id = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_id" ) );
@@ -387,8 +389,8 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 						char appdata [ MAX_PATH ];
 
 						if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
 						}
 
 						std::ofstream file_out ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + config_name->valuestring + _ ( ".xml" ) );
@@ -407,7 +409,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 				}
 			}
 
-			gui::config_code = _ ( L"" );
+			gui::config_code = _ ( "" );
 			download_config_code = false;
 
 			gui::gui_mutex.unlock ( );

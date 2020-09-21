@@ -121,6 +121,7 @@ public:
 	float m_max_pitch; //0x0338
 	float m_min_pitch; //0x033C
 
+	const char* get_weapon_move_animation ( );
 	void reset( );
 	void update( vec3_t& ang );
 }; //Size=0x0340
@@ -329,4 +330,10 @@ public:
 
 		return yaw_modifier * state->m_max_yaw;
 	}
+
+	void get_sequence_linear_motion ( void* studio_hdr, int sequence, float* poses, vec3_t* vec );
+	float get_sequence_move_distance ( void* studio_hdr, int sequence );
+	int lookup_sequence ( const char* seq );
+	float sequence_duration ( int sequence );
+	float get_sequence_cycle_rate_server ( int sequence );
 };

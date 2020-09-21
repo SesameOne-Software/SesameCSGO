@@ -36,6 +36,7 @@ namespace anims {
     float angle_diff( float dst, float src );
     bool build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
     void interpolate( player_t* ent, bool should_interp );
+	float calc_feet_cycle ( player_t* ent );
     void calc_animlayers( player_t* ent );
     void calc_local_exclusive( float& ground_fraction_out, float& air_time_out );
     void calc_poses( player_t* ent );

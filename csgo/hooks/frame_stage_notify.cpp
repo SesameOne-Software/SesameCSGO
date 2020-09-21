@@ -78,7 +78,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	security_handler::update( );
 
 	/* fix rate problems */ {
-		const auto rate = csgo::time2ticks ( 1.0f);
+		const auto rate = static_cast<int>( 1.0f / csgo::i::globals->m_ipt + 0.5f );
 
 		g::cvars::cl_updaterate->no_callback ( );
 		g::cvars::cl_cmdrate->no_callback ( );

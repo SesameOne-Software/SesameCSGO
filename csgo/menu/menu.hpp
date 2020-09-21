@@ -10,9 +10,9 @@ namespace gui {
 
 	extern std::mutex gui_mutex;
 	extern int config_access;
-	extern std::wstring config_code;
-	extern std::wstring config_description;
-	extern std::wstring config_user;
+	extern std::string config_code;
+	extern std::string config_description;
+	extern std::string config_user;
 	extern uint64_t last_update_time;
 
 	void init( );

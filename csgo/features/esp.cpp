@@ -187,6 +187,8 @@ void features::esp::handle_dynamic_updates( ) {
 	}
 }
 
+extern std::array< animlayer_t, 13 > latest_animlayers;
+
 void features::esp::render( ) {
 	if ( !g::local )
 		return;
@@ -353,6 +355,11 @@ void features::esp::render( ) {
 			cur_offset_top = 4;
 
 			sesui::rect esp_rect { static_cast< int >( left ), static_cast< int >( top ), static_cast< int >( right - left ), static_cast< int >( bottom - top ) };
+
+			//if ( e == g::local ) {
+			//	render::text ( 20, 20, 0xffffffff, esp_font, _ ( L"local.layer[6].cycle: " ) + std::to_wstring ( latest_animlayers [ 3 ].m_cycle ), false, true );
+			//	render::text ( 20, 35, 0xffffffff, esp_font, _(L"local.layer[6].cycle: ") + std::to_wstring ( latest_animlayers [ 3 ].m_weight ), false, true );
+			//}
 
 			if ( visuals.health_bar )
 				draw_esp_widget( esp_rect, visuals.health_bar_color, esp_type_bar, visuals.value_text, visuals.health_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->health( ), 100.0 );

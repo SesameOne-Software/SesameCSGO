@@ -13,7 +13,7 @@
 #include "sesui.hpp"
 #include "../sdk/sdk.hpp"
 
-void sesui::begin_frame( const ses_string& window ) {
+void sesui::begin_frame( std::string_view window ) {
 	/* create our fonts */
 	sesui::draw_list.create_font( style.control_font, globals::dpi != globals::last_dpi );
 	sesui::draw_list.create_font( style.tab_font, globals::dpi != globals::last_dpi );
@@ -31,7 +31,7 @@ void sesui::end_frame( ) {
 		input::queue_enable = false;
 	}
 
-	globals::cur_window = L"";
+	globals::cur_window = "";
 	sesui::input::scroll_amount = 0.0f;
 }
 
@@ -54,8 +54,8 @@ void sesui::input::enable_input( bool enabled ) {
 		sesui::input::enabled = false;
 }
 
-void sesui::input::get_input( const ses_string& window ) {
-	HWND hwnd = FindWindowW( nullptr, window.get( ) );
+void sesui::input::get_input( std::string_view window ) {
+	HWND hwnd = FindWindowA( nullptr, window.data() );
 
 	if ( !hwnd )
 		throw std::exception( "Failed to find target input window." );
@@ -112,16 +112,16 @@ bool sesui::input::click_in_region( const rect& bounds, bool force ) {
 
 sesui::rect sesui::globals::clip = sesui::rect( 0, 0, 0, 0 );
 bool sesui::globals::clip_enabled = false;
-std::map< std::basic_string< sesui::ses_char >, sesui::globals::window_ctx_t > sesui::globals::window_ctx;
-std::basic_string< sesui::ses_char > sesui::globals::cur_window = L"";
+std::map< std::string, sesui::globals::window_ctx_t > sesui::globals::window_ctx;
+std::string sesui::globals::cur_window = "";
 float sesui::globals::last_dpi = 1.0f;
 float sesui::globals::dpi = 1.0f;
 
 sesui::style_t sesui::style;
 sesui::c_draw_list sesui::draw_list;
 
-std::pair< std::basic_string< sesui::ses_char >, std::basic_string< sesui::ses_char > > sesui::split( std::basic_string< sesui::ses_char > val ) {
-	std::basic_string< ses_char > arg;
+std::pair< std::string, std::string > sesui::split( std::string val ) {
+	std::string arg;
 	const auto pos = val.find( '#' );
 
 	if ( val.npos != pos ) {
@@ -129,14 +129,14 @@ std::pair< std::basic_string< sesui::ses_char >, std::basic_string< sesui::ses_c
 		val = val.substr( 0, pos );
 	}
 
-	return make_pair( val, arg );
+	return { val, arg };
 }
 
 void sesui::render( ) {
 	draw_list.render( );
 }
 
-void sesui::text( const ses_string& name ) {
+void sesui::text( std::string_view name ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -160,12 +160,11 @@ void sesui::text( const ses_string& name ) {
 		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y + scale_dpi( 60.0f ) ) ) )
 		should_draw = false;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data() );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	const auto max_height = std::max< float >( scale_dpi( check_rect.h ), text_size.y );
 	const auto in_region = input::mouse_in_region( check_rect );
@@ -192,7 +191,7 @@ void sesui::text( const ses_string& name ) {
 	if ( should_draw ) {
 		//draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_background.lerp( style.control_accent, window->second.anim_time [ window->second.cur_index ] ), true );
 		//draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_borders.lerp( active ? style.control_accent_borders : style.control_accent, window->second.anim_time [ window->second.cur_index + 1 ] ), false );
-		draw_list.add_text( vec2( check_rect.x /*+ scale_dpi( style.button_size.x ) * 0.5f - text_size.x * 0.5f*/, check_rect.y + scale_dpi( style.button_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( vec2( check_rect.x /*+ scale_dpi( style.button_size.x ) * 0.5f - text_size.x * 0.5f*/, check_rect.y + scale_dpi( style.button_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
 	window->second.last_cursor_offset = scale_dpi( style.button_size.y );
@@ -206,7 +205,7 @@ void sesui::text( const ses_string& name ) {
 	}
 }
 
-bool sesui::button( const ses_string& name ) {
+bool sesui::button( std::string_view name ) {
 	auto pressed = false;
 
 	const auto window = globals::window_ctx.find( globals::cur_window );
@@ -232,12 +231,11 @@ bool sesui::button( const ses_string& name ) {
 		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y + scale_dpi( 60.0f ) ) ) )
 		should_draw = false;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	const auto max_height = std::max< float >( scale_dpi( check_rect.h ), text_size.y );
 	const auto in_region = input::mouse_in_region( check_rect );
@@ -265,7 +263,7 @@ bool sesui::button( const ses_string& name ) {
 	if ( should_draw ) {
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_background.lerp( style.control_accent, window->second.anim_time [ window->second.cur_index ] ), true );
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_borders.lerp( active ? style.control_accent_borders : style.control_accent, window->second.anim_time [ window->second.cur_index + 1 ] ), false );
-		draw_list.add_text( vec2( check_rect.x + scale_dpi( style.button_size.x ) * 0.5f - text_size.x * 0.5f, check_rect.y + scale_dpi( style.button_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( vec2( check_rect.x + scale_dpi( style.button_size.x ) * 0.5f - text_size.x * 0.5f, check_rect.y + scale_dpi( style.button_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
 	window->second.last_cursor_offset = scale_dpi( style.button_size.y + style.spacing );
@@ -281,7 +279,7 @@ bool sesui::button( const ses_string& name ) {
 	return pressed;
 }
 
-void sesui::checkbox( const ses_string& name, bool& option ) {
+void sesui::checkbox( std::string_view name, bool& option ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -305,12 +303,11 @@ void sesui::checkbox( const ses_string& name, bool& option ) {
 		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y + scale_dpi( 60.0f ) ) ) )
 		should_draw = false;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	const auto max_height = std::max< float >( scale_dpi( check_rect.h ), text_size.y );
 	const auto max_height_unscaled = std::max< float >( check_rect.h, unscale_dpi( text_size.y ) );
@@ -335,7 +332,7 @@ void sesui::checkbox( const ses_string& name, bool& option ) {
 	if ( should_draw ) {
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_background.lerp( style.control_accent, window->second.anim_time [ window->second.cur_index ] ), true );
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_borders.lerp( option ? style.control_accent_borders : style.control_accent, window->second.anim_time [ window->second.cur_index + 1 ] ), false );
-		draw_list.add_text( vec2( check_rect.x + scale_dpi( style.checkbox_size.x + style.padding ), check_rect.y + scale_dpi( style.checkbox_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( vec2( check_rect.x + scale_dpi( style.checkbox_size.x + style.padding ), check_rect.y + scale_dpi( style.checkbox_size.y ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
 	window->second.last_cursor_offset = scale_dpi( style.checkbox_size.y + style.spacing );
@@ -361,15 +358,15 @@ std::array< sesui::color, 7 > hue_colors = {
 	sesui::color( 1.0f, 0, 0, 1.0f )
 };
 
-std::array< std::basic_string < sesui::ses_char >, 2 > color_options {
-	L"Copy", L"Paste"
+std::array< std::string, 2 > color_options {
+	"Copy", "Paste"
 };
 
-void sesui::colorpicker( const ses_string& name, color& option ) {
+void sesui::colorpicker( std::string_view name, color& option ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
-		throw L"Current window context not valid.";
+		throw "Current window context not valid.";
 
 	const auto same_line_backup = window->second.cursor_stack.back( );
 
@@ -378,12 +375,11 @@ void sesui::colorpicker( const ses_string& name, color& option ) {
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 title_size;
-	draw_list.get_text_size( style.control_font, title, title_size );
+	draw_list.get_text_size( style.control_font, parts.first, title_size );
 
 	rect check_rect { window->second.cursor_stack.back( ).x + scale_dpi( style.button_size.x - style.inline_button_size.x ), window->second.cursor_stack.back( ).y, style.inline_button_size.x, style.inline_button_size.y };
 
@@ -468,7 +464,7 @@ void sesui::colorpicker( const ses_string& name, color& option ) {
 
 	if ( should_draw ) {
 		if ( !window->second.same_line )
-			draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+			draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 
 		const auto square_side_len = check_rect.h * 0.5f;
 		auto alpha_clr_flip = false;
@@ -685,7 +681,7 @@ void sesui::colorpicker( const ses_string& name, color& option ) {
 	}
 }
 
-void sesui::combobox( const ses_string& name, int& option, const std::vector< ses_string >& list ) {
+void sesui::combobox( std::string_view name, int& option, const std::vector< std::string_view >& list ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -701,8 +697,7 @@ void sesui::combobox( const ses_string& name, int& option, const std::vector< se
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	/* don't draw objects we don't need so our fps doesnt go to shit */
@@ -714,14 +709,14 @@ void sesui::combobox( const ses_string& name, int& option, const std::vector< se
 		should_draw = false;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	if ( should_draw ) {
 		/* label */
-		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
-	draw_list.get_text_size( style.control_font, list [ option ], text_size );
+	draw_list.get_text_size( style.control_font, list [ option ].data(), text_size );
 
 	const auto check_rect = rect( window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + text_size.y + scale_dpi( style.padding ), style.button_size.x, style.button_size.y );
 	const auto frametime = draw_list.get_frametime( );
@@ -781,7 +776,7 @@ void sesui::combobox( const ses_string& name, int& option, const std::vector< se
 
 		for ( auto i = 0; i < list.size( ); i++ ) {
 			vec2 text_size;
-			draw_list.get_text_size( style.control_font, list [ i ], text_size );
+			draw_list.get_text_size( style.control_font, list [ i ].data ( ), text_size );
 
 			if ( input::mouse_in_region( rect( window->second.cursor_stack.back( ).x, list_rect.y + scale_dpi( style.button_size.y ) * i, style.button_size.x, style.button_size.y ), true ) ) {
 				if ( std::fabsf( window->second.anim_time [ window->second.cur_index + 4 ] - static_cast< float > ( i ) ) > 0.1f )
@@ -818,14 +813,13 @@ void sesui::combobox( const ses_string& name, int& option, const std::vector< se
 	}
 }
 
-bool sesui::begin_group( const ses_string& name, const rect& fraction, const rect& extra ) {
+bool sesui::begin_group( std::string_view name, const rect& fraction, const rect& extra ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
 		throw "Current window context not valid.";
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	window->second.cur_group = parts.first + id;
@@ -876,8 +870,8 @@ bool sesui::begin_group( const ses_string& name, const rect& fraction, const rec
 	draw_list.add_rect( remove_rounding_rect_filler, style.window_background, true );
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
-	draw_list.add_text( vec2( bounds.x + scale_dpi( bounds.w ) * 0.5f - text_size.x * 0.5f, bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
+	draw_list.add_text( vec2( bounds.x + scale_dpi( bounds.w ) * 0.5f - text_size.x * 0.5f, bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
 
 	//window->second.cursor_stack.back ( ).x += window->second.main_area.w * fraction.w + style.spacing;
 	//window->second.last_cursor_offset = window->second.main_area.h * fraction.h + style.spacing;
@@ -915,7 +909,7 @@ void sesui::end_group( ) {
 		throw "Current window context not valid.";
 
 	window->second.group_ctx [ window->second.cur_group ].calc_height = unscale_dpi( window->second.cursor_stack.at( window->second.cursor_stack.size( ) - 1 ).y - window->second.cursor_stack.at( window->second.cursor_stack.size( ) - 2 ).y );
-	window->second.cur_group = L"";
+	window->second.cur_group = "";
 	window->second.cursor_stack.pop_back( );
 	window->second.cursor_stack.pop_back( );
 
@@ -923,41 +917,41 @@ void sesui::end_group( ) {
 }
 
 /* credits to zxvnme */
-std::array< std::basic_string < sesui::ses_char >, 256 > key_names {
-	L"-", L"M1", L"M2", L"Brk", L"M3", L"M4", L"M5",
-	L"ERROR", L"Back", L"Tab", L"ERROR", L"ERROR", L"ERROR", L"Enter", L"ERROR", L"ERROR", L"Shift",
-	L"Control", L"ALT", L"Pause", L"Caps", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"Space", L"PgUp", L"PgDown", L"End", L"Home", L"Left",
-	L"Up", L"Right", L"Down", L"ERROR", L"Print", L"ERROR", L"PrntSc", L"Ins", L"Del", L"ERROR", L"0", L"1",
-	L"2", L"3", L"4", L"5", L"6", L"7", L"8", L"9", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"A", L"B", L"C", L"D", L"E", L"F", L"G", L"H", L"I", L"J", L"K", L"L", L"M", L"N", L"O", L"P", L"Q", L"R", L"S", L"T", L"U",
-	L"V", L"W", L"X", L"Y", L"Z", L"LWin", L"RWin", L"ERROR", L"ERROR", L"ERROR", L"NUM 0", L"NUM 1",
-	L"NUM 2", L"NUM 3", L"NUM 4", L"NUM 5", L"NUM 6", L"NUM 7", L"NUM 8", L"NUM 9", L"*", L"+", L"_", L"-", L".", L"/", L"F1", L"F2", L"F3",
-	L"F4", L"F5", L"F6", L"F7", L"F8", L"F9", L"F10", L"F11", L"F12", L"F13", L"F14", L"F15", L"F16", L"F17", L"F18", L"F19", L"F20", L"F21",
-	L"F22", L"F23", L"F24", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"NumLk", L"ScrLk", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"LShift", L"RShift", L"LCtrl",
-	L"RCtrl", L"LMenu", L"RMenu", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"NTrack", L"PTrack", L"Stop", L"Play", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L";", L"+", L",", L"-", L".", L"/?", L"~", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"[", L"\\", L"]", L"'", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR", L"ERROR",
-	L"ERROR", L"ERROR"
+std::array< std::string, 256 > key_names {
+	"-", "M1", "M2", "Brk", "M3", "M4", "M5",
+	"ERROR", "Back", "Tab", "ERROR", "ERROR", "ERROR", "Enter", "ERROR", "ERROR", "Shift",
+	"Control", "ALT", "Pause", "Caps", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "Space", "PgUp", "PgDown", "End", "Home", "Left",
+	"Up", "Right", "Down", "ERROR", "Print", "ERROR", "PrntSc", "Ins", "Del", "ERROR", "0", "1",
+	"2", "3", "4", "5", "6", "7", "8", "9", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
+	"V", "W", "X", "Y", "Z", "LWin", "RWin", "ERROR", "ERROR", "ERROR", "NUM 0", "NUM 1",
+	"NUM 2", "NUM 3", "NUM 4", "NUM 5", "NUM 6", "NUM 7", "NUM 8", "NUM 9", "*", "+", "_", "-", ".", "/", "F1", "F2", "F3",
+	"F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21",
+	"F22", "F23", "F24", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"NumLk", "ScrLk", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "LShift", "RShift", "LCtrl",
+	"RCtrl", "LMenu", "RMenu", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "NTrack", "PTrack", "Stop", "Play", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", ";", "+", ",", "-", ".", "/?", "~", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "[", "\\", "]", "'", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+	"ERROR", "ERROR"
 };
 
-std::array< std::basic_string < sesui::ses_char >, 4 > key_modes {
-	L"Disabled", L"On Hold", L"On Toggle", L"Always On"
+std::array< std::string, 4 > key_modes {
+	"Disabled", "On Hold", "On Toggle", "Always On"
 };
 
-void sesui::keybind( const ses_string& name, int& key, int& mode ) {
+void sesui::keybind( std::string_view name, int& key, int& mode ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
-		throw L"Current window context not valid.";
+		throw "Current window context not valid.";
 
 	const auto same_line_backup = window->second.cursor_stack.back( );
 
@@ -966,12 +960,11 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 title_size;
-	draw_list.get_text_size( style.control_font, title, title_size );
+	draw_list.get_text_size( style.control_font, parts.first, title_size );
 
 	rect check_rect { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + title_size.y + scale_dpi( style.padding ), style.button_size.x, style.button_size.y };
 
@@ -988,10 +981,10 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 		&& !input::in_clip( vec2( window->second.cursor_stack.back( ).x + 1.0f, window->second.cursor_stack.back( ).y + scale_dpi( 60.0f ) ) ) )
 		should_draw = false;
 
-	auto key_name = ses_string( key_names [ key ].data( ) );
+	auto key_name = key_names [ key ];
 
 	if ( mode == 2 )
-		key_name = L"Always";
+		key_name = "Always";
 
 	vec2 key_name_size;
 	draw_list.get_text_size( style.control_font, key_name, key_name_size );
@@ -1065,7 +1058,7 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 					continue;
 
 				if ( input::key_state [ i ] && !input::old_key_state [ i ] ) {
-					if ( key_names [ i ] != L"ERROR" )
+					if ( key_names [ i ] != "ERROR" )
 						key = i;
 
 					window->second.anim_time [ window->second.cur_index + 2 ] = 0.0f;
@@ -1076,21 +1069,21 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 			}
 		}
 
-		key_name = L"...";
+		key_name = "...";
 		draw_list.get_text_size( style.control_font, key_name, key_name_size );
 	}
 	else {
-		key_name = ses_string( key_names [ key ].data( ) );
+		key_name = key_names [ key ];
 
 		if ( mode == 2 )
-			key_name = L"Always";
+			key_name = "Always";
 
 		draw_list.get_text_size( style.control_font, key_name, key_name_size );
 	}
 
 	if ( should_draw ) {
 		if ( !window->second.same_line )
-			draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+			draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_background.lerp( style.control_accent, window->second.anim_time [ window->second.cur_index ] ), true );
 		draw_list.add_rounded_rect( check_rect, style.control_rounding, style.control_borders.lerp( active ? style.control_accent_borders : style.control_accent, window->second.anim_time [ window->second.cur_index + 1 ] ), false );
@@ -1162,7 +1155,7 @@ void sesui::keybind( const ses_string& name, int& key, int& mode ) {
 	}
 }
 
-void sesui::multiselect( const ses_string& name, const std::vector< std::pair< ses_string, bool& > >& list ) {
+void sesui::multiselect( std::string_view name, const std::vector< std::pair< std::string_view, bool& > >& list ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -1175,13 +1168,12 @@ void sesui::multiselect( const ses_string& name, const std::vector< std::pair< s
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
 	vec2 text_size1;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	/* don't draw objects we don't need so our fps doesnt go to shit */
 	auto should_draw = true;
@@ -1193,28 +1185,31 @@ void sesui::multiselect( const ses_string& name, const std::vector< std::pair< s
 
 	if ( should_draw ) {
 		/* label */
-		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
-	std::basic_string < ses_char > str_items;
+	std::string str_items;
 
 	vec2 stopper_text_size;
-	draw_list.get_text_size( style.control_font, L", ...", stopper_text_size );
+	draw_list.get_text_size( style.control_font, ", ...", stopper_text_size );
 
 	/* enumerate selected multibox options and get up to max text size in items before clipping and adding ellipses */
 	for ( const auto& option : list ) {
-		std::basic_string < ses_char > copy = str_items;
+		auto copy = str_items;
 
 		if ( option.second ) {
-			if ( str_items.empty( ) )
-				copy += option.first.get( );
-			else
-				copy += L", " + std::basic_string < ses_char >( option.first.get( ) );
+			if ( str_items.empty ( ) ) {
+				copy += option.first;
+			}
+			else {
+				copy += ", ";
+				copy += option.first;
+			}
 
 			draw_list.get_text_size( style.control_font, copy.data( ), text_size1 );
 
 			if ( text_size1.x + stopper_text_size.x > scale_dpi( style.button_size.x - style.padding * 2.0f ) ) {
-				str_items += L", ...";
+				str_items += ", ...";
 				break;
 			}
 
@@ -1286,7 +1281,7 @@ void sesui::multiselect( const ses_string& name, const std::vector< std::pair< s
 
 		for ( auto i = 0; i < list.size( ); i++ ) {
 			vec2 text_size;
-			draw_list.get_text_size( style.control_font, list [ i ].first, text_size );
+			draw_list.get_text_size( style.control_font, list [ i ].first.data ( ), text_size );
 
 			if ( input::mouse_in_region( rect( window->second.cursor_stack.back( ).x, list_rect.y + scale_dpi( style.button_size.y ) * i, style.button_size.x, style.button_size.y ), true ) ) {
 				if ( std::fabsf( window->second.anim_time [ window->second.cur_index + 4 ] - static_cast< float > ( i ) ) > 0.1f )
@@ -1323,7 +1318,7 @@ void sesui::multiselect( const ses_string& name, const std::vector< std::pair< s
 	}
 }
 
-void sesui::slider_ex( const ses_string& name, float& option, float min, float max, const ses_string& value_str ) {
+void sesui::slider_ex( std::string_view name, float& option, float min, float max, std::string_view value_str ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -1336,12 +1331,11 @@ void sesui::slider_ex( const ses_string& name, float& option, float min, float m
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	const rect slider_rect { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + text_size.y + scale_dpi( style.padding ), style.slider_size.x, style.slider_size.y };
 	const rect slider_rect_max { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y, style.slider_size.x, style.slider_size.y + style.spacing + style.padding + unscale_dpi( text_size.y ) };
@@ -1411,13 +1405,13 @@ void sesui::slider_ex( const ses_string& name, float& option, float min, float m
 		draw_list.add_rounded_rect( bar_rect, style.control_rounding, style.control_accent_borders, false );
 
 		/* label */
-		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index ] ) );
+		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index ] ) );
 
 	}
 
 	/* value with formatting */
 	vec2 value_size;
-	draw_list.get_text_size( style.control_font, value_str, value_size );
+	draw_list.get_text_size( style.control_font, value_str.data ( ), value_size );
 
 	if ( should_draw ) {
 		draw_list.add_text( vec2( window->second.cursor_stack.back( ).x + scale_dpi( slider_rect.w ) - value_size.x, window->second.cursor_stack.back( ).y ), style.control_font, value_str, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index ] ) );
@@ -1469,7 +1463,7 @@ bool sesui::begin_tabs( int count, float width ) {
 	return true;
 }
 
-void sesui::tab( const ses_string& name, int& selected ) {
+void sesui::tab( std::string_view name, int& selected ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -1481,12 +1475,11 @@ void sesui::tab( const ses_string& name, int& selected ) {
 	const auto tab_pos = window_rect.y + scale_dpi( tab_dim.y * window->second.cur_tab_index );
 	const auto text_pos = tab_pos + scale_dpi( tab_dim.y ) / 2.0f;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	if ( input::mouse_in_region( rect( window_rect.x, tab_pos, tab_dim.x, tab_dim.y ) ) && input::key_pressed( VK_LBUTTON ) ) {
 		selected = window->second.cur_tab_index;
@@ -1505,7 +1498,7 @@ void sesui::tab( const ses_string& name, int& selected ) {
 			window->second.selected_tab_offset -= delta * style.animation_speed * 3.0f * draw_list.get_frametime( );
 	}
 
-	draw_list.add_text( vec2( window_rect.x + scale_dpi( tab_dim.x ) / 2.0f - text_size.x / 2.0f, text_pos - text_size.y / 2.0f ), style.control_font, title, true, style.control_text );
+	draw_list.add_text( vec2( window_rect.x + scale_dpi( tab_dim.x ) / 2.0f - text_size.x / 2.0f, text_pos - text_size.y / 2.0f ), style.control_font, parts.first, true, style.control_text );
 
 	window->second.cur_tab_index++;
 }
@@ -1520,32 +1513,32 @@ void sesui::end_tabs( ) {
 	window->second.tab_count = 0;
 }
 
-std::map< int, std::pair<wchar_t, wchar_t> > special_characters {
-	{48,  {L'0',  L')'}},
-	{49,  {L'1',  L'!'}},
-	{50,  {L'2',  L'@'}},
-	{51,  {L'3',  L'#'}},
-	{52,  {L'4',  L'$'}},
-	{53,  {L'5',  L'%'}},
-	{54,  {L'6',  L'^'}},
-	{55,  {L'7',  L'&'}},
-	{56,  {L'8',  L'*'}},
-	{57,  {L'9',  L'('}},
-	{32,  {L' ',  L' '}},
-	{192, {L'`',  L'~'}},
-	{189, {L'-',  L'_'}},
-	{187, {L'=',  L'+'}},
-	{219, {L'[',  L'{'}},
-	{220, {L'\\', L'|'}},
-	{221, {L']',  L'}'}},
-	{186, {L';',  L':'}},
-	{222, {L'\'', L'"'}},
-	{188, {L',',  L'<'}},
-	{190, {L'.',  L'>'}},
-	{191, {L'/',  L'?'}}
+std::map< int, std::pair<char, char> > special_characters {
+	{48,  {'0', ')'}},
+	{49,  {'1', '!'}},
+	{50,  {'2', '@'}},
+	{51,  {'3', '#'}},
+	{52,  {'4', '$'}},
+	{53,  {'5', '%'}},
+	{54,  {'6', '^'}},
+	{55,  {'7', '&'}},
+	{56,  {'8', '*'}},
+	{57,  {'9', '('}},
+	{32,  {' ', ' '}},
+	{192, {'`', '~'}},
+	{189, {'-', '_'}},
+	{187, {'=', '+'}},
+	{219, {'[', '{'}},
+	{220, {'\\','|'}},
+	{221, {']', '}'}},
+	{186, {';', ':'}},
+	{222, {'\'','"'}},
+	{188, {',', '<'}},
+	{190, {'.', '>'}},
+	{191, {'/', '?'}}
 };
 
-void sesui::textbox( const ses_string& name, std::basic_string< ses_char >& option ) {
+void sesui::textbox( std::string_view name, std::string& option ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -1558,8 +1551,7 @@ void sesui::textbox( const ses_string& name, std::basic_string< ses_char >& opti
 		window->second.cursor_stack.back( ).x += style.same_line_offset;
 	}
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	/* don't draw objects we don't need so our fps doesnt go to shit */
@@ -1571,18 +1563,18 @@ void sesui::textbox( const ses_string& name, std::basic_string< ses_char >& opti
 		should_draw = false;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
 	if ( should_draw ) {
 		/* label */
-		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, title, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
+		draw_list.add_text( window->second.cursor_stack.back( ), style.control_font, parts.first, false, style.control_text.lerp( style.control_text_hovered, window->second.anim_time [ window->second.cur_index + 1 ] ) );
 	}
 
 	vec2 option_size;
 	draw_list.get_text_size( style.control_font, option.data( ), option_size );
 
 	vec2 char_size;
-	draw_list.get_text_size( style.control_font, L"F", char_size );
+	draw_list.get_text_size( style.control_font, "F", char_size );
 
 	const auto check_rect = rect( window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + text_size.y + scale_dpi( style.padding ), style.button_size.x, style.button_size.y );
 	const auto frametime = draw_list.get_frametime( );
@@ -1679,18 +1671,17 @@ void sesui::textbox( const ses_string& name, std::basic_string< ses_char >& opti
 	}
 }
 
-bool sesui::begin_window( const ses_string& name, const rect& bounds, bool& opened, uint32_t flags ) {
+bool sesui::begin_window( std::string_view name, const rect& bounds, bool& opened, uint32_t flags ) {
 	if ( !opened )
 		return false;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data ( ) );
 	const auto& id = parts.second;
 
 	/* set current window context */
 	globals::cur_window = parts.first + id;
 
-	auto window_entry = globals::window_ctx.find( title.get( ) );
+	auto window_entry = globals::window_ctx.find( parts.first );
 
 	if ( window_entry == globals::window_ctx.end( ) ) {
 		int top_layer = -1;
@@ -1720,7 +1711,7 @@ bool sesui::begin_window( const ses_string& name, const rect& bounds, bool& open
 	if ( window_entry == globals::window_ctx.end( ) )
 		throw "Current window context not valid.";
 
-	window_entry->second.cur_group = L"";
+	window_entry->second.cur_group = "";
 
 	auto titlebar_rect = rect( window_entry->second.bounds.x, window_entry->second.bounds.y, window_entry->second.bounds.w, window_entry->second.bounds.h * style.titlebar_height + 6.0f );
 
@@ -1768,9 +1759,9 @@ bool sesui::begin_window( const ses_string& name, const rect& bounds, bool& open
 
 	if ( !( flags & window_flags::no_title ) ) {
 		vec2 text_size;
-		draw_list.get_text_size( style.control_font, title, text_size );
+		draw_list.get_text_size( style.control_font, parts.first, text_size );
 
-		draw_list.add_text( vec2( window_entry->second.bounds.x + scale_dpi( style.spacing ), window_entry->second.bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
+		draw_list.add_text( vec2( window_entry->second.bounds.x + scale_dpi( style.spacing ), window_entry->second.bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
 	}
 
 	/* close menu button*/
@@ -1839,14 +1830,14 @@ void sesui::end_window( ) {
 	if ( !window_entry->second.cursor_stack.empty( ) )
 		throw "Cursor stack was not empty at end of frame. Did you forget to call sesui::end_window or sesui::end_group?";
 
-	globals::cur_window = L"";
+	globals::cur_window = "";
 }
 
-void sesui::tooltip( const ses_string& tooltip ) {
+void sesui::tooltip( std::string_view tooltip ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
 		throw "Current window context not valid.";
 
-	window->second.tooltip = tooltip.get( );
+	window->second.tooltip = tooltip.data ( );
 }

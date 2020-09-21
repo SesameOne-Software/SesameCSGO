@@ -20,7 +20,7 @@ namespace options {
 			bool b;
 			int i;
 			float f;
-			wchar_t s [ 128 ];
+			char s [ 128 ];
 			bool l [ 128 ];
 			sesui::color c;
 
@@ -34,14 +34,14 @@ namespace options {
 		static void add_bool ( const std::string& id, bool val );
 		static void add_int ( const std::string& id, int val );
 		static void add_float ( const std::string& id, float val );
-		static void add_str ( const std::string& id, const wchar_t* val );
+		static void add_str ( const std::string& id, const char* val );
 		static void add_color ( const std::string& id, const sesui::color& val );
 
 		static void add_script_list ( const std::string& id, int count );
 		static void add_script_bool ( const std::string& id, bool val );
 		static void add_script_int ( const std::string& id, int val );
 		static void add_script_float ( const std::string& id, float val );
-		static void add_script_str ( const std::string& id, const wchar_t* val );
+		static void add_script_str ( const std::string& id, const char* val );
 		static void add_script_color ( const std::string& id, const sesui::color& val );
 	};
 

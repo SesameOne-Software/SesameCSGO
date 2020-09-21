@@ -13,16 +13,16 @@
 #include "../utils/networking.hpp"
 #include "../cjson/cJSON.h"
 
-extern std::wstring last_config_user;
+extern std::string last_config_user;
 
 bool upload_to_cloud = false;
 std::mutex gui::gui_mutex;
 
 int gui::config_access = 0;
-std::wstring gui::config_code = L"";
-std::wstring gui::config_description = L"";
+std::string gui::config_code = "";
+std::string gui::config_description = "";
 
-std::wstring gui::config_user = L"";
+std::string gui::config_user = "";
 uint64_t gui::last_update_time = 0;
 
 bool download_config_code = false;
@@ -114,21 +114,10 @@ int skins_subtab_idx = skins_subtabs_none;
 int misc_subtab_idx = misc_subtabs_none;
 
 std::string g_pfp_data;
-std::wstring g_username;
-std::string g_susername;
+std::string g_username;
 
 void gui::init( ) {
-	if ( g::loader_data && g::loader_data->username ) {
-		wchar_t wstr [ 64 ];
-		memset( wstr, '\0', sizeof wstr );
-		mbstowcs( wstr, g::loader_data->username, strlen( g::loader_data->username ) );
-		g_username = wstr;
-		g_susername = g::loader_data->username;
-	}
-	else {
-		g_username = _ ( L"sesame" );
-		g_susername = _ ( "sesame" );
-	}
+	g_username = ( g::loader_data && g::loader_data->username ) ? g::loader_data->username : _ ( "sesame" );
 //
 	if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
 		g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
@@ -160,27 +149,27 @@ void gui::init( ) {
 	END_FUNC
 }
 
-std::wstring selected_config = _( L"default" );
-std::vector< std::wstring > configs { };
+std::string selected_config = _( "default" );
+std::vector< std::string > configs { };
 
 void gui::load_cfg_list( ) {
-	wchar_t appdata [ MAX_PATH ];
+	char appdata [ MAX_PATH ];
 
-	if ( SUCCEEDED( LI_FN( SHGetFolderPathW )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
-		LI_FN( CreateDirectoryW )( ( std::wstring( appdata ) + _( L"\\sesame" ) ).data( ), nullptr );
-		LI_FN( CreateDirectoryW )( ( std::wstring( appdata ) + _( L"\\sesame\\configs" ) ).data( ), nullptr );
+	if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
+		LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame" ) ).c_str( ), nullptr );
+		LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame\\configs" ) ).c_str ( ), nullptr );
 	}
 
-	auto sanitize_name = [ ] ( const std::wstring& dir ) {
-		const auto dot = dir.find_last_of( _( L"." ) );
+	auto sanitize_name = [ ] ( const std::string& dir ) {
+		const auto dot = dir.find_last_of( _( "." ) );
 		return dir.substr( N( 0 ), dot );
 	};
 
 	configs.clear( );
 
-	for ( const auto& dir : std::filesystem::recursive_directory_iterator( std::wstring( appdata ) + _( L"\\sesame\\configs" ) ) ) {
-		if ( dir.exists( ) && dir.is_regular_file( ) && dir.path( ).extension( ).wstring( ) == _( L".xml" ) ) {
-			const auto sanitized = sanitize_name( dir.path( ).filename( ).wstring( ) );
+	for ( const auto& dir : std::filesystem::recursive_directory_iterator( std::string( appdata ) + _( "\\sesame\\configs" ) ) ) {
+		if ( dir.exists( ) && dir.is_regular_file( ) && dir.path( ).extension( ).string( ) == _( ".xml" ) ) {
+			const auto sanitized = sanitize_name( dir.path( ).filename( ).string( ) );
 			configs.push_back( sanitized );
 		}
 	}
@@ -191,59 +180,59 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 
 	namespace gui = sesui::custom;
 
-	if ( gui::begin_group( L"Weapon Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		//sesui::tooltip ( _ ( L"Inherits settings from default weapon configuration" ) );
-		sesui::checkbox( _( L"Inherit Default" ), options::vars [ ragebot_weapon + _( "inherit_default" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Allows choking packets immediately after your shot" ) );
-		sesui::checkbox( _( L"Choke On Shot" ), options::vars [ ragebot_weapon + _( "choke_onshot" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Hide angles from being shown on screen (clientside only)" ) );
-		sesui::checkbox( _( L"Silent Aim" ), options::vars [ ragebot_weapon + _( "silent" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Automatically shoot when a target is found" ) );
-		sesui::checkbox( _( L"Auto Shoot" ), options::vars [ ragebot_weapon + _( "auto_shoot" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Automatically scope if hitchance is not high enough" ) );
-		sesui::checkbox( _( L"Auto Scope" ), options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Automatically slow down if hitchance requirement is not met" ) );
-		sesui::checkbox( _( L"Auto Slow" ), options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
-		////sesui::tooltip ( _ ( L"Allow doubletap to teleport your player" ) );
-		//sesui::checkbox ( _ ( L"Doubletap Teleport" ), options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Enable doubletap on current weapon" ) );
-		sesui::checkbox( _( L"Doubletap" ), options::vars [ ragebot_weapon + _( "dt_enabled" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Maximum amount of ticks to shift during doubletap" ) );
-		sesui::slider( _( L"Doubletap Ticks" ), options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( L"%d ticks" ) );
-		//sesui::tooltip ( _ ( L"Minimum damage required for ragebot to target players" ) );
-		sesui::slider( _( L"Minimum Damage" ), options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( L"hp + " ) + std::to_wstring( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( L" dmg" ) ) : ( std::to_wstring( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( L" dmg" ) ) ).c_str( ) );
-		//sesui::tooltip ( _ ( L"Minimum hit chance required for ragebot to target players" ) );
-		sesui::slider( _( L"Damage Accuracy" ), options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-		sesui::slider( _( L"Hit Chance" ), options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-		//sesui::tooltip ( _ ( L"Minimum hit chance required for ragebot to target players while double tapping" ) );
-		sesui::slider( _( L"Doubletap Hit Chance" ), options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
+	if ( gui::begin_group( "Weapon Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		//sesui::tooltip ( _ ( "Inherits settings from default weapon configuration" ) );
+		sesui::checkbox( _( "Inherit Default" ), options::vars [ ragebot_weapon + _( "inherit_default" ) ].val.b );
+		//sesui::tooltip ( _ ( "Allows choking packets immediately after your shot" ) );
+		sesui::checkbox( _( "Choke On Shot" ), options::vars [ ragebot_weapon + _( "choke_onshot" ) ].val.b );
+		//sesui::tooltip ( _ ( "Hide angles from being shown on screen (clientside only)" ) );
+		sesui::checkbox( _( "Silent Aim" ), options::vars [ ragebot_weapon + _( "silent" ) ].val.b );
+		//sesui::tooltip ( _ ( "Automatically shoot when a target is found" ) );
+		sesui::checkbox( _( "Auto Shoot" ), options::vars [ ragebot_weapon + _( "auto_shoot" ) ].val.b );
+		//sesui::tooltip ( _ ( "Automatically scope if hitchance is not high enough" ) );
+		sesui::checkbox( _( "Auto Scope" ), options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
+		//sesui::tooltip ( _ ( "Automatically slow down if hitchance requirement is not met" ) );
+		sesui::checkbox( _( "Auto Slow" ), options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
+		////sesui::tooltip ( _ ( "Allow doubletap to teleport your player" ) );
+		//sesui::checkbox ( _ ( "Doubletap Teleport" ), options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
+		//sesui::tooltip ( _ ( "Enable doubletap on current weapon" ) );
+		sesui::checkbox( _( "Doubletap" ), options::vars [ ragebot_weapon + _( "dt_enabled" ) ].val.b );
+		//sesui::tooltip ( _ ( "Maximum amount of ticks to shift during doubletap" ) );
+		sesui::slider( _( "Doubletap Ticks" ), options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "{} ticks" ) );
+		//sesui::tooltip ( _ ( "Minimum damage required for ragebot to target players" ) );
+		sesui::slider( _( "Minimum Damage" ), options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
+		//sesui::tooltip ( _ ( "Minimum hit chance required for ragebot to target players" ) );
+		sesui::slider( _( "Damage Accuracy" ), options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+		sesui::slider( _( "Hit Chance" ), options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+		//sesui::tooltip ( _ ( "Minimum hit chance required for ragebot to target players while double tapping" ) );
+		sesui::slider( _( "Doubletap Hit Chance" ), options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
 
 
 		gui::end_group( );
 	}
 
-	if ( gui::begin_group( L"Hitscan", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		//sesui::tooltip ( _ ( L"Force body hitbox if body shot is lethal" ) );
-		sesui::checkbox( _( L"Bodyaim If Lethal" ), options::vars [ ragebot_weapon + _( "baim_if_lethal" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Force body hitbox if player is in air" ) );
-		sesui::checkbox( _( L"Bodyaim If In Air" ), options::vars [ ragebot_weapon + _( "baim_in_air" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Forces body hitbox after x misses" ) );
-		sesui::slider( _( L"Bodyaim After Misses" ), options::vars [ ragebot_weapon + _( "force_baim" ) ].val.i, 0, 5, _( L"%d misses" ) );
-		//sesui::tooltip ( _ ( L"Overrides all hitboxes and body aim to head hitbox" ) );
-		sesui::checkbox( _( L"Headshot Only" ), options::vars [ ragebot_weapon + _( "headshot_only" ) ].val.b );
-		//sesui::tooltip ( _ ( L"Distance from center of head to scan" ) );
-		sesui::slider( _( L"Head Point Scale" ), options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-		//sesui::tooltip ( _ ( L"Distance from center of body to scan" ) );
-		sesui::slider( _( L"Body Point Scale" ), options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-		//sesui::tooltip ( _ ( L"Hitboxes ragebot will attempt to target" ) );
-		sesui::multiselect( _( L"Hitboxes" ), {
-			{ _( L"Head" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 0 ] },
-			{ _( L"Neck" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 1 ] },
-			{ _( L"Chest" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 2 ] },
-			{ _( L"Pelvis" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 3 ] },
-			{ _( L"Arms" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 4 ] },
-			{ _( L"Legs" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 5 ] },
-			{ _( L"Feet" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 6 ] }
+	if ( gui::begin_group( "Hitscan", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		//sesui::tooltip ( _ ( "Force body hitbox if body shot is lethal" ) );
+		sesui::checkbox( _( "Bodyaim If Lethal" ), options::vars [ ragebot_weapon + _( "baim_if_lethal" ) ].val.b );
+		//sesui::tooltip ( _ ( "Force body hitbox if player is in air" ) );
+		sesui::checkbox( _( "Bodyaim If In Air" ), options::vars [ ragebot_weapon + _( "baim_in_air" ) ].val.b );
+		//sesui::tooltip ( _ ( "Forces body hitbox after x misses" ) );
+		sesui::slider( _( "Bodyaim After Misses" ), options::vars [ ragebot_weapon + _( "force_baim" ) ].val.i, 0, 5, _( "{} misses" ) );
+		//sesui::tooltip ( _ ( "Overrides all hitboxes and body aim to head hitbox" ) );
+		sesui::checkbox( _( "Headshot Only" ), options::vars [ ragebot_weapon + _( "headshot_only" ) ].val.b );
+		//sesui::tooltip ( _ ( "Distance from center of head to scan" ) );
+		sesui::slider( _( "Head Point Scale" ), options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+		//sesui::tooltip ( _ ( "Distance from center of body to scan" ) );
+		sesui::slider( _( "Body Point Scale" ), options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+		//sesui::tooltip ( _ ( "Hitboxes ragebot will attempt to target" ) );
+		sesui::multiselect( _( "Hitboxes" ), {
+			{ _( "Head" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 0 ] },
+			{ _( "Neck" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 1 ] },
+			{ _( "Chest" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 2 ] },
+			{ _( "Pelvis" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 3 ] },
+			{ _( "Arms" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 4 ] },
+			{ _( "Legs" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 5 ] },
+			{ _( "Feet" ), options::vars [ ragebot_weapon + _( "hitboxes" ) ].val.l [ 6 ] }
 			} );
 
 		gui::end_group( );
@@ -255,34 +244,34 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 
 	namespace gui = sesui::custom;
 
-	if ( gui::begin_group( L"Antiaim", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		sesui::checkbox( _( L"Enable" ), options::vars [ antiaim_config + _( "enabled" ) ].val.b );
-		sesui::slider( _( L"Fakelag Factor" ), options::vars [ antiaim_config + _( "fakelag_factor" ) ].val.i, 0, 16, _( L"%d ticks" ) );
-		sesui::combobox( _( L"Base Pitch" ), options::vars [ antiaim_config + _( "pitch" ) ].val.i, { _( L"None" ), _( L"Down" ), _( L"Up" ), _( L"Zero" ) } );
-		sesui::slider( _( L"Yaw Offset" ), options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _( L"%.1f°" ) );
-		sesui::combobox( _( L"Base Yaw" ), options::vars [ antiaim_config + _( "base_yaw" ) ].val.i, { _( L"Relative" ), _( L"Absolute" ), _( L"At Target" ), _( L"Auto Direction" ) } );
-		sesui::slider( _( L"Auto Direction Amount" ), options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _( L"%.1f°" ) );
-		sesui::slider( _( L"Auto Direction Range" ), options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( L"%.1f units" ) );
-		sesui::slider( _( L"Jitter Range" ), options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, _( L"%.1f°" ) );
-		sesui::slider( _( L"Rotation Range" ), options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, _( L"%.1f°" ) );
-		sesui::slider( _( L"Rotation Speed" ), options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( L"%.1f Hz" ) );
+	if ( gui::begin_group( "Antiaim", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		sesui::checkbox( _( "Enable" ), options::vars [ antiaim_config + _( "enabled" ) ].val.b );
+		sesui::slider( _( "Fakelag Factor" ), options::vars [ antiaim_config + _( "fakelag_factor" ) ].val.i, 0, 16, _( "{} ticks" ) );
+		sesui::combobox( _( "Base Pitch" ), options::vars [ antiaim_config + _( "pitch" ) ].val.i, { _( "None" ), _( "Down" ), _( "Up" ), _( "Zero" ) } );
+		sesui::slider( _( "Yaw Offset" ), options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::combobox( _( "Base Yaw" ), options::vars [ antiaim_config + _( "base_yaw" ) ].val.i, { _( "Relative" ), _( "Absolute" ), _( "At Target" ), _( "Auto Direction" ) } );
+		sesui::slider( _( "Auto Direction Amount" ), options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Auto Direction Range" ), options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( "%.1f units" ) );
+		sesui::slider( _( "Jitter Range" ), options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Rotation Range" ), options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Rotation Speed" ), options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( "%.1f Hz" ) );
 
 		gui::end_group( );
 	}
 
-	if ( gui::begin_group( L"Desync", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		sesui::checkbox( _( L"Enable Desync" ), options::vars [ antiaim_config + _( "desync" ) ].val.b );
-		sesui::checkbox( _( L"Invert Initial Side" ), options::vars [ antiaim_config + _( "invert_initial_side" ) ].val.b );
-		sesui::checkbox( _( L"Jitter Desync" ), options::vars [ antiaim_config + _( "jitter_desync_side" ) ].val.b );
-		sesui::checkbox( _( L"Center Real" ), options::vars [ antiaim_config + _( "center_real" ) ].val.b );
-		sesui::checkbox( _( L"Anti Bruteforce" ), options::vars [ antiaim_config + _( "anti_bruteforce" ) ].val.b );
-		sesui::checkbox( _( L"Anti Freestanding Prediction" ), options::vars [ antiaim_config + _( "anti_freestand_prediction" ) ].val.b );
-		sesui::slider( _( L"Desync Range" ), options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, _( L"%.1f°" ) );
-		sesui::slider( _( L"Desync Range Inverted" ), options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, _( L"%.1f°" ) );
+	if ( gui::begin_group( "Desync", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		sesui::checkbox( _( "Enable Desync" ), options::vars [ antiaim_config + _( "desync" ) ].val.b );
+		sesui::checkbox( _( "Invert Initial Side" ), options::vars [ antiaim_config + _( "invert_initial_side" ) ].val.b );
+		sesui::checkbox( _( "Jitter Desync" ), options::vars [ antiaim_config + _( "jitter_desync_side" ) ].val.b );
+		sesui::checkbox( _( "Center Real" ), options::vars [ antiaim_config + _( "center_real" ) ].val.b );
+		sesui::checkbox( _( "Anti Bruteforce" ), options::vars [ antiaim_config + _( "anti_bruteforce" ) ].val.b );
+		sesui::checkbox( _( "Anti Freestanding Prediction" ), options::vars [ antiaim_config + _( "anti_freestand_prediction" ) ].val.b );
+		sesui::slider( _( "Desync Range" ), options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Desync Range Inverted" ), options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, _( "{:.1f}°" ) );
 
 		if ( antiaim_name == _( "standing" ) ) {
-			sesui::combobox( _( L"Desync Type" ), options::vars [ antiaim_config + _( "desync_type" ) ].val.i, { _( L"Real Around Fake" ), _( L"Fake Around Real" ) } );
-			sesui::combobox( _( L"Desync Type Inverted" ), options::vars [ antiaim_config + _( "desync_type_inverted" ) ].val.i, { _( L"Real Around Fake" ), _( L"Fake Around Real" ) } );
+			sesui::combobox( _( "Desync Type" ), options::vars [ antiaim_config + _( "desync_type" ) ].val.i, { _( "Real Around Fake" ), _( "Fake Around Real" ) } );
+			sesui::combobox( _( "Desync Type Inverted" ), options::vars [ antiaim_config + _( "desync_type_inverted" ) ].val.i, { _( "Real Around Fake" ), _( "Fake Around Real" ) } );
 		}
 
 		gui::end_group( );
@@ -294,106 +283,106 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 
 	namespace gui = sesui::custom;
 
-	if ( gui::begin_group( L"Player Visuals", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		sesui::multiselect( _( L"Filters" ), {
-						{ _( L"Local" ), options::vars [ _( "visuals.filters" ) ].val.l [ 0 ]},
-						{_( L"Teammates" ), options::vars [ _( "visuals.filters" ) ].val.l [ 1 ]},
-						{_( L"Enemies" ), options::vars [ _( "visuals.filters" ) ].val.l [ 2 ]},
-						{_( L"Weapons" ), options::vars [ _( "visuals.filters" ) ].val.l [ 3 ]},
-						{_( L"Grenades" ), options::vars [ _( "visuals.filters" ) ].val.l [ 4 ]},
-						{_( L"Bomb" ), options::vars [ _( "visuals.filters" ) ].val.l [ 5 ]}
+	if ( gui::begin_group( "Player Visuals", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		sesui::multiselect( _( "Filters" ), {
+						{ _( "Local" ), options::vars [ _( "visuals.filters" ) ].val.l [ 0 ]},
+						{_( "Teammates" ), options::vars [ _( "visuals.filters" ) ].val.l [ 1 ]},
+						{_( "Enemies" ), options::vars [ _( "visuals.filters" ) ].val.l [ 2 ]},
+						{_( "Weapons" ), options::vars [ _( "visuals.filters" ) ].val.l [ 3 ]},
+						{_( "Grenades" ), options::vars [ _( "visuals.filters" ) ].val.l [ 4 ]},
+						{_( "Bomb" ), options::vars [ _( "visuals.filters" ) ].val.l [ 5 ]}
 			} );
 
 		if ( visual_name == _( "local" ) ) {
-			sesui::multiselect( _( L"Options" ), {
-						{ _( L"Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 0 ]},
-						{_( L"Flat Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 1 ]},
-						{_( L"XQZ Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 2 ]},
-						{ _( L"Desync Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 3 ]},
-						{_( L"Desync Chams Fakelag" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 4 ]},
-						{_( L"Desync Chams Rimlight" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 5 ]},
-						{_( L"Glow" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 6 ]},
-						{_( L"Rimlight Overlay" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 7 ]},
-						{_( L"ESP Box" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 8 ]},
-						{_( L"Health Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 9 ]},
-						{_( L"Ammo Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 10 ]},
-						{_( L"Desync Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 11 ]},
-						{_( L"Value Text" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 12 ]},
-						{_( L"Name Tag" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 13 ]},
-						{_( L"Weapon Name" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 14 ]}
+			sesui::multiselect( _( "Options" ), {
+						{ _( "Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 0 ]},
+						{_( "Flat Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 1 ]},
+						{_( "XQZ Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 2 ]},
+						{ _( "Desync Chams" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 3 ]},
+						{_( "Desync Chams Fakelag" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 4 ]},
+						{_( "Desync Chams Rimlight" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 5 ]},
+						{_( "Glow" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 6 ]},
+						{_( "Rimlight Overlay" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 7 ]},
+						{_( "ESP Box" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 8 ]},
+						{_( "Health Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 9 ]},
+						{_( "Ammo Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 10 ]},
+						{_( "Desync Bar" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 11 ]},
+						{_( "Value Text" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 12 ]},
+						{_( "Name Tag" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 13 ]},
+						{_( "Weapon Name" ), options::vars [ _( "visuals.local.options" ) ].val.l [ 14 ]}
 				} );
 		}
 		else if ( visual_name == _( "enemies" ) ) {
-			sesui::multiselect( _( L"Options" ), {
-						{ _( L"Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 0 ]},
-						{_( L"Flat Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 1 ]},
-						{_( L"XQZ Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 2 ]},
-						{ _( L"Backtrack Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 3 ]},
-						{_( L"Hit Matrix" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 4 ]},
-						{_( L"Glow" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 5 ]},
-						{_( L"Rimlight Overlay" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 6 ]},
-						{_( L"ESP Box" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 7 ]},
-						{_( L"Health Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 8 ]},
-						{_( L"Ammo Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 9 ]},
-						{_( L"Desync Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 10 ]},
-						{_( L"Value Text" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 11 ]},
-						{_( L"Name Tag" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 12 ]},
-						{_( L"Weapon Name" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 13 ]}
+			sesui::multiselect( _( "Options" ), {
+						{ _( "Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 0 ]},
+						{_( "Flat Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 1 ]},
+						{_( "XQZ Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 2 ]},
+						{ _( "Backtrack Chams" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 3 ]},
+						{_( "Hit Matrix" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 4 ]},
+						{_( "Glow" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 5 ]},
+						{_( "Rimlight Overlay" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 6 ]},
+						{_( "ESP Box" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 7 ]},
+						{_( "Health Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 8 ]},
+						{_( "Ammo Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 9 ]},
+						{_( "Desync Bar" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 10 ]},
+						{_( "Value Text" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 11 ]},
+						{_( "Name Tag" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 12 ]},
+						{_( "Weapon Name" ), options::vars [ _( "visuals.enemies.options" ) ].val.l [ 13 ]}
 				} );
 		}
 		else if ( visual_name == _( "teammates" ) ) {
-			sesui::multiselect( _( L"Options" ), {
-						{ _( L"Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 0 ]},
-						{_( L"Flat Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 1 ]},
-						{_( L"XQZ Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 2 ]},
-						{_( L"Glow" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 3 ]},
-						{_( L"Rimlight Overlay" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 4 ]},
-						{_( L"ESP Box" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 5 ]},
-						{_( L"Health Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 6 ]},
-						{_( L"Ammo Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 7 ]},
-						{_( L"Desync Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 8 ]},
-						{_( L"Value Text" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 9 ]},
-						{_( L"Name Tag" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 10 ]},
-						{_( L"Weapon Name" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 11 ]}
+			sesui::multiselect( _( "Options" ), {
+						{ _( "Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 0 ]},
+						{_( "Flat Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 1 ]},
+						{_( "XQZ Chams" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 2 ]},
+						{_( "Glow" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 3 ]},
+						{_( "Rimlight Overlay" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 4 ]},
+						{_( "ESP Box" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 5 ]},
+						{_( "Health Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 6 ]},
+						{_( "Ammo Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 7 ]},
+						{_( "Desync Bar" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 8 ]},
+						{_( "Value Text" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 9 ]},
+						{_( "Name Tag" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 10 ]},
+						{_( "Weapon Name" ), options::vars [ _( "visuals.teammates.options" ) ].val.l [ 11 ]}
 				} );
 		}
 
-		sesui::combobox( _( L"Health Bar Location" ), options::vars [ visuals_config + _( "health_bar_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::combobox( _( L"Ammo Bar Location" ), options::vars [ visuals_config + _( "ammo_bar_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::combobox( _( L"Desync Bar Location" ), options::vars [ visuals_config + _( "desync_bar_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::combobox( _( L"Value Text Location" ), options::vars [ visuals_config + _( "value_text_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::combobox( _( L"Name Tag Location" ), options::vars [ visuals_config + _( "nametag_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::combobox( _( L"Weapon Name Location" ), options::vars [ visuals_config + _( "weapon_name_location" ) ].val.i, { _( L"Left" ), _( L"Right" ), _( L"Bottom" ), _( L"Top" ) } );
-		sesui::slider( _( L"Chams Reflectivity" ), options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-		sesui::slider( _( L"Chams Phong" ), options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
+		sesui::combobox( _( "Health Bar Location" ), options::vars [ visuals_config + _( "health_bar_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::combobox( _( "Ammo Bar Location" ), options::vars [ visuals_config + _( "ammo_bar_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::combobox( _( "Desync Bar Location" ), options::vars [ visuals_config + _( "desync_bar_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::combobox( _( "Value Text Location" ), options::vars [ visuals_config + _( "value_text_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::combobox( _( "Name Tag Location" ), options::vars [ visuals_config + _( "nametag_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::combobox( _( "Weapon Name Location" ), options::vars [ visuals_config + _( "weapon_name_location" ) ].val.i, { _( "Left" ), _( "Right" ), _( "Bottom" ), _( "Top" ) } );
+		sesui::slider( _( "Chams Reflectivity" ), options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+		sesui::slider( _( "Chams Phong" ), options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
 
 
 		gui::end_group( );
 	}
 
-	if ( gui::begin_group( L"Colors", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-		sesui::colorpicker( _( L"Chams Color" ), options::vars [ visuals_config + _( "chams_color" ) ].val.c );
-		sesui::colorpicker( _( L"XQZ Chams Color" ), options::vars [ visuals_config + _( "xqz_chams_color" ) ].val.c );
+	if ( gui::begin_group( "Colors", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+		sesui::colorpicker( _( "Chams Color" ), options::vars [ visuals_config + _( "chams_color" ) ].val.c );
+		sesui::colorpicker( _( "XQZ Chams Color" ), options::vars [ visuals_config + _( "xqz_chams_color" ) ].val.c );
 
 		if ( visual_name == _( "enemies" ) )
-			sesui::colorpicker( _( L"Backtrack Chams Color" ), options::vars [ visuals_config + _( "backtrack_chams_color" ) ].val.c );
+			sesui::colorpicker( _( "Backtrack Chams Color" ), options::vars [ visuals_config + _( "backtrack_chams_color" ) ].val.c );
 
 		if ( visual_name == _( "local" ) ) {
-			sesui::colorpicker( _( L"Desync Chams Color" ), options::vars [ _( "visuals.local.desync_chams_color" ) ].val.c );
-			sesui::colorpicker( _( L"Desync Chams Rimlight Color" ), options::vars [ _( "visuals.local.desync_rimlight_overlay_color" ) ].val.c );
+			sesui::colorpicker( _( "Desync Chams Color" ), options::vars [ _( "visuals.local.desync_chams_color" ) ].val.c );
+			sesui::colorpicker( _( "Desync Chams Rimlight Color" ), options::vars [ _( "visuals.local.desync_rimlight_overlay_color" ) ].val.c );
 		}
 
 		if ( visual_name == _( "enemies" ) )
-			sesui::colorpicker( _( L"Hit Matrix Color" ), options::vars [ visuals_config + _( "hit_matrix_color" ) ].val.c );
+			sesui::colorpicker( _( "Hit Matrix Color" ), options::vars [ visuals_config + _( "hit_matrix_color" ) ].val.c );
 
-		sesui::colorpicker( _( L"Glow Color" ), options::vars [ visuals_config + _( "glow_color" ) ].val.c );
-		sesui::colorpicker( _( L"Rimlight Overlay Color" ), options::vars [ visuals_config + _( "rimlight_overlay_color" ) ].val.c );
-		sesui::colorpicker( _( L"ESP Box Color" ), options::vars [ visuals_config + _( "box_color" ) ].val.c );
-		sesui::colorpicker( _( L"Health Bar Color" ), options::vars [ visuals_config + _( "health_bar_color" ) ].val.c );
-		sesui::colorpicker( _( L"Ammo Bar Color" ), options::vars [ visuals_config + _( "ammo_bar_color" ) ].val.c );
-		sesui::colorpicker( _( L"Desync Bar Color" ), options::vars [ visuals_config + _( "desync_bar_color" ) ].val.c );
-		sesui::colorpicker( _( L"Name Tag Color" ), options::vars [ visuals_config + _( "name_color" ) ].val.c );
-		sesui::colorpicker( _( L"Weapon Name Color" ), options::vars [ visuals_config + _( "weapon_color" ) ].val.c );
+		sesui::colorpicker( _( "Glow Color" ), options::vars [ visuals_config + _( "glow_color" ) ].val.c );
+		sesui::colorpicker( _( "Rimlight Overlay Color" ), options::vars [ visuals_config + _( "rimlight_overlay_color" ) ].val.c );
+		sesui::colorpicker( _( "ESP Box Color" ), options::vars [ visuals_config + _( "box_color" ) ].val.c );
+		sesui::colorpicker( _( "Health Bar Color" ), options::vars [ visuals_config + _( "health_bar_color" ) ].val.c );
+		sesui::colorpicker( _( "Ammo Bar Color" ), options::vars [ visuals_config + _( "ammo_bar_color" ) ].val.c );
+		sesui::colorpicker( _( "Desync Bar Color" ), options::vars [ visuals_config + _( "desync_bar_color" ) ].val.c );
+		sesui::colorpicker( _( "Name Tag Color" ), options::vars [ visuals_config + _( "name_color" ) ].val.c );
+		sesui::colorpicker( _( "Weapon Name Color" ), options::vars [ visuals_config + _( "weapon_color" ) ].val.c );
 
 		gui::end_group( );
 	}
@@ -407,7 +396,7 @@ void gui::draw( ) {
 
 	open_button_pressed = utils::key_state( VK_INSERT );
 
-	sesui::begin_frame( _( L"Counter-Strike: Global Offensive" ) );
+	sesui::begin_frame( _( "Counter-Strike: Global Offensive" ) );
 
 	namespace gui = sesui::custom;
 
@@ -415,14 +404,14 @@ void gui::draw( ) {
 	keybinds::draw( );
 
 	if ( opened ) {
-		if ( gui::begin_window( _( L"Sesame" ), sesui::rect( 500, 500, 800, 600 ), opened, sesui::window_flags::no_closebutton ) ) {
+		if ( gui::begin_window( _( "Sesame" ), sesui::rect( 500, 500, 800, 600 ), opened, sesui::window_flags::no_closebutton ) ) {
 			if ( gui::begin_tabs( tab_max ) ) {
-				gui::tab( _( L"A" ), _( L"Legit" ), current_tab_idx );
-				gui::tab( _( L"B" ), _( L"Rage" ), current_tab_idx );
-				gui::tab( _( L"C" ), _( L"Antiaim" ), current_tab_idx );
-				gui::tab( _( L"D" ), _( L"Visuals" ), current_tab_idx );
-				gui::tab( _( L"E" ), _( L"Skins" ), current_tab_idx );
-				gui::tab( _( L"F" ), _( L"Misc" ), current_tab_idx );
+				gui::tab( _( "A" ), _( "Legit" ), current_tab_idx );
+				gui::tab( _( "B" ), _( "Rage" ), current_tab_idx );
+				gui::tab( _( "C" ), _( "Antiaim" ), current_tab_idx );
+				gui::tab( _( "D" ), _( "Visuals" ), current_tab_idx );
+				gui::tab( _( "E" ), _( "Skins" ), current_tab_idx );
+				gui::tab( _( "F" ), _( "Misc" ), current_tab_idx );
 
 				gui::end_tabs( );
 			}
@@ -430,37 +419,37 @@ void gui::draw( ) {
 			switch ( current_tab_idx ) {
 				case tab_legit: {
 					if ( gui::begin_subtabs( legit_subtabs_max ) ) {
-						gui::subtab( _( L"General" ), _( L"General legitbot settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Default" ), _( L"Default settings used for unconfigured weapons" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Pistol" ), _( L"Pistol class cofiguration" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Revolver" ), _( L"Revolver class cofiguration" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Rifle" ), _( L"Rifle, SMG, and shotgun class cofigurations" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"AWP" ), _( L"AWP class cofiguration" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Auto" ), _( L"Autosniper class cofiguration" ), sesui::rect( 0.0f, 0.6f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
-						gui::subtab( _( L"Scout" ), _( L"Scout class cofiguration" ), sesui::rect( 0.5f, 0.6f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "General" ), _( "General legitbot settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Default" ), _( "Default settings used for unconfigured weapons" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Pistol" ), _( "Pistol class cofiguration" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Revolver" ), _( "Revolver class cofiguration" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Rifle" ), _( "Rifle, SMG, and shotgun class cofigurations" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "AWP" ), _( "AWP class cofiguration" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Auto" ), _( "Autosniper class cofiguration" ), sesui::rect( 0.0f, 0.6f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
+						gui::subtab( _( "Scout" ), _( "Scout class cofiguration" ), sesui::rect( 0.5f, 0.6f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), legit_subtab_idx );
 
 						gui::end_subtabs( );
 					}
 
 					switch ( legit_subtab_idx ) {
 						case legit_subtabs_main: {
-							if ( gui::begin_group( L"General Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::combobox( _( L"Assistance Type" ), options::vars [ _( "global.assistance_type" ) ].val.i, { _( L"None" ), _( L"Legit" ), _( L"Rage" ) } );
+							if ( gui::begin_group( "General Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::combobox( _( "Assistance Type" ), options::vars [ _( "global.assistance_type" ) ].val.i, { _( "None" ), _( "Legit" ), _( "Rage" ) } );
 
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group( L"Triggerbot", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::checkbox( _( L"Triggerbot" ), options::vars [ _( "legitbot.triggerbot" ) ].val.b );
+							if ( gui::begin_group( "Triggerbot", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::checkbox( _( "Triggerbot" ), options::vars [ _( "legitbot.triggerbot" ) ].val.b );
 								sesui::same_line( );
-								sesui::keybind( _( L"Triggerbot Key" ), options::vars [ _( "legitbot.triggerbot_key" ) ].val.i, options::vars [ _( "legitbot.triggerbot_key_mode" ) ].val.i );
+								sesui::keybind( _( "Triggerbot Key" ), options::vars [ _( "legitbot.triggerbot_key" ) ].val.i, options::vars [ _( "legitbot.triggerbot_key_mode" ) ].val.i );
 
-								sesui::multiselect( _( L"Hitboxes" ), {
-											{ _( L"Head" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 0 ] },
-											{ _( L"Neck" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 1 ] },
-											{ _( L"Chest" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 2 ] },
-											{ _( L"Pelvis" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 3 ] },
-											{ _( L"Arms" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 6 ] }
+								sesui::multiselect( _( "Hitboxes" ), {
+											{ _( "Head" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 0 ] },
+											{ _( "Neck" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 1 ] },
+											{ _( "Chest" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 2 ] },
+											{ _( "Pelvis" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 3 ] },
+											{ _( "Arms" ), options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l [ 6 ] }
 									} );
 
 								gui::end_group( );
@@ -486,45 +475,45 @@ void gui::draw( ) {
 				} break;
 				case tab_rage: {
 					if ( gui::begin_subtabs( rage_subtabs_max ) ) {
-						gui::subtab( _( L"General" ), _( L"General ragebot and accuracy settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Default" ), _( L"Default settings used for unconfigured weapons" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Pistol" ), _( L"Pistol class cofiguration" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Revolver" ), _( L"Revolver class cofiguration" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Rifle" ), _( L"Rifle, SMG, and shotgun class cofigurations" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"AWP" ), _( L"AWP class cofiguration" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Auto" ), _( L"Autosniper class cofiguration" ), sesui::rect( 0.0f, 0.6f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
-						gui::subtab( _( L"Scout" ), _( L"Scout class cofiguration" ), sesui::rect( 0.5f, 0.6f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "General" ), _( "General ragebot and accuracy settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Default" ), _( "Default settings used for unconfigured weapons" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Pistol" ), _( "Pistol class cofiguration" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Revolver" ), _( "Revolver class cofiguration" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Rifle" ), _( "Rifle, SMG, and shotgun class cofigurations" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "AWP" ), _( "AWP class cofiguration" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Auto" ), _( "Autosniper class cofiguration" ), sesui::rect( 0.0f, 0.6f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
+						gui::subtab( _( "Scout" ), _( "Scout class cofiguration" ), sesui::rect( 0.5f, 0.6f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 3.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), rage_subtab_idx );
 
 						gui::end_subtabs( );
 					}
 
 					switch ( rage_subtab_idx ) {
 						case rage_subtabs_main: {
-							if ( gui::begin_group( L"General Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								//sesui::tooltip ( _ ( L"Enabled or disables all ragebot settings" ) );
-								sesui::combobox( _( L"Assistance Type" ), options::vars [ _( "global.assistance_type" ) ].val.i, { _( L"None" ), _( L"Legit" ), _( L"Rage" ) } );
-								//sesui::tooltip ( _ ( L"Automatically knife players" ) );
-								sesui::checkbox( _( L"Knife Bot" ), options::vars [ _( "ragebot.knife_bot" ) ].val.b );
-								//sesui::tooltip ( _ ( L"Automatically zeus players" ) );
-								sesui::checkbox( _( L"Zeus Bot" ), options::vars [ _( "ragebot.zeus_bot" ) ].val.b );
+							if ( gui::begin_group( "General Settings", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								//sesui::tooltip ( _ ( "Enabled or disables all ragebot settings" ) );
+								sesui::combobox( _( "Assistance Type" ), options::vars [ _( "global.assistance_type" ) ].val.i, { _( "None" ), _( "Legit" ), _( "Rage" ) } );
+								//sesui::tooltip ( _ ( "Automatically knife players" ) );
+								sesui::checkbox( _( "Knife Bot" ), options::vars [ _( "ragebot.knife_bot" ) ].val.b );
+								//sesui::tooltip ( _ ( "Automatically zeus players" ) );
+								sesui::checkbox( _( "Zeus Bot" ), options::vars [ _( "ragebot.zeus_bot" ) ].val.b );
 
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group( L"Accuracy", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								//sesui::tooltip ( _ ( L"Correct and predict fakelag" ) );
-								sesui::checkbox( _( L"Fix Fakelag" ), options::vars [ _( "ragebot.fix_fakelag" ) ].val.b );
-								//sesui::tooltip ( _ ( L"Resolve animation desync" ) );
-								sesui::checkbox( _( L"Resolve Desync" ), options::vars [ _( "ragebot.resolve_desync" ) ].val.b );
-								//sesui::tooltip ( _ ( L"Attempts to aim at points that align with all resolved matricies" ) );
-								sesui::checkbox( _( L"Safe Point" ), options::vars [ _( "ragebot.safe_point" ) ].val.b );
+							if ( gui::begin_group( "Accuracy", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								//sesui::tooltip ( _ ( "Correct and predict fakelag" ) );
+								sesui::checkbox( _( "Fix Fakelag" ), options::vars [ _( "ragebot.fix_fakelag" ) ].val.b );
+								//sesui::tooltip ( _ ( "Resolve animation desync" ) );
+								sesui::checkbox( _( "Resolve Desync" ), options::vars [ _( "ragebot.resolve_desync" ) ].val.b );
+								//sesui::tooltip ( _ ( "Attempts to aim at points that align with all resolved matricies" ) );
+								sesui::checkbox( _( "Safe Point" ), options::vars [ _( "ragebot.safe_point" ) ].val.b );
 								sesui::same_line( );
-								//sesui::tooltip ( _ ( L"Safe point override keybind" ) );
-								sesui::keybind( _( L"Safe Point Key" ), options::vars [ _( "ragebot.safe_point_key" ) ].val.i, options::vars [ _( "ragebot.safe_point_key_mode" ) ].val.i );
-								//sesui::tooltip ( _ ( L"Automatically cock revolver until fully cocked" ) );
-								sesui::checkbox( _( L"Auto Revolver" ), options::vars [ _( "ragebot.auto_revolver" ) ].val.b );
-								//sesui::tooltip ( _ ( L"Doubletap override key" ) );
-								sesui::keybind( _( L"Doubletap Key" ), options::vars [ _( "ragebot.dt_key" ) ].val.i, options::vars [ _( "ragebot.dt_key_mode" ) ].val.i );
+								//sesui::tooltip ( _ ( "Safe point override keybind" ) );
+								sesui::keybind( _( "Safe Point Key" ), options::vars [ _( "ragebot.safe_point_key" ) ].val.i, options::vars [ _( "ragebot.safe_point_key_mode" ) ].val.i );
+								//sesui::tooltip ( _ ( "Automatically cock revolver until fully cocked" ) );
+								sesui::checkbox( _( "Auto Revolver" ), options::vars [ _( "ragebot.auto_revolver" ) ].val.b );
+								//sesui::tooltip ( _ ( "Doubletap override key" ) );
+								sesui::keybind( _( "Doubletap Key" ), options::vars [ _( "ragebot.dt_key" ) ].val.i, options::vars [ _( "ragebot.dt_key_mode" ) ].val.i );
 
 								gui::end_group( );
 							}
@@ -556,11 +545,11 @@ void gui::draw( ) {
 				} break;
 				case tab_antiaim: {
 					if ( gui::begin_subtabs( antiaim_subtabs_max ) ) {
-						gui::subtab( _( L"Air" ), _( L"In air antiaim settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
-						gui::subtab( _( L"Moving" ), _( L"Moving antiaim settings" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
-						gui::subtab( _( L"Slow Walk" ), _( L"Slow walk antiaim settings" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
-						gui::subtab( _( L"Standing" ), _( L"Standing antiaim settings" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
-						gui::subtab( _( L"Other" ), _( L"Fakelag, manual aa, and other antiaim features" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
+						gui::subtab( _( "Air" ), _( "In air antiaim settings" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
+						gui::subtab( _( "Moving" ), _( "Moving antiaim settings" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
+						gui::subtab( _( "Slow Walk" ), _( "Slow walk antiaim settings" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
+						gui::subtab( _( "Standing" ), _( "Standing antiaim settings" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
+						gui::subtab( _( "Other" ), _( "Fakelag, manual aa, and other antiaim features" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), antiaim_subtab_idx );
 
 						gui::end_subtabs( );
 					}
@@ -579,19 +568,19 @@ void gui::draw( ) {
 							antiaim_controls( _( "standing" ) );
 						} break;
 						case antiaim_subtabs_other: {
-							if ( gui::begin_group( L"General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
-								sesui::slider( _( L"Slow Walk Speed" ), options::vars [ _( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
+							if ( gui::begin_group( "General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
+								sesui::slider( _( "Slow Walk Speed" ), options::vars [ _( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
 								sesui::same_line( );
-								sesui::keybind( _( L"Slow Walk Key" ), options::vars [ _( "antiaim.slow_walk_key" ) ].val.i, options::vars [ _( "antiaim.slow_walk_key_mode" ) ].val.i );
-								sesui::checkbox( _( L"Fake Walk" ), options::vars [ _( "antiaim.fakewalk" ) ].val.b );
-								sesui::checkbox( _( L"Fake Duck" ), options::vars [ _( "antiaim.fakeduck" ) ].val.b );
+								sesui::keybind( _( "Slow Walk Key" ), options::vars [ _( "antiaim.slow_walk_key" ) ].val.i, options::vars [ _( "antiaim.slow_walk_key_mode" ) ].val.i );
+								sesui::checkbox( _( "Fake Walk" ), options::vars [ _( "antiaim.fakewalk" ) ].val.b );
+								sesui::checkbox( _( "Fake Duck" ), options::vars [ _( "antiaim.fakeduck" ) ].val.b );
 								sesui::same_line( );
-								sesui::keybind( _( L"Fake Duck Key" ), options::vars [ _( "antiaim.fakeduck_key" ) ].val.i, options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i );
-								sesui::combobox( _( L"Fake Duck Mode" ), options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i, { _( L"Normal" ), _( L"Full" ) } );
-								sesui::keybind( _( L"Manual Left Key" ), options::vars [ _( "antiaim.manual_left_key" ) ].val.i, options::vars [ _( "antiaim.manual_left_key_mode" ) ].val.i );
-								sesui::keybind( _( L"Manual Right Key" ), options::vars [ _( "antiaim.manual_right_key" ) ].val.i, options::vars [ _( "antiaim.manual_right_key_mode" ) ].val.i );
-								sesui::keybind( _( L"Manual Back Key" ), options::vars [ _( "antiaim.manual_back_key" ) ].val.i, options::vars [ _( "antiaim.manual_back_key_mode" ) ].val.i );
-								sesui::keybind( _( L"Desync Inverter Key" ), options::vars [ _( "antiaim.desync_invert_key" ) ].val.i, options::vars [ _( "antiaim.desync_invert_key_mode" ) ].val.i );
+								sesui::keybind( _( "Fake Duck Key" ), options::vars [ _( "antiaim.fakeduck_key" ) ].val.i, options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i );
+								sesui::combobox( _( "Fake Duck Mode" ), options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i, { _( "Normal" ), _( "Full" ) } );
+								sesui::keybind( _( "Manual Left Key" ), options::vars [ _( "antiaim.manual_left_key" ) ].val.i, options::vars [ _( "antiaim.manual_left_key_mode" ) ].val.i );
+								sesui::keybind( _( "Manual Right Key" ), options::vars [ _( "antiaim.manual_right_key" ) ].val.i, options::vars [ _( "antiaim.manual_right_key_mode" ) ].val.i );
+								sesui::keybind( _( "Manual Back Key" ), options::vars [ _( "antiaim.manual_back_key" ) ].val.i, options::vars [ _( "antiaim.manual_back_key_mode" ) ].val.i );
+								sesui::keybind( _( "Desync Inverter Key" ), options::vars [ _( "antiaim.desync_invert_key" ) ].val.i, options::vars [ _( "antiaim.desync_invert_key_mode" ) ].val.i );
 
 								gui::end_group( );
 							}
@@ -602,10 +591,10 @@ void gui::draw( ) {
 				} break;
 				case tab_visuals: {
 					if ( gui::begin_subtabs( visuals_subtabs_max ) ) {
-						gui::subtab( _( L"Local Player" ), _( L"Visuals used on local player" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
-						gui::subtab( _( L"Enemies" ), _( L"Visuals used on filtered enemies" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
-						gui::subtab( _( L"Teammates" ), _( L"Visuals used on filtered teammates" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
-						gui::subtab( _( L"Other" ), _( L"Other visual options" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
+						gui::subtab( _( "Local Player" ), _( "Visuals used on local player" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
+						gui::subtab( _( "Enemies" ), _( "Visuals used on filtered enemies" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
+						gui::subtab( _( "Teammates" ), _( "Visuals used on filtered teammates" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
+						gui::subtab( _( "Other" ), _( "Other visual options" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), visuals_subtab_idx );
 
 						gui::end_subtabs( );
 					}
@@ -621,71 +610,71 @@ void gui::draw( ) {
 							player_visuals_controls( _( "teammates" ) );
 						} break;
 						case visuals_subtabs_other: {
-							if ( gui::begin_group( L"World", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::checkbox( _( L"Bomb ESP" ), options::vars [ _( "visuals.other.bomb_esp" ) ].val.b );
-								sesui::checkbox( _( L"Bomb Timer" ), options::vars [ _( "visuals.other.bomb_timer" ) ].val.b );
-								sesui::checkbox( _( L"Bullet Tracers" ), options::vars [ _( "visuals.other.bullet_tracers" ) ].val.b );
+							if ( gui::begin_group( "World", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::checkbox( _( "Bomb ESP" ), options::vars [ _( "visuals.other.bomb_esp" ) ].val.b );
+								sesui::checkbox( _( "Bomb Timer" ), options::vars [ _( "visuals.other.bomb_timer" ) ].val.b );
+								sesui::checkbox( _( "Bullet Tracers" ), options::vars [ _( "visuals.other.bullet_tracers" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Bullet Tracer Color" ), options::vars [ _( "visuals.other.bullet_tracer_color" ) ].val.c );
-								sesui::checkbox( _( L"Bullet Impacts" ), options::vars [ _( "visuals.other.bullet_impacts" ) ].val.b );
+								sesui::colorpicker( _( "Bullet Tracer Color" ), options::vars [ _( "visuals.other.bullet_tracer_color" ) ].val.c );
+								sesui::checkbox( _( "Bullet Impacts" ), options::vars [ _( "visuals.other.bullet_impacts" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Bullet Impacts Color" ), options::vars [ _( "visuals.other.bullet_impact_color" ) ].val.c );
-								sesui::checkbox( _( L"Grenade Trajectories" ), options::vars [ _( "visuals.other.grenade_trajectories" ) ].val.b );
+								sesui::colorpicker( _( "Bullet Impacts Color" ), options::vars [ _( "visuals.other.bullet_impact_color" ) ].val.c );
+								sesui::checkbox( _( "Grenade Trajectories" ), options::vars [ _( "visuals.other.grenade_trajectories" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Grenade Trajectories Color" ), options::vars [ _( "visuals.other.grenade_trajectory_color" ) ].val.c );
-								sesui::checkbox( _( L"Grenade Bounces" ), options::vars [ _( "visuals.other.grenade_bounces" ) ].val.b );
+								sesui::colorpicker( _( "Grenade Trajectories Color" ), options::vars [ _( "visuals.other.grenade_trajectory_color" ) ].val.c );
+								sesui::checkbox( _( "Grenade Bounces" ), options::vars [ _( "visuals.other.grenade_bounces" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Grenade Bounces Color" ), options::vars [ _( "visuals.other.grenade_bounce_color" ) ].val.c );
-								sesui::checkbox( _( L"Grenade Blast Radii" ), options::vars [ _( "visuals.other.grenade_blast_radii" ) ].val.b );
+								sesui::colorpicker( _( "Grenade Bounces Color" ), options::vars [ _( "visuals.other.grenade_bounce_color" ) ].val.c );
+								sesui::checkbox( _( "Grenade Blast Radii" ), options::vars [ _( "visuals.other.grenade_blast_radii" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Grenade Blast Radii Color" ), options::vars [ _( "visuals.other.grenade_radii_color" ) ].val.c );
+								sesui::colorpicker( _( "Grenade Blast Radii Color" ), options::vars [ _( "visuals.other.grenade_radii_color" ) ].val.c );
 
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group( L"Other", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::multiselect( _( L"Removals" ), {
-									{ _( L"Smoke" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 0 ]},
-									{_( L"Flash" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 1 ]},
-									{_( L"Scope" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 2 ]},
-									{ _( L"Aim Punch" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 3 ]},
-									{_( L"View Punch" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 4 ]},
-									{_( L"Zoom" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 5 ]},
-									{_( L"Occlusion" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 6 ]},
-									{_( L"Killfeed Decay" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 7 ]},
-									{_( L"Post Processing" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 8 ]}
+							if ( gui::begin_group( "Other", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::multiselect( _( "Removals" ), {
+									{ _( "Smoke" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 0 ]},
+									{_( "Flash" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 1 ]},
+									{_( "Scope" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 2 ]},
+									{ _( "Aim Punch" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 3 ]},
+									{_( "View Punch" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 4 ]},
+									{_( "Zoom" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 5 ]},
+									{_( "Occlusion" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 6 ]},
+									{_( "Killfeed Decay" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 7 ]},
+									{_( "Post Processing" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 8 ]}
 									} );
-								sesui::slider( _( L"FOV" ), options::vars [ _( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, _( L"%.1f°" ) );
-								sesui::slider( _( L"Viewmodel FOV" ), options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _( L"%.1f°" ) );
-								sesui::slider( _( L"Aspect Ratio" ), options::vars [ _( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
+								sesui::slider( _( "FOV" ), options::vars [ _( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, _( "{:.1f}°" ) );
+								sesui::slider( _( "Viewmodel FOV" ), options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _( "{:.1f}°" ) );
+								sesui::slider( _( "Aspect Ratio" ), options::vars [ _( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
 
-								sesui::multiselect( _( L"Logs" ), {
-									{ _( L"Hits" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 0 ]},
-									{_( L"Spread Misses" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 1 ]},
-									{_( L"Resolver Misses" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 2 ]},
-									{ _( L"Wrong Hitbox" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 3 ]},
-									{_( L"Manual Shots" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 4 ]}
+								sesui::multiselect( _( "Logs" ), {
+									{ _( "Hits" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 0 ]},
+									{_( "Spread Misses" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 1 ]},
+									{_( "Resolver Misses" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 2 ]},
+									{ _( "Wrong Hitbox" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 3 ]},
+									{_( "Manual Shots" ), options::vars [ _( "visuals.other.logs" ) ].val.l [ 4 ]}
 									} );
 
-								sesui::checkbox( _( L"Spread Circle" ), options::vars [ _( "visuals.other.spread_circle" ) ].val.b );
+								sesui::checkbox( _( "Spread Circle" ), options::vars [ _( "visuals.other.spread_circle" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Spread Circle Color" ), options::vars [ _( "visuals.other.spread_circle_color" ) ].val.c );
-								sesui::checkbox( _( L"Gradient Spread Circle" ), options::vars [ _( "visuals.other.gradient_spread_circle" ) ].val.b );
-								sesui::checkbox( _( L"Offscreen ESP" ), options::vars [ _( "visuals.other.offscreen_esp" ) ].val.b );
+								sesui::colorpicker( _( "Spread Circle Color" ), options::vars [ _( "visuals.other.spread_circle_color" ) ].val.c );
+								sesui::checkbox( _( "Gradient Spread Circle" ), options::vars [ _( "visuals.other.gradient_spread_circle" ) ].val.b );
+								sesui::checkbox( _( "Offscreen ESP" ), options::vars [ _( "visuals.other.offscreen_esp" ) ].val.b );
 								sesui::same_line( );
-								sesui::colorpicker( _( L"Offscreen ESP Color" ), options::vars [ _( "visuals.other.offscreen_esp_color" ) ].val.c );
-								sesui::slider( _( L"Offscreen ESP Distance" ), options::vars [ _( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _( L"%.1f%%" ) );
-								sesui::slider( _( L"Offscreen ESP Size" ), options::vars [ _( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, _( L"%.1f px" ) );
+								sesui::colorpicker( _( "Offscreen ESP Color" ), options::vars [ _( "visuals.other.offscreen_esp_color" ) ].val.c );
+								sesui::slider( _( "Offscreen ESP Distance" ), options::vars [ _( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
+								sesui::slider( _( "Offscreen ESP Size" ), options::vars [ _( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, _( "{:d} px" ) );
 
-								sesui::checkbox( _( L"Watermark" ), options::vars [ _( "visuals.other.watermark" ) ].val.b );
-								sesui::checkbox( _( L"Keybind List" ), options::vars [ _( "visuals.other.keybind_list" ) ].val.b );
+								sesui::checkbox( _( "Watermark" ), options::vars [ _( "visuals.other.watermark" ) ].val.b );
+								sesui::checkbox( _( "Keybind List" ), options::vars [ _( "visuals.other.keybind_list" ) ].val.b );
 
-								sesui::colorpicker( _( L"World Color" ), options::vars [ _( "visuals.other.world_color" ) ].val.c );
-								sesui::colorpicker( _( L"Prop Color" ), options::vars [ _( "visuals.other.prop_color" ) ].val.c );
-								sesui::colorpicker( _( L"Accent Color" ), options::vars [ _( "visuals.other.accent_color" ) ].val.c );
-								sesui::colorpicker( _( L"Secondary Accent Color" ), options::vars [ _( "visuals.other.secondary_accent_color" ) ].val.c );
-								sesui::colorpicker( _( L"Logo Color" ), options::vars [ _( "visuals.other.logo_color" ) ].val.c );
-								sesui::combobox( _( L"Hit Sound" ), options::vars [ _( "visuals.other.hit_sound" ) ].val.i, { _( L"None" ), _( L"Arena Switch" ), _( L"Fall Pain" ), _( L"Bolt" ), _( L"Neck Snap" ), _( L"Power Switch" ), _( L"Glass" ), _( L"Bell" ), _( L"COD" ), _( L"Rattle" ), _( L"Sesame" ) } );
+								sesui::colorpicker( _( "World Color" ), options::vars [ _( "visuals.other.world_color" ) ].val.c );
+								sesui::colorpicker( _( "Prop Color" ), options::vars [ _( "visuals.other.prop_color" ) ].val.c );
+								sesui::colorpicker( _( "Accent Color" ), options::vars [ _( "visuals.other.accent_color" ) ].val.c );
+								sesui::colorpicker( _( "Secondary Accent Color" ), options::vars [ _( "visuals.other.secondary_accent_color" ) ].val.c );
+								sesui::colorpicker( _( "Logo Color" ), options::vars [ _( "visuals.other.logo_color" ) ].val.c );
+								sesui::combobox( _( "Hit Sound" ), options::vars [ _( "visuals.other.hit_sound" ) ].val.i, { _( "None" ), _( "Arena Switch" ), _( "Fall Pain" ), _( "Bolt" ), _( "Neck Snap" ), _( "Power Switch" ), _( "Glass" ), _( "Bell" ), _( "COD" ), _( "Rattle" ), _( "Sesame" ) } );
 
 								gui::end_group( );
 							}
@@ -696,8 +685,8 @@ void gui::draw( ) {
 				} break;
 				case tab_skins: {
 					if ( gui::begin_subtabs( skins_subtabs_max ) ) {
-						gui::subtab( _( L"Skin Changer" ), _( L"Apply custom skins to your weapons" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), skins_subtab_idx );
-						gui::subtab( _( L"Model Changer" ), _( L"Replace game models with your own" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), skins_subtab_idx );
+						gui::subtab( _( "Skin Changer" ), _( "Apply custom skins to your weapons" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), skins_subtab_idx );
+						gui::subtab( _( "Model Changer" ), _( "Replace game models with your own" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), skins_subtab_idx );
 
 						gui::end_subtabs( );
 					}
@@ -713,46 +702,46 @@ void gui::draw( ) {
 				} break;
 				case tab_misc: {
 					if ( gui::begin_subtabs( misc_subtabs_max ) ) {
-						gui::subtab( _( L"Movement" ), _( L"Movement related cheats" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
-						gui::subtab( _( L"Effects" ), _( L"Miscellaneous visual effects" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
-						gui::subtab( _( L"Player List" ), _( L"Whitelist, clantag stealer, and bodyaim priority" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
-						gui::subtab( _( L"Cheat" ), _( L"Cheat settings and panic button" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
-						gui::subtab( _( L"Configuration" ), _( L"Cheat configuration manager" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
-						gui::subtab( _( L"Scripts" ), _( L"Script manager" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Movement" ), _( "Movement related cheats" ), sesui::rect( 0.0f, 0.0f, 0.5f, 0.2f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Effects" ), _( "Miscellaneous visual effects" ), sesui::rect( 0.5f, 0.0f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Player List" ), _( "Whitelist, clantag stealer, and bodyaim priority" ), sesui::rect( 0.0f, 0.2f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Cheat" ), _( "Cheat settings and panic button" ), sesui::rect( 0.5f, 0.2f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Configuration" ), _( "Cheat configuration manager" ), sesui::rect( 0.0f, 0.4f, 0.5f, 0.2f ), sesui::rect( 0.0f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
+						gui::subtab( _( "Scripts" ), _( "Script manager" ), sesui::rect( 0.5f, 0.4f, 0.5f, 0.2f ), sesui::rect( sesui::style.spacing * 0.5f, sesui::style.spacing * 0.5f * 2.0f, -sesui::style.spacing * 0.5f, -sesui::style.spacing * 0.5f ), misc_subtab_idx );
 
 						gui::end_subtabs( );
 					}
 
 					switch ( misc_subtab_idx ) {
 						case misc_subtabs_movement: {
-							if ( gui::begin_group( L"General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
-								sesui::checkbox( _( L"Block Bot" ), options::vars [ _( "misc.movement.block_bot" ) ].val.b );
+							if ( gui::begin_group( "General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
+								sesui::checkbox( _( "Block Bot" ), options::vars [ _( "misc.movement.block_bot" ) ].val.b );
 								sesui::same_line( );
-								sesui::keybind( _( L"Block Bot Key" ), options::vars [ _( "misc.movement.block_bot_key" ) ].val.i, options::vars [ _( "misc.movement.block_bot_key_mode" ) ].val.i );
-								sesui::checkbox( _( L"Auto Jump" ), options::vars [ _( "misc.movement.bhop" ) ].val.b );
-								sesui::checkbox( _( L"Auto Forward" ), options::vars [ _( "misc.movement.auto_forward" ) ].val.b );
-								sesui::checkbox( _( L"Auto Strafer" ), options::vars [ _( "misc.movement.auto_strafer" ) ].val.b );
-								sesui::checkbox( _( L"Directional Auto Strafer" ), options::vars [ _( "misc.movement.omnidirectional_auto_strafer" ) ].val.b );
+								sesui::keybind( _( "Block Bot Key" ), options::vars [ _( "misc.movement.block_bot_key" ) ].val.i, options::vars [ _( "misc.movement.block_bot_key_mode" ) ].val.i );
+								sesui::checkbox( _( "Auto Jump" ), options::vars [ _( "misc.movement.bhop" ) ].val.b );
+								sesui::checkbox( _( "Auto Forward" ), options::vars [ _( "misc.movement.auto_forward" ) ].val.b );
+								sesui::checkbox( _( "Auto Strafer" ), options::vars [ _( "misc.movement.auto_strafer" ) ].val.b );
+								sesui::checkbox( _( "Directional Auto Strafer" ), options::vars [ _( "misc.movement.omnidirectional_auto_strafer" ) ].val.b );
 
 								gui::end_group( );
 							}
 						} break;
 						case misc_subtabs_effects: {
-							if ( gui::begin_group( L"General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
-								sesui::checkbox( _( L"Third Person" ), options::vars [ _( "misc.effects.third_person" ) ].val.b );
+							if ( gui::begin_group( "General", sesui::rect( 0.0f, 0.0f, 1.0f, 1.0f ), sesui::rect( 0.0f, 0.0f, 0.0f, 0.0f ) ) ) {
+								sesui::checkbox( _( "Third Person" ), options::vars [ _( "misc.effects.third_person" ) ].val.b );
 								sesui::same_line( );
-								sesui::keybind( _( L"Third Person Key" ), options::vars [ _( "misc.effects.third_person_key" ) ].val.i, options::vars [ _( "misc.effects.third_person_key_mode" ) ].val.i );
-								sesui::slider( _( L"Third Person Range" ), options::vars [ _( "misc.effects.third_person_range" ) ].val.f, 0.0f, 500.0f, _( L"%.1f units" ) );
-								sesui::slider( _( L"Ragdoll Force Scale" ), options::vars [ _( "misc.effects.ragdoll_force_scale" ) ].val.f, 0.0f, 10.0f, _( L"x%.1f" ) );
-								sesui::checkbox( _( L"Clan Tag" ), options::vars [ _( "misc.effects.clantag" ) ].val.b );
-								sesui::combobox( _( L"Clan Tag Animation" ), options::vars [ _( "misc.effects.clantag_animation" ) ].val.i, { _( L"Static" ), _( L"Marquee" ), _( L"Capitalize" ), _( L"Heart" ) } );
+								sesui::keybind( _( "Third Person Key" ), options::vars [ _( "misc.effects.third_person_key" ) ].val.i, options::vars [ _( "misc.effects.third_person_key_mode" ) ].val.i );
+								sesui::slider( _( "Third Person Range" ), options::vars [ _( "misc.effects.third_person_range" ) ].val.f, 0.0f, 500.0f, _( "{:.1f} units" ) );
+								sesui::slider( _( "Ragdoll Force Scale" ), options::vars [ _( "misc.effects.ragdoll_force_scale" ) ].val.f, 0.0f, 10.0f, _( "x{:.1f}" ) );
+								sesui::checkbox( _( "Clan Tag" ), options::vars [ _( "misc.effects.clantag" ) ].val.b );
+								sesui::combobox( _( "Clan Tag Animation" ), options::vars [ _( "misc.effects.clantag_animation" ) ].val.i, { _( "Static" ), _( "Marquee" ), _( "Capitalize" ), _( "Heart" ) } );
 
-								std::wstring clantag_text = options::vars [ _( "misc.effects.clantag_text" ) ].val.s;
-								sesui::textbox( _( L"Clan Tag Text" ), clantag_text );
-								wcscpy_s( options::vars [ _( "misc.effects.clantag_text" ) ].val.s, clantag_text.data( ) );
+								std::string clantag_text = options::vars [ _( "misc.effects.clantag_text" ) ].val.s;
+								sesui::textbox( _( "Clan Tag Text" ), clantag_text );
+								strcpy_s( options::vars [ _( "misc.effects.clantag_text" ) ].val.s, clantag_text.c_str( ) );
 
-								sesui::slider( _( L"Revolver Cock Volume" ), options::vars [ _( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _( L"x%.1f" ) );
-								sesui::slider( _( L"Weapon Volume" ), options::vars [ _( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _( L"x%.1f" ) );
+								sesui::slider( _( "Revolver Cock Volume" ), options::vars [ _( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _( "x{:.1f}" ) );
+								sesui::slider( _( "Weapon Volume" ), options::vars [ _( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _( "x{:.1f}" ) );
 
 								gui::end_group( );
 							}
@@ -760,18 +749,27 @@ void gui::draw( ) {
 						case misc_subtabs_plist: {
 						} break;
 						case misc_subtabs_cheat: {
-							if ( gui::begin_group( L"Menu", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								//sesui::slider ( _ ( L"GUI DPI" ), options::vars [ _ ( "gui.dpi" ) ].val.f, 1.0f, 3.0f );
+							if ( gui::begin_group( "Menu", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
+
+								sesui::combobox ( _ ( "GUI DPI" ), dpi, { _ ( "0.5" ), _ ( "1.0" ), _ ( "2.0" ), _ ( "3.0" ) } );
+
+								switch ( dpi ) {
+								case 0: options::vars [ _ ( "gui.dpi" ) ].val.f = 0.5f; break;
+								case 1: options::vars [ _ ( "gui.dpi" ) ].val.f = 1.0f; break;
+								case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
+								case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
+								}
 
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group( L"Cheat", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+							if ( gui::begin_group( "Cheat", sesui::rect( 0.5f, 0.0f, 0.5f, 1.0f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
 								gui::end_group( );
 							}
 						} break;
 						case misc_subtabs_configs: {
-							if ( gui::begin_group( L"Configs", sesui::rect( 0.0f, 0.0f, 0.5f, 0.5f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+							if ( gui::begin_group( "Configs", sesui::rect( 0.0f, 0.0f, 0.5f, 0.5f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
 								for ( const auto& config : configs ) {
 									if ( sesui::button( config.data( ) ) )
 										selected_config = config;
@@ -780,14 +778,14 @@ void gui::draw( ) {
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group ( L"Cloud Configs", sesui::rect ( 0.0f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+							if ( gui::begin_group ( "Cloud Configs", sesui::rect ( 0.0f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
 								gui_mutex.lock ( );
 								const auto loading_list = last_config_user != config_user;
 								gui_mutex.unlock ( );
 
 								/* loading new config list */
 								if ( loading_list ) {
-									sesui::text (_(L"Loading...") );
+									sesui::text (_("Loading...") );
 								}
 								else if ( cloud_config_list ) {
 									cJSON* iter = nullptr;
@@ -810,9 +808,9 @@ void gui::draw( ) {
 										if ( !cJSON_IsString ( description ) || !description->valuestring )
 											continue;
 
-										if ( sesui::button ( std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).from_bytes ( iter->string ).c_str ( ) ) ) {
+										if ( sesui::button ( iter->string ) ) {
 											gui_mutex.lock ( );
-											::gui::config_code = std::wstring_convert < std::codecvt_utf8 < wchar_t > > ( ).from_bytes ( config_code->valuestring );
+											::gui::config_code = config_code->valuestring;
 											gui_mutex.unlock ( );
 										}
 									}
@@ -821,10 +819,10 @@ void gui::draw( ) {
 								gui::end_group ( );
 							}
 
-							if ( gui::begin_group( L"Config Actions", sesui::rect( 0.5f, 0.0f, 0.5f, 0.5f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::textbox( _( L"Config Name" ), selected_config );
+							if ( gui::begin_group( "Config Actions", sesui::rect( 0.5f, 0.0f, 0.5f, 0.5f ), sesui::rect( sesui::style.spacing * 0.5f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::textbox( _( "Config Name" ), selected_config );
 
-								if ( sesui::button( _( L"Save" ) ) ) {
+								if ( sesui::button( _( "Save" ) ) ) {
 									char appdata [ MAX_PATH ];
 
 									if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
@@ -832,7 +830,7 @@ void gui::draw( ) {
 										LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame\\configs" ) ).data( ), nullptr );
 									}
 
-									options::save( options::vars, std::string( appdata ) + _( "\\sesame\\configs\\" ) + std::wstring_convert < std::codecvt_utf8 < wchar_t > >( ).to_bytes( selected_config ) + _( ".xml" ) );
+									options::save( options::vars, std::string( appdata ) + _( "\\sesame\\configs\\" ) + selected_config + _( ".xml" ) );
 
 									gui_mutex.lock ( );
 									load_cfg_list ( );
@@ -841,7 +839,7 @@ void gui::draw( ) {
 									csgo::i::engine->client_cmd_unrestricted( _( "play ui\\buttonclick" ) );
 								}
 
-								if ( sesui::button( _( L"Load" ) ) ) {
+								if ( sesui::button( _( "Load" ) ) ) {
 									char appdata [ MAX_PATH ];
 
 									if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
@@ -849,12 +847,12 @@ void gui::draw( ) {
 										LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame\\configs" ) ).data( ), nullptr );
 									}
 
-									options::load( options::vars, std::string( appdata ) + _( "\\sesame\\configs\\" ) + std::wstring_convert < std::codecvt_utf8 < wchar_t > >( ).to_bytes( selected_config ) + _( ".xml" ) );
+									options::load( options::vars, std::string( appdata ) + _( "\\sesame\\configs\\" ) + selected_config + _( ".xml" ) );
 
 									csgo::i::engine->client_cmd_unrestricted( _( "play ui\\buttonclick" ) );
 								}
 
-								if ( sesui::button( _( L"Delete" ) ) ) {
+								if ( sesui::button( _( "Delete" ) ) ) {
 									char appdata [ MAX_PATH ];
 
 									if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
@@ -862,7 +860,7 @@ void gui::draw( ) {
 										LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame\\configs" ) ).data( ), nullptr );
 									}
 
-									std::remove( ( std::string( appdata ) + _( "\\sesame\\configs\\" ) + std::wstring_convert < std::codecvt_utf8 < wchar_t > >( ).to_bytes( selected_config ) + _( ".xml" ) ).c_str( ) );
+									std::remove( ( std::string( appdata ) + _( "\\sesame\\configs\\" ) + selected_config + _( ".xml" ) ).c_str( ) );
 
 									gui_mutex.lock ( );
 									load_cfg_list ( );
@@ -871,33 +869,33 @@ void gui::draw( ) {
 									csgo::i::engine->client_cmd_unrestricted( _( "play ui\\buttonclick" ) );
 								}
 
-								if ( sesui::button( _( L"Refresh List" ) ) ) {
+								if ( sesui::button( _( "Refresh List" ) ) ) {
 									gui_mutex.lock ( );
 									load_cfg_list( );
 									gui_mutex.unlock ( );
 									csgo::i::engine->client_cmd_unrestricted( _( "play ui\\buttonclick" ) );
 								}
 
-								sesui::textbox ( _ ( L"Config Description" ), config_description );
-								sesui::combobox ( _ ( L"Config Access" ), config_access, { _ ( L"Public" ) , _ ( L"Private" ) , _ ( L"Unlisted" ) } );
+								sesui::textbox ( _ ( "Config Description" ), config_description );
+								sesui::combobox ( _ ( "Config Access" ), config_access, { _ ( "Public" ) , _ ( "Private" ) , _ ( "Unlisted" ) } );
 
-								if ( sesui::button ( _ ( L"Upload To Cloud" ) ) )
+								if ( sesui::button ( _ ( "Upload To Cloud" ) ) )
 									upload_to_cloud = true;
 
 								gui::end_group( );
 							}
 
-							if ( gui::begin_group ( L"Cloud Config Actions", sesui::rect ( 0.5f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								sesui::textbox ( _ ( L"Search By User" ), config_user );
+							if ( gui::begin_group ( "Cloud Config Actions", sesui::rect ( 0.5f, 0.5f, 0.5f, 0.5f ), sesui::rect ( 0.0f, sesui::style.spacing, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
+								sesui::textbox ( _ ( "Search By User" ), config_user );
 
-								if ( sesui::button ( _ ( L"My Configs" ) ) )
+								if ( sesui::button ( _ ( "My Configs" ) ) )
 									config_user = g_username;							
 
 								gui_mutex.lock ( );
-								sesui::textbox ( _ ( L"Config Code" ), config_code );
+								sesui::textbox ( _ ( "Config Code" ), config_code );
 								gui_mutex.unlock ( );
 
-								if ( sesui::button ( _ ( L"Download Config" ) ) ) {
+								if ( sesui::button ( _ ( "Download Config" ) ) ) {
 									gui_mutex.lock ( );
 									download_config_code = true;
 									gui_mutex.unlock ( );
@@ -927,7 +925,7 @@ void gui::watermark::draw( ) {
 }
 
 void gui::keybinds::draw( ) {
-	std::vector< std::wstring > entries {
+	std::vector< std::string > entries {
 
 	};
 
@@ -940,14 +938,14 @@ void gui::keybinds::draw( ) {
 		return { options::vars [ key ].val.i, options::vars [ key + _( "_mode" ) ].val.i };
 	};
 
-	auto add_key_entry = [ & ] ( const keybind_t& keybind, std::wstring key ) {
+	auto add_key_entry = [ & ] ( const keybind_t& keybind, std::string key ) {
 		if ( !utils::keybind_active( keybind.key, keybind.mode ) )
 			return;
 
 		switch ( keybind.mode ) {
-			case 0: entries.push_back( _( L"[HOLD] " ) + key ); break;
-			case 1: entries.push_back( _( L"[TOGGLE] " ) + key ); break;
-			case 2: entries.push_back( _( L"[ALWAYS] " ) + key ); break;
+			case 0: entries.push_back( _( "[HOLD] " ) + key ); break;
+			case 1: entries.push_back( _( "[TOGGLE] " ) + key ); break;
+			case 2: entries.push_back( _( "[ALWAYS] " ) + key ); break;
 		}
 	};
 
@@ -972,33 +970,33 @@ void gui::keybinds::draw( ) {
 
 	if ( csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
 		if ( triggerbot && assistance_type == 1 )
-			add_key_entry( triggerbot_key, _( L"Trigger Bot" ) );
+			add_key_entry( triggerbot_key, _( "Trigger Bot" ) );
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.safe_point )
-			add_key_entry( safe_point_key, _( L"Safe Point" ) );
+			add_key_entry( safe_point_key, _( "Safe Point" ) );
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.dt_enabled )
-			add_key_entry( doubletap_key, _( L"Double Tap (" ) + std::to_wstring( static_cast< int > ( features::ragebot::active_config.max_dt_ticks ) ) + _( L" ticks)" ) );
+			add_key_entry( doubletap_key, _( "Double Tap (" ) + std::to_string( static_cast< int > ( features::ragebot::active_config.max_dt_ticks ) ) + _( " ticks)" ) );
 		if ( features::antiaim::antiaiming )
-			add_key_entry( slow_walk_key, _( L"Slow Walk" ) );
+			add_key_entry( slow_walk_key, _( "Slow Walk" ) );
 		if ( fakeduck )
-			add_key_entry( fakeduck_key, _( L"Fake Duck" ) );
+			add_key_entry( fakeduck_key, _( "Fake Duck" ) );
 		if ( features::antiaim::antiaiming )
-			add_key_entry( inverter_key, _( L"Antiaim Inverter" ) );
+			add_key_entry( inverter_key, _( "Antiaim Inverter" ) );
 		if ( blockbot )
-			add_key_entry( blockbot_key, _( L"Block Bot" ) );
+			add_key_entry( blockbot_key, _( "Block Bot" ) );
 		if ( third_person )
-			add_key_entry( thirdperson_key, _( L"Third-Person" ) );
+			add_key_entry( thirdperson_key, _( "Third-Person" ) );
 
 		if ( features::antiaim::antiaiming ) {
 			switch ( features::antiaim::side ) {
 				case -1: break;
-				case 0: entries.push_back( _( L"[TOGGLE] Manual Antiaim (Back)" ) ); break;
-				case 1: entries.push_back( _( L"[TOGGLE] Manual Antiaim (Left)" ) ); break;
-				case 2: entries.push_back( _( L"[TOGGLE] Manual Antiaim (Right)" ) ); break;
+				case 0: entries.push_back( _( "[TOGGLE] Manual Antiaim (Back)" ) ); break;
+				case 1: entries.push_back( _( "[TOGGLE] Manual Antiaim (Left)" ) ); break;
+				case 2: entries.push_back( _( "[TOGGLE] Manual Antiaim (Right)" ) ); break;
 			}
 		}
 	}
 
-	if ( sesui::begin_window( _( L"Keybinds" ), sesui::rect( 100, 100, 300, 75 ), keybind_list, sesui::window_flags::no_resize | sesui::window_flags::no_closebutton | ( opened ? sesui::window_flags::none : sesui::window_flags::no_move ) ) ) {
+	if ( sesui::begin_window( _( "Keybinds" ), sesui::rect( 100, 100, 300, 75 ), keybind_list, sesui::window_flags::no_resize | sesui::window_flags::no_closebutton | ( opened ? sesui::window_flags::none : sesui::window_flags::no_move ) ) ) {
 		sesui::style.slider_size.x = 300.0f - sesui::style.initial_offset.x * 2.0f;
 		sesui::style.button_size.x = 300.0f - sesui::style.initial_offset.x * 2.0f;
 		sesui::style.same_line_offset = 300.0f - sesui::style.initial_offset.x * 2.0f - sesui::style.inline_button_size.x;
@@ -1010,6 +1008,6 @@ void gui::keybinds::draw( ) {
 
 		sesui::end_window( );
 
-		sesui::globals::window_ctx [ _( L"Keybinds" ) ].bounds.h = sesui::style.button_size.y * entries.size( ) + sesui::style.initial_offset.y * 4.0f;
+		sesui::globals::window_ctx [ _( "Keybinds" ) ].bounds.h = sesui::style.button_size.y * entries.size( ) + sesui::style.initial_offset.y * 4.0f;
 	}
 }

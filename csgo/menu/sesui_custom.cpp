@@ -12,16 +12,15 @@ bool disabled_input_for_subtab_click = false;
 
 bool sesui::custom::tab_open = false;
 float sesui::custom::tab_open_timer = 0.0f;
-sesui::font sesui::custom::tab_font = sesui::font( L"sesame_icons", 26, 400, false );
+sesui::font sesui::custom::tab_font = sesui::font( "sesame_icons", 26, 400, false );
 
-bool sesui::custom::begin_group( const ses_string& name, const rect& fraction, const rect& extra ) {
+bool sesui::custom::begin_group( std::string_view name, const rect& fraction, const rect& extra ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
 		throw "Current window context not valid.";
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data() );
 	const auto& id = parts.second;
 
 	window->second.cur_group = parts.first + id;
@@ -58,8 +57,8 @@ bool sesui::custom::begin_group( const ses_string& name, const rect& fraction, c
 	draw_list.add_rect( window_rect, style.window_foreground, true );
 
 	vec2 text_size;
-	draw_list.get_text_size( style.control_font, title, text_size );
-	draw_list.add_text( vec2( bounds.x + scale_dpi( bounds.w ) * 0.5f - text_size.x * 0.5f, bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, title, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
+	draw_list.get_text_size( style.control_font, parts.first, text_size );
+	draw_list.add_text( vec2( bounds.x + scale_dpi( bounds.w ) * 0.5f - text_size.x * 0.5f, bounds.y + scale_dpi( titlebar_rect.h - 6.0f ) * 0.5f - text_size.y * 0.5f ), style.control_font, parts.first, true, color( 0.78f, 0.78f, 0.78f, 1.0f ) );
 
 	//window->second.cursor_stack.back ( ).x += window->second.main_area.w * fraction.w + style.spacing;
 	//window->second.last_cursor_offset = window->second.main_area.h * fraction.h + style.spacing;
@@ -102,7 +101,7 @@ void sesui::custom::end_group( ) {
 		throw "Current window context not valid.";
 
 	window->second.group_ctx [ window->second.cur_group ].calc_height = unscale_dpi( window->second.cursor_stack.at( window->second.cursor_stack.size( ) - 1 ).y - window->second.cursor_stack.at( window->second.cursor_stack.size( ) - 2 ).y );
-	window->second.cur_group = L"";
+	window->second.cur_group = "";
 	window->second.cursor_stack.pop_back( );
 	window->second.cursor_stack.pop_back( );
 
@@ -120,7 +119,7 @@ bool sesui::custom::begin_subtabs( int count ) {
 	return true;
 }
 
-void sesui::custom::subtab( const ses_string& name, const ses_string& desc, const rect& fraction, const rect& extra, int& selected ) {
+void sesui::custom::subtab( std::string_view name, std::string_view desc, const rect& fraction, const rect& extra, int& selected ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -163,7 +162,7 @@ void sesui::custom::subtab( const ses_string& name, const ses_string& desc, cons
 	draw_list.add_rect( desc_bounds, style.window_node_desc, true );
 
 	vec2 node_desc_text_size;
-	draw_list.get_text_size( style.control_font, desc, node_desc_text_size );
+	draw_list.get_text_size( style.control_font, desc.data(), node_desc_text_size );
 
 	draw_list.add_text( vec2( desc_bounds.x + scale_dpi( style.padding ), desc_bounds.y + scale_dpi( desc_bounds.h ) * 0.5f - node_desc_text_size.y * 0.5f ), style.control_font, desc, false, style.control_text );
 
@@ -196,8 +195,8 @@ bool sesui::custom::begin_tabs( int count, float width ) {
 	const auto watermark_rect = rect( window_rect.x + scale_dpi( titlebar_rect.h ), window_rect.y + scale_dpi( window_rect.h - 20.0f ), window_rect.w - scale_dpi( titlebar_rect.h ), 20.0f );
 	draw_list.add_rect( watermark_rect, style.window_foreground, true, true );
 	vec2 watermark_text_size;
-	draw_list.get_text_size( style.control_font, _( L"Sesame " SESAME_VERSION ), watermark_text_size );
-	draw_list.add_text( vec2( watermark_rect.x + scale_dpi( 6.0f ), watermark_rect.y + scale_dpi( watermark_rect.h * 0.5f - watermark_text_size.y * 0.5f ) ), style.control_font, _( L"Sesame " SESAME_VERSION ), false, style.control_text, true );
+	draw_list.get_text_size( style.control_font, _( "Sesame " SESAME_VERSION ), watermark_text_size );
+	draw_list.add_text( vec2( watermark_rect.x + scale_dpi( 6.0f ), watermark_rect.y + scale_dpi( watermark_rect.h * 0.5f - watermark_text_size.y * 0.5f ) ), style.control_font, _( "Sesame " SESAME_VERSION ), false, style.control_text, true );
 
 	/* dim menu background */
 	if ( tab_open_timer )
@@ -218,7 +217,7 @@ bool sesui::custom::begin_tabs( int count, float width ) {
 	return true;
 }
 
-void sesui::custom::tab( const ses_string& icon, const ses_string& name, int& selected ) {
+void sesui::custom::tab( std::string_view icon, std::string_view name, int& selected ) {
 	const auto window = globals::window_ctx.find( globals::cur_window );
 
 	if ( window == globals::window_ctx.end( ) )
@@ -231,12 +230,11 @@ void sesui::custom::tab( const ses_string& icon, const ses_string& name, int& se
 	const auto tab_pos = window_rect.y + scale_dpi( tab_dim.y * window->second.cur_tab_index );
 	const auto text_pos = tab_pos + scale_dpi( tab_dim.y ) / 2.0f;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data( ) );
 	const auto& id = parts.second;
 
 	vec2 text_size;
-	draw_list.get_text_size( style.tab_font, title, text_size );
+	draw_list.get_text_size( style.tab_font, parts.first, text_size );
 
 	if ( input::mouse_in_region( rect( window_rect.x, tab_pos, tab_dim.x, tab_dim.y ), true ) && input::key_state [ VK_LBUTTON ] && !input::old_key_state [ VK_LBUTTON ] ) {
 		selected = window->second.cur_tab_index;
@@ -257,10 +255,10 @@ void sesui::custom::tab( const ses_string& icon, const ses_string& name, int& se
 			window->second.selected_tab_offset -= delta * style.animation_speed * 3.0f * draw_list.get_frametime( );
 	}
 
-	draw_list.add_text( vec2( window_rect.x + scale_dpi( titlebar_rect.h + 6.0f ), text_pos - text_size.y / 2.0f ), style.tab_font, title, true, style.control_text, true );
+	draw_list.add_text( vec2( window_rect.x + scale_dpi( titlebar_rect.h + 6.0f ), text_pos - text_size.y / 2.0f ), style.tab_font, parts.first, true, style.control_text, true );
 
 	vec2 icon_text_size;
-	draw_list.get_text_size( tab_font, icon, icon_text_size );
+	draw_list.get_text_size( tab_font, icon.data(), icon_text_size );
 	draw_list.add_text( vec2( window_rect.x + scale_dpi( titlebar_rect.h * 0.5f ) - icon_text_size.x * 0.5f, text_pos - icon_text_size.y / 2.0f ), tab_font, icon, true, style.control_text, true );
 
 	window->second.cur_tab_index++;
@@ -291,20 +289,19 @@ void sesui::custom::end_tabs( ) {
 	window->second.tab_count = 0;
 }
 
-bool sesui::custom::begin_window( const ses_string& name, const rect& bounds, bool& opened, uint32_t flags ) {
+bool sesui::custom::begin_window( std::string_view name, const rect& bounds, bool& opened, uint32_t flags ) {
 	sesui::draw_list.create_font( tab_font, globals::dpi != globals::last_dpi );
 
 	if ( !opened )
 		return false;
 
-	const auto parts = split( name.get( ) );
-	const auto title = ses_string( parts.first.data( ) );
+	const auto parts = split( name.data( ) );
 	const auto& id = parts.second;
 
 	/* set current window context */
 	globals::cur_window = parts.first + id;
 
-	auto window_entry = globals::window_ctx.find( title.get( ) );
+	auto window_entry = globals::window_ctx.find( parts.first );
 
 	if ( window_entry == globals::window_ctx.end( ) ) {
 		int top_layer = -1;
@@ -334,7 +331,7 @@ bool sesui::custom::begin_window( const ses_string& name, const rect& bounds, bo
 	if ( window_entry == globals::window_ctx.end( ) )
 		throw "Current window context not valid.";
 
-	window_entry->second.cur_group = L"";
+	window_entry->second.cur_group = "";
 
 	auto titlebar_rect = rect( window_entry->second.bounds.x, window_entry->second.bounds.y, window_entry->second.bounds.w, window_entry->second.bounds.h * style.titlebar_height );
 
@@ -399,8 +396,8 @@ bool sesui::custom::begin_window( const ses_string& name, const rect& bounds, bo
 
 		/* menu icon */
 		vec2 icon_text_size;
-		draw_list.get_text_size( tab_font, _( L"G" ), icon_text_size );
-		draw_list.add_text( vec2( titlebar_rect.x + scale_dpi( titlebar_rect.h ) * 0.5f - icon_text_size.x * 0.5f, titlebar_rect.y + scale_dpi( titlebar_rect.h ) * 0.5f - icon_text_size.y * 0.5f ), tab_font, _( L"G" ), true, style.control_text );
+		draw_list.get_text_size( tab_font, _( "G" ), icon_text_size );
+		draw_list.add_text( vec2( titlebar_rect.x + scale_dpi( titlebar_rect.h ) * 0.5f - icon_text_size.x * 0.5f, titlebar_rect.y + scale_dpi( titlebar_rect.h ) * 0.5f - icon_text_size.y * 0.5f ), tab_font, _( "G" ), true, style.control_text );
 	}
 	else {
 		/* back arrow */
@@ -500,5 +497,5 @@ void sesui::custom::end_window( ) {
 	if ( !window_entry->second.cursor_stack.empty( ) )
 		throw "Cursor stack was not empty at end of frame. Did you forget to call sesui::end_window or sesui::end_group?";
 
-	globals::cur_window = L"";
+	globals::cur_window = "";
 }

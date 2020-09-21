@@ -189,6 +189,39 @@ void anims::interpolate( player_t* ent, bool should_interp ) {
     }
 }
 
+float anims::calc_feet_cycle ( player_t* ent ) {
+	float feet_cycle_rate = 0.0f;
+
+	if ( ent->vel ( ).length_2d ( ) > 0.0f ) {
+		//    get the sequence used in the calc
+		char dest [ 64 ];
+		sprintf_s ( dest, "move_%s", ent->animstate ( )->get_weapon_move_animation ( ) );
+
+		int seq = ent->lookup_sequence ( dest );
+		if ( seq == -1 ) {
+			char movestr [ 4 ] = { 'm', 'o', 'v', 'e' };
+			seq = ent->lookup_sequence ( movestr );
+		}
+
+		//    cycle rate 
+		float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
+
+		float seqmovedist = ent->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( uintptr_t ( ent ) + 0x294C ), seq );
+		seqmovedist *= 1.0f / ( 1.0f / seqcyclerate );
+
+		if ( seqmovedist <= 0.001f )
+			seqmovedist = 0.001f;
+
+		float speed_multiplier = ent->vel ( ).length_2d ( ) / seqmovedist;
+		feet_cycle_rate = ( 1.0f - ( ent->animstate ( )->m_ground_fraction * 0.15f ) ) * ( speed_multiplier * seqcyclerate );
+	}
+
+	float feetcycle_playback_rate = ent->animstate()->m_last_clientside_anim_update_time_delta * feet_cycle_rate;
+	float accurate_feet_cycle = ent->layers ( ) [ 6 ].m_cycle - feetcycle_playback_rate;
+
+	return accurate_feet_cycle;
+}
+
 void anims::calc_local_exclusive( float& ground_fraction_out, float& air_time_out ) {
     constexpr auto CS_PLAYER_SPEED_DUCK_MODIFIER = 0.340f;
     constexpr auto CS_PLAYER_SPEED_WALK_MODIFIER = 0.520f;
@@ -243,6 +276,11 @@ void anims::calc_animlayers( player_t* ent ) {
 
     if ( !state || !layers )
         return;
+
+	if ( ent == g::local ) {
+		//calc_feet_cycle ( ent );
+		//dbg_print ( "feet_cycle: %.3f\n", calc_feet_cycle ( ent ) );
+	}
 
     layers [ 12 ].m_weight = 0.0f;
 }
@@ -530,7 +568,11 @@ void anims::animate_player( player_t* ent ) {
         if ( !frames [ ent->idx( ) ].empty( ) )
             frames [ ent->idx( ) ].clear( );
 
+		std::array< animlayer_t, 13> backup_layers;
+		memcpy ( backup_layers.data(), ent->layers(), sizeof( backup_layers ) );
         update( ent );
+		memcpy ( ent->layers ( ), backup_layers.data ( ), sizeof ( backup_layers ) );
+
         calc_poses( ent );
 
         store_frame( ent, true );
