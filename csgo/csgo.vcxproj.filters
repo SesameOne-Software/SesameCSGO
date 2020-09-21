@@ -467,6 +467,15 @@
     <ClInclude Include="fmt\ranges.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="stb\stb_rect_pack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stb\stb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\font.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -665,6 +674,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="fmt\os.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\font.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
