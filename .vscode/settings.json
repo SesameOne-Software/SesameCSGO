@@ -70,6 +70,8 @@
         "stack": "cpp",
         "optional": "cpp",
         "atomic": "cpp",
-        "compare": "cpp"
+        "compare": "cpp",
+        "cinttypes": "cpp",
+        "clocale": "cpp"
     }
 }
