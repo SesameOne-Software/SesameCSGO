@@ -49,17 +49,26 @@ void hooks::init( ) {
 	gui::init( );
 	erase::erase_func( gui::init );
 
-	/* initialize resources we need from memory */
-	unsigned long font_count = 0;
-	// ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
-	LI_FN( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
-	LI_FN( AddFontMemResourceEx ) ( resources::sesame_icons_font, sizeof resources::sesame_icons_font, nullptr, &font_count );
-
 	/* create fonts */
-	render::create_font( ( void** )&features::esp::dbg_font, _( L"sesame_ui" ), N( 12 ), false );
-	render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 15 ), false );
-	render::create_font( ( void** )&features::esp::indicator_font, _( L"sesame_ui" ), N( 32 ), false );
-	render::create_font( ( void** )&features::esp::watermark_font, _( L"sesame_ui" ), N( 18 ), false );
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 12.0f ) )
+		features::esp::dbg_font = font.value ( );
+	else
+		dbg_print ( _ ( "Failed to create font.\n" ) );
+
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 15.0f ) )
+		features::esp::esp_font = font.value ( );
+	else
+		dbg_print ( _ ( "Failed to create font.\n" ) );
+
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 32.0f ) )
+		features::esp::indicator_font = font.value ( );
+	else
+		dbg_print ( _ ( "Failed to create font.\n" ) );
+
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 18.0f ) )
+		features::esp::watermark_font = font.value ( );
+	else
+		dbg_print ( _ ( "Failed to create font.\n" ) );
 
 	/* load default config */
 	//menu::load_default( );

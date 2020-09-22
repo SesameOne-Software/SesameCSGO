@@ -7,6 +7,8 @@
 
 #include "../menu/sesui_custom.hpp"
 
+#include "../renderer/font.hpp"
+
 decltype( &hooks::reset ) hooks::old::reset = nullptr;
 
 long __fastcall hooks::reset( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentation_params ) {
@@ -31,6 +33,8 @@ long __fastcall hooks::reset( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETE
 		sesui::style.tab_font.data = nullptr;
 	}
 
+	truetype::end ( );
+
 	auto hr = old::reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
@@ -38,6 +42,8 @@ long __fastcall hooks::reset( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETE
 		render::create_font( ( void** )&features::esp::esp_font, _( L"sesame_ui" ), N( 15 ), false );
 		render::create_font( ( void** )&features::esp::indicator_font, _( L"sesame_ui" ), N( 32 ), false );
 		render::create_font( ( void** )&features::esp::watermark_font, _( L"sesame_ui" ), N( 18 ), false );
+		
+		truetype::begin ( );
 
 		js::reset_fonts( );
 	}

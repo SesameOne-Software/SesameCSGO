@@ -13,6 +13,8 @@
 #include "../features/ragebot.hpp"
 #include "../menu/options.hpp"
 
+#include "../renderer/font.hpp"
+
 decltype( &hooks::end_scene ) hooks::old::end_scene = nullptr;
 
 long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
@@ -59,6 +61,8 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	device->SetRenderState( D3DRS_DESTBLENDALPHA, D3DBLEND_ONE );
 	device->SetRenderState( D3DRS_SRGBWRITEENABLE, false );
 	device->SetRenderState( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
+	
+	truetype::begin ( );
 
 	security_handler::update( );
 
@@ -117,6 +121,8 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	device->SetVertexDeclaration( vertex_decleration );
 	device->SetVertexShader( vertex_shader );
 	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, rs_anti_alias );
+
+	truetype::end ( );
 
 	return old::end_scene( REG_OUT, device );
 }

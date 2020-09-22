@@ -1,6 +1,7 @@
 #include "d3d9.hpp"
 #include "../sdk/sdk.hpp"
 #include "../security/security_handler.hpp"
+#include "font.hpp"
 
 struct vtx_t {
 	float x, y, z, rhw;

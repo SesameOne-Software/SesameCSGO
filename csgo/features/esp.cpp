@@ -7,10 +7,10 @@
 #include "autowall.hpp"
 #include <locale>
 
-ID3DXFont* features::esp::indicator_font = nullptr;
-ID3DXFont* features::esp::watermark_font = nullptr;
-ID3DXFont* features::esp::esp_font = nullptr;
-ID3DXFont* features::esp::dbg_font = nullptr;
+truetype::font features::esp::indicator_font;
+truetype::font features::esp::watermark_font;
+truetype::font features::esp::esp_font;
+truetype::font features::esp::dbg_font;
 float box_alpha = 0.0f;
 
 std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
