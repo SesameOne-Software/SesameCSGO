@@ -268,18 +268,16 @@ void features::offscreen_esp::draw( ) {
 						if ( fraction >= 0.0f ) {
 							if ( bomb_timer ) {
 								const auto defuse_fraction = ( as_bomb->defuse_countdown( ) - csgo::i::globals->m_curtime ) / as_bomb->defuse_length( );
-
-								wchar_t time_left_str [ 64 ] { '\0' };
-								swprintf_s( time_left_str, _( L"%.2f" ), timer );
+								const auto time_left = fmt::format ( _("{:.2f} seconds"), timer );
 
 								render::rectangle( 0, 1, w * fraction, 4, D3DCOLOR_RGBA( 0, 255, 0, 255 ) );
 
 								if ( reinterpret_cast< player_t* >( as_bomb->get_defuser( ) )->valid( ) )
 									render::rectangle( 0, 5, w * defuse_fraction, 4, D3DCOLOR_RGBA( 84, 195, 255, 255 ) );
 
-								render::dim text_dim;
-								render::text_size( features::esp::esp_font, time_left_str, text_dim );
-								render::text( w / 2 - text_dim.w / 2, 65, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::esp_font, time_left_str, true );
+								float text_dim_x, text_dim_y;
+								features::esp::esp_font.text_size ( time_left, text_dim_x, text_dim_y );
+								features::esp::esp_font .draw_text( w / 2 - text_dim_x / 2, 65, time_left, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) ,truetype::text_flags_t::text_flags_outline);
 							}
 
 							if ( bomb_esp ) {
@@ -303,23 +301,25 @@ void features::offscreen_esp::draw( ) {
 
 										calc_pos = center + csgo::angle_vec( top_ang ) * mag1;
 
-										render::dim text_dim;
-										render::text_size( features::esp::indicator_font, _( L"!" ), text_dim );
-										render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-										render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-										render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-										render::text( calc_pos.x - text_dim.w / 2.0f, calc_pos.y - text_dim.h, D3DCOLOR_RGBA( 255, 0, 0, 255 ), features::esp::indicator_font, _( L"!" ), true );
+										float text_dim_x, text_dim_y;
+										features::esp::indicator_font.text_size ( _( "!" ), text_dim_x, text_dim_y );
+
+										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
+										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
+										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
+										features::esp::indicator_font.draw_text ( calc_pos.x - text_dim_x / 2.0f, calc_pos.y - text_dim_y, _( "!" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), truetype::text_flags_t::text_flags_outline );
 									}
 								}
 								else {
 									calc_pos = bomb_screen;
 
-									render::dim text_dim;
-									render::text_size( features::esp::indicator_font, _( L"!" ), text_dim );
-									render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-									render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-									render::circle( calc_pos.x, calc_pos.y - text_dim.h / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-									render::text( calc_pos.x - text_dim.w / 2.0f, calc_pos.y - text_dim.h, D3DCOLOR_RGBA( 255, 0, 0, 255 ), features::esp::indicator_font, _( L"!" ), true );
+									float text_dim_x, text_dim_y;
+									features::esp::indicator_font.text_size ( _ ( "!" ), text_dim_x, text_dim_y );
+									
+									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
+									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
+									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
+									features::esp::indicator_font.draw_text ( calc_pos.x - text_dim_x / 2.0f, calc_pos.y - text_dim_y, _( "!" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), truetype::text_flags_t::text_flags_outline );
 								}
 							}
 						}

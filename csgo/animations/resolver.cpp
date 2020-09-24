@@ -41,7 +41,7 @@ struct cached_resolve_t {
 
 struct impact_rec_t {
 	vec3_t m_src, m_dst;
-	std::wstring m_msg;
+	std::string m_msg;
 	float m_time;
 	bool m_hurt;
 	uint32_t m_clr;
@@ -282,14 +282,14 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 	};
 
 	if ( rdata::non_player_impacts != vec3_t( 0.0f, 0.0f, 0.0f ) ) {
-		impact_recs.push_back( impact_rec_t { g::local->eyes( ), rdata::non_player_impacts, _( L"" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
+		impact_recs.push_back( impact_rec_t { g::local->eyes( ), rdata::non_player_impacts, _( "" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 		rdata::non_player_impacts = vec3_t( 0.0f, 0.0f, 0.0f );
 	}
 
 	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
 		if ( rdata::impact_dmg [ pl_idx ] <= 0.0f && !g::cvars::weapon_accuracy_nospread->get_bool() ) {
 			features::ragebot::get_misses( pl_idx ).spread++;
-			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( L"spread ( " ) + std::to_wstring( features::ragebot::get_misses( pl_idx ).spread ) + _( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
+			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( "spread ( " ) + std::to_string( features::ragebot::get_misses( pl_idx ).spread ) + _( " )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
 			if ( logs [ 1 ] ) {
 				print_console( sesui::color( 0.85f, 0.31f, 0.83f, 1.0f ), _( "[ sesame ] " ) );
@@ -298,7 +298,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		}
 		else {
 			features::ragebot::get_misses( pl_idx ).bad_resolve++;
-			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( L"resolve ( " ) + std::to_wstring( features::ragebot::get_misses( pl_idx ).bad_resolve ) + _( L" )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
+			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( "resolve ( " ) + std::to_string( features::ragebot::get_misses( pl_idx ).bad_resolve ) + _( " )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
 			/* missed the cached resolve? don't shoot at it again until we have it fixed */
 			fix_cached_resolves( pl_idx );
@@ -329,7 +329,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		else
 			std::memcpy( &hit_matrix_rec.back( ).m_bones, features::ragebot::get_lag_rec( pl_idx ).m_bones3, sizeof matrix3x4_t * 128 );
 
-		impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), features::ragebot::get_target_pos( pl_idx ), std::to_wstring( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
+		impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), features::ragebot::get_target_pos( pl_idx ), std::to_string( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
 		player_info_t pl_info;
 		csgo::i::engine->get_player_info( pl_idx, &pl_info );
@@ -401,7 +401,7 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		else
 			std::memcpy( &hit_matrix_rec.back( ).m_bones, features::ragebot::get_lag_rec( pl_idx ).m_bones3, sizeof matrix3x4_t * 128 );
 
-		impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), features::ragebot::get_target_pos( pl_idx ), std::to_wstring( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
+		impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), features::ragebot::get_target_pos( pl_idx ), std::to_string( rdata::player_dmg [ pl_idx ] ), csgo::i::globals->m_curtime, true, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
 		player_info_t pl_info;
 		csgo::i::engine->get_player_info( pl_idx, &pl_info );
@@ -919,11 +919,11 @@ void animations::resolver::render_impacts( ) {
 		//	render::line ( scrn_src.x, scrn_src.y, scrn_dst.x, scrn_dst.y, impact.m_clr );
 		//}
 
-		render::dim dim;
-		render::text_size( features::esp::esp_font, impact.m_msg, dim );
+		float dim_x, dim_y;
+		features::esp::esp_font.text_size ( impact.m_msg, dim_x, dim_y );
 
 		if ( impact.m_hurt && bullet_impacts ) {
-			render::text( scrn_dst.x - dim.w / 2, scrn_dst.y - 16, D3DCOLOR_RGBA( 145, 255, 0, alpha2 ), features::esp::esp_font, impact.m_msg, true, false );
+			features::esp::esp_font.draw_text ( scrn_dst.x - dim_x / 2, scrn_dst.y - 26, impact.m_msg, D3DCOLOR_RGBA ( 145, 255, 0, alpha2 ), truetype::text_flags_t::text_flags_outline );
 			//render::cube ( impact.m_dst, 4, D3DCOLOR_RGBA ( clr_bullet_impact.r, clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
 
 			render::line( scrn_dst.x + 3, scrn_dst.y + 3, scrn_dst.x + 8, scrn_dst.y + 8, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );

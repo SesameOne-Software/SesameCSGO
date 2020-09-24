@@ -35,7 +35,7 @@ enum esp_type_t {
 	esp_type_flag
 };
 
-void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, const std::wstring_view& to_print = _( L"" ) ) {
+void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, std::string to_print = _( "" ) ) {
 	uint32_t clr1 = D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f, 0, 125 ) );
 	uint32_t clr = D3DCOLOR_RGBA( static_cast< int > ( widget_color.r * 255.0f ), static_cast< int > ( widget_color.g * 255.0f ), static_cast< int > ( widget_color.b * 255.0f ), static_cast< int > ( widget_color.a * 255.0f ) );
 
@@ -44,11 +44,11 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 
 	switch ( type ) {
 		case esp_type_bar: {
-			const auto sval = std::to_wstring( static_cast< int >( value ) );
+			const auto sval = std::to_string( static_cast< int >( value ) );
 
-			render::dim text_dim;
-			render::text_size( features::esp::dbg_font, sval, text_dim );
-
+			float text_dim_x, text_dim_y;
+			features::esp::dbg_font.text_size ( sval, text_dim_x, text_dim_y );
+			
 			const auto fraction = std::clamp( value / max, 0.0, 1.0 );
 			const auto calc_height = fraction * box.h;
 
@@ -58,7 +58,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x - cur_offset_left - 5, box.y, 5, box.h, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
+						features::esp::dbg_font .draw_text( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim_x / 2, box.y + ( box.h - calc_height ) + 1 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
 					cur_offset_left += 7;
 					break;
 				case features::esp_placement_right:
@@ -66,7 +66,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x + box.w + cur_offset_right, box.y, 5, box.h, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim.w / 2, box.y + ( box.h - calc_height ) + 1 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
+						features::esp::dbg_font.draw_text ( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim_x / 2, box.y + ( box.h - calc_height ) + 1 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
 					cur_offset_right += 7;
 					break;
 				case features::esp_placement_bottom:
@@ -74,7 +74,7 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x, box.y + box.h + cur_offset_bottom, box.w, 5, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
+						features::esp::dbg_font.draw_text ( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim_x / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
 					cur_offset_bottom += 7;
 					break;
 				case features::esp_placement_top:
@@ -82,31 +82,31 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 					render::rounded_rect( box.x, box.y - cur_offset_top - 5, box.w, 5, 2, 4, clr1, true );
 
 					if ( show_value )
-						render::text( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim.w / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim.h / 2, D3DCOLOR_RGBA( 255, 255, 255, 255 ), features::esp::dbg_font, sval, true );
+						features::esp::dbg_font.draw_text ( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim_x / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
 					cur_offset_top += 7;
 					break;
 			}
 		} break;
 		case esp_type_text: {
-			render::dim text_dim;
-			render::text_size( features::esp::esp_font, to_print, text_dim );
+			float text_dim_x, text_dim_y;
+			features::esp::esp_font.text_size ( to_print, text_dim_x, text_dim_y );
 
 			switch ( orientation ) {
 				case features::esp_placement_left:
-					render::text( box.x - cur_offset_left - text_dim.w, box.y + cur_offset_left_height, clr, features::esp::esp_font, to_print, true );
-					cur_offset_left_height += text_dim.h + 2;
+					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					cur_offset_left_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_right:
-					render::text( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, clr, features::esp::esp_font, to_print, true );
-					cur_offset_right_height += text_dim.h + 2;
+					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					cur_offset_right_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_bottom:
-					render::text( box.x + box.w / 2 - text_dim.w / 2, box.y + box.h + cur_offset_bottom, clr, features::esp::esp_font, to_print, true );
-					cur_offset_bottom += text_dim.h + 2;
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					cur_offset_bottom += text_dim_y + 2;
 					break;
 				case features::esp_placement_top:
-					render::text( box.x + box.w / 2 - text_dim.w / 2, box.y - cur_offset_top - text_dim.h, clr, features::esp::esp_font, to_print, true );
-					cur_offset_top += text_dim.h + 2;
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					cur_offset_top += text_dim_y + 2;
 					break;
 			}
 		} break;
@@ -312,10 +312,10 @@ void features::esp::render( ) {
 						character = std::tolower( character );
 				}
 
-				esp_data [ e->idx( ) ].m_weapon_name = std::wstring( hud_name.begin( ), hud_name.end( ) );
+				esp_data [ e->idx( ) ].m_weapon_name = hud_name;
 
 				if ( e->weapon( ) && e->weapon( )->item_definition_index( ) == 64 )
-					esp_data [ e->idx( ) ].m_weapon_name = _( L"revolver" );
+					esp_data [ e->idx( ) ].m_weapon_name = _( "revolver" );
 			}
 		}
 		else {
@@ -336,13 +336,6 @@ void features::esp::render( ) {
 
 			player_info_t info;
 			csgo::i::engine->get_player_info( e->idx( ), &info );
-
-			wchar_t buf [ 36 ] { '\0' };
-			std::wstring wname = _( L"" );
-
-			// deepcode ignore InternationalStringConversion: <please specify a reason of ignoring this>
-			if ( MultiByteToWideChar( CP_UTF8, 0, info.m_name, -1, buf, 36 ) > 0 )
-				wname = buf;
 
 			if ( visuals.esp_box )
 				draw_esp_box( left, top, right - left, bottom - top, esp_data [ e->idx( ) ].m_dormant, visuals.box_color );
@@ -371,7 +364,7 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect, visuals.desync_bar_color, esp_type_bar, visuals.value_text, visuals.desync_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->desync_amount( ), 58.0 );
 
 			if ( visuals.nametag )
-				draw_esp_widget( esp_rect, visuals.name_color, esp_type_text, visuals.value_text, visuals.nametag_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, wname );
+				draw_esp_widget( esp_rect, visuals.name_color, esp_type_text, visuals.value_text, visuals.nametag_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, info.m_name );
 
 			if ( visuals.weapon_name )
 				draw_esp_widget( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx( ) ].m_weapon_name );

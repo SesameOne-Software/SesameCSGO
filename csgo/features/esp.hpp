@@ -18,7 +18,7 @@ namespace features {
 			RECT m_box { 0 };
 			float m_first_seen = 0.0f, m_last_seen = 0.0f;
 			bool m_dormant = false, m_fakeducking = false, m_fatal = false, m_reloading = false;
-			std::wstring m_weapon_name;
+			std::string m_weapon_name;
 		};
 
 		extern std::array< esp_data_t, 65 > esp_data;

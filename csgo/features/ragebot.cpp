@@ -830,11 +830,13 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 			const auto vel = g::local->vel ( );
 			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;
-			const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+			//const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+			const auto pred_eyes = g::local->eyes ( ) + vel * autostop_threshhold;
 
 			const auto ent_vel = at_target->vel ( );
 			const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( at_target ->simtime() - at_target ->old_simtime() + autostop_threshhold - csgo::ticks2time(1) );
-			const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+			//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+			const auto ent_pred_eyes = at_target->eyes ( ) + ent_vel * ( at_target->simtime ( ) - at_target->old_simtime ( ) + autostop_threshhold - csgo::ticks2time ( 1 ) );
 
 			trace_t tr;
 			csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
