@@ -73,7 +73,7 @@ IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) 
 
 	IDirect3DTexture9* texture = nullptr;
 
-	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, static_cast< int >( size + 0.5f ), 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture ) < 0 )
+	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, static_cast< int >( size + 0.5f ), 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8/*D3DFMT_L8*/, D3DPOOL_DEFAULT, &texture ) < 0 )
 		return nullptr;
 
 	D3DLOCKED_RECT rect;
@@ -87,13 +87,19 @@ IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) 
 	}
 
 	auto expanded = std::make_unique< std::uint32_t [ ] > ( bitmap_width * static_cast< int >( size + 0.5f ) * sizeof(uint32_t) );
-
+	
 	for ( int y = 0; y < static_cast< int >( size + 0.5f ); y++ ) {
-		for ( int cx = 0; cx < bitmap_width; cx++ )
-			expanded [ ( y * bitmap_width ) + cx ] = bitmap [ ( y * bitmap_width ) + cx ] ? D3DCOLOR_RGBA ( 255, 255, 255, 255 ) : D3DCOLOR_RGBA ( 0, 0, 0, 0 );
+		for ( int cx = 0; cx < bitmap_width; cx++ ) {
+			auto index = ( y * bitmap_width ) + cx;
+			auto value = ( uint32_t ) bitmap [ index ];
+			expanded [ index ] = value << 24;
+			expanded [ index ] |= 0x00FFFFFF;
+		}
 	}
-
+	
 	memcpy ( rect.pBits, expanded.get ( ), bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint32_t ) );
+
+	//memcpy ( rect.pBits, bitmap.get ( ), bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint8_t ) );
 
 	texture->UnlockRect ( 0 );
 

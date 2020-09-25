@@ -251,10 +251,10 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		sesui::slider( _( "Yaw Offset" ), options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
 		sesui::combobox( _( "Base Yaw" ), options::vars [ antiaim_config + _( "base_yaw" ) ].val.i, { _( "Relative" ), _( "Absolute" ), _( "At Target" ), _( "Auto Direction" ) } );
 		sesui::slider( _( "Auto Direction Amount" ), options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
-		sesui::slider( _( "Auto Direction Range" ), options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( "%.1f units" ) );
+		sesui::slider( _( "Auto Direction Range" ), options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( "{:.1f} units" ) );
 		sesui::slider( _( "Jitter Range" ), options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
 		sesui::slider( _( "Rotation Range" ), options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
-		sesui::slider( _( "Rotation Speed" ), options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( "%.1f Hz" ) );
+		sesui::slider( _( "Rotation Speed" ), options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( "{:.1f} Hz" ) );
 
 		gui::end_group( );
 	}
