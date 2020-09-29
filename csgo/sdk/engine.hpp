@@ -6,27 +6,26 @@
 class vec3_t;
 
 struct player_info_t {
-	std::uint64_t m_unknown;
+	uint64_t m_unknown;
 
 	union {
-		__int64 m_steam_id_64;
+		uint64_t m_steam_id_64;
 
 		struct {
-			int m_xuid_low;
-			int m_xuid_high;
+			uint32_t m_xuid_low;
+			uint32_t m_xuid_high;
 		};
 	};
 
 	char m_name [ 128 ];
-	int m_user_id;
-	char m_str_steam_id [ 20 ];
-	PAD( 16 );
-	std::uintptr_t m_steam_id;
+	uint32_t m_user_id;
+	char guid [ 33 ];
+	uint32_t m_steam_id;
 	char m_friends_name [ 128 ];
 	bool m_fake_player;
 	bool m_is_hltv;
-	std::uintptr_t m_custom_files [ 4 ];
-	std::uint8_t m_files_downloaded;
+	uint32_t m_custom_files [ 4 ];
+	uint8_t m_files_downloaded;
 };
 
 class nci_t {

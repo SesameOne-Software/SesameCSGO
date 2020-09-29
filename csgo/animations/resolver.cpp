@@ -530,6 +530,30 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 	auto freestanding_dir = animations::resolver::rdata::r_dmg [ pl->idx( ) ] >= animations::resolver::rdata::l_dmg [ pl->idx( ) ] ? desync_amount : -desync_amount;
 
+	//if (!anims::old_animlayers[pl->idx()].empty()
+	//	&& anims::old_animlayers [ pl->idx ( ) ] .size()>=3
+	//	&& fabsf( anims::old_animlayers [ pl->idx ( ) ][ 2 ][ 6 ].m_weight - anims::old_animlayers [ pl->idx ( ) ][ 1 ][ 6 ].m_weight ) <= 0.5f) {
+	//
+	//
+	//	float DeltaFirst = fabsf ( m_nResolverData->server_anim_layers [ 6 ].m_flPlaybackRate - m_nResolverData->resolver_anim_layers [ 0 ][ 6 ].m_flPlaybackRate );
+	//	float DeltaSecond = fabsf ( m_nResolverData->server_anim_layers [ 6 ].m_flPlaybackRate - m_nResolverData->resolver_anim_layers [ 1 ][ 6 ].m_flPlaybackRate );
+	//	float DeltaThird = fabsf ( m_nResolverData->server_anim_layers [ 6 ].m_flPlaybackRate - m_nResolverData->resolver_anim_layers [ 2 ][ 6 ].m_flPlaybackRate );
+	//
+	//	if ( DeltaFirst < DeltaSecond || DeltaThird <= DeltaSecond || ( DeltaSecond * 1000.0 ) )
+	//	{
+	//		if ( DeltaFirst >= DeltaThird && DeltaSecond > DeltaThird && !( DeltaThird * 1000.0 ) )
+	//		{
+	//			m_nResolverData->ResolvingWay = 1;
+	//			m_nResolverData->ResolvingMethod = 1;
+	//		}
+	//	}
+	//	else
+	//	{
+	//		m_nResolverData->ResolvingWay = 1;
+	//		m_nResolverData->ResolvingMethod = -1;
+	//	}
+	//}
+
 	if ( pl->simtime( ) != pl->old_simtime( ) ) {
 		if ( std::fabsf( csgo::i::globals->m_curtime - animations::resolver::rdata::last_vel_check [ pl->idx( ) ] ) > 0.5f ) {
 			animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] = pl->vel( ).length_2d( );
@@ -542,7 +566,15 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 	if ( pl->weapon( ) && pl->weapon( )->data( ) )
 		has_slow_walk = std::fabsf( pl->vel( ).length_2d( ) - animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] ) < 10.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] > 20.0f && pl->vel( ).length_2d( ) > 20.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] < pl->weapon( )->data( )->m_max_speed * 0.33f && pl->vel( ).length_2d( ) < pl->weapon( )->data( )->m_max_speed * 0.33f;
 
-	if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
+	if ( true ) {
+		yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		yaw2 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		yaw3 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		//yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		//yaw2 = csgo::normalize ( pl->angles ( ).y + -anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		//yaw3 = csgo::normalize ( pl->angles ( ).y );
+	}
+	else if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
 		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * ( ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
 		switch_delta = ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
 		correction_amount = switch_delta;

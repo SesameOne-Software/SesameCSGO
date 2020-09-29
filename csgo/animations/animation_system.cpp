@@ -3,6 +3,12 @@
 #include "resolver.hpp"
 #include "../features/ragebot.hpp"
 
+std::array< float, 65 > anims::desync_sign { 1.0f };
+std::array< float, 65 > anims::client_feet_playback_rate { 0.0f };
+std::array< float, 65 > anims::feet_playback_rate {0.0f };
+
+std::array< std::deque<std::array< animlayer_t, 13 >>, 65 > anims::old_animlayers;
+
 std::array< matrix3x4_t, 128 > anims::fake_matrix { };
 std::array< matrix3x4_t, 128 > anims::aim_matrix { };
 std::array< std::deque< anims::animation_frame_t >, 65 > anims::frames { {{}} };
@@ -192,34 +198,98 @@ void anims::interpolate( player_t* ent, bool should_interp ) {
 float anims::calc_feet_cycle ( player_t* ent ) {
 	float feet_cycle_rate = 0.0f;
 
-	if ( ent->vel ( ).length_2d ( ) > 0.0f ) {
-		//    get the sequence used in the calc
-		char dest [ 64 ];
-		sprintf_s ( dest, "move_%s", ent->animstate ( )->get_weapon_move_animation ( ) );
+	static auto get_max_movement_fraction = [ & ] ( ) {
+		if ( !ent->weapon ( ) || !ent->weapon ( )->data ( ) )
+			return 0.0f;
 
-		int seq = ent->lookup_sequence ( dest );
-		if ( seq == -1 ) {
-			char movestr [ 4 ] = { 'm', 'o', 'v', 'e' };
-			seq = ent->lookup_sequence ( movestr );
+		return ent->weapon ( )->data ( )->m_max_speed / 260.0f;
+	};
+
+	static auto has_accuracy = [ & ] ( ) {
+		if ( !ent->weapon ( ) || !ent->weapon ( )->data ( ) )
+			return false;
+
+		return ent->vel ( ).length_2d ( ) <= ent->weapon ( )->data ( )->m_max_speed * 0.34f;
+	};
+
+	static auto truncate_to = [ ] ( float x, int places ) {
+		const auto factor = powf ( 10.0f, places );
+		const auto value = static_cast<int> ( x * factor + 0.5f );
+		return static_cast< float >(value) / factor;
+	};
+
+	//if ( ent->vel ( ).length_2d ( ) > 0.0f ) {
+	//	//    get the sequence used in the calc
+	//	char dest [ 64 ];
+	//	sprintf_s ( dest, "move_%s", ent->animstate ( )->get_weapon_move_animation ( ) );
+	//
+	//	int seq = ent->lookup_sequence ( dest );
+	//
+	//	if ( seq == -1 ) {
+	//		char movestr [ 4 ] = { 'm', 'o', 'v', 'e' };
+	//		seq = ent->lookup_sequence ( movestr );
+	//	}
+	//
+	//	//    cycle rate 
+	//	float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
+	//	
+	//	float seqmovedist = ent->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( uintptr_t ( ent ) + 0x294C ), seq );
+	//	seqmovedist *= 1.0f / ( 1.0f / seqcyclerate );
+	//
+	//	if ( seqmovedist <= 0.001f )
+	//		seqmovedist = 0.001f;
+	//
+	//	float speed_multiplier = ent->vel ( ).length_2d ( ) / seqmovedist;
+	//	feet_cycle_rate = ( 1.0f - ( ent->animstate ( )->m_ground_fraction * 0.15f ) ) * ( speed_multiplier * seqcyclerate );
+	//}
+	
+	float feetcycle_playback_rate = csgo::ticks2time(1) * feet_cycle_rate;
+	float accurate_feet_cycle = ent->layers ( ) [ 6 ].m_playback_rate - feetcycle_playback_rate;
+	
+	const auto movement_fraction = get_max_movement_fraction ( );
+
+	if ( !ent->vel ( ).length_2d ( ) || !movement_fraction )
+		return 0.0f;
+
+	const auto ratio = std::clamp<float> ( ent->vel ( ).length_2d ( ) / ( 260.0f * movement_fraction ), 0.0f, 1.0f );
+
+	if ( !ratio )
+		return 0.0f;
+
+	auto norm_ang = ent->angles ( );
+
+	csgo::clamp ( norm_ang );
+
+	auto eye_vec = csgo::angle_vec ( norm_ang );
+	auto vel_vec = ent->vel ( );
+
+	eye_vec.z = vel_vec.z = 0.0f;
+
+	eye_vec.normalize ( );
+	vel_vec.normalize ( );
+	
+	if ( !eye_vec.is_valid ( ) || !vel_vec.is_valid ( ) )
+		return 0.0f;
+
+	/* slow walking forward/back rate will range 0.014(negative desync) - 0.015(positive desync) */
+	/* slow walking left will range 0.012(positive desync) - 0.013(negative desync) */
+	/* slow walking right will range 0.012(negative desync) - 0.013(positive desync) */
+	const auto cross = eye_vec.cross_product ( vel_vec );
+	
+	if ( has_accuracy ( ) ) {
+		const auto rate = ent->layers ( ) [ 6 ].m_playback_rate / ratio;
+		
+		if ( rate > 0.011f && rate < 0.015f ) {
+			if ( fabsf ( cross.length ( ) ) < 0.33333333f )
+				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.014f ) ? -1.0f : 1.0f;
+			else if ( cross.z > 0.66666666f )
+				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.012f ) ? 1.0f : -1.0f;
+			else if ( cross.z < -0.66666666f )
+				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.012f ) ? -1.0f : 1.0f;
 		}
-
-		//    cycle rate 
-		float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
-
-		float seqmovedist = ent->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( uintptr_t ( ent ) + 0x294C ), seq );
-		seqmovedist *= 1.0f / ( 1.0f / seqcyclerate );
-
-		if ( seqmovedist <= 0.001f )
-			seqmovedist = 0.001f;
-
-		float speed_multiplier = ent->vel ( ).length_2d ( ) / seqmovedist;
-		feet_cycle_rate = ( 1.0f - ( ent->animstate ( )->m_ground_fraction * 0.15f ) ) * ( speed_multiplier * seqcyclerate );
 	}
 
-	float feetcycle_playback_rate = ent->animstate()->m_last_clientside_anim_update_time_delta * feet_cycle_rate;
-	float accurate_feet_cycle = ent->layers ( ) [ 6 ].m_cycle - feetcycle_playback_rate;
-
-	return accurate_feet_cycle;
+	return ent->layers ( ) [ 6 ].m_playback_rate / ratio;
 }
 
 void anims::calc_local_exclusive( float& ground_fraction_out, float& air_time_out ) {
@@ -277,9 +347,9 @@ void anims::calc_animlayers( player_t* ent ) {
     if ( !state || !layers )
         return;
 
-	if ( ent == g::local ) {
-		//calc_feet_cycle ( ent );
-		//dbg_print ( "feet_cycle: %.3f\n", calc_feet_cycle ( ent ) );
+	if (ent != g::local ) {
+		feet_playback_rate [ ent->idx ( ) ] = ent->layers ( ) [ 6 ].m_playback_rate;
+		client_feet_playback_rate [ ent->idx ( ) ] = calc_feet_cycle ( ent );
 	}
 
     layers [ 12 ].m_weight = 0.0f;
@@ -515,6 +585,7 @@ void anims::animate_player( player_t* ent ) {
     static std::array< vec3_t, 65 > old_velocity { vec3_t( ) };
 
     if ( !state || !animlayers || fabsf( ent->simtime( ) - last_update [ ent->idx( ) ] ) > 1.0f ) {
+		old_animlayers [ ent->idx ( ) ].clear ( );
         last_update [ ent->idx( ) ] = ent->simtime( );
         last_origin [ ent->idx( ) ] = ent->origin( );
         old_origin [ ent->idx( ) ] = ent->origin( );
@@ -556,6 +627,13 @@ void anims::animate_player( player_t* ent ) {
 
         while ( moving_choke.size( ) > 32 )
             moving_choke.pop_back( );
+
+		std::array<animlayer_t, 13> new_layers;
+		memcpy ( new_layers .data(), ent->layers ( ) , sizeof(new_layers));
+		old_animlayers [ ent->idx ( ) ].push_back ( new_layers );
+
+		while ( !old_animlayers [ ent->idx ( ) ].empty() && old_animlayers [ ent->idx ( ) ].size ( ) > 3 )
+			old_animlayers [ ent->idx ( ) ].pop_front ( );
     }
 
     last_origin [ ent->idx( ) ] = ent->origin( );
@@ -904,6 +982,9 @@ void anims::animate_local( bool copy ) {
 			g::angles = g::ucmd->m_angs;
 		}
 
+		const auto backup_curtime = csgo::i::globals->m_curtime;
+		csgo::i::globals->m_curtime = features::prediction::curtime ( );
+
 		update ( g::local );
 
 		if ( g::send_packet ) {
@@ -919,6 +1000,8 @@ void anims::animate_local( bool copy ) {
 		last_update_tick = csgo::time2ticks ( features::prediction::curtime ( ) );
 
 		animate_fake ( );
+
+		csgo::i::globals->m_curtime = backup_curtime;
 
 		//	new_tick = false;
 		//}
@@ -990,7 +1073,7 @@ void anims::run( int stage ) {
                 if ( ent == g::local )
                     return;
 
-                interpolate( ent, false );
+                //interpolate( ent, false );
                 animate_player( ent );
                 } );
         } break;
@@ -999,7 +1082,7 @@ void anims::run( int stage ) {
                 if ( ent == g::local )
                     return;
 
-                interpolate( ent, false );
+                //interpolate( ent, false );
                 } );
 
 			if ( g::local && g::local->simtime ( ) != old_simtime ) {

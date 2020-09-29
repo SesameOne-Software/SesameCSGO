@@ -713,7 +713,7 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 }
 
 void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
-	if ( !active_config.auto_slow || !( g::local->flags ( ) & 1 ) )
+	if ( !active_config.auto_slow || !( g::local->flags ( ) & 1 ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
 
 	const auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
@@ -725,15 +725,24 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 
 	if ( g::local->vel ( ).length_2d ( ) > g::local->weapon ( )->data ( )->m_max_speed * 0.34f ) {
 		auto vel_ang = csgo::vec_angle ( vec_move );
+
+		if ( !vel_ang.is_valid() )
+			return;
+
 		vel_ang.y = csgo::normalize ( vel_ang.y + 180.0f );
 
-		const auto normal = csgo::angle_vec ( vel_ang ).normalized ( );
+		auto vel_dir = csgo::angle_vec ( vel_ang );
+
+		if ( !vel_dir.is_valid ( ) )
+			return;
+
+		const auto normal = vel_dir.normalized ( );
 		const auto speed_2d = g::local->vel ( ).length_2d ( );
 
 		old_fmove = normal.x * speed_2d;
 		old_smove = normal.y * speed_2d;
 	}
-	else if ( old_fmove != 0.0f || old_smove != 0.0f ) {
+	else if ( ( old_fmove || old_smove ) && magnitude ) {
 		old_fmove = ( old_fmove / magnitude ) * move_ratio;
 		old_smove = ( old_smove / magnitude ) * move_ratio;
 	}
@@ -826,7 +835,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		const auto at_target = looking_at ( );
 
 		if ( at_target ) {
-			constexpr auto autostop_threshhold = 0.065f;
+			constexpr auto autostop_threshhold = 0.087f;
 
 			const auto vel = g::local->vel ( );
 			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;
@@ -836,7 +845,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 			const auto ent_vel = at_target->vel ( );
 			const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( at_target ->simtime() - at_target ->old_simtime() + autostop_threshhold - csgo::ticks2time(1) );
 			//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
-			const auto ent_pred_eyes = at_target->eyes ( ) + ent_vel * ( at_target->simtime ( ) - at_target->old_simtime ( ) + autostop_threshhold - csgo::ticks2time ( 1 ) );
+			const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset() + ent_vel * ( at_target->simtime ( ) - at_target->old_simtime ( ) + autostop_threshhold - csgo::ticks2time ( 1 ) );
 
 			trace_t tr;
 			csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
@@ -1013,8 +1022,15 @@ bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& p
 	VEC_TRANSFORM( hitbox->m_bbmax, bone_matrix [ hitbox->m_bone ], vmax );
 
 	pos_out = ( vmin + vmax ) * 0.5f;
-	rad_out = hitbox->m_radius;
-	zrad_out = fabsf( vmax.z - vmin.z + hitbox->m_radius * 2.0f ) * 0.5f;
+
+	if ( hitbox->m_radius < 0.0f ) {
+		rad_out = ( vmax - vmin ).length_2d() * 0.5f;
+		zrad_out = ( vmax - vmin ).z * 0.5f;
+	}
+	else {
+		rad_out = hitbox->m_radius;
+		zrad_out = fabsf ( vmax.z - vmin.z + hitbox->m_radius * 2.0f ) * 0.5f;
+	}
 
 	return true;
 }

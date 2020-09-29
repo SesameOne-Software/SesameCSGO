@@ -37,3 +37,4 @@ csgo/Release
 *.idb
 *.exp
 bin
+csgo/Debug

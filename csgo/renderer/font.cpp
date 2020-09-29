@@ -42,7 +42,7 @@ void truetype::font::text_size ( const std::string& string, float& x_out, float&
 IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) {
 	constexpr auto bitmap_width = 512;
 
-	auto bitmap = std::make_unique<std::uint8_t [ ]> ( bitmap_width * static_cast< int >( size + 0.5f ) );
+	auto bitmap = new uint8_t [ bitmap_width * static_cast< int >( size + 0.5f ) ] { 0 };
 
 	auto scale = stbtt_ScaleForPixelHeight ( &font_info, size );
 
@@ -59,7 +59,7 @@ IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) 
 		auto y = ascent + c_y1;
 
 		auto byteOffset = x + ( y * bitmap_width );
-		stbtt_MakeCodepointBitmap ( &font_info, bitmap.get ( ) + byteOffset, c_x2 - c_x1, c_y2 - c_y1, bitmap_width, scale, scale, string [ i ] );
+		stbtt_MakeCodepointBitmap ( &font_info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, bitmap_width, scale, scale, string [ i ] );
 
 		auto ax = 0;
 		stbtt_GetCodepointHMetrics ( &font_info, string [ i ], &ax, 0 );
@@ -73,20 +73,25 @@ IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) 
 
 	IDirect3DTexture9* texture = nullptr;
 
-	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, static_cast< int >( size + 0.5f ), 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8/*D3DFMT_L8*/, D3DPOOL_DEFAULT, &texture ) < 0 )
-		return nullptr;
-
-	D3DLOCKED_RECT rect;
-
-	if ( !texture )
-		return nullptr;
-
-	if ( texture->LockRect ( 0, &rect, nullptr, 0 ) < 0 ) {
-		texture->Release ( );
+	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, static_cast< int >( size + 0.5f ), 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8/*D3DFMT_L8*/, D3DPOOL_DEFAULT, &texture ) < 0 ) {
+		delete [ ] bitmap;
 		return nullptr;
 	}
 
-	auto expanded = std::make_unique< std::uint32_t [ ] > ( bitmap_width * static_cast< int >( size + 0.5f ) * sizeof(uint32_t) );
+	D3DLOCKED_RECT rect;
+
+	if ( !texture ) {
+		delete [ ] bitmap;
+		return nullptr;
+	}
+
+	if ( texture->LockRect ( 0, &rect, nullptr, 0 ) < 0 ) {
+		texture->Release ( );
+		delete [ ] bitmap;
+		return nullptr;
+	}
+
+	auto expanded = new uint32_t [ bitmap_width * static_cast< int >( size + 0.5f ) ] { 0 };
 	
 	for ( int y = 0; y < static_cast< int >( size + 0.5f ); y++ ) {
 		for ( int cx = 0; cx < bitmap_width; cx++ ) {
@@ -97,7 +102,10 @@ IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) 
 		}
 	}
 	
-	memcpy ( rect.pBits, expanded.get ( ), bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint32_t ) );
+	memcpy ( rect.pBits, expanded, bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint32_t ) );
+
+	delete [ ] bitmap;
+	delete [ ] expanded;
 
 	//memcpy ( rect.pBits, bitmap.get ( ), bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint8_t ) );
 

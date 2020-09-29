@@ -211,8 +211,6 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 
 	update_mats( visuals, visuals.rimlight_color );
 
-	const auto recs = lagcomp::get( e );
-
 	if ( csgo::i::mdl_render->is_forced_mat_override( ) ) {
 		//csgo::i::render_view->set_color ( 255, 255, 255 );
 		//csgo::i::render_view->set_alpha ( 255 );

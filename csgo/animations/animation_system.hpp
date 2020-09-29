@@ -25,6 +25,10 @@ namespace anims {
         void store( player_t* ent, bool anim_update );
     };
 
+	extern std::array< float, 65 > desync_sign;
+	extern std::array< float, 65 > client_feet_playback_rate;
+	extern std::array< float, 65 > feet_playback_rate;
+	extern std::array< std::deque<std::array< animlayer_t, 13 >>, 65 > old_animlayers;
     extern std::array< matrix3x4_t, 128 > fake_matrix;
     extern std::array< matrix3x4_t, 128 > aim_matrix;
     extern std::array< std::deque< animation_frame_t >, 65 > frames;

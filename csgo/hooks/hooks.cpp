@@ -1,4 +1,5 @@
-﻿#include "hooks.hpp"
+﻿#include <ShlObj.h>
+#include "hooks.hpp"
 #include "../security/security_handler.hpp"
 #include "../menu/menu.hpp"
 #include "../renderer/d3d9.hpp"
@@ -44,6 +45,8 @@
 
 #include "../menu/menu.hpp"
 
+#include "../menu/options.hpp"
+
 void hooks::init( ) {
 	/* initialize cheat config */
 	gui::init( );
@@ -55,7 +58,7 @@ void hooks::init( ) {
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 15.0f ) )
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 18.0f ) )
 		features::esp::esp_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
@@ -91,7 +94,7 @@ void hooks::init( ) {
 	const auto _draw_model_execute = vfunc< void* >( csgo::i::mdl_render, N( 21 ) );
 	const auto _do_extra_bone_processing = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
 	const auto _get_eye_angles = pattern::search( _( "client.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
-	const auto _get_bool = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
+	const auto _get_int = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
 	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
 	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
 	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).add( N( 1 ) ).deref( ).get< void* >( );
@@ -138,7 +141,7 @@ void hooks::init( ) {
 	dbg_hook( _draw_model_execute, draw_model_execute, ( void** )&old::draw_model_execute );
 	dbg_hook( _do_extra_bone_processing, do_extra_bone_processing, ( void** )&old::do_extra_bone_processing );
 	dbg_hook( _get_eye_angles, get_eye_angles, ( void** )&old::get_eye_angles );
-	dbg_hook( _get_bool, get_bool, ( void** )&old::get_bool );
+	dbg_hook( _get_int, get_int, ( void** )&old::get_int );
 	dbg_hook( _override_view, override_view, ( void** )&old::override_view );
 	dbg_hook( _is_hltv, is_hltv, ( void** )&old::is_hltv );
 	dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
@@ -157,6 +160,17 @@ void hooks::init( ) {
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 
 	event_handler = std::make_unique< c_event_handler >( );
+
+	/* load default config for testing */ {
+		char appdata [ MAX_PATH ];
+
+		if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+			LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
+			LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+		}
+
+		options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\hvh max desync.xml" ) );
+	}
 
 	old::wnd_proc = ( WNDPROC )LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( wnd_proc ) );
 

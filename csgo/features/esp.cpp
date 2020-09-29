@@ -350,8 +350,21 @@ void features::esp::render( ) {
 			sesui::rect esp_rect { static_cast< int >( left ), static_cast< int >( top ), static_cast< int >( right - left ), static_cast< int >( bottom - top ) };
 
 			//if ( e == g::local ) {
-			//	render::text ( 20, 20, 0xffffffff, esp_font, _ ( L"local.layer[6].cycle: " ) + std::to_wstring ( latest_animlayers [ 3 ].m_cycle ), false, true );
-			//	render::text ( 20, 35, 0xffffffff, esp_font, _(L"local.layer[6].cycle: ") + std::to_wstring ( latest_animlayers [ 3 ].m_weight ), false, true );
+			//	int y = 20;
+			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_cycle ) )
+			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].cycle: " ) + std::to_string ( latest_animlayers [ 6 ].m_cycle ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//	y += 20;
+			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_weight ) )
+			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].weight: " ) + std::to_string ( latest_animlayers [ 6 ].m_weight ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//	y += 20;
+			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_sequence ) )
+			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].sequence: " ) + std::to_string ( latest_animlayers [ 6 ].m_sequence ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//	y += 20;
+			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_weight_delta_rate ) )
+			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].weight_delta_rate: " ) + std::to_string ( latest_animlayers [ 6 ].m_weight_delta_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//	y += 20;
+			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_playback_rate ) )
+			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].playback_rate: " ) + std::to_string ( latest_animlayers [ 6 ].m_playback_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
 			//}
 
 			if ( visuals.health_bar )
@@ -368,6 +381,9 @@ void features::esp::render( ) {
 
 			if ( visuals.weapon_name )
 				draw_esp_widget( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx( ) ].m_weapon_name );
+
+			if ( std::isfinite<float> ( anims::client_feet_playback_rate [ e->idx ( ) ] ) )
+			draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "client : " ) + std::to_string ( anims::client_feet_playback_rate [ e->idx ( ) ] ) );
 		}
 	}
 }
