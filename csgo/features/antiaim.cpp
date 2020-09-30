@@ -398,6 +398,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				old_fmove = ( old_fmove / magnitude ) * move_ratio;
 				old_smove = ( old_smove / magnitude ) * move_ratio;
 			}
+
+			ucmd->m_buttons &= ~0x20000;
 		};
 
 		if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && g::local->weapon( ) && g::local->weapon( )->data( ) ) {

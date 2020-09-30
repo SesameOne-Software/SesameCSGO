@@ -384,6 +384,11 @@ void features::esp::render( ) {
 
 			if ( std::isfinite<float> ( anims::client_feet_playback_rate [ e->idx ( ) ] ) )
 			draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "client : " ) + std::to_string ( anims::client_feet_playback_rate [ e->idx ( ) ] ) );
+			
+			const auto delta = anims::angle_diff ( csgo::normalize( e->angles ( ).y ), csgo::normalize( csgo::vec_angle ( e->vel ( ) ).y ) );
+
+			if ( std::isfinite<float> ( delta ) )
+				draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "angle_diff : " ) + std::to_string ( delta ) );
 		}
 	}
 }

@@ -209,7 +209,7 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 		if ( !ent->weapon ( ) || !ent->weapon ( )->data ( ) )
 			return false;
 
-		return ent->vel ( ).length_2d ( ) <= ent->weapon ( )->data ( )->m_max_speed * 0.34f;
+		return ent->vel ( ).length_2d ( ) <= ent->weapon ( )->data ( )->m_max_speed * 0.3333f;
 	};
 
 	static auto truncate_to = [ ] ( float x, int places ) {
@@ -218,78 +218,116 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 		return static_cast< float >(value) / factor;
 	};
 
-	//if ( ent->vel ( ).length_2d ( ) > 0.0f ) {
-	//	//    get the sequence used in the calc
-	//	char dest [ 64 ];
-	//	sprintf_s ( dest, "move_%s", ent->animstate ( )->get_weapon_move_animation ( ) );
+	if ( !ent->vel ( ).length_2d ( ) )
+		return desync_sign [ ent->idx ( ) ];
+	
+	//static std::array<float, 65> last_speed_timer { 0.0f };
+	//static std::array<float, 65> last_speed { 0.0f };
 	//
-	//	int seq = ent->lookup_sequence ( dest );
+	//if ( fabsf ( last_speed_timer [ ent->idx ( ) ] - features::prediction::curtime ( ) ) > 0.2f ) {
+	//	const auto old_speed = last_speed [ ent->idx ( ) ];
 	//
-	//	if ( seq == -1 ) {
-	//		char movestr [ 4 ] = { 'm', 'o', 'v', 'e' };
-	//		seq = ent->lookup_sequence ( movestr );
-	//	}
+	//	last_speed [ ent->idx ( ) ] = ent->vel ( ).length_2d ( );
+	//	last_speed_timer [ ent->idx ( ) ] = features::prediction::curtime ( );
 	//
-	//	//    cycle rate 
-	//	float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
-	//	
-	//	float seqmovedist = ent->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( uintptr_t ( ent ) + 0x294C ), seq );
-	//	seqmovedist *= 1.0f / ( 1.0f / seqcyclerate );
-	//
-	//	if ( seqmovedist <= 0.001f )
-	//		seqmovedist = 0.001f;
-	//
-	//	float speed_multiplier = ent->vel ( ).length_2d ( ) / seqmovedist;
-	//	feet_cycle_rate = ( 1.0f - ( ent->animstate ( )->m_ground_fraction * 0.15f ) ) * ( speed_multiplier * seqcyclerate );
+	//	if ( fabsf ( old_speed - ent->vel ( ).length_2d ( ) ) > 10.0f )
+	//		return desync_sign [ ent->idx ( ) ];
 	//}
+	//else {
+	//	return desync_sign [ ent->idx ( ) ];
+	//}
+
+	ent->animstate ( )->m_speed2d = ent->vel ( ).length_2d ( );
+
+	//    get the sequence used in the calc
+	char dest [ 64 ] { '\0' };
+	sprintf_s ( dest, "move_%s", ent->animstate ( )->get_weapon_move_animation ( ) );
+
+	int seq = ent->lookup_sequence ( dest );
+
+	if ( seq == -1 )
+		seq = ent->lookup_sequence ( _ ( "move" ) );
+
+	//    cycle rate 
+	float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
 	
-	float feetcycle_playback_rate = csgo::ticks2time(1) * feet_cycle_rate;
-	float accurate_feet_cycle = ent->layers ( ) [ 6 ].m_playback_rate - feetcycle_playback_rate;
+	if ( !seqcyclerate || !has_accuracy ( ) )
+		return desync_sign [ ent->idx ( ) ];
 	
-	const auto movement_fraction = get_max_movement_fraction ( );
-
-	if ( !ent->vel ( ).length_2d ( ) || !movement_fraction )
-		return 0.0f;
-
-	const auto ratio = std::clamp<float> ( ent->vel ( ).length_2d ( ) / ( 260.0f * movement_fraction ), 0.0f, 1.0f );
-
+	/* ratio of movement to seq. cycle */
+	const auto ratio = std::clamp<float> ( ent->vel ( ).length_2d ( ) / ( 260.0f * seqcyclerate ), 0.0f, 1.0f );
+	
 	if ( !ratio )
-		return 0.0f;
+		return desync_sign [ ent->idx ( ) ];
 
-	auto norm_ang = ent->angles ( );
+	/* as chambers said, we would need the velocity completely accuractely all the time in order to calculate this perfectly. */
+	/* the main thing that will fuck up out calculations is that the ground fraction will change unpredictably with speed above max_vel * (1/3) */
+	/* everything below max_vel * (1/3) is scaled by speed, so we can reverse the operation and get a constant amount for every speed in the bounds 0.1 < speed <= max_speed * (1/3) */
+	/* we can (kind of) avoid some other innacuracies this by only calculating at lower speeds */
+	/* there will still be issues with velocity (still not perfect) but it's still good enough to get a good idea of the real's position */
+	/* good enough. */
 
-	csgo::clamp ( norm_ang );
+	/* ANG - VEL DELTA LOGS */
+	/* TODO: ADD LOG FOR 50% LEFT SIDE DESYNC (EVERYONE USES THIS SAME LOW-DESYNC AMOUNT) */
+	/* associate a direction to a rate to a desync delta */
+	static std::map<float, std::vector<std::pair<float, float>>> dir_to_rate = {
+		/* FORMAT: */
+		/* { ANGLE, { { RATE1, DELTA1 }, { RATE2, DELTA2 }, { RATE3, DELTA3 }, ... } } */
 
-	auto eye_vec = csgo::angle_vec ( norm_ang );
-	auto vel_vec = ent->vel ( );
+		/* positive ang-vel delta */
+		{ 0.0f, {{0.00517f, -1.0f}, {0.004625f, 1.0f} , {0.006851f, 0.0f}} },
+		{ 45.0f, {{0.004971f, -1.0f}, {0.005138f , 1.0f}, {0.004262f, 0.0f}} },
+		{ 90.0f, {{0.004591f, -1.0f}, {0.005377f , 1.0f}, {0.006851f, 0.0f}} },
+		{ 135.0f, {{0.004925f, -1.0f}, {0.005612f, 1.0f} , {0.004833f, 0.0f}} },
+		/* -180 and 180 will be the same */
+		{ 180.0f, {{0.00517f, -1.0f}, {0.004625f, 1.0f} , {0.006851f, 0.0f}} },
+		{ -180.0f, {{0.00517f, -1.0f}, {0.004625f , 1.0f}, {0.006851f, 0.0f}} },
+		/* negative ang-vel delta */
+		{ -135.0f, {{0.005466f, -1.0f}, {0.005361f, 1.0f} ,{ 0.005188f, 0.0f}} },
+		{ -90.0f, {{0.005563f, -1.0f}, {0.005042f , 1.0f},{ 0.006851f, 0.0f}} },
+		{ -45.0f, {{0.005513f, -1.0f}, {0.004673f , 1.0f}, {0.004830f, 0.0f}} }
+	};
 
-	eye_vec.z = vel_vec.z = 0.0f;
+	/* find closest ang-vel delta to ours */
+	/* avoid copying this as we add more... */
+	std::vector<std::pair<float, float>>* nearest_rate_log = nullptr;
+	float nearest_rate_diff = FLT_MAX;
 
-	eye_vec.normalize ( );
-	vel_vec.normalize ( );
+	const auto relative_dir = anims::angle_diff ( csgo::normalize ( ent->angles ( ).y ), csgo::normalize ( csgo::vec_angle ( ent->vel ( ) ).y ) );
+
+	for ( auto& entry : dir_to_rate ) {
+		const auto delta_dir = fmodf( fabsf ( entry.first - relative_dir ), 360.0f );
+
+		if ( delta_dir < nearest_rate_diff ) {
+			nearest_rate_log = &entry.second;
+			nearest_rate_diff = delta_dir;
+		}
+	}
 	
-	if ( !eye_vec.is_valid ( ) || !vel_vec.is_valid ( ) )
-		return 0.0f;
+	if ( !nearest_rate_log )
+		return desync_sign [ ent->idx ( ) ];
 
-	/* slow walking forward/back rate will range 0.014(negative desync) - 0.015(positive desync) */
-	/* slow walking left will range 0.012(positive desync) - 0.013(negative desync) */
-	/* slow walking right will range 0.012(negative desync) - 0.013(positive desync) */
-	const auto cross = eye_vec.cross_product ( vel_vec );
-	
-	if ( has_accuracy ( ) ) {
-		const auto rate = ent->layers ( ) [ 6 ].m_playback_rate / ratio;
-		
-		if ( rate > 0.011f && rate < 0.015f ) {
-			if ( fabsf ( cross.length ( ) ) < 0.33333333f )
-				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.014f ) ? -1.0f : 1.0f;
-			else if ( cross.z > 0.66666666f )
-				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.012f ) ? 1.0f : -1.0f;
-			else if ( cross.z < -0.66666666f )
-				desync_sign [ ent->idx ( ) ] = ( truncate_to ( rate, 2 ) <= 0.012f ) ? -1.0f : 1.0f;
+	/* find closest rate to ours */
+	const auto rate_adjusted = ent->layers ( ) [ 6 ].m_playback_rate / ratio;
+
+	float desync_delta = 0.0f;
+	float rate_diff = FLT_MAX;
+
+	for ( auto& entry : *nearest_rate_log ) {
+		const auto delta_rate = fabsf ( rate_adjusted - entry.first );
+
+		if ( delta_rate < rate_diff ) {
+			desync_delta = entry.second;
+			rate_diff = delta_rate;
 		}
 	}
 
-	return ent->layers ( ) [ 6 ].m_playback_rate / ratio;
+	if ( rate_diff == FLT_MAX )
+		return desync_sign [ ent->idx ( ) ];
+
+	desync_sign [ ent->idx ( ) ] = desync_delta;
+
+	return desync_sign [ ent->idx ( ) ];
 }
 
 void anims::calc_local_exclusive( float& ground_fraction_out, float& air_time_out ) {

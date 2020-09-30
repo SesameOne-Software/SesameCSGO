@@ -746,6 +746,8 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 		old_fmove = ( old_fmove / magnitude ) * move_ratio;
 		old_smove = ( old_smove / magnitude ) * move_ratio;
 	}
+
+	ucmd->m_buttons &= ~0x20000;
 }
 
 void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
