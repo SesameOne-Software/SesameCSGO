@@ -198,44 +198,14 @@ void anims::interpolate( player_t* ent, bool should_interp ) {
 float anims::calc_feet_cycle ( player_t* ent ) {
 	float feet_cycle_rate = 0.0f;
 
-	static auto get_max_movement_fraction = [ & ] ( ) {
-		if ( !ent->weapon ( ) || !ent->weapon ( )->data ( ) )
-			return 0.0f;
-
-		return ent->weapon ( )->data ( )->m_max_speed / 260.0f;
-	};
-
-	static auto has_accuracy = [ & ] ( ) {
-		if ( !ent->weapon ( ) || !ent->weapon ( )->data ( ) )
-			return false;
-
-		return ent->vel ( ).length_2d ( ) <= ent->weapon ( )->data ( )->m_max_speed * 0.3333f;
-	};
-
 	static auto truncate_to = [ ] ( float x, int places ) {
 		const auto factor = powf ( 10.0f, places );
 		const auto value = static_cast<int> ( x * factor + 0.5f );
 		return static_cast< float >(value) / factor;
 	};
 
-	if ( !ent->vel ( ).length_2d ( ) )
+	if ( ent->vel ( ).length_2d ( ) <= 0.1f )
 		return desync_sign [ ent->idx ( ) ];
-	
-	//static std::array<float, 65> last_speed_timer { 0.0f };
-	//static std::array<float, 65> last_speed { 0.0f };
-	//
-	//if ( fabsf ( last_speed_timer [ ent->idx ( ) ] - features::prediction::curtime ( ) ) > 0.2f ) {
-	//	const auto old_speed = last_speed [ ent->idx ( ) ];
-	//
-	//	last_speed [ ent->idx ( ) ] = ent->vel ( ).length_2d ( );
-	//	last_speed_timer [ ent->idx ( ) ] = features::prediction::curtime ( );
-	//
-	//	if ( fabsf ( old_speed - ent->vel ( ).length_2d ( ) ) > 10.0f )
-	//		return desync_sign [ ent->idx ( ) ];
-	//}
-	//else {
-	//	return desync_sign [ ent->idx ( ) ];
-	//}
 
 	ent->animstate ( )->m_speed2d = ent->vel ( ).length_2d ( );
 
@@ -250,8 +220,8 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 
 	//    cycle rate 
 	float seqcyclerate = ent->get_sequence_cycle_rate_server ( seq );
-	
-	if ( !seqcyclerate || !has_accuracy ( ) )
+
+	if ( !seqcyclerate || seqcyclerate > 0.33334f )
 		return desync_sign [ ent->idx ( ) ];
 	
 	/* ratio of movement to seq. cycle */
@@ -260,32 +230,25 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 	if ( !ratio )
 		return desync_sign [ ent->idx ( ) ];
 
-	/* as chambers said, we would need the velocity completely accuractely all the time in order to calculate this perfectly. */
-	/* the main thing that will fuck up out calculations is that the ground fraction will change unpredictably with speed above max_vel * (1/3) */
-	/* everything below max_vel * (1/3) is scaled by speed, so we can reverse the operation and get a constant amount for every speed in the bounds 0.1 < speed <= max_speed * (1/3) */
-	/* we can (kind of) avoid some other innacuracies this by only calculating at lower speeds */
-	/* there will still be issues with velocity (still not perfect) but it's still good enough to get a good idea of the real's position */
-	/* good enough. */
-
 	/* ANG - VEL DELTA LOGS */
 	/* TODO: ADD LOG FOR 50% LEFT SIDE DESYNC (EVERYONE USES THIS SAME LOW-DESYNC AMOUNT) */
 	/* associate a direction to a rate to a desync delta */
 	static std::map<float, std::vector<std::pair<float, float>>> dir_to_rate = {
 		/* FORMAT: */
 		/* { ANGLE, { { RATE1, DELTA1 }, { RATE2, DELTA2 }, { RATE3, DELTA3 }, ... } } */
-
+		
 		/* positive ang-vel delta */
-		{ 0.0f, {{0.00517f, -1.0f}, {0.004625f, 1.0f} , {0.006851f, 0.0f}} },
-		{ 45.0f, {{0.004971f, -1.0f}, {0.005138f , 1.0f}, {0.004262f, 0.0f}} },
-		{ 90.0f, {{0.004591f, -1.0f}, {0.005377f , 1.0f}, {0.006851f, 0.0f}} },
-		{ 135.0f, {{0.004925f, -1.0f}, {0.005612f, 1.0f} , {0.004833f, 0.0f}} },
+		{ 0.0f, {{0.004954f, -1.0f}, {0.004377f, 1.0f} , {0.004530f, 0.0f}} },
+		{ 45.0f, {{0.004691f, -1.0f}, {0.004888f , 1.0f}, {0.004187f, 0.0f}} },
+		{ 90.0f, {{0.004329f, -1.0f}, {0.004945f , 1.0f}, {0.004741f, 0.0f}} },
+		{ 135.0f, {{0.004851f, -1.0f}, {0.005394f, 1.0f} , {0.004758f, 0.0f}} },
 		/* -180 and 180 will be the same */
-		{ 180.0f, {{0.00517f, -1.0f}, {0.004625f, 1.0f} , {0.006851f, 0.0f}} },
-		{ -180.0f, {{0.00517f, -1.0f}, {0.004625f , 1.0f}, {0.006851f, 0.0f}} },
+		{ 180.0f, {{0.004900f, -1.0f}, {0.005280f, 1.0f} , {0.005243f, 0.0f}} },
+		{ -180.0f, {{0.004900f, -1.0f}, {0.005280f, 1.0f} , {0.005243f, 0.0f}} },
 		/* negative ang-vel delta */
-		{ -135.0f, {{0.005466f, -1.0f}, {0.005361f, 1.0f} ,{ 0.005188f, 0.0f}} },
-		{ -90.0f, {{0.005563f, -1.0f}, {0.005042f , 1.0f},{ 0.006851f, 0.0f}} },
-		{ -45.0f, {{0.005513f, -1.0f}, {0.004673f , 1.0f}, {0.004830f, 0.0f}} }
+		{ -135.0f, {{0.005356f, -1.0f}, {0.005242f, 1.0f} ,{ 0.005123f, 0.0f}} },
+		{ -90.0f, {{0.005291f, -1.0f}, {0.004901f , 1.0f},{ 0.005117f, 0.0f}} },
+		{ -45.0f, {{0.005276f, -1.0f}, {0.004616f , 1.0f}, {0.004778f, 0.0f}} }
 	};
 
 	/* find closest ang-vel delta to ours */
@@ -386,7 +349,7 @@ void anims::calc_animlayers( player_t* ent ) {
         return;
 
 	if (ent != g::local ) {
-		feet_playback_rate [ ent->idx ( ) ] = ent->layers ( ) [ 6 ].m_playback_rate;
+		//feet_playback_rate [ ent->idx ( ) ] = ent->layers ( ) [ 6 ].m_playback_rate;
 		client_feet_playback_rate [ ent->idx ( ) ] = calc_feet_cycle ( ent );
 	}
 
