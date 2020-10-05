@@ -664,7 +664,7 @@ void gui::draw( ) {
 								sesui::same_line( );
 								sesui::colorpicker( _( "Offscreen ESP Color" ), options::vars [ _( "visuals.other.offscreen_esp_color" ) ].val.c );
 								sesui::slider( _( "Offscreen ESP Distance" ), options::vars [ _( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _( "{:.1f}%" ) );
-								sesui::slider( _( "Offscreen ESP Size" ), options::vars [ _( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, _( "{:d} px" ) );
+								sesui::slider( _( "Offscreen ESP Size" ), options::vars [ _( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, std::to_string(static_cast<int>( options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f)) + _( " px" ) );
 
 								sesui::checkbox( _( "Watermark" ), options::vars [ _( "visuals.other.watermark" ) ].val.b );
 								sesui::checkbox( _( "Keybind List" ), options::vars [ _( "visuals.other.keybind_list" ) ].val.b );

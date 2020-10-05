@@ -353,19 +353,43 @@ void features::esp::render( ) {
 			//	int y = 20;
 			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_cycle ) )
 			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].cycle: " ) + std::to_string ( latest_animlayers [ 6 ].m_cycle ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
-			//	y += 20;
+			//	y += 30;
 			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_weight ) )
 			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].weight: " ) + std::to_string ( latest_animlayers [ 6 ].m_weight ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
-			//	y += 20;
+			//	y += 30;
 			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_sequence ) )
 			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].sequence: " ) + std::to_string ( latest_animlayers [ 6 ].m_sequence ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
-			//	y += 20;
+			//	y += 30;
 			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_weight_delta_rate ) )
 			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].weight_delta_rate: " ) + std::to_string ( latest_animlayers [ 6 ].m_weight_delta_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
-			//	y += 20;
+			//	y += 30;
 			//	if ( std::isfinite<float> ( latest_animlayers [ 6 ].m_playback_rate ) )
 			//		features::esp::esp_font.draw_text ( 20, y, _ ( "local.layer[6].playback_rate: " ) + std::to_string ( latest_animlayers [ 6 ].m_playback_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
 			//}
+
+			//if ( e == g::local ) {
+			//	int y = 20;
+			//
+			//	for ( auto i = 0; i < 13; i++ ) {
+			//		if ( std::isfinite<float> ( latest_animlayers [ i ].m_cycle ) )
+			//			features::esp::esp_font.draw_text ( 20, y, fmt::format(_("layer[{}].cycle : {:.1f}"), i, latest_animlayers [ i ].m_cycle ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//		y += 30;
+			//		if ( std::isfinite<float> ( latest_animlayers [ i ].m_weight ) )
+			//			features::esp::esp_font.draw_text ( 20, y, fmt::format ( _ ( "layer[{}].weight : {:.1f}" ), i, latest_animlayers [ i ].m_weight ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//		y += 30;
+			//		if ( std::isfinite<float> ( latest_animlayers [ i ].m_sequence ) )
+			//			features::esp::esp_font.draw_text ( 20, y, fmt::format ( _ ( "layer[{}].sequence : {}" ), i, latest_animlayers [ i ].m_sequence ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//		y += 30;
+			//		if ( std::isfinite<float> ( latest_animlayers [ i ].m_weight_delta_rate ) )
+			//			features::esp::esp_font.draw_text ( 20, y, fmt::format ( _ ( "layer[{}].weight_delta_rate : {:.1f}" ), i, latest_animlayers [ i ].m_weight_delta_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//		y += 30;
+			//		if ( std::isfinite<float> ( latest_animlayers [ i ].m_playback_rate ) )
+			//			features::esp::esp_font.draw_text ( 20, y, fmt::format ( _ ( "layer[{}].playback_rate : {:.1f}" ), i, latest_animlayers [ i ].m_playback_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
+			//	}
+			//}
+
+			//if ( std::isfinite<float> ( latest_animlayers [ 4 ].m_playback_rate ) )
+			//	features::esp::esp_font.draw_text ( 20, 30, fmt::format ( _ ( "layer[{}].playback_rate : {:.1f}" ), 4, latest_animlayers [ 4 ].m_playback_rate ), 0xffffffff, truetype::text_flags_t::text_flags_outline );
 
 			if ( visuals.health_bar )
 				draw_esp_widget( esp_rect, visuals.health_bar_color, esp_type_bar, visuals.value_text, visuals.health_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->health( ), 100.0 );
@@ -385,10 +409,15 @@ void features::esp::render( ) {
 			//if ( std::isfinite<float> ( anims::feet_playback_rate [ e->idx ( ) ] ) )
 			//draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::feet_playback_rate [ e->idx ( ) ] ) );
 			//
+			//if ( std::isfinite<float> ( anims::desync_sign [ e->idx ( ) ] ) )
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "side : " ) + std::to_string ( anims::desync_sign [ e->idx ( ) ] ) );
+			//
 			//const auto delta = anims::angle_diff ( csgo::normalize( e->angles ( ).y ), csgo::normalize( csgo::vec_angle ( e->vel ( ) ).y ) );
 			//
 			//if ( std::isfinite<float> ( delta ) )
 			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "angle_diff : " ) + std::to_string ( delta ) );
+			//
+			//draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "choke : " ) + std::to_string ( anims::choked_commands [ e->idx ( ) ] ) );
 		}
 	}
 }

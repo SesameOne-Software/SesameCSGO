@@ -13,8 +13,49 @@ void truetype::font::set_font_size ( float x ) {
 std::optional<truetype::font> truetype::create_font ( const uint8_t* font_data, std::string_view font_name, float size ) {
 	stbtt_fontinfo font_info;
 	
-	if ( stbtt_InitFont ( &font_info, font_data, 0 ) )
-		return font { font_name.data ( ), size, font_info };
+	if ( stbtt_InitFont ( &font_info, font_data, 0 ) ) {
+		//stbtt_pack_context context;
+		//
+		//if ( !stbtt_PackBegin ( &context, nullptr, 1024, 1024 * static_cast<int>( size + 0.5f ), 0, 1, nullptr ) )
+		//	return std::nullopt;
+		//
+		//stbtt_PackSetOversampling ( &context, 1, 1 );
+		//
+		//std::vector<std::pair<uint16_t, uint16_t>> char_ranges {
+		//{0x0020, 0x00FF}, // Basic Latin + Latin Supplement
+		//{0x2010, 0x205E}, // Punctuations
+		//{0x0E00, 0x0E7F}, // Thai
+		//{0x3000, 0x30FF}, // Punctuations, Hiragana, Katakana
+		//{0x31F0, 0x31FF}, // Katakana Phonetic Extensions
+		//{0xFF00, 0xFFEF}, // Half-width characters
+		//{0x4e00, 0x9FAF}, // CJK Ideograms
+		//};
+		//
+		//int buf_packedchars_n = 0, buf_rects_n = 0, buf_ranges_n = 0;
+		//stbtt_packedchar* buf_packedchars = ( stbtt_packedchar* ) ImGui::MemAlloc ( total_glyph_count * sizeof ( stbtt_packedchar ) );
+		//stbrp_rect* buf_rects = ( stbrp_rect* ) ImGui::MemAlloc ( total_glyph_count * sizeof ( stbrp_rect ) );
+		//stbtt_pack_range* buf_ranges = ( stbtt_pack_range* ) ImGui::MemAlloc ( total_glyph_range_count * sizeof ( stbtt_pack_range ) );
+		//memset ( buf_packedchars, 0, total_glyph_count * sizeof ( stbtt_packedchar ) );
+		//memset ( buf_rects, 0, total_glyph_count * sizeof ( stbrp_rect ) );              // Unnecessary but let's clear this for the sake of sanity.
+		//memset ( buf_ranges, 0, total_glyph_range_count * sizeof ( stbtt_pack_range ) );
+		//
+		//charInfo = new stbtt_packedchar [ MAP_NUM_CHARS ];
+		//
+		//if ( !stbtt_PackFontRanges ( &context, fontData, 0, FONT_SIZE, firstChar, MAP_NUM_CHARS, charInfo ) ) {
+		//	stbtt_PackEnd ( &context );
+		//	delete [ ] pixels;
+		//	delete [ ] charInfo;
+		//	charInfo = nullptr;
+		//	Log::get ( LOG_ERROR ) << "Error packing font map!" << Log::endl;
+		//	return -2;
+		//}
+		//
+		//stbtt_PackEnd ( &context );
+
+
+
+		return font { font_name.data ( ), size, font_info, std::make_unique<uint32_t [ ]> ( 1 ) };
+	}
 
 	return std::nullopt;
 }

@@ -20,6 +20,14 @@ namespace truetype {
 		std::string font_name;
 		float size;
 		stbtt_fontinfo font_info;
+		std::shared_ptr<uint32_t[]> font_map;
+		
+		void operator=( const font& f ) {
+			font_name = f.font_name;
+			size = f.size;
+			font_info = f.font_info;
+			font_map = f.font_map;
+		}
 
 		void set_font_size ( float x );
 		void text_size ( const std::string& string, float& x_out, float& y_out );

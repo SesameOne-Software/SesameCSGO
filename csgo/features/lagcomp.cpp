@@ -101,16 +101,18 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 
 void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	if ( pl && pl->dormant( ) ) {
-		if ( !data::records [ pl->idx( ) ].empty( ) )
-			data::records [ pl->idx( ) ].clear( );
+		if ( !data::records [ pl->idx ( ) ].empty ( ) )
+			data::records [ pl->idx ( ) ].clear ( );
 
-		if ( !data::all_records [ pl->idx( ) ].empty( ) )
-			data::all_records [ pl->idx( ) ].clear( );
+		data::cham_records [ pl->idx ( ) ].m_pl = nullptr;
 
-		data::shot_records [ pl->idx( ) ].m_pl = nullptr;
+		if ( !data::all_records [ pl->idx ( ) ].empty ( ) )
+			data::all_records [ pl->idx ( ) ].clear ( );
 
-		if ( !data::extrapolated_records [ pl->idx( ) ].empty( ) )
-			data::extrapolated_records [ pl->idx( ) ].clear( );
+		data::shot_records [ pl->idx ( ) ].m_pl = nullptr;
+
+		if ( !data::extrapolated_records [ pl->idx ( ) ].empty ( ) )
+			data::extrapolated_records [ pl->idx ( ) ].clear ( );
 
 		return;
 	}
@@ -258,7 +260,7 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	if ( !predicted )
 		data::old_origins [ pl->idx( ) ] = pl->origin( );
 
-	pop( pl );
+	//pop( pl );
 }
 
 bool features::lagcomp::breaking_lc( player_t* pl ) {

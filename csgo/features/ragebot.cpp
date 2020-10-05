@@ -1360,16 +1360,17 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	}
 
 	/* manually fix annoying airstuckers */
-	//if ( fabsf( csgo::i::globals->m_curtime - ent->simtime( ) ) > 1.0f ) {
-	//	lagcomp::lag_record_t rec;
-	//	rec.store( ent, ent->origin( ), false );
-//
-	//	rec.m_tick = csgo::time2ticks( csgo::i::globals->m_curtime );
-	//	rec.m_simtime = csgo::i::globals->m_curtime;
-//
-	//	best_recs.clear( );
-	//	best_recs.push_back( rec );
-	//}
+	if ( fabsf( csgo::i::globals->m_curtime - ent->simtime( ) ) > 0.5f && !anims::frames [ ent->idx ( ) ].empty() ) {
+		lagcomp::lag_record_t rec;
+
+		if ( rec.store ( ent, ent->origin ( ), false ) ) {
+			rec.m_tick = csgo::time2ticks ( csgo::i::globals->m_curtime );
+			rec.m_simtime = csgo::i::globals->m_curtime;
+
+			best_recs.clear ( );
+			best_recs.push_back ( rec );
+		}
+	}
 
 	if ( best_recs.empty( ) )
 		return;

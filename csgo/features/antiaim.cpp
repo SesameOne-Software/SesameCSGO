@@ -757,12 +757,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						static float last_update_time = csgo::i::globals->m_curtime;
 
 						/* micro movements */
-						old_fmove += aa::move_flip ? -3.3f : 3.3f;
+						old_fmove += aa::move_flip ? -( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f ) : ( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f );
 
-						if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
-							old_fmove = copysignf ( 15.0f, old_fmove );
-							last_update_time = csgo::i::globals->m_curtime;
-						}
+						//if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
+						//	old_fmove = copysignf ( 15.0f, old_fmove );
+						//	last_update_time = csgo::i::globals->m_curtime;
+						//}
 
 						aa::move_flip = !aa::move_flip;
 

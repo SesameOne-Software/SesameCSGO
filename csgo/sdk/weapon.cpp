@@ -19,5 +19,5 @@ float weapon_t::spread( ) {
 
 float weapon_t::max_speed( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 439 )( this );
+	return vfunc< fn >( this, 441 )( this );
 }

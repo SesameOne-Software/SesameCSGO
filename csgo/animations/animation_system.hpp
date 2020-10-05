@@ -25,6 +25,7 @@ namespace anims {
         void store( player_t* ent, bool anim_update );
     };
 
+	extern std::array< int, 65 > choked_commands;
 	extern std::array< float, 65 > desync_sign;
 	extern std::array< float, 65 > client_feet_playback_rate;
 	extern std::array< float, 65 > feet_playback_rate;
@@ -42,7 +43,9 @@ namespace anims {
     void interpolate( player_t* ent, bool should_interp );
 	float calc_feet_cycle ( player_t* ent );
     void calc_animlayers( player_t* ent );
+	void predict_animlayers ( player_t* ent );
     void calc_local_exclusive( float& ground_fraction_out, float& air_time_out );
+	void predict_animlayers ( player_t* ent );
     void calc_poses( player_t* ent );
     int predict_choke_sequence( player_t* ent );
     void update( player_t* ent );

@@ -567,12 +567,16 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 		has_slow_walk = std::fabsf( pl->vel( ).length_2d( ) - animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] ) < 10.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] > 20.0f && pl->vel( ).length_2d( ) > 20.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] < pl->weapon( )->data( )->m_max_speed * 0.33f && pl->vel( ).length_2d( ) < pl->weapon( )->data( )->m_max_speed * 0.33f;
 
 	if ( true ) {
-		yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-		yaw2 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-		yaw3 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-		//yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-		//yaw2 = csgo::normalize ( pl->angles ( ).y + -anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-		//yaw3 = csgo::normalize ( pl->angles ( ).y );
+		if ( pl->vel ( ).length_2d ( ) < 0.1f ) {
+			yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+			yaw2 = csgo::normalize ( pl->angles ( ).y - anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+			yaw3 = csgo::normalize ( pl->angles ( ).y );
+		}
+		else {
+			yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+			yaw2 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+			yaw3 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+		}
 	}
 	else if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
 		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * ( ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
