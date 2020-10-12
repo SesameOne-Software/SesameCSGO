@@ -16,8 +16,8 @@ bool __fastcall hooks::get_int ( REG ) {
 	if ( !ecx )
 		return old::get_int ( REG_OUT );
 
-	if ( _ReturnAddress( ) == cl_interpolate_ret || _ReturnAddress( ) == hermite_fix_ret || _ReturnAddress( ) == cl_extrapolate_ret )
-		return 0;
+	//if ( _ReturnAddress( ) == cl_interpolate_ret || _ReturnAddress( ) == hermite_fix_ret || _ReturnAddress( ) == cl_extrapolate_ret )
+	//	return 0;
 
 	if ( _ReturnAddress( ) == cam_think )
 		return 1;

@@ -874,9 +874,9 @@ namespace sesui {
 								throw "Attempted to draw text using invalid font.";
 
 							if ( object.text_shadow )
-								draw_text( object.text_pos + vec2( 1.0f, 1.0f ), object.font, object.text.data( ), color( 0.0f, 0.0f, 0.0f, static_cast< int >( object.color.a ) ) );
+								draw_text( object.text_pos + vec2( 1.0f, 1.0f ), object.font, object.text, color( 0.0f, 0.0f, 0.0f, static_cast< int >( object.color.a ) ) );
 
-							draw_text( object.text_pos, object.font, object.text.data( ), object.color );
+							draw_text( object.text_pos, object.font, object.text, object.color );
 							break;
 						case object_type::clip:
 							if ( object.clip_mode == clip_mode::begin )

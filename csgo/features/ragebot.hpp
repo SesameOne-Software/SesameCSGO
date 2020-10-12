@@ -102,13 +102,11 @@ namespace features {
 			void draw( ) {
 				std::lock_guard< std::mutex > guard( m_mutex );
 
-				render::rectangle( 100, 100, 10, 10, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
-
 				vec3_t screen;
 
 				for ( auto& point : m_synced_points ) {
 					if ( csgo::render::world_to_screen( screen, point ) )
-						render::rectangle( screen.x, screen.y, 2, 2, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
+						render::rectangle( screen.x - 2, screen.y - 2, 4, 4, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
 				}
 			}
 		};

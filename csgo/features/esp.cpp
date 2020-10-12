@@ -88,24 +88,39 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 			}
 		} break;
 		case esp_type_text: {
+			int to_print_len = 0;
+			wchar_t* buf_out = nullptr;
+			std::wstring wide_to_print;
+
+			if ( ( to_print_len = MultiByteToWideChar ( CP_UTF8, 0, to_print.c_str(), -1, nullptr, 0 ) - 1 ) > 0 ) {
+				buf_out = new wchar_t [ to_print_len + 1 ] { 0 };
+
+				if ( buf_out )
+					MultiByteToWideChar ( CP_UTF8, 0, to_print.c_str ( ), -1, buf_out, to_print_len );
+
+				wide_to_print = buf_out;
+
+				delete [ ] buf_out;
+			}
+
 			float text_dim_x, text_dim_y;
-			features::esp::esp_font.text_size ( to_print, text_dim_x, text_dim_y );
+			features::esp::esp_font.text_size ( wide_to_print, text_dim_x, text_dim_y );
 
 			switch ( orientation ) {
 				case features::esp_placement_left:
-					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_left_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_right:
-					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_right_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_bottom:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_bottom += text_dim_y + 2;
 					break;
 				case features::esp_placement_top:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_top += text_dim_y + 2;
 					break;
 			}
@@ -210,7 +225,7 @@ void features::esp::render( ) {
 	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
 		auto e = csgo::i::ent_list->get< player_t* >( i );
 
-		if ( !e ) {
+		if ( !e || !e->alive() ) {
 			esp_data [ i ].m_pl = nullptr;
 			continue;
 		}
@@ -406,18 +421,19 @@ void features::esp::render( ) {
 			if ( visuals.weapon_name )
 				draw_esp_widget( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx( ) ].m_weapon_name );
 
+			/* DEBUGGING STUFF */
 			//if ( std::isfinite<float> ( anims::feet_playback_rate [ e->idx ( ) ] ) )
-			//draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::feet_playback_rate [ e->idx ( ) ] ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::feet_playback_rate [ e->idx ( ) ] ) );
 			//
-			//if ( std::isfinite<float> ( anims::desync_sign [ e->idx ( ) ] ) )
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "side : " ) + std::to_string ( anims::desync_sign [ e->idx ( ) ] ) );
+			////if ( std::isfinite<float> ( anims::desync_sign [ e->idx ( ) ] ) )
+			////	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "side : " ) + std::to_string ( anims::desync_sign [ e->idx ( ) ] ) );
 			//
 			//const auto delta = anims::angle_diff ( csgo::normalize( e->angles ( ).y ), csgo::normalize( csgo::vec_angle ( e->vel ( ) ).y ) );
 			//
 			//if ( std::isfinite<float> ( delta ) )
 			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "angle_diff : " ) + std::to_string ( delta ) );
 			//
-			//draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "choke : " ) + std::to_string ( anims::choked_commands [ e->idx ( ) ] ) );
+			////draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "choke : " ) + std::to_string ( anims::choked_commands [ e->idx ( ) ] ) );
 		}
 	}
 }

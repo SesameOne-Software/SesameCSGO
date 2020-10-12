@@ -38,6 +38,7 @@
     <ClCompile Include="fmt\format.cc" />
     <ClCompile Include="fmt\os.cc" />
     <ClCompile Include="globals.cpp" />
+    <ClCompile Include="hooks\base_interpolate_part1.cpp" />
     <ClCompile Include="hooks\build_transformations.cpp" />
     <ClCompile Include="hooks\create_move.cpp" />
     <ClCompile Include="hooks\cs_blood_spray_callback.cpp" />
@@ -120,6 +121,7 @@
     <ClInclude Include="fmt\ranges.h" />
     <ClInclude Include="globals.hpp" />
     <ClInclude Include="hitsounds.h" />
+    <ClInclude Include="hooks\base_interpolate_part1.hpp" />
     <ClInclude Include="hooks\build_transformations.hpp" />
     <ClInclude Include="hooks\create_move.hpp" />
     <ClInclude Include="hooks\cs_blood_spray_callback.hpp" />
@@ -127,6 +129,7 @@
     <ClInclude Include="hooks\draw_model_execute.hpp" />
     <ClInclude Include="hooks\emit_sound.hpp" />
     <ClInclude Include="hooks\end_scene.hpp" />
+    <ClInclude Include="hooks\ent_listener.hpp" />
     <ClInclude Include="hooks\events.hpp" />
     <ClInclude Include="hooks\frame_stage_notify.hpp" />
     <ClInclude Include="hooks\get_bool.hpp" />
@@ -150,6 +153,7 @@
     <ClInclude Include="hooks\should_skip_anim_frame.hpp" />
     <ClInclude Include="hooks\wnd_proc.hpp" />
     <ClInclude Include="hooks\write_usercmd_delta_to_buffer.hpp" />
+    <ClInclude Include="icons\generated_font\sesame_icons.hpp" />
     <ClInclude Include="javascript\duktape.hpp" />
     <ClInclude Include="javascript\duk_config.hpp" />
     <ClInclude Include="javascript\js_api.hpp" />
@@ -321,6 +325,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <AdditionalOptions>/Zc:threadSafeInit %(AdditionalOptions)</AdditionalOptions>
+      <SupportJustMyCode>true</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>

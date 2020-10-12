@@ -3,6 +3,10 @@
 #include "d3d9_render.hpp"
 #include "../sdk/sdk.hpp"
 #include "../renderer/d3d9.hpp"
+#include "../renderer/font.hpp"
+
+#include "../segoeui.h"
+#include "../icons/generated_font/sesame_icons.hpp"
 
 struct vertex_t {
 	float x, y, z, rhw;
@@ -26,14 +30,21 @@ void sesui::binds::draw_texture( const std::vector< uint8_t >& data, const vec2&
 
 void sesui::binds::create_font ( sesui::font& font, bool force ) noexcept {
 	if ( force && font.data ) {
-		reinterpret_cast< ID3DXFont* > ( font.data )->Release ( );
+		delete font.data;
 		font.data = nullptr;
 	}
 
 	if ( font.data )
 		return;
-
-	D3DXCreateFontA ( csgo::i::dev, static_cast< int > ( static_cast< float >( font.size )* sesui::globals::dpi ), 0, font.weight, 0, font.italic, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, font.family.c_str ( ), reinterpret_cast< ID3DXFont** > ( &font.data ) );
+	
+	if ( font.family == _ ( "sesame_ui" ) ) {
+		if ( auto font_out = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), static_cast< float >( font.size )* sesui::globals::dpi ) )
+			font.data = new truetype::font { font_out.value ( ) };
+	}
+	else if ( font.family == _ ( "sesame_icons" ) ) {
+		if ( auto font_out = truetype::create_font ( resources::sesame_icons_font, _ ( "sesame_icons" ), static_cast< float >( font.size )* sesui::globals::dpi ) )
+			font.data = new truetype::font { font_out.value ( ) };
+	}
 }
 
 void sesui::binds::polygon ( const std::vector< sesui::vec2 >& verticies, const sesui::color& color, bool filled ) noexcept {
@@ -86,21 +97,14 @@ void sesui::binds::text ( const sesui::vec2& pos, const sesui::font& font, const
 	if ( !font.data )
 		return;
 
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
-	const auto as_wide = convert.from_bytes ( text );
-	
-	RECT rect;
-	SetRect ( &rect, pos.x, pos.y, pos.x, pos.y );
-	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, as_wide.c_str(), as_wide.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( color.a * 255.0f ) ) );
+	reinterpret_cast< truetype::font* >( font.data )->draw_text ( pos.x, pos.y, text, D3DCOLOR_RGBA ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( color.a * 255.0f ) ), truetype::text_flags_t::text_flags_none );
 }
 
 void sesui::binds::get_text_size ( const sesui::font& font, const std::string& text, sesui::vec2& dim_out ) noexcept {
-	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
-	const auto as_wide = convert.from_bytes ( text );
+	if ( !font.data )
+		dim_out = { 0.0f, 0.0f };
 
-	RECT rect = { 0, 0, 0, 0 };
-	reinterpret_cast< ID3DXFont* >( font.data )->DrawTextW ( nullptr, as_wide.c_str ( ), as_wide.length ( ), &rect, DT_CALCRECT, 0 );
-	dim_out = { rect.right - rect.left, rect.bottom - rect.top };
+	reinterpret_cast< truetype::font* >( font.data )->text_size ( text, dim_out.x, dim_out.y );
 }
 
 float sesui::binds::get_frametime ( ) noexcept {

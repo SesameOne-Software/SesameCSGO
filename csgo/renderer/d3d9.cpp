@@ -3,6 +3,8 @@
 #include "../security/security_handler.hpp"
 #include "font.hpp"
 
+#include <codecvt>
+
 struct vtx_t {
 	float x, y, z, rhw;
 	std::uint32_t color;
@@ -14,14 +16,26 @@ struct custom_vtx_t {
 	float tu, tv;
 };
 
+void render::create_font ( void** font, const std::string_view& family, int size, bool bold ) {
+	ID3DXFont* d3d_font = nullptr;
+	LI_FN ( D3DXCreateFontA )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data ( ), &d3d_font );
+	*font = d3d_font;
+}
+
 void render::create_font( void** font, const std::wstring_view& family, int size, bool bold ) {
 	ID3DXFont* d3d_font = nullptr;
-	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : 525, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
+	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
 	*font = d3d_font;
 }
 
 void render::screen_size( int& width, int& height ) {
 	csgo::i::engine->get_screen_size( width, height );
+}
+
+void render::text_size ( void* font, const std::string_view& text, dim& dimentions ) {
+	RECT rect = { 0, 0, 0, 0 };
+	reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data(), text.length ( ), &rect, DT_CALCRECT, D3DCOLOR_RGBA ( 0, 0, 0, 0 ) );
+	dimentions = dim { rect.right - rect.left, rect.bottom - rect.top };
 }
 
 void render::text_size( void* font, const std::wstring_view& text, dim& dimentions ) {
@@ -60,10 +74,10 @@ void render::gradient( int x, int y, int width, int height, std::uint32_t color1
 	}
 
 	vtx_t vert [ 4 ] = {
-		{ x, y, 0.0f, 1.0f, c1 },
-		{ x + width, y, 0.0f, 1.0f, c2 },
-		{ x, y + height, 0.0f, 1.0f, c3 },
-		{ x + width, y + height, 0.0f, 1.0f, c4 }
+		{ x - 0.5f, y - 0.5f, 0.0f, 1.0f, c1 },
+		{ x + width - 0.5f, y - 0.5f, 0.0f, 1.0f, c2 },
+		{ x - 0.5f, y + height - 0.5f, 0.0f, 1.0f, c3 },
+		{ x + width - 0.5f, y + height - 0.5f, 0.0f, 1.0f, c4 }
 	};
 
 	csgo::i::dev->DrawPrimitiveUP( D3DPT_TRIANGLESTRIP, 2, &vert, sizeof( vtx_t ) );
@@ -83,6 +97,29 @@ void render::line( int x, int y, int x2, int y2, std::uint32_t color ) {
 	};
 
 	csgo::i::dev->DrawPrimitiveUP( D3DPT_LINELIST, 1, &vert, sizeof( vtx_t ) );
+}
+
+void render::text ( int x, int y, std::uint32_t color, void* font, const std::string_view& text, bool shadow, bool outline ) {
+	RECT rect;
+	SetRect ( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
+
+	if ( shadow ) {
+		SetRect ( &rect, x - 0.5f + 1, y - 0.5f + 1, x - 0.5f + 1, y - 0.5f + 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+	}
+	else if ( outline ) {
+		SetRect ( &rect, x - 0.5f, y - 0.5f + 1, x - 0.5f, y - 0.5f + 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		SetRect ( &rect, x - 0.5f + 1, y - 0.5f, x - 0.5f + 1, y - 0.5f );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		SetRect ( &rect, x - 0.5f - 1, y - 0.5f, x - 0.5f - 1, y - 0.5f );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		SetRect ( &rect, x - 0.5f, y - 0.5f - 1, x - 0.5f, y - 0.5f - 1 );
+		reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+	}
+
+	SetRect ( &rect, x - 0.5f, y - 0.5f, x - 0.5f, y - 0.5f );
+	reinterpret_cast< ID3DXFont* >( font )->DrawTextA ( nullptr, text.data ( ), text.length ( ), &rect, DT_LEFT | DT_NOCLIP, color );
 }
 
 void render::text( int x, int y, std::uint32_t color, void* font, const std::wstring_view& text, bool shadow, bool outline ) {
@@ -179,8 +216,8 @@ void render::polygon( const std::vector< std::pair< float, float > >& verticies,
 	std::vector< vtx_t > vtx( verticies.size( ) + 1 );
 
 	for ( auto i = 0; i < verticies.size( ); i++ ) {
-		vtx [ i ].x = verticies [ i ].first;
-		vtx [ i ].y = verticies [ i ].second;
+		vtx [ i ].x = verticies [ i ].first - 0.5f;
+		vtx [ i ].y = verticies [ i ].second - 0.5f;
 		vtx [ i ].z = 0;
 		vtx [ i ].rhw = 1;
 		vtx [ i ].color = color;
@@ -229,7 +266,7 @@ void render::clip( int x, int y, int width, int height, const std::function< voi
 	RECT backup_scissor_rect;
 	csgo::i::dev->GetScissorRect( &backup_scissor_rect );
 
-	RECT rect { x, y, x + width, y + height };
+	RECT rect { x - 0.5f, y - 0.5f, x + width - 0.5f, y + height - 0.5f };
 	csgo::i::dev->SetRenderState( D3DRS_SCISSORTESTENABLE, true );
 	csgo::i::dev->SetScissorRect( &rect );
 
@@ -318,8 +355,8 @@ void render::rounded_alpha_rect( int x, int y, int width, int height, int rad, i
 	std::vector< vtx_t > vtx( verticies.size( ) + 1 );
 
 	for ( auto i = 0; i < verticies.size( ); i++ ) {
-		vtx [ i ].x = verticies [ i ].first.first;
-		vtx [ i ].y = verticies [ i ].first.second;
+		vtx [ i ].x = verticies [ i ].first.first - 0.5f;
+		vtx [ i ].y = verticies [ i ].first.second - 0.5f;
 		vtx [ i ].z = 0;
 		vtx [ i ].rhw = 1;
 		vtx [ i ].color = verticies [ i ].second;

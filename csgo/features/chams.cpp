@@ -182,6 +182,8 @@ void update_mats( const features::visual_config_t& visuals, const sesui::color& 
 std::array < mdlrender_info_t, 65 > mdl_render_info;
 long long refresh_time = 0;
 
+extern std::deque< animations::resolver::hit_matrix_rec_t > hit_matrix_rec;
+
 void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_info_t& info, matrix3x4_t* bone_to_world ) {
 	if ( !m_mat )
 		create_materials( );
@@ -219,47 +221,45 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	}
 
 	if ( /*is_arms || */e || features::chams::in_model ) {
-		auto is_player = e->valid( ) && e->is_player( );
-
 		if ( is_arms ) {
 			hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 		}
-		else if ( is_player || features::chams::in_model ) {
+		else if ( e->is_player ( ) || features::chams::in_model ) {
 			/* hit matrix chams */
-			if ( features::chams::in_model && visuals.hit_matrix ) {
+			if ( features::chams::in_model ) {
 				bool found = false;
-				auto envmap = m_mat_glow->find_var( _( "$envmaptint" ), &found );
-				set_vec( envmap, visuals.hit_matrix_color.r, visuals.hit_matrix_color.g, visuals.hit_matrix_color.b );
+				auto envmap = m_mat_glow->find_var ( _ ( "$envmaptint" ), &found );
+				set_vec ( envmap, visuals.hit_matrix_color.r, visuals.hit_matrix_color.g, visuals.hit_matrix_color.b );
 
-				auto rimlight_exponent = m_mat_glow->find_var( _( "$envmapfresnelminmaxexp" ), &found );
-				set_vec( rimlight_exponent, 0.0f, 1.0f, 1.0f + ( 14.0f - visuals.hit_matrix_color.a * 14.0f ) );
+				auto rimlight_exponent = m_mat_glow->find_var ( _ ( "$envmapfresnelminmaxexp" ), &found );
+				set_vec ( rimlight_exponent, 0.0f, 1.0f, 1.0f + ( 14.0f - visuals.hit_matrix_color.a * 14.0f ) );
 
-				csgo::i::render_view->set_alpha( 255 );
-				csgo::i::render_view->set_color( 255, 255, 255 );
+				csgo::i::render_view->set_alpha ( 255 );
+				csgo::i::render_view->set_color ( 255, 255, 255 );
 				// mat->set_material_var_flag( 268435456, false );
-				m_mat_glow->set_material_var_flag( 0x8000, visuals.backtrack_chams );
-				m_mat_glow->set_material_var_flag( 0x1000, visuals.chams_flat );
-				csgo::i::mdl_render->force_mat( m_mat_glow );
-				hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* )&cur_hit_matrix_rec.m_bones );
-				csgo::i::mdl_render->force_mat( nullptr );
+				m_mat_glow->set_material_var_flag ( 0x8000, visuals.backtrack_chams );
+				m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+				csgo::i::mdl_render->force_mat ( m_mat_glow );
+				hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
 			}
 			else {
-				if ( visuals.backtrack_chams && e->vel( ).length_2d( ) > 10.0f && e != g::local && g::local->alive( ) && !lagcomp::data::records [ e->idx( ) ].empty( ) ) {
-					csgo::i::render_view->set_alpha( visuals.backtrack_chams_color.a * 255.0f );
-					csgo::i::render_view->set_color( visuals.backtrack_chams_color.r * 255.0f, visuals.backtrack_chams_color.g * 255.0f, visuals.backtrack_chams_color.b * 255.0f );
+
+				if ( visuals.backtrack_chams && e->vel ( ).length_2d ( ) > 10.0f && e != g::local && g::local->alive ( ) && !lagcomp::data::records [ e->idx ( ) ].empty ( ) ) {
+					csgo::i::render_view->set_alpha ( visuals.backtrack_chams_color.a * 255.0f );
+					csgo::i::render_view->set_color ( visuals.backtrack_chams_color.r * 255.0f, visuals.backtrack_chams_color.g * 255.0f, visuals.backtrack_chams_color.b * 255.0f );
 					auto mat = visuals.chams_flat ? m_matflat : m_mat;
-					mat->set_material_var_flag( 0x8000, visuals.backtrack_chams );
-					mat->set_material_var_flag( 0x1000, visuals.chams_flat );
-					csgo::i::mdl_render->force_mat( mat );
+					mat->set_material_var_flag ( 0x8000, visuals.backtrack_chams );
+					mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+					csgo::i::mdl_render->force_mat ( mat );
 
-					if ( features::ragebot::get_misses( e->idx( ) ).bad_resolve % 3 == 0 )
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx( ) ].back( ).m_bones1 );
-					else if ( features::ragebot::get_misses( e->idx( ) ).bad_resolve % 3 == 1 )
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx( ) ].back( ).m_bones2 );
+					if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 0 )
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones1 );
+					else if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 1 )
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones2 );
 					else
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx( ) ].back( ).m_bones3 );
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones3 );
 
-					csgo::i::mdl_render->force_mat( nullptr );
+					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 
 				//if ( e != g::local && !anims::frames [ e->idx( ) ].empty( ) ) {
@@ -293,28 +293,28 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					const auto backup_matrix = ref_matrix;
 
 					for ( auto& i : ref_matrix )
-						i.set_origin( i.origin( ) + ( visuals.desync_chams_fakelag ? old_origin : info.m_origin ) );
+						i.set_origin ( i.origin ( ) + ( visuals.desync_chams_fakelag ? old_origin : info.m_origin ) );
 
 					if ( visuals.desync_chams ) {
-						csgo::i::render_view->set_alpha( visuals.desync_chams_color.a * 255.0f );
-						csgo::i::render_view->set_color( visuals.desync_chams_color.r * 255.0f, visuals.desync_chams_color.g * 255.0f, visuals.desync_chams_color.b * 255.0f );
+						csgo::i::render_view->set_alpha ( visuals.desync_chams_color.a * 255.0f );
+						csgo::i::render_view->set_color ( visuals.desync_chams_color.r * 255.0f, visuals.desync_chams_color.g * 255.0f, visuals.desync_chams_color.b * 255.0f );
 						auto mat = visuals.chams_flat ? m_matflat : m_mat;
-						mat->set_material_var_flag( 0x8000, false );
-						mat->set_material_var_flag( 0x1000, visuals.chams_flat );
-						csgo::i::mdl_render->force_mat( mat );
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* )&ref_matrix );
-						csgo::i::mdl_render->force_mat( nullptr );
+						mat->set_material_var_flag ( 0x8000, false );
+						mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						csgo::i::mdl_render->force_mat ( mat );
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &ref_matrix );
+						csgo::i::mdl_render->force_mat ( nullptr );
 					}
 
 					if ( visuals.desync_chams_rimlight ) {
-						update_mats( visuals, visuals.desync_rimlight_color );
-						csgo::i::render_view->set_alpha( 255 );
-						csgo::i::render_view->set_color( 255, 255, 255 );
-						m_mat_glow->set_material_var_flag( 0x8000, true );
-						m_mat_glow->set_material_var_flag( 0x1000, visuals.chams_flat );
-						csgo::i::mdl_render->force_mat( m_mat_glow );
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* )&ref_matrix );
-						csgo::i::mdl_render->force_mat( nullptr );
+						update_mats ( visuals, visuals.desync_rimlight_color );
+						csgo::i::render_view->set_alpha ( 255 );
+						csgo::i::render_view->set_color ( 255, 255, 255 );
+						m_mat_glow->set_material_var_flag ( 0x8000, true );
+						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						csgo::i::mdl_render->force_mat ( m_mat_glow );
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &ref_matrix );
+						csgo::i::mdl_render->force_mat ( nullptr );
 					}
 
 					ref_matrix = backup_matrix;
@@ -323,80 +323,73 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				if ( visuals.chams ) {
 					/* occluded */
 					if ( e == g::local ? false : visuals.chams_xqz ) {
-						csgo::i::render_view->set_alpha( visuals.chams_xqz_color.a * 255.0f );
-						csgo::i::render_view->set_color( visuals.chams_xqz_color.r * 255.0f, visuals.chams_xqz_color.g * 255.0f, visuals.chams_xqz_color.b * 255.0f );
+						csgo::i::render_view->set_alpha ( visuals.chams_xqz_color.a * 255.0f );
+						csgo::i::render_view->set_color ( visuals.chams_xqz_color.r * 255.0f, visuals.chams_xqz_color.g * 255.0f, visuals.chams_xqz_color.b * 255.0f );
 						auto mat = visuals.chams_flat ? m_matflat : m_mat;
 						// mat->set_material_var_flag( 268435456, false );
-						mat->set_material_var_flag( 0x8000, true );
-						mat->set_material_var_flag( 0x1000, visuals.chams_flat );
-						csgo::i::mdl_render->force_mat( mat );
-						hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-						csgo::i::mdl_render->force_mat( nullptr );
+						mat->set_material_var_flag ( 0x8000, true );
+						mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						csgo::i::mdl_render->force_mat ( mat );
+						hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+						csgo::i::mdl_render->force_mat ( nullptr );
 					}
 
 					/* normal chams */
 					auto mat = visuals.chams_flat ? m_matflat : m_mat;
 					// mat->set_material_var_flag( 268435456, false );
-					mat->set_material_var_flag( 0x8000, false );
-					mat->set_material_var_flag( 0x1000, visuals.chams_flat );
+					mat->set_material_var_flag ( 0x8000, false );
+					mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
 
-					if ( ( g::local && e == g::local ) && g::local->scoped( ) ) {
-						csgo::i::render_view->set_alpha( 22 );
-						csgo::i::render_view->set_color( 255, 255, 255 );
-						csgo::i::mdl_render->force_mat( nullptr );
+					if ( ( g::local && e == g::local ) && g::local->scoped ( ) ) {
+						csgo::i::render_view->set_alpha ( 22 );
+						csgo::i::render_view->set_color ( 255, 255, 255 );
+						csgo::i::mdl_render->force_mat ( nullptr );
 					}
 					else {
-						csgo::i::render_view->set_alpha( visuals.chams_color.a * 255.0f );
-						csgo::i::render_view->set_color( visuals.chams_color.r * 255.0f, visuals.chams_color.g * 255.0f, visuals.chams_color.b * 255.0f );
-						csgo::i::mdl_render->force_mat( mat );
+						csgo::i::render_view->set_alpha ( visuals.chams_color.a * 255.0f );
+						csgo::i::render_view->set_color ( visuals.chams_color.r * 255.0f, visuals.chams_color.g * 255.0f, visuals.chams_color.b * 255.0f );
+						csgo::i::mdl_render->force_mat ( mat );
 					}
 
 
-					hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-					csgo::i::mdl_render->force_mat( nullptr );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 				else {
-					csgo::i::render_view->set_alpha( 255 );
-					csgo::i::render_view->set_color( 255, 255, 255 );
-					csgo::i::mdl_render->force_mat( nullptr );
+					csgo::i::render_view->set_alpha ( 255 );
+					csgo::i::render_view->set_color ( 255, 255, 255 );
+					csgo::i::mdl_render->force_mat ( nullptr );
 
-					if ( ( g::local && e == g::local ) && g::local->scoped( ) )
-						csgo::i::render_view->set_alpha( 22 );
+					if ( ( g::local && e == g::local ) && g::local->scoped ( ) )
+						csgo::i::render_view->set_alpha ( 22 );
 
-					hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 				}
 
 				/* glow overlay */
 				if ( visuals.rimlight_overlay ) {
-					update_mats( visuals, visuals.rimlight_color );
-					csgo::i::render_view->set_alpha( 255 );
-					csgo::i::render_view->set_color( 255, 255, 255 );
+					update_mats ( visuals, visuals.rimlight_color );
+					csgo::i::render_view->set_alpha ( 255 );
+					csgo::i::render_view->set_color ( 255, 255, 255 );
 					// mat->set_material_var_flag( 268435456, false );
-					m_mat_glow->set_material_var_flag( 0x8000, true );
-					m_mat_glow->set_material_var_flag( 0x1000, visuals.chams_flat );
-					csgo::i::mdl_render->force_mat( m_mat_glow );
-					hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-					csgo::i::mdl_render->force_mat( nullptr );
+					m_mat_glow->set_material_var_flag ( 0x8000, true );
+					m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+					csgo::i::mdl_render->force_mat ( m_mat_glow );
+					hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+					csgo::i::mdl_render->force_mat ( nullptr );
 				}
 			}
-		}
-		else {
-			if ( e == g::local ) {
-				csgo::i::render_view->set_alpha( ( g::local && g::local->scoped( ) ) ? 50 : 255 );
-				csgo::i::render_view->set_color( 255, 255, 255 );
-				hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 			}
 			else {
-				csgo::i::render_view->set_alpha( 255 );
-				csgo::i::render_view->set_color( 255, 255, 255 );
-				hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-			}
-		}
+			csgo::i::render_view->set_alpha ( 255 );
+			csgo::i::render_view->set_color ( 255, 255, 255 );
+			hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 	}
+		}
 	else {
-		csgo::i::render_view->set_alpha( 255 );
-		csgo::i::render_view->set_color( 255, 255, 255 );
-		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+		csgo::i::render_view->set_alpha ( 255 );
+		csgo::i::render_view->set_color ( 255, 255, 255 );
+		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 	}
 
 	csgo::i::render_view->set_alpha( 255 );

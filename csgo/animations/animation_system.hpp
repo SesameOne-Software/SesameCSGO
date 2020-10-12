@@ -25,6 +25,15 @@ namespace anims {
         void store( player_t* ent, bool anim_update );
     };
 
+	struct player_data_t {
+		float spawn_times { 0.0f };
+		float last_update { 0.0f };
+		vec3_t last_origin { vec3_t ( ) };
+		vec3_t old_origin { vec3_t ( ) };
+		vec3_t last_velocity { vec3_t ( ) };
+		vec3_t old_velocity { vec3_t ( ) };
+	};
+
 	extern std::array< int, 65 > choked_commands;
 	extern std::array< float, 65 > desync_sign;
 	extern std::array< float, 65 > client_feet_playback_rate;
@@ -33,7 +42,8 @@ namespace anims {
     extern std::array< matrix3x4_t, 128 > fake_matrix;
     extern std::array< matrix3x4_t, 128 > aim_matrix;
     extern std::array< std::deque< animation_frame_t >, 65 > frames;
-    extern std::map< std::string, std::array< std::deque< int >, 65 > > choke_sequences;
+    //extern std::map< std::string, std::array< std::deque< int >, 65 > > choke_sequences;
+	extern std::array< player_data_t, 65 > player_data;
     extern bool new_tick;
 
     float angle_mod( float a );

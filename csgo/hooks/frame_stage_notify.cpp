@@ -59,6 +59,8 @@ void set_aspect_ratio( ) {
 decltype( &hooks::frame_stage_notify ) hooks::old::frame_stage_notify = nullptr;
 
 void __fastcall hooks::frame_stage_notify( REG, int stage ) {
+	//dbg_print ( fmt::format("stage: {}", stage).c_str());
+
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
 	static auto& world_color = options::vars [ _( "visuals.other.world_color" ) ].val.c;
 	static auto& prop_color = options::vars [ _( "visuals.other.prop_color" ) ].val.c;
@@ -75,10 +77,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		g::dt_recharge_time = 0;
 	}
 
-	security_handler::update( );
-
 	/* fix rate problems */ {
-		const auto rate = static_cast<int>( 1.0f / csgo::i::globals->m_ipt + 0.5f );
+		const auto rate = static_cast< int >( 1.0f / csgo::i::globals->m_ipt + 0.5f );
 
 		g::cvars::cl_updaterate->no_callback ( );
 		g::cvars::cl_cmdrate->no_callback ( );
@@ -86,6 +86,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		g::cvars::cl_updaterate->set_value ( rate );
 		g::cvars::cl_cmdrate->set_value ( rate );
 	}
+
+	set_aspect_ratio ( );
+
+	security_handler::update( );
 
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
@@ -96,8 +100,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		anims::run( stage );
 
 		features::prediction::update( stage );
-
-		set_aspect_ratio ( );
 
 		if ( stage == 5 && g::local ) {
 			RUN_SAFE(

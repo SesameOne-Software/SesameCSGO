@@ -837,7 +837,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		const auto at_target = looking_at ( );
 
 		if ( at_target ) {
-			constexpr auto autostop_threshhold = 0.087f;
+			constexpr auto autostop_threshhold = 0.078f;
 
 			const auto vel = g::local->vel ( );
 			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;

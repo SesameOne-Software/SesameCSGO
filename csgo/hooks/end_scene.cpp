@@ -66,6 +66,8 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 	security_handler::update( );
 
+	//features::esp::dbg_font.draw_atlas ( 20.0f, 20.0f );
+
 	RUN_SAFE(
 		"features::nade_prediction::draw",
 		features::nade_prediction::draw( );
@@ -81,7 +83,7 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 		animations::resolver::render_impacts( );
 	);
 
-	//features::ragebot::scan_points.draw( );
+	features::ragebot::scan_points.draw( );
 
 	if ( removals [ 2 ] && g::local && g::local->scoped( ) ) {
 		int w, h;
@@ -122,7 +124,7 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	device->SetVertexShader( vertex_shader );
 	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, rs_anti_alias );
 
-	truetype::end ( );
+	//truetype::end ( );
 
 	return old::end_scene( REG_OUT, device );
 }

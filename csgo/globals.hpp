@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 
-#define SESAME_VERSION "PREVIEW 3.0.0"
+#define SESAME_VERSION "3.0.0"
 
 struct ucmd_t;
 class vec3_t;

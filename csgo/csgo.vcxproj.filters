@@ -476,6 +476,15 @@
     <ClInclude Include="renderer\font.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="icons\generated_font\sesame_icons.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\base_interpolate_part1.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\ent_listener.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -677,6 +686,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="renderer\font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\base_interpolate_part1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

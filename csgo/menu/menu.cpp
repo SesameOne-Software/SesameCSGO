@@ -750,16 +750,16 @@ void gui::draw( ) {
 						} break;
 						case misc_subtabs_cheat: {
 							if ( gui::begin_group( "Menu", sesui::rect( 0.0f, 0.0f, 0.5f, 1.0f ), sesui::rect( 0.0f, 0.0f, -sesui::style.spacing * 0.5f, 0.0f ) ) ) {
-								int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
-
-								sesui::combobox ( _ ( "GUI DPI" ), dpi, { _ ( "0.5" ), _ ( "1.0" ), _ ( "2.0" ), _ ( "3.0" ) } );
-
-								switch ( dpi ) {
-								case 0: options::vars [ _ ( "gui.dpi" ) ].val.f = 0.5f; break;
-								case 1: options::vars [ _ ( "gui.dpi" ) ].val.f = 1.0f; break;
-								case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
-								case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
-								}
+								//int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
+								//
+								//sesui::combobox ( _ ( "GUI DPI" ), dpi, { _ ( "0.5" ), _ ( "1.0" ), _ ( "2.0" ), _ ( "3.0" ) } );
+								//
+								//switch ( dpi ) {
+								//case 0: options::vars [ _ ( "gui.dpi" ) ].val.f = 0.5f; break;
+								//case 1: options::vars [ _ ( "gui.dpi" ) ].val.f = 1.0f; break;
+								//case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
+								//case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
+								//}
 
 								gui::end_group( );
 							}

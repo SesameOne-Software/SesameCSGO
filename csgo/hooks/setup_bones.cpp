@@ -29,7 +29,7 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xA68 ) = 0;
 		//*reinterpret_cast< int* >( uintptr_t( pl ) + 0x26AC ) = 0;
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xe8 ) |= 8;
-		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xf0 ) |= 8;
+		//*reinterpret_cast< int* >( uintptr_t( pl ) + 0xf0 ) |= 8;
 
 		//pl->inval_bone_cache( );
 
@@ -39,16 +39,16 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 
 		csgo::i::globals->m_framecount = INT_MAX;
 		//csgo::i::globals->m_curtime = csgo::i::globals->m_curtime;
-		csgo::i::globals->m_frametime = 666.0f;
+		//csgo::i::globals->m_frametime = 666.0f;
 
 		const auto ret = old::setup_bones( REG_OUT, out, max_bones, mask, curtime );
 
 		csgo::i::globals->m_framecount = backup_framecount;
 		//csgo::i::globals->m_curtime = backup_curtime;
-		csgo::i::globals->m_frametime = backup_frametime;
+		//csgo::i::globals->m_frametime = backup_frametime;
 
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xe8 ) = backup_flags;
-		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xf0 ) = backup_effects;
+		//*reinterpret_cast< int* >( uintptr_t( pl ) + 0xf0 ) = backup_effects;
 
 		return ret;
 		/*}*/

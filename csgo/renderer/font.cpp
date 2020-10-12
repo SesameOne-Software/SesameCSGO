@@ -4,203 +4,287 @@
 #include "../sdk/sdk.hpp"
 #include "font.hpp"
 
-ID3DXSprite* font_sprite = nullptr;
+#include "../renderer/d3d9.hpp"
+
+#include <codecvt>
+
+constexpr auto bitmap_width = 1024;
+constexpr auto bitmap_height = 1024;
+
+//std::map<uint32_t/*font_id*/, IDirect3DTexture9*/*tex_ptr*/> font_textures {};
+std::map<uint32_t/*font_id*/, ID3DXFont*/*tex_ptr*/> font_textures {};
+
+__forceinline uint32_t cp_len ( uint8_t* str, uint8_t* last ) {
+	int cplen = 1;
+
+	if ( ( str [ 0 ] & 0xf8 ) == 0xf0 )
+		cplen = 4;
+	else if ( ( str [ 0 ] & 0xf0 ) == 0xe0 )
+		cplen = 3;
+	else if ( ( str [ 0 ] & 0xe0 ) == 0xc0 )
+		cplen = 2;
+
+	if ( str + cplen > last )
+		cplen = 1;
+
+	return cplen;
+}
 
 void truetype::font::set_font_size ( float x ) {
 	size = x;
 }
 
-std::optional<truetype::font> truetype::create_font ( const uint8_t* font_data, std::string_view font_name, float size ) {
+std::optional<truetype::font> truetype::create_font ( const uint8_t* font_data, std::string_view font_name, float size, bool extended_range ) {
+	static uint32_t font_counter = 0;
+
+	font_counter++;
+
+	/* TEMPORARY UNTIL FIX */
+	return font { font_counter, font_name.data ( ), size, {}, {}, nullptr, nullptr };
+	
 	stbtt_fontinfo font_info;
 	
 	if ( stbtt_InitFont ( &font_info, font_data, 0 ) ) {
-		//stbtt_pack_context context;
-		//
-		//if ( !stbtt_PackBegin ( &context, nullptr, 1024, 1024 * static_cast<int>( size + 0.5f ), 0, 1, nullptr ) )
-		//	return std::nullopt;
-		//
-		//stbtt_PackSetOversampling ( &context, 1, 1 );
-		//
-		//std::vector<std::pair<uint16_t, uint16_t>> char_ranges {
-		//{0x0020, 0x00FF}, // Basic Latin + Latin Supplement
-		//{0x2010, 0x205E}, // Punctuations
-		//{0x0E00, 0x0E7F}, // Thai
-		//{0x3000, 0x30FF}, // Punctuations, Hiragana, Katakana
-		//{0x31F0, 0x31FF}, // Katakana Phonetic Extensions
-		//{0xFF00, 0xFFEF}, // Half-width characters
-		//{0x4e00, 0x9FAF}, // CJK Ideograms
-		//};
-		//
-		//int buf_packedchars_n = 0, buf_rects_n = 0, buf_ranges_n = 0;
-		//stbtt_packedchar* buf_packedchars = ( stbtt_packedchar* ) ImGui::MemAlloc ( total_glyph_count * sizeof ( stbtt_packedchar ) );
-		//stbrp_rect* buf_rects = ( stbrp_rect* ) ImGui::MemAlloc ( total_glyph_count * sizeof ( stbrp_rect ) );
-		//stbtt_pack_range* buf_ranges = ( stbtt_pack_range* ) ImGui::MemAlloc ( total_glyph_range_count * sizeof ( stbtt_pack_range ) );
-		//memset ( buf_packedchars, 0, total_glyph_count * sizeof ( stbtt_packedchar ) );
-		//memset ( buf_rects, 0, total_glyph_count * sizeof ( stbrp_rect ) );              // Unnecessary but let's clear this for the sake of sanity.
-		//memset ( buf_ranges, 0, total_glyph_range_count * sizeof ( stbtt_pack_range ) );
-		//
-		//charInfo = new stbtt_packedchar [ MAP_NUM_CHARS ];
-		//
-		//if ( !stbtt_PackFontRanges ( &context, fontData, 0, FONT_SIZE, firstChar, MAP_NUM_CHARS, charInfo ) ) {
-		//	stbtt_PackEnd ( &context );
-		//	delete [ ] pixels;
-		//	delete [ ] charInfo;
-		//	charInfo = nullptr;
-		//	Log::get ( LOG_ERROR ) << "Error packing font map!" << Log::endl;
-		//	return -2;
-		//}
-		//
-		//stbtt_PackEnd ( &context );
+		const auto bitmap = new uint8_t [ bitmap_width * bitmap_height ];
+		
+		std::vector<std::pair<uint16_t, uint16_t>> char_ranges;
 
+		/* CATEGORIES */
+		/* latin + latin suppliment */
+		char_ranges.push_back ( { 0x0020, 0x00FF } );
+		/* latin extended a + b */
+		char_ranges.push_back ( { 0x0100, 0x024F } );
 
+		if ( extended_range ) {
+			/* cyrillic */
+			char_ranges.push_back ( { 0x0400, 0x052F } );
+			char_ranges.push_back ( { 0x2DE0, 0x2DFF } );
+			char_ranges.push_back ( { 0xA640, 0xA69F } );
+			/* thai */
+			char_ranges.push_back ( { 0x0E00, 0x0E7F } );
+			/* punctuations */
+			char_ranges.push_back ( { 0x2010, 0x205E } );
+			/* cjk symbols, punctuation, hiragana, and katakana */
+			char_ranges.push_back ( { 0x3000, 0x30FF } );
+			/* katakana phonetic extensions */
+			char_ranges.push_back ( { 0x31F0, 0x31FF } );
+			/* cjk ideograms */
+			char_ranges.push_back ( { 0x4e00, 0x9FAF } );
+			/* half-width characters */
+			char_ranges.push_back ( { 0xFF00, 0xFFEF } );
+		}
+		
+		stbtt_pack_context pc;
+		stbtt_PackBegin ( &pc, bitmap, bitmap_width, bitmap_height, 0, 1, nullptr );
+		
+		stbtt_PackSetOversampling ( &pc, 1, 1 );
+		
+		const auto chars = new stbtt_packedchar [ 0xFFFF ];
+		const auto pr = new stbtt_pack_range [ char_ranges.size() ];
+		
+		for ( auto i = 0; i < char_ranges.size ( ); i++ ) {
+			pr [ i ].chardata_for_range = chars + char_ranges [ i ].first;
+			pr [ i ].array_of_unicode_codepoints = nullptr;
+			pr [ i ].first_unicode_codepoint_in_range = char_ranges [ i ].first;
+			pr [ i ].num_chars = char_ranges [ i ].second- char_ranges [ i ].first;
+			pr [ i ].font_size = size;
+		}
+		
+		stbtt_PackFontRanges ( &pc, font_data, 0, pr, char_ranges.size ( ) );
+		
+		delete [ ] pr;
 
-		return font { font_name.data ( ), size, font_info, std::make_unique<uint32_t [ ]> ( 1 ) };
+		stbtt_PackEnd ( &pc );
+
+		return font { ++font_counter, font_name.data ( ), size, font_info, pc, chars, bitmap };
 	}
 
 	return std::nullopt;
 }
 
 void truetype::font::text_size ( const std::string& string, float& x_out, float& y_out ) {
+	/* TEMPORARY UNTIL FIX */
+	const auto texture = font_textures.find ( id );
+
+	if ( texture == font_textures.end ( ) )
+		render::create_font ( reinterpret_cast< void** >( &font_textures [ id ] ), string, size, false );
+
+	render::dim dim_out;
+	render::text_size ( font_textures [ id ], string, dim_out );
+
+	x_out = dim_out.w;
+	y_out = dim_out.h;
+
+	return;
+
 	x_out = 0.0f;
 	y_out = 0.0f;
-
-	auto scale = stbtt_ScaleForPixelHeight ( &font_info, size );
 	
 	for ( auto i = 0; i < string.size ( ); ++i ) {
-		auto ax = 0;
-		stbtt_GetCodepointHMetrics ( &font_info, string [ i ], &ax, 0 );
-		x_out += ax * scale;
-		
-		if ( string [ i + 1 ] ) {
-			auto kern = stbtt_GetCodepointKernAdvance ( &font_info, string [ i ], string [ i + 1 ] );
-			x_out += kern * scale;
-		}
+		stbtt_aligned_quad quad;
+		stbtt_GetPackedQuad ( chars, bitmap_width, bitmap_height, string [ i ], &x_out, &y_out, &quad, 0 );
 	}
-
-	y_out = static_cast< int >( size + 0.5f );
 }
 
-IDirect3DTexture9* truetype::font::create_texture ( const std::string& string ) {
-	constexpr auto bitmap_width = 512;
+void truetype::font::text_size ( const std::wstring& string, float& x_out, float& y_out ) {
+	/* TEMPORARY UNTIL FIX */
+	const auto texture = font_textures.find ( id );
 
-	auto bitmap = new uint8_t [ bitmap_width * static_cast< int >( size + 0.5f ) ] { 0 };
+	if ( texture == font_textures.end ( ) )
+		render::create_font ( reinterpret_cast< void** >( &font_textures [ id ] ), string, size, false );
 
-	auto scale = stbtt_ScaleForPixelHeight ( &font_info, size );
+	render::dim dim_out;
+	render::text_size ( font_textures [ id ], string, dim_out );
 
-	auto x = 0, ascent = 0, descent = 0, lineGap = 0;
-	stbtt_GetFontVMetrics ( &font_info, &ascent, &descent, &lineGap );
+	x_out = dim_out.w;
+	y_out = dim_out.h;
+}
 
-	ascent *= scale;
-	descent *= scale;
+void truetype::font::draw_text ( float x, float y, const std::wstring& string, uint32_t color, text_flags_t flags ) {
+	/* TEMPORARY UNTIL FIX */
+	const auto texture = font_textures.find ( id );
+
+	if ( texture == font_textures.end ( ) )
+		render::create_font ( reinterpret_cast< void** >( &font_textures [ id ] ), string, size, false );
+
+	render::text ( x, y, color, font_textures [ id ], string, flags == text_flags_t::text_flags_dropshadow, flags == text_flags_t::text_flags_outline );
+}
+
+void truetype::font::draw_text ( float x, float y, const std::string& string, uint32_t color, text_flags_t flags ) {
+	/* TEMPORARY UNTIL FIX */
+	const auto texture = font_textures.find ( id );
+	
+	if ( texture == font_textures.end ( ) )
+		render::create_font ( reinterpret_cast<void**>( &font_textures [ id ] ), string, size, false );
+	
+	render::text ( x, y, color, font_textures [ id ], string, flags == text_flags_t::text_flags_dropshadow, flags == text_flags_t::text_flags_outline );
+
+	return;
+
+	////////////////////////////////////////////////////////////////
+
+	/* create texture if it doesnt exist already */
+	//const auto texture = font_textures.find ( id );
+	
+	//if ( texture == font_textures.end ( ) )
+	//	D3DXCreateTexture ( csgo::i::dev, bitmap_width, bitmap_height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8, D3DPOOL_DEFAULT, &font_textures[id] );
+
+	struct font_vertex_t {
+		float x, y, z, rhw;
+		uint32_t color;
+		float tx, ty;
+	};
+
+	csgo::i::dev->SetFVF ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 );
+	csgo::i::dev->SetStreamSource ( 0, nullptr, 0, sizeof ( font_vertex_t ) );
+
+	csgo::i::dev->SetTextureStageState ( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 );
+	csgo::i::dev->SetTextureStageState ( 0, D3DTSS_COLORARG1, D3DTA_CURRENT );
+	csgo::i::dev->SetTextureStageState ( 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1 );
+	csgo::i::dev->SetTextureStageState ( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE );
+
+	csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLOROP, D3DTOP_MODULATE );
+	csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLORARG1, D3DTA_CURRENT );
+	csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLORARG2, D3DTA_TEXTURE );
+	
+	//csgo::i::dev->SetTexture ( 0, font_textures [ id ] );
+	
+	IDirect3DVertexBuffer9* vertex_buffer = nullptr;
+	csgo::i::dev->CreateVertexBuffer ( sizeof ( font_vertex_t ) * 12, 0, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1, D3DPOOL_DEFAULT, &vertex_buffer, nullptr );
+
+	float qx = 0.0f;
+	float qy = 0.0f;
 
 	for ( auto i = 0; i < string.size ( ); ++i ) {
-		auto c_x1 = 0, c_y1 = 0, c_x2 = 0, c_y2 = 0;
-		stbtt_GetCodepointBitmapBox ( &font_info, string [ i ], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2 );
+		stbtt_aligned_quad quad;
+		stbtt_GetPackedQuad ( chars, bitmap_width, bitmap_height, string [ i ], &qx, &qy, &quad, 0 );
+		
+		font_vertex_t* vertices = nullptr;
 
-		auto y = ascent + c_y1;
+		const auto add_vertices = [ & ] ( float xpos, float ypos, uint32_t clr ) {
+			vertex_buffer->Lock ( 0, 0, ( void** ) &vertices, 0 );
+			
+			*vertices++ = { xpos, ypos + quad.y1 - quad.y0, 1.0f, 1.0f, clr, 0.0f, 1.0f };
+			*vertices++ = { xpos + quad.x1 - quad.x0, ypos + quad.y1 - quad.y0, 1.0f, 1.0f, clr, 1.0f, 1.0f };
+			*vertices++ = { xpos, ypos, 1.0f, 1.0f, clr, 0.0f, 0.0f };
 
-		auto byteOffset = x + ( y * bitmap_width );
-		stbtt_MakeCodepointBitmap ( &font_info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, bitmap_width, scale, scale, string [ i ] );
+			*vertices++ = { xpos + quad.x1 - quad.x0, ypos + quad.y1 - quad.y0, 1.0f, 1.0f, clr, 1.0f, 1.0f };
+			*vertices++ = { xpos + quad.x1 - quad.x0, ypos, 1.0f, 1.0f, clr, 1.0f, 0.0f };
+			*vertices++ = { xpos, ypos, 1.0f, 1.0f, clr, 0.0f, 0.0f };
 
-		auto ax = 0;
-		stbtt_GetCodepointHMetrics ( &font_info, string [ i ], &ax, 0 );
-		x += ax * scale;
+			vertex_buffer->Unlock ( );
 
-		if ( string [ i + 1 ] ) {
-			auto kern = stbtt_GetCodepointKernAdvance ( &font_info, string [ i ], string [ i + 1 ] );
-			x += kern * scale;
+			csgo::i::dev->DrawPrimitive ( D3DPT_TRIANGLELIST, 0, 2 );
+		};
+		
+		switch ( flags ) {
+		case text_flags_t::text_flags_none: {
+
+		}break;
+		case text_flags_t::text_flags_dropshadow: {
+			auto shadow_offset = ( quad.y1 - quad.y0 ) * 0.035f;
+			shadow_offset = shadow_offset < 1.1f ? 1.0f : shadow_offset;
+			add_vertices ( x + shadow_offset, y + shadow_offset, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		} break;
+		case text_flags_t::text_flags_outline: {
+			auto outline_offset = ( quad.y1 - quad.y0 ) * 0.035f;
+			outline_offset = outline_offset < 1.1f ? 1.0f : outline_offset;
+			add_vertices ( x + outline_offset, y, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+			add_vertices ( x, y + outline_offset, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+			add_vertices ( x, y - outline_offset, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+			add_vertices ( x - outline_offset, y, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		} break;
 		}
+
+		add_vertices ( x, y, color );
 	}
 
+	vertex_buffer->Release ( );
+	vertex_buffer = nullptr;
+
+	csgo::i::dev->SetTexture ( 0, nullptr );
+}
+
+void truetype::font::draw_atlas ( float x, float y ) {
 	IDirect3DTexture9* texture = nullptr;
 
-	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, static_cast< int >( size + 0.5f ), 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8/*D3DFMT_L8*/, D3DPOOL_DEFAULT, &texture ) < 0 ) {
-		delete [ ] bitmap;
-		return nullptr;
+	if ( D3DXCreateTexture ( csgo::i::dev, bitmap_width, bitmap_height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8/*D3DFMT_L8*/, D3DPOOL_DEFAULT, &texture ) < 0 ) {
+		return;
 	}
 
 	D3DLOCKED_RECT rect;
 
 	if ( !texture ) {
-		delete [ ] bitmap;
-		return nullptr;
+		return;
 	}
 
 	if ( texture->LockRect ( 0, &rect, nullptr, 0 ) < 0 ) {
 		texture->Release ( );
-		delete [ ] bitmap;
-		return nullptr;
-	}
-
-	auto expanded = new uint32_t [ bitmap_width * static_cast< int >( size + 0.5f ) ] { 0 };
-	
-	for ( int y = 0; y < static_cast< int >( size + 0.5f ); y++ ) {
-		for ( int cx = 0; cx < bitmap_width; cx++ ) {
-			auto index = ( y * bitmap_width ) + cx;
-			auto value = ( uint32_t ) bitmap [ index ];
-			expanded [ index ] = value << 24;
-			expanded [ index ] |= 0x00FFFFFF;
-		}
-	}
-	
-	memcpy ( rect.pBits, expanded, bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint32_t ) );
-
-	delete [ ] bitmap;
-	delete [ ] expanded;
-
-	//memcpy ( rect.pBits, bitmap.get ( ), bitmap_width * static_cast< int >( size + 0.5f ) * sizeof ( uint8_t ) );
-
-	texture->UnlockRect ( 0 );
-
-	return texture;
-}
-
-void truetype::font::draw_text ( float x, float y, const std::string& string, uint32_t color, text_flags_t flags ) {
-	auto texture = create_texture ( string );
-
-	if ( !texture || !font_sprite ) {
-		if ( texture ) {
-			texture->Release ( );
-			texture = nullptr;
-		}
-
 		return;
 	}
 
-	if ( font_sprite->Begin ( D3DXSPRITE_ALPHABLEND ) >= 0 ) {
-		switch ( flags ) {
-		case text_flags_t::text_flags_none:
-			break;
-		case text_flags_t::text_flags_dropshadow:
-			font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x + 1.0f, y + 1.0f, 0.0f }, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-			break;
-		case text_flags_t::text_flags_outline:
-			font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x - 1.0f, y - 1.0f, 0.0f }, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-			font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x + 1.0f, y + 1.0f, 0.0f }, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-			font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x + 1.0f, y - 1.0f, 0.0f }, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-			font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x - 1.0f, y + 1.0f, 0.0f }, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
-			break;
-		}
-
-		font_sprite->Draw ( texture, nullptr, nullptr, &D3DXVECTOR3 { x, y, 0.0f }, color );
-
-		font_sprite->End ( );
-	}
+	memcpy ( rect.pBits, font_map, bitmap_width * bitmap_height * sizeof ( uint8_t ) );
 
 	if ( texture ) {
+		texture->UnlockRect ( 0 );
 		texture->Release ( );
 		texture = nullptr;
 	}
 }
 
 void truetype::begin ( ) {
-	if ( !font_sprite )
-		D3DXCreateSprite ( csgo::i::dev, &font_sprite );
+
 }
 
 void truetype::end ( ) {
-	if ( font_sprite ) {
-		font_sprite->Release ( );
-		font_sprite = nullptr;
+	if ( !font_textures.empty() ) {
+		for ( auto& texture : font_textures ) {
+			if ( texture.second ) {
+				texture.second->Release ( );
+				texture.second = nullptr;
+			}
+		}
+		
+		font_textures.clear ( );
 	}
 }

@@ -4,6 +4,8 @@
 #include "matrix3x4.hpp"
 #include "mdl_info.hpp"
 #include "../utils/vfunc.hpp"
+#include "entity.hpp"
+#include "client.hpp"
 
 enum class movetypes {
 	movetype_none = 0,
@@ -183,19 +185,18 @@ public:
 	NETVAR( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
 	NETVAR( vec3_t, ragdoll_vel, "DT_CSRagdoll->m_vecRagdollVelocity" );
 	NETVAR( float, next_attack, "DT_CSPlayer->m_flNextAttack" );
-	OFFSET( int, effects, 0xE4 );
-	OFFSET( int, eflags, 0xE8 );
+	OFFSET( int, effects, 0xE8 );
+	OFFSET( int, eflags, 0xF0 );
 	OFFSET( void*, iks, 0x266C );
 	OFFSET( bool, should_update, 0x289C );
 	OFFSET( std::uint32_t, num_overlays, 0x298C );
-	OFFSET( float, spawn_time, 0xA360 );
+	OFFSET( float, spawn_time, 0xA370 );
 	OFFSET( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
 	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
 	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
 
 	bool is_player( ) {
-		using fn = bool( __thiscall* )( void* );
-		return vfunc< fn >( this, 155 )( this );
+		return client_class ( ) && client_class ( )->m_class_id == 40;
 	}
 
 	animlayer_t* layers( ) {

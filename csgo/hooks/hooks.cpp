@@ -33,6 +33,7 @@
 #include "run_command.hpp"
 #include "run_simulation.hpp"
 #include "build_transformations.hpp"
+#include "base_interpolate_part1.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -47,7 +48,17 @@
 
 #include "../menu/options.hpp"
 
+#include "ent_listener.hpp"
+
+std::unique_ptr< c_entity_listener_mgr > ent_listener;
+
 void hooks::init( ) {
+	/* initialize resources we need from memory */
+	unsigned long font_count = 0;
+	// ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_icons_font, sizeof resources::sesame_icons_font, nullptr, &font_count );
+
 	/* initialize cheat config */
 	gui::init( );
 	erase::erase_func( gui::init );
@@ -111,7 +122,8 @@ void hooks::init( ) {
 	const auto _setup_bones = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
 	const auto _run_command = vfunc<void*>( csgo::i::pred, 19 );
 	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 53 8B 5D 10 56" ) ).get< void* >( );
-	const auto _build_transformations = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* >( );
+	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
+	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -158,19 +170,21 @@ void hooks::init( ) {
 	dbg_hook( _run_command, run_command, ( void** )&old::run_command );
 	//dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
+	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 
 	event_handler = std::make_unique< c_event_handler >( );
+	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
 
-	/* load default config for testing */ {
-		char appdata [ MAX_PATH ];
-
-		if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-			LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-			LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
-		}
-
-		options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\hvh max desync.xml" ) );
-	}
+	///* load default config for testing */ {
+	//	char appdata [ MAX_PATH ];
+	//
+	//	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+	//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
+	//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+	//	}
+	//
+	//	options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\hvh max desync.xml" ) );
+	//}
 
 	old::wnd_proc = ( WNDPROC )LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( wnd_proc ) );
 

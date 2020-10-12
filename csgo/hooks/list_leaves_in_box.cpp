@@ -50,8 +50,13 @@ int __fastcall hooks::list_leaves_in_box( REG, vec3_t& mins, vec3_t& maxs, uint1
 
 	auto base_entity = get_base_entity( get_client_unknown( info->m_renderable ) );
 
-	if ( !base_entity || base_entity->idx( ) > 64 || !base_entity->idx( ) )
+	if ( !base_entity )
 		return old::list_leaves_in_box( REG_OUT, mins, maxs, list, list_max );
+
+	auto client_class = base_entity->client_class ( );
+
+	if ( !client_class || ( client_class->m_class_id != 40 && client_class->m_class_id != 42 ) )
+		return old::list_leaves_in_box ( REG_OUT, mins, maxs, list, list_max );
 
 	info->m_flags &= ~0x100;
 	info->m_flags2 |= 0x40;
