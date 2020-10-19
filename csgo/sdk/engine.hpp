@@ -43,8 +43,27 @@ public:
 	virtual float get_avg_latency( int flow ) const = 0;
 };
 
+class net_channel_t {
+public:
+	char m_pad_0000 [ 20 ];
+	bool m_is_processing_messages;
+	bool m_should_delete;
+	char m_pad_0016 [ 2 ];
+	int m_out_sequence_nr;
+	int m_in_sequence_nr;
+	int m_out_sequence_nr_ack;
+	int m_out_reliable_state_count;
+	int m_in_reliable_state_count;
+	int m_choked_packets;
+	char m_pad_0030 [ 1044 ];
+};
+
 class c_clientstate {
 public:
+	net_channel_t* net_channel ( ) {
+		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< std::uintptr_t >( this ) + 0x9C );
+	}
+
 	std::uint32_t& choked( ) {
 		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D30 );
 	}

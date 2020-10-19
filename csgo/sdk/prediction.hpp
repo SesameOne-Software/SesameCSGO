@@ -47,11 +47,15 @@ public:
 	}
 
 	PAD( 8 );
-	bool m_in_prediction;
+	bool m_in_prediction; //0x8
 	PAD( 1 );
-	bool m_engine_paused;
-	PAD( 13 );
-	bool m_is_first_time_predicted;
+	bool m_engine_paused; //0xA
+	PAD( 1 );
+	int m_previous_start_frame; //0xC
+	PAD( 8 );
+	bool m_is_first_time_predicted; //0x18
+	PAD ( 3 );
+	int m_commands_predicted; //0x1C
 };
 
 class c_movement {

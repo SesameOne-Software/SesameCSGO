@@ -643,6 +643,48 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	//return dmg_hitchance( ang, pl, point, rays, hitbox );
 }
 
+//void features::ragebot::pack ( ucmd_t* ucmd, int ticks, bool teleport ) {
+//	auto net_chan = csgo::i::client_state->net_channel ( );
+//	if ( !net_chan )
+//		return;
+//
+//	auto from_cmd = ucmd;
+//
+//	for ( auto i = 0; i < ticks; i++ ) {
+//		auto next_veri_cmd = csgo::i::input->get_verified_cmd ( from_cmd->m_cmdnum + 1 );
+//		auto next_cmd = csgo::i::input->get_usercmd ( 0, from_cmd->m_cmdnum + 1 );
+//
+//		//	create next command
+//		*next_cmd = *from_cmd;
+//		next_cmd->m_cmdnum++;
+//		next_cmd->m_hasbeenpredicted = false;
+//		next_cmd->m_buttons &= ~in_attack;
+//		next_cmd->m_buttons &= ~in_attack2;
+//
+//		if ( !teleport )
+//			next_cmd->m_tickcount = INT_MAX;
+//		else {
+//			math::correct_movement ( next_cmd, wish_angle );
+//			m_ticks_allowed--;
+//		}
+//
+//		//	verify command
+//		next_veri_cmd->m_cmd = *next_cmd;
+//		next_veri_cmd->m_crc = next_cmd->get_checksum ( );
+//
+//		//	set from_cmd
+//		from_cmd = next_cmd;
+//
+//		//	set clientstate shit
+//		csgo::i::client_state->choked ( )++;
+//		net_chan->m_choked_packets++;
+//		net_chan->m_out_sequence_nr++;
+//	}
+//
+//	csgo::i::pred->m_previous_start_frame = -1; //0xC
+//	csgo::i::pred->m_commands_predicted = 0; //0x1C
+//}
+
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	auto can_shoot = [ & ] ( ) {
 		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) || !g::local->weapon( )->data( ) )
@@ -665,7 +707,7 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
 	//auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, sv_maxusrcmdprocessticks->get_int() ) );
-	auto tickbase_as_int = std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) );
+	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - csgo::i::client_state->choked() - 1 );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;

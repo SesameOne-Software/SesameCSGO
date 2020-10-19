@@ -32,6 +32,11 @@ public:
 	float m_last_forward_move; //0xDC
 	int m_clear_input_state; //0xE0
 
+	verified_ucmd_t* get_verified_cmd ( int sequence_number ) {
+		auto vcmds = *( verified_ucmd_t** ) ( reinterpret_cast< uint32_t >( this ) + 0xF8 );
+		return &vcmds [ sequence_number % 150 ];
+	}
+
 	ucmd_t* get_usercmd( int slot, int sequence_number ) {
 		auto _this = ( char* ) this;
 		auto unk = ( int ) this;

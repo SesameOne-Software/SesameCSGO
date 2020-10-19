@@ -116,6 +116,7 @@ namespace features {
 
 		bool dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox );
 		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, lagcomp::lag_record_t& rec );
+		void pack ( ucmd_t* ucmd, int ticks, bool teleport );
 		void slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove );
 		void run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs );
 		void tickbase_controller( ucmd_t* ucmd );
