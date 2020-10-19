@@ -263,8 +263,8 @@ void animations::resolver::process_hurt( event_t* event ) {
 	hit_hitgroup [ victim->idx( ) ] = hitgroup;
 
 	/* hit wrong hitbox, probably due to resolver */
-	//if ( hitgroup != autowall::hitbox_to_hitgroup( features::ragebot::get_hitbox( victim->idx( ) ) ) )
-	//	rdata::wrong_hitbox [ victim->idx( ) ] = true;
+	if ( hitgroup != autowall::hitbox_to_hitgroup( features::ragebot::get_hitbox( victim->idx( ) ) ) )
+		rdata::wrong_hitbox [ victim->idx( ) ] = true;
 }
 
 void animations::resolver::process_event_buffer( int pl_idx ) {
@@ -569,52 +569,77 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 		has_slow_walk = std::fabsf( pl->vel( ).length_2d( ) - animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] ) < 10.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] > 20.0f && pl->vel( ).length_2d( ) > 20.0f && animations::resolver::rdata::last_vel_rate [ pl->idx( ) ] < pl->weapon( )->data( )->m_max_speed * 0.33f && pl->vel( ).length_2d( ) < pl->weapon( )->data( )->m_max_speed * 0.33f;
 
 	if ( true ) {
-		if ( pl->vel ( ).length_2d ( ) < 10.0f || !(pl->flags() & 1) ) {
-			if ( !last_moving_sign [ pl->idx ( ) ] )
-				yaw1 = csgo::normalize ( pl->angles ( ).y + freestanding_dir );
-			else
-				yaw1 = csgo::normalize ( pl->angles ( ).y + last_moving_sign [ pl->idx ( ) ] * desync_amount );
+		auto cached_yaw = pl->angles ( ).y;
 
-			if ( !last_moving_sign [ pl->idx ( ) ] )
-				yaw2 = csgo::normalize ( pl->angles ( ).y - freestanding_dir );
-			else if ( fabsf(last_moving_sign [ pl->idx ( ) ]) <= 0.5f  )
-				yaw2 = csgo::normalize ( pl->angles ( ).y - last_moving_sign [ pl->idx ( ) ] * desync_amount );
-			else if ( last_moving_sign [ pl->idx ( ) ] < 0.0f )
+		if ( std::fabsf ( avg_yaw_delta ) > desync_amount * 1.2f ) {
+			auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount )* ( ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
+			switch_delta = ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
+			correction_amount = switch_delta;
+
+			yaw1 = csgo::normalize ( pl->angles ( ).y + switch_delta );
+			yaw2 = csgo::normalize ( pl->angles ( ).y - switch_delta );
+			yaw3 = csgo::normalize ( pl->angles ( ).y + switch_delta );
+
+			record_correction = false;
+		}
+		else if ( resolve_cached ( pl->idx ( ), cached_yaw ) ) {
+			switch ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ) {
+			case 0:
+				yaw1 = csgo::normalize ( cached_yaw );
+				yaw2 = -csgo::normalize ( cached_yaw );
+				yaw3 = csgo::normalize ( pl->angles ( ).y );
+				break;
+			case 1:
+				yaw1 = csgo::normalize ( pl->angles ( ).y );
+				yaw2 = csgo::normalize ( cached_yaw );
+				yaw3 = -csgo::normalize ( cached_yaw );
+				break;
+			case 2:
+				yaw1 = -csgo::normalize ( cached_yaw );
+				yaw2 = csgo::normalize ( pl->angles ( ).y );
+				yaw3 = csgo::normalize ( cached_yaw );
+				break;
+			}
+
+			record_correction = false;
+		}
+		else if ( fabsf ( eye_feet_delta ) > 100.0f ) {
+			yaw1 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? desync_amount : -desync_amount ) );
+			yaw2 = csgo::normalize ( pl->angles ( ).y );
+			yaw3 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? desync_amount : -desync_amount ) * 0.5f );
+		}
+		else if ( pl->vel ( ).length_2d ( ) < 0.1f || !(pl->flags() & 1) ) {
+			yaw1 = csgo::normalize ( pl->angles ( ).y + last_moving_sign [ pl->idx ( ) ] * desync_amount );
+
+			if ( last_moving_sign [ pl->idx ( ) ] == -1.0f )
 				yaw2 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
-			else
+			else if ( last_moving_sign [ pl->idx ( ) ] == 1.0f )
+				yaw2 = csgo::normalize ( pl->angles ( ).y );
+			else if ( last_moving_sign [ pl->idx ( ) ] == 0.0f )
 				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount );
 
-			const auto diff0 = anims::angle_diff ( yaw1, pl->angles ( ).y );
-			const auto diff1 = anims::angle_diff ( yaw2, pl->angles ( ).y );
-
-			if ( ( diff0 < 0.0f && diff1 > 0.0f ) || ( diff1 < 0.0f && diff0 > 0.0f ) )
-				yaw3 = csgo::normalize ( pl->angles ( ).y );
+			if ( last_moving_sign [ pl->idx ( ) ] == 0.0f )
+				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
 			else
-				yaw3 = csgo::normalize ( pl->angles ( ).y + copysignf ( desync_amount, -yaw1 ) );
+				yaw3 = csgo::normalize ( pl->angles ( ).y - last_moving_sign [ pl->idx ( ) ] * desync_amount );
 		}
 		else {
 			last_moving_sign [ pl->idx ( ) ] = anims::desync_sign [ pl->idx ( ) ];
 
 			yaw1 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-
-			if( yaw1 == -1.0f )
+			
+			if( anims::desync_sign [ pl->idx ( ) ] == -1.0f )
 				yaw2 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
+			else if( anims::desync_sign [ pl->idx ( ) ] == 1.0f )
+				yaw2 = csgo::normalize ( pl->angles ( ).y );
+			else if ( anims::desync_sign [ pl->idx ( ) ] == 0.0f )
+				yaw2 = csgo::normalize ( pl->angles ( ).y + desync_amount );
+
+			if ( anims::desync_sign [ pl->idx ( ) ] == 0.0f )
+				yaw3 = csgo::normalize ( pl->angles ( ).y - desync_amount * 0.5f );
 			else
-				yaw2 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
-
-			yaw3 = csgo::normalize ( pl->angles ( ).y + anims::desync_sign [ pl->idx ( ) ] * desync_amount );
+				yaw3 = csgo::normalize ( pl->angles ( ).y - anims::desync_sign [ pl->idx ( ) ] * desync_amount );
 		}
-	}
-	else if ( std::fabsf( avg_yaw_delta ) > desync_amount * 1.2f ) {
-		auto switch_delta = ( ( jitter_delta > 0.0f ) ? desync_amount : -desync_amount ) * ( ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve / 2 % 2 ) ? 2.0f : 1.0f );
-		switch_delta = ( features::ragebot::get_misses( pl->idx( ) ).bad_resolve % 2 ) ? -switch_delta : switch_delta;
-		correction_amount = switch_delta;
-
-		yaw1 = csgo::normalize( pl->angles( ).y + switch_delta );
-		yaw2 = csgo::normalize( pl->angles( ).y - switch_delta );
-		yaw3 = csgo::normalize( pl->angles( ).y + switch_delta );
-
-		record_correction = false;
 	}
 	else {
 	//if ( has_slow_walk || std::fabsf( eye_feet_delta ) <= 35.0f ) {
@@ -711,7 +736,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 		for ( auto& cached_resolve : cached_resolves [ pl->idx( ) ] ) {
 			if ( cached_resolve.within( pl->idx( ) ) ) {
-				cached_resolve = { pl->origin( ), particle_predicted_desync_offset [ pl->idx( ) ] * desync_amount, 35.0f, 0 };
+				cached_resolve = { pl->origin( ), particle_predicted_desync_offset [ pl->idx( ) ] * desync_amount, 24.0f, 0 };
 				cached_resolve_exists = true;
 				break;
 			}
@@ -719,7 +744,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 		/* else add a new entry */
 		if ( !cached_resolve_exists )
-			cached_resolves [ pl->idx( ) ].push_back( { pl->origin( ), particle_predicted_desync_offset [ pl->idx( ) ] * desync_amount, 35.0f, 0 } );
+			cached_resolves [ pl->idx( ) ].push_back( { pl->origin( ), particle_predicted_desync_offset [ pl->idx( ) ] * desync_amount, 24.0f, 0 } );
 
 		received_new_particles [ pl->idx( ) ] = false;
 	}
@@ -772,12 +797,12 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 	if ( std::fabsf( pl->angles( ).x ) >= 60.0f )
 		initial_pitch_time [ pl->idx( ) ] = csgo::i::globals->m_curtime;
 
-	//if ( std::fabsf( pl->angles( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx( ) ] ) < 0.33f ) {
-	//	yaw1 = last_recorded_resolve1 [ pl->idx( ) ];
-	//	yaw2 = last_recorded_resolve2 [ pl->idx( ) ];
-	//	yaw3 = last_recorded_resolve3 [ pl->idx( ) ];
-	//	return;
-	//}
+	if ( std::fabsf( pl->angles( ).x ) < 60.0f && std::fabsf( csgo::i::globals->m_curtime - initial_pitch_time [ pl->idx( ) ] ) < 0.33f ) {
+		yaw1 = last_recorded_resolve1 [ pl->idx( ) ];
+		yaw2 = last_recorded_resolve2 [ pl->idx( ) ];
+		yaw3 = last_recorded_resolve3 [ pl->idx( ) ];
+		return;
+	}
 
 	//if ( animations::data::choke [ pl->idx ( ) ] ) {
 		/* attempt to resolve player with the data we have */

@@ -37,7 +37,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		ray_t ray;
 		trace_t trace;
 		trace_filter_t filter( g::local );
-
+		
 		csgo::util_traceline( g::local->eyes( ), g::local->eyes( ) + ( direction * ideal_distance ), mask_playersolid, g::local, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;

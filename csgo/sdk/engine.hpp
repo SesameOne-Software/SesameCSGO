@@ -46,15 +46,15 @@ public:
 class c_clientstate {
 public:
 	std::uint32_t& choked( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D28 );
+		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D30 );
 	}
 
 	std::uint32_t& last_command_ack( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( &choked( ) ) + 0x4 );
+		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D34 );
 	}
 
 	std::uint32_t& last_outgoing_cmd( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D24 );
+		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D2C );
 	}
 
 	std::uint32_t& server_tickcount( ) {

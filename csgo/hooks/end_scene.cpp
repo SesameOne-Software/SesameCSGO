@@ -83,7 +83,7 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 		animations::resolver::render_impacts( );
 	);
 
-	features::ragebot::scan_points.draw( );
+	//features::ragebot::scan_points.draw( );
 
 	if ( removals [ 2 ] && g::local && g::local->scoped( ) ) {
 		int w, h;

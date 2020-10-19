@@ -40,6 +40,7 @@
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="hooks\base_interpolate_part1.cpp" />
     <ClCompile Include="hooks\build_transformations.cpp" />
+    <ClCompile Include="hooks\cl_fireevents.cpp" />
     <ClCompile Include="hooks\create_move.cpp" />
     <ClCompile Include="hooks\cs_blood_spray_callback.cpp" />
     <ClCompile Include="hooks\do_extra_bone_processing.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="hitsounds.h" />
     <ClInclude Include="hooks\base_interpolate_part1.hpp" />
     <ClInclude Include="hooks\build_transformations.hpp" />
+    <ClInclude Include="hooks\cl_fireevents.hpp" />
     <ClInclude Include="hooks\create_move.hpp" />
     <ClInclude Include="hooks\cs_blood_spray_callback.hpp" />
     <ClInclude Include="hooks\do_extra_bone_processing.hpp" />
@@ -284,7 +286,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;JM_XORSTR_DISABLE_AVX_INTRINSICS;DEV_BUILD;STBTT_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;DEV_BUILD;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
@@ -312,7 +314,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;JM_XORSTR_DISABLE_AVX_INTRINSICS;DEV_BUILD;STBTT_STATIC;STBRP_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;DEV_BUILD;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>

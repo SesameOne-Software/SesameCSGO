@@ -42,7 +42,10 @@ static void clear_shit ( int idx ) {
 	anims::client_feet_playback_rate [ idx ] = 0.0f;
 	anims::feet_playback_rate [ idx ] = 0.0f;
 
-	anims::old_animlayers [ idx ].clear ( );
+	if(!anims::old_animlayers [ idx ] .empty())
+		anims::old_animlayers [ idx ].clear ( );
+
+	if ( !anims::frames [ idx ].empty ( ) )
 	anims::frames [ idx ].clear ( );
 
 	/* lagcomp */
@@ -59,7 +62,7 @@ static void clear_shit ( int idx ) {
 	if ( !features::lagcomp::data::extrapolated_records [ idx ].empty ( ) )
 		features::lagcomp::data::extrapolated_records [ idx ].clear ( );
 
-	dbg_print ( _("clear callback called!\n") );
+	//dbg_print ( _("clear callback called!\n") );
 }
 
 void c_entity_listener_mgr::on_entity_created ( void* ent ) {

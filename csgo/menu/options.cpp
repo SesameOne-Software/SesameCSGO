@@ -273,6 +273,7 @@ void options::add_weapon_config( const std::string& weapon_category ) {
 	options::option::add_float( prefix + _( "dt_hit_chance" ), 0.0f );
 	options::option::add_bool( prefix + _( "baim_if_lethal" ), false );
 	options::option::add_bool( prefix + _( "baim_in_air" ), false );
+	options::option::add_bool ( prefix + _ ( "onshot_only" ), false );
 	options::option::add_int( prefix + _( "force_baim" ), 0 );
 	options::option::add_float( prefix + _( "head_pointscale" ), 0.0f );
 	options::option::add_float( prefix + _( "body_pointscale" ), 0.0f );
@@ -455,6 +456,9 @@ void options::init( ) {
 	option::add_bool( _( "misc.movement.block_bot" ), false );
 	option::add_int( _( "misc.movement.block_bot_key" ), 0 );
 	option::add_int( _( "misc.movement.block_bot_key_mode" ), 0 );
+	option::add_bool ( _ ( "misc.movement.airstuck" ), false );
+	option::add_int ( _ ( "misc.movement.airstuck_key" ), 0 );
+	option::add_int ( _ ( "misc.movement.airstuck_key_mode" ), 0 );
 	option::add_bool( _( "misc.movement.auto_forward" ), false );
 	option::add_bool( _( "misc.movement.auto_strafer" ), false );
 	option::add_bool( _( "misc.movement.omnidirectional_auto_strafer" ), false );

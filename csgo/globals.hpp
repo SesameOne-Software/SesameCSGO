@@ -73,6 +73,8 @@ namespace g {
 		inline cvar_t* cl_interp = nullptr;
 		inline cvar_t* sv_client_min_interp_ratio = nullptr;
 		inline cvar_t* sv_client_max_interp_ratio = nullptr;
+		inline cvar_t* sv_friction = nullptr;
+		inline cvar_t* sv_stopspeed = nullptr;
 
 		void init ( );
 	}

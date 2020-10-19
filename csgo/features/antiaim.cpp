@@ -376,10 +376,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		auto approach_speed = [ & ] ( float target_speed ) {
 			const auto vec_move = vec3_t( old_fmove, old_smove, ucmd->m_umove );
-			const auto magnitude = vec_move.length_2d( );
-			const auto max_speed = g::local->weapon( )->data( )->m_max_speed;
-			const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float();
-			const auto move_ratio = target_speed * move_to_button_ratio;
 
 			if ( !target_speed ) {
 				if ( g::local->vel( ).length_2d( ) <= 13.0f ) {
@@ -395,8 +391,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 			}
 			else if ( std::fabsf( old_fmove ) > 3.0f || std::fabsf( old_smove ) > 3.0f ) {
-				old_fmove = ( old_fmove / magnitude ) * move_ratio;
-				old_smove = ( old_smove / magnitude ) * move_ratio;
+				const auto magnitude = vec_move.length_2d ( );
+
+				old_fmove = ( old_fmove / magnitude ) * target_speed;
+				old_smove = ( old_smove / magnitude ) * target_speed;
 			}
 
 			ucmd->m_buttons &= ~0x20000;
@@ -425,9 +423,14 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				//}
 			}
 			else {
+				// auto @ 70.965, scoped 39.60
+				// scout @ 75.90, scoped 75.90
+				// glock @ 79.20
+				// knife @ 82.50
+
 				/* tiny slowwalk */
 				if ( std::fabsf( old_fmove ) > 3.3f || std::fabsf( old_smove ) > 3.3f )
-					approach_speed( ( g::local->weapon( )->data( )->m_max_speed * 0.34f ) * ( slow_walk_speed / 100.0f ) );
+					approach_speed( ( (g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed) * 0.33f ) * ( slow_walk_speed / 100.0f ) );
 			}
 		}
 	}
@@ -757,7 +760,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						static float last_update_time = csgo::i::globals->m_curtime;
 
 						/* micro movements */
-						old_fmove += aa::move_flip ? -( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f ) : ( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f );
+						old_fmove += aa::move_flip ? -( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f ) : ( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f );
 
 						//if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
 						//	old_fmove = copysignf ( 15.0f, old_fmove );

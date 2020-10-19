@@ -225,7 +225,7 @@ extern bool download_config_code;
 std::string last_config_user;
 
 int __stdcall init_proxy( PLoader_Info loader_info ) {
-	std::locale::global ( std::locale ( _("en_US.UTF-8") ) );
+	//std::locale::global ( std::locale ( _("en_US.UTF-8") ) );
 
 #ifndef DEV_BUILD
 	call_init( loader_info );
@@ -236,7 +236,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 	security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
 	while ( !g::unload ) {
-		///* save config to server if requested */
+		/* save config to server if requested */
 		//if ( upload_to_cloud ) {
 		//	char appdata [ MAX_PATH ];
 

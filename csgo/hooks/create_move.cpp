@@ -49,11 +49,28 @@ void fix_event_delay( ucmd_t* ucmd ) {
 
 decltype( &hooks::create_move ) hooks::old::create_move = nullptr;
 
+//bool airstuck ( ucmd_t* ucmd ) {
+//	static auto& airstuck = options::vars [ _ ( "misc.movement.airstuck" ) ].val.b;
+//	static auto& airstuck_key = options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i;
+//	static auto& airstuck_mode = options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i;
+//
+//	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) ) {
+//		ucmd->m_tickcount = INT_MAX;
+//		ucmd->m_cmdnum= INT_MAX;
+//		return true;
+//	}
+//
+//	return false;
+//}
+
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
 
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
+
+	//if ( airstuck ( ucmd ) )
+	//	return false;
 
 	if ( ret )
 		csgo::i::engine->set_viewangles( ucmd->m_angs );

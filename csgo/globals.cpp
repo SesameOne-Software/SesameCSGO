@@ -45,4 +45,6 @@ void g::cvars::init ( ) {
 	cl_interp = csgo::i::cvar->find ( _ ( "cl_interp" ) );
 	sv_client_min_interp_ratio = csgo::i::cvar->find ( _ ( "sv_client_min_interp_ratio" ) );
 	sv_client_max_interp_ratio = csgo::i::cvar->find ( _ ( "sv_client_max_interp_ratio" ) );
+	sv_friction = csgo::i::cvar->find ( _ ( "sv_friction" ) );
+	sv_stopspeed = csgo::i::cvar->find ( _ ( "sv_stopspeed" ) );
 }

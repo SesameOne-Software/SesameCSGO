@@ -229,7 +229,7 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 		*/
 
 		if ( !predicted ) {
-			if ( std::fabsf( pl->angles( ).x ) < 50.0f && pl->layers ( ) && pl->layers ( )[ 1 ].m_weight < 0.1f ) {
+			if ( std::fabsf( pl->angles( ).x ) < 50.0f /*&& pl->layers ( ) && pl->layers ( )[ 1 ].m_weight < 0.1f*/ ) {
 				//if ( animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
 				data::shot_records [ pl->idx( ) ] = rec;
 				data::shot_count [ pl->idx( ) ]++;

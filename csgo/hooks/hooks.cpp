@@ -34,6 +34,7 @@
 #include "run_simulation.hpp"
 #include "build_transformations.hpp"
 #include "base_interpolate_part1.hpp"
+#include "cl_fireevents.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -56,20 +57,20 @@ void hooks::init( ) {
 	/* initialize resources we need from memory */
 	unsigned long font_count = 0;
 	// ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
-	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
 	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_icons_font, sizeof resources::sesame_icons_font, nullptr, &font_count );
+	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
 
 	/* initialize cheat config */
 	gui::init( );
 	erase::erase_func( gui::init );
 
 	/* create fonts */
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 12.0f ) )
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 13.0f ) )
 		features::esp::dbg_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 18.0f ) )
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 14.0f ) )
 		features::esp::esp_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
@@ -79,7 +80,7 @@ void hooks::init( ) {
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 18.0f ) )
+	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 16.0f ) )
 		features::esp::watermark_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
@@ -108,7 +109,7 @@ void hooks::init( ) {
 	const auto _get_int = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
 	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
 	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
-	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).add( N( 1 ) ).deref( ).get< void* >( );
+	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).resolve_rip( ).get< void* >( );
 	const auto _is_hltv = vfunc< void* >( csgo::i::engine, N( 93 ) );
 	const auto _write_usercmd_delta_to_buffer = vfunc< void* >( csgo::i::client, N( 24 ) );
 	const auto _list_leaves_in_box = vfunc< void* >( csgo::i::engine->get_bsp_tree_query( ), N( 6 ) );
@@ -124,6 +125,7 @@ void hooks::init( ) {
 	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 53 8B 5D 10 56" ) ).get< void* >( );
 	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
+	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
 
 	MH_Initialize( );
 
@@ -166,14 +168,17 @@ void hooks::init( ) {
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
 	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
-	//dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
+	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_command, run_command, ( void** )&old::run_command );
 	//dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
+
+	ent_listener->add ( );
 
 	///* load default config for testing */ {
 	//	char appdata [ MAX_PATH ];

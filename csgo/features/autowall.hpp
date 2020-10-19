@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <optional>
 #include "../sdk/sdk.hpp"
 
@@ -87,70 +87,53 @@ namespace autowall {
 		return !std::strcmp( entity->client_class( )->m_network_name, class_name );
 	}
 
-	__forceinline bool is_breakable_entity( player_t* entity ) {
-		static auto __rtdynamiccast_fn = pattern::search( _("client.dll"),_( "6A 18 68 ? ? ? ? E8 ? ? ? ? 8B 7D 08") ).get < void* >( );
-		static auto is_breakable_entity_fn = pattern::search( _("client.dll"), _("55 8B EC 51 56 8B F1 85 F6 74 68 83 BE") ).get < void* >( );
-		static auto multiplayerphysics_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0x4F );
-		static auto baseentity_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0x54 );
-		static auto breakablewithpropdata_rtti_desc = *( uintptr_t* )( ( uintptr_t )is_breakable_entity_fn + 0xD4 );
+	__forceinline bool is_breakable ( player_t* ent ) {
+		/* XREF: "func_breakable_surf" */
+		static auto _is_breakable = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 84 C0 75 A1" ) ).resolve_rip();
 
-		if ( !entity )
+		bool        ret;
+		client_class_t* cc;
+		const char* name;
+		char* takedmg, old_takedmg;
+
+		/*
+		...
+		.text:102F1934
+		.text:102F1934                               loc_102F1934:                           ; CODE XREF: IsBreakable+12↑j
+		.text:102F1934 80 BE 80 02 00 00 02                          cmp     byte ptr [esi+280h], 2					<--------------------
+		...
+		*/
+
+		static size_t m_takedamage_offset { *( size_t* ) ( _is_breakable.get<uintptr_t> ( ) + 38 ) };
+
+		// skip null ents and the world ent.
+		if ( !ent || !ent->idx ( ) )
 			return false;
 
-		const auto& take_damage = *reinterpret_cast < uint8_t* > ( uintptr_t( entity ) + 0x280 );
+		// get m_takedamage and save old m_takedamage.
+		takedmg = ( char* ) ( ( uintptr_t ) ent + m_takedamage_offset );
+		old_takedmg = *takedmg;
 
-		int( __thiscall * **v4 )( player_t* );
-		int v5;
+		// get clientclass.
+		cc = ent->client_class ( );
 
-		if ( ( entity->health( ) >= 0 || vfunc< int( __thiscall* ) ( ) >( entity, 122 )( ) /* GetMaxHealth */ > 0 ) && take_damage == 2 ) {
-			const auto& collision_group = *reinterpret_cast < int* > ( uintptr_t( entity ) + 0x474 );
+		if ( cc ) {
+			// get clientclass network name.
+			name = cc->m_network_name;
 
-			if ( ( collision_group == 17 || collision_group == 6 || !collision_group ) && entity->health( ) <= 200 ) {
-				__asm {
-					push 0
-					push multiplayerphysics_rtti_desc
-					push baseentity_rtti_desc
-					push 0
-					push entity
-					call __rtdynamiccast_fn
-					add esp, 20
-					mov v4, eax
-				}
-
-				if ( v4 ) {
-					if ( ( **v4 )( reinterpret_cast < player_t* > ( v4 ) ) != 1 )
-						return false;
-
-					goto label_18;
-				}
-
-				if ( !classname_is( entity, _( "func_breakable" ) ) && !classname_is( entity, _( "func_breakable_surf" ) ) ) {
-					if ( ( *( ( int( __thiscall** )( player_t* ) ) * ( uint32_t* )entity + 604 ) )( entity ) & 0x10000 /* PhysicsSolidMaskForEntity */ )
-						return false;
-
-					goto label_18;
-				}
-
-				if ( !classname_is( entity, _( "func_breakable_surf" ) ) || !*( ( uint8_t* )entity + 0xA04 ) ) {
-				label_18:
-					__asm {
-						push 0
-						push breakablewithpropdata_rtti_desc
-						push baseentity_rtti_desc
-						push 0
-						push entity
-						call __rtdynamiccast_fn
-						add esp, 20
-						mov v5, eax
-					}
-
-					if ( v5 && ( ( float( __thiscall* )( uintptr_t ) ) * ( uintptr_t* )( *( uintptr_t* )v5 + 12 ) )( v5 ) <= 0.0f )
-						return true;
-				}
+			// CBreakableSurface, CBaseDoor, ...
+			if ( name [ 1 ] != 'F'
+				|| name [ 4 ] != 'c'
+				|| name [ 5 ] != 'B'
+				|| name [ 9 ] != 'h' ) {
+				*takedmg = 2;
 			}
 		}
 
-		return false;
+		ret = _is_breakable.get<bool ( __thiscall* )( player_t* )> ( )(ent);
+		*takedmg = old_takedmg;
+
+		return ret;
 	}
 
 	__forceinline bool trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
@@ -188,7 +171,7 @@ namespace autowall {
 			}
 
 			if ( !exit_tr->did_hit( ) || exit_tr->m_startsolid ) {
-				if ( tr->m_hit_entity && tr->m_hit_entity != csgo::i::ent_list->get< void* >( 0 ) && is_breakable_entity( static_cast< player_t* >( tr->m_hit_entity ) ) ) {
+				if ( tr->m_hit_entity && tr->m_hit_entity != csgo::i::ent_list->get< void* >( 0 ) && is_breakable ( static_cast< player_t* >( tr->m_hit_entity ) ) ) {
 					*exit_tr = *tr;
 					exit_tr->m_endpos = start + dir;
 					return true;

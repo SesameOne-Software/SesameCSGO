@@ -78,6 +78,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& hit_chance = options::vars [ _( "ragebot.revolver.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.revolver.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.revolver.headshot_only" ) ].val.b;
+		static auto& onshot_only = options::vars [ _ ( "ragebot.revolver.onshot_only" ) ].val.b;
 
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -104,6 +105,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
+		config.onshot_only = onshot_only;
 
 		return;
 	}
@@ -132,6 +134,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& hit_chance = options::vars [ _( "ragebot.pistol.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.pistol.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.pistol.headshot_only" ) ].val.b;
+		static auto& onshot_only = options::vars [ _ ( "ragebot.pistol.onshot_only" ) ].val.b;
 
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -158,6 +161,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
+		config.onshot_only = onshot_only;
 
 		return;
 	}
@@ -186,6 +190,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& hit_chance = options::vars [ _( "ragebot.rifle.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.rifle.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.rifle.headshot_only" ) ].val.b;
+		static auto& onshot_only = options::vars [ _ ( "ragebot.rifle.onshot_only" ) ].val.b;
 
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -212,6 +217,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
+		config.onshot_only = onshot_only;
 
 		return;
 	}
@@ -241,6 +247,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& hit_chance = options::vars [ _( "ragebot.awp.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.awp.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.awp.headshot_only" ) ].val.b;
+			static auto& onshot_only = options::vars [ _ ( "ragebot.awp.onshot_only" ) ].val.b;
 
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -267,6 +274,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
+			config.onshot_only = onshot_only;
 
 			return;
 		}
@@ -295,6 +303,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& hit_chance = options::vars [ _( "ragebot.auto.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.auto.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.auto.headshot_only" ) ].val.b;
+			static auto& onshot_only = options::vars [ _ ( "ragebot.auto.onshot_only" ) ].val.b;
 
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -321,6 +330,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
+			config.onshot_only = onshot_only;
 
 			return;
 		}
@@ -349,6 +359,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& hit_chance = options::vars [ _( "ragebot.scout.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.scout.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.scout.headshot_only" ) ].val.b;
+			static auto& onshot_only = options::vars [ _ ( "ragebot.scout.onshot_only" ) ].val.b;
 
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -375,6 +386,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
+			config.onshot_only = onshot_only;
 
 			return;
 		}
@@ -409,6 +421,7 @@ set_default:
 	static auto& hit_chance = options::vars [ _( "ragebot.default.hit_chance" ) ].val.f;
 	static auto& dt_hit_chance = options::vars [ _( "ragebot.default.dt_hit_chance" ) ].val.f;
 	static auto& headshot_only = options::vars [ _( "ragebot.default.headshot_only" ) ].val.b;
+	static auto& onshot_only = options::vars [ _ ( "ragebot.default.onshot_only" ) ].val.b;
 
 	config.dmg_accuracy = dmg_accuracy;
 	config.choke_on_shot = choke_onshot;
@@ -436,6 +449,7 @@ set_default:
 	config.dt_enabled = dt_enabled;
 	config.hit_chance = hit_chance;
 	config.dt_hit_chance = dt_hit_chance;
+	config.onshot_only = onshot_only;
 }
 
 int& features::ragebot::get_target_idx( ) {
@@ -718,12 +732,11 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 
 	const auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
 	const auto magnitude = vec_move.length_2d ( );
-	const auto max_speed = g::local->weapon ( )->data ( )->m_max_speed;
+	const auto max_speed = g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed;
 	const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float ( );
-	const auto speed_ratio = ( max_speed * 0.34f ) * 0.7f;
-	const auto move_ratio = speed_ratio * move_to_button_ratio;
+	const auto speed_ratio = max_speed * 0.33f;
 
-	if ( g::local->vel ( ).length_2d ( ) > g::local->weapon ( )->data ( )->m_max_speed * 0.34f ) {
+	if ( g::local->vel ( ).length_2d ( ) > max_speed * 0.34f ) {
 		auto vel_ang = csgo::vec_angle ( vec_move );
 
 		if ( !vel_ang.is_valid() )
@@ -742,10 +755,10 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 		old_fmove = normal.x * speed_2d;
 		old_smove = normal.y * speed_2d;
 	}
-	else if ( ( old_fmove || old_smove ) && magnitude ) {
-		old_fmove = ( old_fmove / magnitude ) * move_ratio;
-		old_smove = ( old_smove / magnitude ) * move_ratio;
-	}
+	/*else if ( ( old_fmove || old_smove ) && magnitude ) {
+		old_fmove = ( old_fmove / magnitude ) * speed_ratio;
+		old_smove = ( old_smove / magnitude ) * speed_ratio;
+	}*/
 
 	ucmd->m_buttons &= ~0x20000;
 }
@@ -837,24 +850,48 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		const auto at_target = looking_at ( );
 
 		if ( at_target ) {
-			constexpr auto autostop_threshhold = 0.078f;
+			auto vel = g::local->vel ( );
+			const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f;
 
-			const auto vel = g::local->vel ( );
-			const auto pred_origin = g::local->origin ( ) + vel * autostop_threshhold;
-			//const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
-			const auto pred_eyes = g::local->eyes ( ) + vel * autostop_threshhold;
+			/* needs to slow down */
+			if ( vel.length_2d() > max_speed ) {
+				static auto calc_velocity = [ ] ( vec3_t& vel ) {
+					const auto speed = vel.length ( );
 
-			const auto ent_vel = at_target->vel ( );
-			const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( at_target ->simtime() - at_target ->old_simtime() + autostop_threshhold - csgo::ticks2time(1) );
-			//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
-			const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset() + ent_vel * ( at_target->simtime ( ) - at_target->old_simtime ( ) + autostop_threshhold - csgo::ticks2time ( 1 ) );
+					if ( speed >= 0.1f ) {
+						const auto stop_speed = std::max< float > ( speed, g::cvars::sv_stopspeed->get_float ( ) );
+						vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * csgo::i::globals->m_ipt / speed );
+					}
+				};
 
-			trace_t tr;
-			csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
+				auto ticks_until_accurate = 0;
 
-			if ( tr.m_fraction > 0.97f
-				|| tr.m_hit_entity == at_target ) {
-				slow ( ucmd, old_smove, old_fmove );
+				for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ++ticks_until_accurate ) {
+					if ( vel.length_2d ( ) <= max_speed )
+						break;
+
+					calc_velocity ( vel );
+				}
+
+				const auto autostop_time = csgo::ticks2time ( ticks_until_accurate );
+
+				const auto pred_origin = g::local->origin ( ) + g::local->vel ( ) * autostop_time;
+				//const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+				const auto pred_eyes = g::local->eyes ( ) + g::local->vel ( ) * autostop_time;
+
+				const auto ent_vel = at_target->vel ( );
+				const auto choke_time = csgo::ticks2time ( anims::choked_commands [ at_target->idx ( ) ] );
+				const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( choke_time + autostop_time );
+				//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
+				const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset ( ) + ent_vel * ( choke_time + autostop_time );
+
+				trace_t tr;
+				csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
+
+				if ( tr.m_fraction > 0.97f
+					|| tr.m_hit_entity == at_target ) {
+					slow ( ucmd, old_smove, old_fmove );
+				}
 			}
 		}
 	}
@@ -1277,7 +1314,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 		if ( oldest_rec )
 			best_recs.push_back( *oldest_rec );
 	}
-	else if ( recs.second ) {
+	else if ( recs.second && !active_config.onshot_only ) {
 		float newest_simtime = 0.0f;
 		float newest_simulated_simtime = 0.0f;
 		float oldest_simtime = FLT_MAX;

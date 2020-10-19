@@ -1337,11 +1337,11 @@ void sesui::slider_ex( std::string_view name, float& option, float min, float ma
 	vec2 text_size;
 	draw_list.get_text_size( style.control_font, parts.first, text_size );
 
-	const rect slider_rect { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + text_size.y + scale_dpi( style.padding ), style.slider_size.x, style.slider_size.y };
-	const rect slider_rect_max { window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y, style.slider_size.x, style.slider_size.y + style.spacing + style.padding + unscale_dpi( text_size.y ) };
-	const auto frametime = draw_list.get_frametime( );
-	auto in_region = input::mouse_in_region( slider_rect );
-	auto in_region_active = input::mouse_in_region( slider_rect_max );
+	const rect slider_rect { window->second.cursor_stack.back ( ).x, window->second.cursor_stack.back ( ).y + text_size.y + scale_dpi ( style.padding ), style.slider_size.x, style.slider_size.y };
+	const rect slider_rect_max { window->second.cursor_stack.back ( ).x, window->second.cursor_stack.back ( ).y, style.slider_size.x, style.slider_size.y + style.spacing + style.padding + unscale_dpi ( text_size.y ) };
+	const auto frametime = draw_list.get_frametime ( );
+	auto in_region = input::mouse_in_region ( slider_rect );
+	auto in_region_active = input::mouse_in_region ( slider_rect_max );
 	auto clicking = false;
 
 	/* don't draw objects we don't need so our fps doesnt go to shit */
@@ -1369,34 +1369,18 @@ void sesui::slider_ex( std::string_view name, float& option, float min, float ma
 		clicking = true;
 	}
 
-	float bar_width = ( static_cast< float >( option ) - static_cast< float > ( min ) ) / ( static_cast< float > ( max ) - static_cast< float > ( min ) ) * slider_rect.w;
-	//bar_width = std::clamp< float >( bar_width, style.rounding * 2.0f, slider_rect.w );
-	rect bar_rect = rect( window->second.cursor_stack.back( ).x, window->second.cursor_stack.back( ).y + text_size.y + scale_dpi( style.padding ), bar_width, style.slider_size.y );
+	float bar_width = ( static_cast< float >( option ) - static_cast< float > ( min ) ) / ( static_cast< float > ( max ) - static_cast< float > ( min ) )* slider_rect.w;
+	bar_width = std::clamp< float > ( bar_width, style.rounding * 2.0f, slider_rect.w );
+	rect bar_rect = rect ( window->second.cursor_stack.back ( ).x, window->second.cursor_stack.back ( ).y + text_size.y + scale_dpi ( style.padding ), bar_width, style.slider_size.y );
 
-	const auto zero_pos_offset = -min * scale_dpi( slider_rect.w ) / ( max - min );
+	window->second.anim_time [ window->second.cur_index ] = std::clamp< float > ( window->second.anim_time [ window->second.cur_index ] + ( in_region_active ? frametime : -frametime ) * style.animation_speed, 0.0f, 1.0f );
 
-	if ( min < 0.0f )
-		bar_rect.x += zero_pos_offset;
-
-	window->second.anim_time [ window->second.cur_index ] = std::clamp< float >( window->second.anim_time [ window->second.cur_index ] + ( in_region_active ? frametime : -frametime ) * style.animation_speed, 0.0f, 1.0f );
-
-	if ( std::fabsf( window->second.anim_time [ window->second.cur_index + 1 ] - bar_width / slider_rect.w ) <= frametime * style.animation_speed )
+	if ( std::fabsf ( window->second.anim_time [ window->second.cur_index + 1 ] - bar_width / slider_rect.w ) <= frametime * style.animation_speed )
 		window->second.anim_time [ window->second.cur_index + 1 ] = bar_width / slider_rect.w;
 	else
-		window->second.anim_time [ window->second.cur_index + 1 ] = std::clamp< float >( window->second.anim_time [ window->second.cur_index + 1 ] + ( ( window->second.anim_time [ window->second.cur_index + 1 ] < bar_width / slider_rect.w ) ? frametime : -frametime ) * style.animation_speed, 0.0f, 1.0f );
+		window->second.anim_time [ window->second.cur_index + 1 ] = std::clamp< float > ( window->second.anim_time [ window->second.cur_index + 1 ] + ( ( window->second.anim_time [ window->second.cur_index + 1 ] < bar_width / slider_rect.w ) ? frametime : -frametime ) * style.animation_speed, 0.0f, 1.0f );
 
 	bar_rect.w = slider_rect.w * window->second.anim_time [ window->second.cur_index + 1 ];
-
-	if ( option < 0.0f ) {
-		//bar_rect.w = unscale_dpi( zero_pos_offset ) - bar_rect.w;
-		bar_rect.x -= scale_dpi( bar_rect.w );
-		bar_rect.w = scale_dpi( bar_rect.w ) - bar_rect.x;
-	}
-	else {
-		bar_rect.w -= unscale_dpi( zero_pos_offset );
-	}
-
-	bar_rect.w = std::clamp( bar_rect.w, style.rounding * 2.0f, bar_width );
 
 	if ( should_draw ) {
 		draw_list.add_rounded_rect( slider_rect, style.control_rounding, style.control_background, true );

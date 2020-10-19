@@ -17,14 +17,32 @@ struct custom_vtx_t {
 };
 
 void render::create_font ( void** font, const std::string_view& family, int size, bool bold ) {
+	//int to_print_len = 0;
+	//wchar_t* buf_out = nullptr;
+	//
+	//if ( ( to_print_len = MultiByteToWideChar ( CP_UTF8, 0, family.data ( ), -1, nullptr, 0 ) - 1 ) > 0 ) {
+	//	buf_out = new wchar_t [ to_print_len + 1 ] { 0 };
+	//
+	//	if ( buf_out )
+	//		MultiByteToWideChar ( CP_UTF8, 0, family.data(), -1, buf_out, to_print_len );
+	//}
+	//
+	//if ( !buf_out )
+	//	return;
+	//
+	//ID3DXFont* d3d_font = nullptr;
+	//LI_FN ( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, buf_out, &d3d_font );
+	//*font = d3d_font;
+	//
+	//delete [ ] buf_out;
 	ID3DXFont* d3d_font = nullptr;
-	LI_FN ( D3DXCreateFontA )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data ( ), &d3d_font );
+	LI_FN ( D3DXCreateFontA)( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_NORMAL, 0, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data ( ), &d3d_font );
 	*font = d3d_font;
 }
 
 void render::create_font( void** font, const std::wstring_view& family, int size, bool bold ) {
 	ID3DXFont* d3d_font = nullptr;
-	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_LIGHT, 0, false, OEM_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
+	LI_FN( D3DXCreateFontW )( csgo::i::dev, size, 0, bold ? FW_BOLD : FW_NORMAL, 0, false, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, family.data( ), &d3d_font );
 	*font = d3d_font;
 }
 

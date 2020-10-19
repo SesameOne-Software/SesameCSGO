@@ -485,6 +485,9 @@
     <ClInclude Include="hooks\ent_listener.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\cl_fireevents.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer\d3d9.cpp">
@@ -689,6 +692,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\base_interpolate_part1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\cl_fireevents.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

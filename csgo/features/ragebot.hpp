@@ -32,7 +32,8 @@ namespace features {
 				safe_point,
 				legit_mode,
 				triggerbot,
-				dt_enabled;
+				dt_enabled,
+				onshot_only;
 
 			double min_dmg,
 				dmg_accuracy,
