@@ -774,6 +774,10 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		return;
 	}
 
+	/* Don't knifebot without an actual knifebot lmao, currently the hack just fucking shoots the air constantly w/a knife */
+	if ( g::local->weapon ( ) && g::local->weapon ( )->data ( )->m_type == 0/*type_knife*/ && g::local->weapon ( )->item_definition_index ( ) != 31 /*taser*/ )
+		return;
+
 	/* get potential ragebot targets */
 	/* sanity checks and sorting is already done here automatically */
 	std::deque < aim_target_t > targets {};
