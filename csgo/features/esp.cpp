@@ -90,37 +90,27 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 		case esp_type_text: {
 			int to_print_len = 0;
 			wchar_t* buf_out = nullptr;
-			std::wstring wide_to_print;
 
-			if ( ( to_print_len = MultiByteToWideChar ( CP_UTF8, 0, to_print.c_str(), -1, nullptr, 0 ) - 1 ) > 0 ) {
-				buf_out = new wchar_t [ to_print_len + 1 ] { 0 };
-
-				if ( buf_out )
-					MultiByteToWideChar ( CP_UTF8, 0, to_print.c_str ( ), -1, buf_out, to_print_len );
-
-				wide_to_print = buf_out;
-
-				delete [ ] buf_out;
-			}
+			std::string as_str = to_print;
 
 			float text_dim_x, text_dim_y;
-			features::esp::esp_font.text_size ( wide_to_print, text_dim_x, text_dim_y );
+			features::esp::esp_font.text_size ( as_str, text_dim_x, text_dim_y );
 
 			switch ( orientation ) {
 				case features::esp_placement_left:
-					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, as_str, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_left_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_right:
-					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, as_str, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_right_height += text_dim_y + 2;
 					break;
 				case features::esp_placement_bottom:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, as_str, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_bottom += text_dim_y + 2;
 					break;
 				case features::esp_placement_top:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, wide_to_print, clr, truetype::text_flags_t::text_flags_outline );
+					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, as_str, clr, truetype::text_flags_t::text_flags_outline );
 					cur_offset_top += text_dim_y + 2;
 					break;
 			}

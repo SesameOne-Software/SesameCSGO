@@ -3,10 +3,7 @@
 #include "d3d9_render.hpp"
 #include "../sdk/sdk.hpp"
 #include "../renderer/d3d9.hpp"
-#include "../renderer/font.hpp"
-
-#include "../segoeui.h"
-#include "../icons/generated_font/sesame_icons.hpp"
+#include "../renderer/truetype.hpp"
 
 struct vertex_t {
 	float x, y, z, rhw;
@@ -38,11 +35,11 @@ void sesui::binds::create_font ( sesui::font& font, bool force ) noexcept {
 		return;
 	
 	if ( font.family == _ ( "sesame_ui" ) ) {
-		if ( auto font_out = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), static_cast< float >( font.size )* sesui::globals::dpi ) )
+		if ( auto font_out = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), static_cast< float >( font.size )* sesui::globals::dpi, true ) )
 			font.data = new truetype::font { font_out.value ( ) };
 	}
 	else if ( font.family == _ ( "sesame_icons" ) ) {
-		if ( auto font_out = truetype::create_font ( resources::sesame_icons_font, _ ( "sesame_icons" ), static_cast< float >( font.size )* sesui::globals::dpi ) )
+		if ( auto font_out = truetype::create_font ( g::resources::sesame_icons, _ ( "sesame_icons" ), static_cast< float >( font.size )* sesui::globals::dpi ) )
 			font.data = new truetype::font { font_out.value ( ) };
 	}
 }

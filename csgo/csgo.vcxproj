@@ -79,7 +79,7 @@
     <ClCompile Include="menu\sesui.cpp" />
     <ClCompile Include="menu\sesui_custom.cpp" />
     <ClCompile Include="renderer\d3d9.cpp" />
-    <ClCompile Include="renderer\font.cpp" />
+    <ClCompile Include="renderer\truetype.cpp" />
     <ClCompile Include="sdk\netvar.cpp" />
     <ClCompile Include="sdk\player.cpp" />
     <ClCompile Include="sdk\sdk.cpp" />
@@ -93,6 +93,7 @@
     <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\animation_system.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
+    <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
     <ClInclude Include="features\antiaim.hpp" />
     <ClInclude Include="features\autowall.hpp" />
@@ -168,8 +169,12 @@
     <ClInclude Include="minhook\minhook.h" />
     <ClInclude Include="plusaes.hpp" />
     <ClInclude Include="renderer\d3d9.hpp" />
-    <ClInclude Include="renderer\font.hpp" />
-    <ClInclude Include="resource.h" />
+    <ClInclude Include="renderer\stb_rect_pack.h" />
+    <ClInclude Include="renderer\stb_truetype.h" />
+    <ClInclude Include="renderer\truetype.hpp" />
+    <ClInclude Include="renderer\utf8.h" />
+    <ClInclude Include="resources\sesame_icons.hpp" />
+    <ClInclude Include="resources\sesame_ui.hpp" />
     <ClInclude Include="sdk\beams.hpp" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\cvar.hpp" />
@@ -204,8 +209,6 @@
     <ClInclude Include="security\security_handler.hpp" />
     <ClInclude Include="security\text_section_hasher.hpp" />
     <ClInclude Include="security\xorstr.hpp" />
-    <ClInclude Include="segoeui.h" />
-    <ClInclude Include="sesame_font.h" />
     <ClInclude Include="stb\stb_rect_pack.h" />
     <ClInclude Include="stb\stb_truetype.h" />
     <ClInclude Include="tinyxml2\tinyxml2.h" />

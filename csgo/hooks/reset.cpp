@@ -7,7 +7,7 @@
 
 #include "../menu/sesui_custom.hpp"
 
-#include "../renderer/font.hpp"
+#include "../renderer/truetype.hpp"
 
 decltype( &hooks::reset ) hooks::old::reset = nullptr;
 

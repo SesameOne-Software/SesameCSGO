@@ -1,4 +1,6 @@
 ﻿#include <ShlObj.h>
+#include <memory>
+
 #include "hooks.hpp"
 #include "../security/security_handler.hpp"
 #include "../menu/menu.hpp"
@@ -42,45 +44,40 @@
 /* features */
 #include "../features/esp.hpp"
 
-#include "../segoeui.h"
-#include "../icons/generated_font/sesame_icons.hpp"
-
 #include "../menu/menu.hpp"
 
 #include "../menu/options.hpp"
 
 #include "ent_listener.hpp"
 
+/* resources */
+
 std::unique_ptr< c_entity_listener_mgr > ent_listener;
 
 void hooks::init( ) {
-	/* initialize resources we need from memory */
-	unsigned long font_count = 0;
-	// ( AddFontMemResourceEx ) ( sesame_font_data, sizeof sesame_font_data, nullptr, &font_count );
-	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_icons_font, sizeof resources::sesame_icons_font, nullptr, &font_count );
-	LI_FN ( AddFontMemResourceEx ) ( resources::sesame_ui_font, sizeof resources::sesame_ui_font, nullptr, &font_count );
+	g::resources::init ( );
 
 	/* initialize cheat config */
 	gui::init( );
 	erase::erase_func( gui::init );
 
 	/* create fonts */
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 13.0f ) )
+	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 13.0f ) )
 		features::esp::dbg_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 14.0f ) )
+	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 16.0f, true ) )
 		features::esp::esp_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 32.0f ) )
+	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 32.0f ) )
 		features::esp::indicator_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( resources::sesame_ui_font, _ ( "sesame_ui" ), 16.0f ) )
+	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 16.0f ) )
 		features::esp::watermark_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );

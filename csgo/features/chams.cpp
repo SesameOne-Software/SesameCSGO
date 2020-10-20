@@ -191,6 +191,13 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	auto set_vec = [ ] ( void* var, float x, float y, float z ) {
 		vfunc< void( __thiscall* )( void*, float, float, float ) >( var, 11 )( var, x, y, z );
 	};
+	
+	if ( csgo::i::mdl_render->is_forced_mat_override ( ) ) {
+		//csgo::i::render_view->set_color ( 255, 255, 255 );
+		//csgo::i::render_view->set_alpha ( 255 );
+		hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+		return;
+	}
 
 	if ( !g::local || !info.m_model || !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) {
 		csgo::i::render_view->set_color( 255, 255, 255 );
@@ -212,13 +219,6 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 	}
 
 	update_mats( visuals, visuals.rimlight_color );
-
-	if ( csgo::i::mdl_render->is_forced_mat_override( ) ) {
-		//csgo::i::render_view->set_color ( 255, 255, 255 );
-		//csgo::i::render_view->set_alpha ( 255 );
-		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-		return;
-	}
 
 	if ( /*is_arms || */e || features::chams::in_model ) {
 		if ( is_arms ) {

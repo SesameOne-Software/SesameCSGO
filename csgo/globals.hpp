@@ -1,7 +1,8 @@
 #pragma once
 #include <windows.h>
+#include <memory>
 
-#define SESAME_VERSION "3.0.0"
+#define SESAME_VERSION "3.0.1"
 
 struct ucmd_t;
 class vec3_t;
@@ -47,6 +48,17 @@ namespace g {
 	extern bool can_fire_revolver;
 	extern round_t round;
 	extern PLoader_Info loader_data;
+
+	namespace resources {
+#include "base85.hpp"
+#include "resources/sesame_icons.hpp"
+#include "resources/sesame_ui.hpp"
+
+		inline uint8_t* sesame_icons;
+		inline uint8_t* sesame_ui;
+
+		void init ( );
+	}
 
 	namespace cvars {
 		inline cvar_t* r_drawstaticprops = nullptr;

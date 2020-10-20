@@ -260,12 +260,6 @@
     <ClInclude Include="animations\resolver.hpp">
       <Filter>Header Files\animations</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="sesame_font.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="security\erase.hpp">
       <Filter>Header Files\security</Filter>
     </ClInclude>
@@ -364,9 +358,6 @@
     </ClInclude>
     <ClInclude Include="hooks\setup_bones.hpp">
       <Filter>Header Files\hooks</Filter>
-    </ClInclude>
-    <ClInclude Include="segoeui.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hooks\run_command.hpp">
       <Filter>Header Files</Filter>
@@ -473,9 +464,6 @@
     <ClInclude Include="stb\stb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\font.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="icons\generated_font\sesame_icons.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -486,6 +474,27 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hooks\cl_fireevents.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="base85.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resources\sesame_icons.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resources\sesame_ui.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\stb_rect_pack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\stb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\truetype.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\utf8.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -512,9 +521,6 @@
       <Filter>Source Files\sdk</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="features\chams.cpp">
@@ -688,13 +694,16 @@
     <ClCompile Include="fmt\os.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\font.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hooks\base_interpolate_part1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\cl_fireevents.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\truetype.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

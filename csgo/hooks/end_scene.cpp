@@ -13,7 +13,7 @@
 #include "../features/ragebot.hpp"
 #include "../menu/options.hpp"
 
-#include "../renderer/font.hpp"
+#include "../renderer/truetype.hpp"
 
 decltype( &hooks::end_scene ) hooks::old::end_scene = nullptr;
 

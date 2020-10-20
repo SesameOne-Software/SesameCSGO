@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "../sdk/sdk.hpp"
 #include <deque>
-#include "../renderer/font.hpp"
+#include "../renderer/truetype.hpp"
 
 namespace features {
 	namespace esp {
