@@ -29,44 +29,36 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	IDirect3DVertexDeclaration9* vertex_decleration = nullptr;
 	IDirect3DVertexShader9* vertex_shader = nullptr;
 
-	DWORD rs_anti_alias = 0;
+	csgo::i::dev->GetVertexDeclaration ( &vertex_decleration );
+	csgo::i::dev->GetVertexShader ( &vertex_shader );
 
-	device->GetRenderState( D3DRS_MULTISAMPLEANTIALIAS, &rs_anti_alias );
-	device->CreateStateBlock( D3DSBT_PIXELSTATE, &pixel_state );
-	device->GetVertexDeclaration( &vertex_decleration );
-	device->GetVertexShader( &vertex_shader );
-	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, false );
-	device->SetVertexShader( nullptr );
-	device->SetPixelShader( nullptr );
+	csgo::i::dev->CreateStateBlock ( D3DSBT_ALL, &pixel_state );
+	pixel_state->Capture ( );
 
-	device->SetVertexShader( nullptr );
-	device->SetPixelShader( nullptr );
-	device->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE );
-	device->SetRenderState( D3DRS_LIGHTING, false );
-	device->SetRenderState( D3DRS_FOGENABLE, false );
-	device->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
-	device->SetRenderState( D3DRS_FILLMODE, D3DFILL_SOLID );
-	device->SetRenderState( D3DRS_ZENABLE, D3DZB_FALSE );
-	device->SetRenderState( D3DRS_SCISSORTESTENABLE, true );
-	device->SetRenderState( D3DRS_ZWRITEENABLE, false );
-	device->SetRenderState( D3DRS_STENCILENABLE, false );
-	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, true );
-	device->SetRenderState( D3DRS_ANTIALIASEDLINEENABLE, true );
-	device->SetRenderState( D3DRS_ALPHABLENDENABLE, true );
-	device->SetRenderState( D3DRS_ALPHATESTENABLE, false );
-	device->SetRenderState( D3DRS_SEPARATEALPHABLENDENABLE, true );
-	device->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
-	device->SetRenderState( D3DRS_SRCBLENDALPHA, D3DBLEND_INVDESTALPHA );
-	device->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
-	device->SetRenderState( D3DRS_DESTBLENDALPHA, D3DBLEND_ONE );
-	device->SetRenderState( D3DRS_SRGBWRITEENABLE, false );
-	device->SetRenderState( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
-	
+	device->SetRenderState ( D3DRS_COLORWRITEENABLE, 0xFFFFFFFF );
+	device->SetRenderState ( D3DRS_CULLMODE, D3DCULL_NONE );
+	device->SetRenderState ( D3DRS_LIGHTING, false );
+	device->SetRenderState ( D3DRS_ZENABLE, false );
+	device->SetRenderState ( D3DRS_ALPHABLENDENABLE, true );
+	device->SetRenderState ( D3DRS_ALPHATESTENABLE, false );
+	device->SetRenderState ( D3DRS_BLENDOP, D3DBLENDOP_ADD );
+	device->SetRenderState ( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+	device->SetRenderState ( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+	device->SetRenderState ( D3DRS_SCISSORTESTENABLE, false );
+	device->SetRenderState ( D3DRS_SHADEMODE, D3DSHADE_GOURAUD );
+	device->SetRenderState ( D3DRS_FOGENABLE, false );
+	device->SetTextureStageState ( 0, D3DTSS_COLOROP, D3DTOP_MODULATE );
+	device->SetTextureStageState ( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
+	device->SetTextureStageState ( 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE );
+	device->SetTextureStageState ( 0, D3DTSS_ALPHAOP, D3DTOP_MODULATE );
+	device->SetTextureStageState ( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE );
+	device->SetTextureStageState ( 0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE );
+	device->SetSamplerState ( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
+	device->SetSamplerState ( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
+
 	truetype::begin ( );
 
 	security_handler::update( );
-
-	//features::esp::dbg_font.draw_atlas ( 20.0f, 20.0f );
 
 	RUN_SAFE(
 		"features::nade_prediction::draw",
@@ -116,13 +108,12 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 		"menu::draw",
 		gui::draw( );
 	);
+	
+	pixel_state->Apply ( );
+	pixel_state->Release ( );
 
-	pixel_state->Apply( );
-	pixel_state->Release( );
-
-	device->SetVertexDeclaration( vertex_decleration );
-	device->SetVertexShader( vertex_shader );
-	device->SetRenderState( D3DRS_MULTISAMPLEANTIALIAS, rs_anti_alias );
+	csgo::i::dev->SetVertexDeclaration ( vertex_decleration );
+	csgo::i::dev->SetVertexShader ( vertex_shader );
 
 	//truetype::end ( );
 

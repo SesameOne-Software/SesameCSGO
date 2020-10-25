@@ -469,7 +469,7 @@ void options::init( ) {
 	option::add_float( _( "misc.effects.ragdoll_force_scale" ), 1.0f );
 	option::add_bool( _( "misc.effects.clantag" ), false );
 	option::add_int( _( "misc.effects.clantag_animation" ), 0 ); /* static, marquee, capitalize, heart */
-	option::add_str( _( "misc.effects.clantag_text" ), _( "sesame.one" ) );
+	option::add_str( _( "misc.effects.clantag_text" ), _( "sesame" ) );
 	option::add_float( _( "misc.effects.revolver_cock_volume" ), 1.0f );
 	option::add_float( _( "misc.effects.weapon_volume" ), 1.0f );
 

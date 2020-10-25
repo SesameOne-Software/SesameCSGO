@@ -339,8 +339,12 @@ void features::esp::render( ) {
 			else
 				box_alpha = calc_alpha( esp_data [ e->idx( ) ].m_last_seen, 2.0f );
 
+			std::string name = _ ( "");
+
 			player_info_t info;
-			csgo::i::engine->get_player_info( e->idx( ), &info );
+
+			if ( csgo::i::engine->get_player_info ( e->idx ( ), &info ) )
+				name = info.m_name;
 
 			if ( visuals.esp_box )
 				draw_esp_box( left, top, right - left, bottom - top, esp_data [ e->idx( ) ].m_dormant, visuals.box_color );
@@ -406,7 +410,7 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect, visuals.desync_bar_color, esp_type_bar, visuals.value_text, visuals.desync_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->desync_amount( ), 58.0 );
 
 			if ( visuals.nametag )
-				draw_esp_widget( esp_rect, visuals.name_color, esp_type_text, visuals.value_text, visuals.nametag_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, info.m_name );
+				draw_esp_widget( esp_rect, visuals.name_color, esp_type_text, visuals.value_text, visuals.nametag_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, name );
 
 			if ( visuals.weapon_name )
 				draw_esp_widget( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx( ) ].m_weapon_name );

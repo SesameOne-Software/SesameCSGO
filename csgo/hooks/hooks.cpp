@@ -67,7 +67,7 @@ void hooks::init( ) {
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );
 
-	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 16.0f, true ) )
+	if ( auto font = truetype::create_font ( g::resources::sesame_ui, _ ( "sesame_ui" ), 16.0f ) )
 		features::esp::esp_font = font.value ( );
 	else
 		dbg_print ( _ ( "Failed to create font.\n" ) );

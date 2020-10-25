@@ -16,23 +16,11 @@ struct fire_bullet_data_t {
 namespace autowall {
 #pragma optimize( "2", on )
 
-	__forceinline void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
+	static void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
 		if ( !entity->valid( ) )
 			return;
 
-		bool has_heavy_armor = false;
-
-		static auto armored = [ & ] ( void ) {
-			switch ( hitgroup ) {
-				case ( int )1: return entity->has_helmet( );
-				case ( int )0:
-				case ( int )2:
-				case ( int )3:
-				case ( int )4:
-				case ( int )5: return true;
-				default: return false;
-			}
-		};
+		bool has_heavy_armor = entity->has_heavy_armor();
 
 		switch ( hitgroup ) {
 			case ( int )1: current_damage *= has_heavy_armor ? 2.0f : 4.0f; break;
@@ -42,7 +30,7 @@ namespace autowall {
 			default: break;
 		}
 
-		if ( entity->armor( ) > 0 && armored( ) ) {
+		if ( entity->armor( ) > 0 && ( hitgroup == 1 ? entity->has_helmet ( ) : true ) ) {
 			auto bonus_val = 1.0f;
 			auto armor_bonus_rat = 0.5f;
 			auto armor_rat = weapon_info->m_armor_ratio / 2.0f;

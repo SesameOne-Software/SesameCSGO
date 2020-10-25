@@ -1192,13 +1192,16 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
 	autowall::scale_dmg( rec.m_pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
 
-	if ( get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses
+	if ( (get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses)
 		|| ( active_config.baim_air && !( rec.m_flags & 1 ) )
 		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) ) ) {
-		const auto head_entry = std::find_if( hitboxes.begin( ), hitboxes.end( ), [ ] ( int& hitbox ) { return hitbox == hitbox_head; } );
+		std::deque<int> new_hitboxes {};
 
-		if ( head_entry != hitboxes.end( ) )
-			hitboxes.erase( head_entry, head_entry );
+		for ( auto& hitbox : hitboxes )
+			if( hitbox != hitbox_head && hitbox != hitbox_neck )
+				new_hitboxes.push_back ( hitbox );
+
+		hitboxes = new_hitboxes;
 	}
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */

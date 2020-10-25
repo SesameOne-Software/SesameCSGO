@@ -214,6 +214,8 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 
 	visual_config_t visuals;
 	if ( !get_visuals( e, visuals ) ) {
+		csgo::i::render_view->set_color ( 255, 255, 255 );
+		csgo::i::render_view->set_alpha ( 255 );
 		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 		return;
 	}
@@ -381,6 +383,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 			}
 			}
 			else {
+
 			csgo::i::render_view->set_alpha ( 255 );
 			csgo::i::render_view->set_color ( 255, 255, 255 );
 			hooks::old::draw_model_execute ( csgo::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
@@ -394,4 +397,5 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 
 	csgo::i::render_view->set_alpha( 255 );
 	csgo::i::render_view->set_color( 255, 255, 255 );
+	csgo::i::mdl_render->force_mat ( nullptr );
 }

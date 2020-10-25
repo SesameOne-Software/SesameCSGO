@@ -8,6 +8,7 @@
 
 std::map<uint32_t/*font_id*/, IDirect3DTexture9* /*tex_ptr*/> font_textures{};
 
+IDirect3DStateBlock9* g_perfect_state = nullptr;
 IDirect3DVertexBuffer9* g_vertex_buffers = nullptr;
 ID3DXSprite* g_sprite = nullptr;
 
@@ -106,6 +107,9 @@ std::optional<truetype::font> truetype::create_font( const uint8_t* font_data, s
 }
 
 void truetype::font::text_size( const std::string& string, float& x_out, float& y_out ) {
+	if ( !font_map )
+		return;
+
 	x_out = 0.0f;
 	y_out = 0.0f;
 
@@ -113,7 +117,7 @@ void truetype::font::text_size( const std::string& string, float& x_out, float& 
 
 	stbtt_aligned_quad max_quad { };
 	float max_qx = 0.0f, max_qy = 0.0f;
-	stbtt_GetPackedQuad ( chars, bitmap_width, bitmap_height, max_size_char [ 0 ], &max_qx, &max_qy, &max_quad, 0 );
+	stbtt_GetPackedQuad ( chars, bitmap_width, bitmap_height, max_size_char [ 0 ], &max_qx, &max_qy, &max_quad, false );
 
 	y_out = ( max_quad.y1 - max_quad.y0 );
 
@@ -125,7 +129,7 @@ void truetype::font::text_size( const std::string& string, float& x_out, float& 
 			break;
 
 		stbtt_aligned_quad quad;
-		stbtt_GetPackedQuad( chars, bitmap_width, bitmap_height, string[i], &x_out, &y_out, &quad, 0 );
+		stbtt_GetPackedQuad( chars, bitmap_width, bitmap_height, string[i], &x_out, &y_out, &quad, true );
 
 		i += utf8codepointsize( cp );
 	}
@@ -137,27 +141,26 @@ void truetype::font::create_texture( ) {
 	if ( texture == font_textures.end( ) ) {
 		IDirect3DTexture9* texture_d3d9 = nullptr;
 
-		if ( D3DXCreateTexture( csgo::i::dev, bitmap_width, bitmap_height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture_d3d9 ) < 0 )
+		if ( csgo::i::dev->CreateTexture( bitmap_width, bitmap_height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture_d3d9, nullptr ) < 0 )
 			return;
 
 		D3DLOCKED_RECT rect;
 
-		if ( texture_d3d9->LockRect( 0, &rect, nullptr, 0 ) < 0 )
+		if ( texture_d3d9->LockRect( 0, &rect, nullptr, D3DLOCK_DISCARD ) < 0 )
 			return;
 
-		auto expanded = new uint32_t[bitmap_width * bitmap_height]{ 0 };
+		auto expanded = new uint32_t[ bitmap_width * bitmap_height ];
 
 		for ( int y = 0; y < bitmap_width; y++ ) {
-			for ( int cx = 0; cx < bitmap_height; cx++ ) {
-				const auto index = (y * bitmap_width) + cx;
-				const auto value = ( uint32_t )font_map[index];
-
-				expanded[index] = value << 24;
-				expanded[index] |= 0x00FFFFFF;
+			for ( int x = 0; x < bitmap_height; x++ ) {
+				auto index = ( y * bitmap_width ) + x;
+				auto value = ( uint32_t ) font_map [ index ];
+				expanded [ index ] = value << 24;
+				expanded [ index ] |= 0x00FFFFFF;
 			}
 		}
 
-		memcpy( rect.pBits, expanded, bitmap_width * bitmap_height * sizeof( uint32_t ) );
+		memcpy ( rect.pBits, expanded, bitmap_width * bitmap_height * sizeof( uint32_t ) );
 
 		delete [ ] expanded;
 
@@ -167,18 +170,31 @@ void truetype::font::create_texture( ) {
 }
 
 void truetype::font::draw_text( float x, float y, const std::string& string, uint32_t color, text_flags_t flags ) {
+	if ( !font_map )
+		return;
+
 	create_texture( );
 
 	if ( !font_textures[id] )
 		return;
 
+	IDirect3DStateBlock9* state = nullptr;
+	csgo::i::dev->CreateStateBlock ( D3DSBT_ALL, &state );
+	
+	state->Capture ( );
+	g_perfect_state->Apply( );
+
 	std::string max_size_char = "M";
 
 	stbtt_aligned_quad max_quad{ };
 	float max_qx = 0.0f, max_qy = 0.0f;
-	stbtt_GetPackedQuad( chars, bitmap_width, bitmap_height, max_size_char[0], &max_qx, &max_qy, &max_quad, 0 );
+	stbtt_GetPackedQuad( chars, bitmap_width, bitmap_height, max_size_char[0], &max_qx, &max_qy, &max_quad, false );
 
 	y += (max_quad.y1 - max_quad.y0);
+	
+	csgo::i::dev->SetFVF ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 );
+	csgo::i::dev->SetStreamSource ( 0, g_vertex_buffers, 0, sizeof ( font_vertex_t ) );
+	csgo::i::dev->SetTexture ( 0, font_textures [ id ] );
 
 	for ( size_t i = 0; i < string.size( ); ) {
 		utf8_int32_t cp = 0;
@@ -193,59 +209,52 @@ void truetype::font::draw_text( float x, float y, const std::string& string, uin
 		stbtt_aligned_quad quad;
 		stbtt_GetPackedQuad( chars, bitmap_width, bitmap_height, cp, &qx, &qy, &quad, true );
 
-		font_vertex_t* vertices = nullptr;
-
-		csgo::i::dev->SetFVF( D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 );
-		csgo::i::dev->SetStreamSource( 0, g_vertex_buffers, 0, sizeof( font_vertex_t ) );
-		csgo::i::dev->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG2 );
-		csgo::i::dev->SetTexture( 0, font_textures[id] );
-
 		static auto add_vertices = [ & ]( float xpos, float ypos, uint32_t clr ) {
+			font_vertex_t* vertices = nullptr;
+			
 			g_vertex_buffers->Lock( 0, 6 * sizeof ( font_vertex_t ), ( void** )&vertices, D3DLOCK_DISCARD );
 
-			*vertices++ = { quad.x0, quad.y1, 1.0f, 1.0f, clr, quad.s0, quad.t1 };
-			*vertices++ = { quad.x1, quad.y1, 1.0f, 1.0f, clr, quad.s1, quad.t1 };
-			*vertices++ = { quad.x0, quad.y0, 1.0f, 1.0f, clr, quad.s0, quad.t0 };
+			vertices[0] = { quad.x0 - 0.5f, quad.y1 - 0.5f, 1.0f, 1.0f, clr, quad.s0, quad.t1 };
+			vertices[1] = { quad.x1 - 0.5f, quad.y1 - 0.5f, 1.0f, 1.0f, clr, quad.s1, quad.t1 };
+			vertices[2] = { quad.x0 - 0.5f, quad.y0 - 0.5f, 1.0f, 1.0f, clr, quad.s0, quad.t0 };
+			vertices[3] = { quad.x1 - 0.5f, quad.y1 - 0.5f, 1.0f, 1.0f, clr, quad.s1, quad.t1 };
+			vertices[4] = { quad.x1 - 0.5f, quad.y0 - 0.5f, 1.0f, 1.0f, clr, quad.s1, quad.t0 };
+			vertices[5] = { quad.x0 - 0.5f, quad.y0 - 0.5f, 1.0f, 1.0f, clr, quad.s0, quad.t0 };
 
-			*vertices++ = { quad.x1, quad.y1, 1.0f, 1.0f, clr, quad.s1, quad.t1 };
-			*vertices++ = { quad.x1, quad.y0, 1.0f, 1.0f, clr, quad.s1, quad.t0 };
-			*vertices++ = { quad.x0, quad.y0, 1.0f, 1.0f, clr, quad.s0, quad.t0 };
-
-			g_vertex_buffers->Unlock( );
+			g_vertex_buffers->Unlock ( );
 
 			csgo::i::dev->DrawPrimitive( D3DPT_TRIANGLELIST, 0, 2 );
 		};
 
-		switch ( flags ) {
-		case text_flags_t::text_flags_none: {
-
-		}break;
-		case text_flags_t::text_flags_dropshadow: {
-			auto shadow_offset = (max_quad.y1 - max_quad.y0) * 0.03f;
-
-			shadow_offset = shadow_offset < 1.1f ? 1.0f : shadow_offset;
-
-			add_vertices( x + shadow_offset, y + shadow_offset, D3DCOLOR_RGBA( 0, 0, 0, color >> 24 ) );
-		} break;
-		case text_flags_t::text_flags_outline: {
-			auto outline_offset = ( max_quad.y1 - max_quad.y0 ) * 0.03f;
-			auto outline_color = D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 );
-
-			outline_offset = outline_offset < 1.1f ? 1.0f : outline_offset;
-
-			add_vertices( x + outline_offset, y + outline_offset, outline_color );
-			add_vertices( x, y + outline_offset, outline_color );
-			add_vertices( x - outline_offset, y + outline_offset, outline_color );
-			add_vertices( x - outline_offset, y, outline_color );
-			add_vertices( x - outline_offset, y - outline_offset, outline_color );
-			add_vertices( x, y - outline_offset, outline_color );
-			add_vertices( x + outline_offset, y - outline_offset, outline_color );
-			add_vertices( x + outline_offset, y, outline_color );
-
-		} break;
-		}
-
 		add_vertices( x, y, color );
+
+		//switch ( flags ) {
+		//case text_flags_t::text_flags_none: {
+		//
+		//}break;
+		//case text_flags_t::text_flags_dropshadow: {
+		//	auto shadow_offset = ( max_quad.y1 - max_quad.y0 ) * 0.03f;
+		//
+		//	shadow_offset = shadow_offset < 1.1f ? 1.0f : shadow_offset;
+		//
+		//	add_vertices ( x + shadow_offset, y + shadow_offset, D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 ) );
+		//} break;
+		//case text_flags_t::text_flags_outline: {
+		//	auto outline_offset = ( max_quad.y1 - max_quad.y0 ) * 0.03f;
+		//	auto outline_color = D3DCOLOR_RGBA ( 0, 0, 0, color >> 24 );
+		//
+		//	outline_offset = outline_offset < 1.1f ? 1.0f : outline_offset;
+		//
+		//	add_vertices ( x + outline_offset, y + outline_offset, outline_color );
+		//	add_vertices ( x, y + outline_offset, outline_color );
+		//	add_vertices ( x - outline_offset, y + outline_offset, outline_color );
+		//	add_vertices ( x - outline_offset, y, outline_color );
+		//	add_vertices ( x - outline_offset, y - outline_offset, outline_color );
+		//	add_vertices ( x, y - outline_offset, outline_color );
+		//	add_vertices ( x + outline_offset, y - outline_offset, outline_color );
+		//	add_vertices ( x + outline_offset, y, outline_color );
+		//} break;
+		//}
 
 		x = qx;
 		y = qy;
@@ -253,7 +262,8 @@ void truetype::font::draw_text( float x, float y, const std::string& string, uin
 		i += utf8codepointsize( cp );
 	}
 
-	csgo::i::dev->SetTexture( 0, nullptr );
+	state->Apply ( );
+	state->Release ( );
 }
 
 void truetype::font::draw_atlas( float x, float y ) {
@@ -267,9 +277,47 @@ void truetype::font::draw_atlas( float x, float y ) {
 	g_sprite->End( );
 }
 
-void truetype::begin( ) {
+void truetype::begin ( ) {
+	if ( !g_perfect_state ) {
+		csgo::i::dev->BeginStateBlock ( );
+
+		csgo::i::dev->SetRenderState ( D3DRS_ALPHABLENDENABLE, true );
+		csgo::i::dev->SetRenderState ( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+		csgo::i::dev->SetRenderState ( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+		csgo::i::dev->SetRenderState ( D3DRS_ALPHATESTENABLE, true );
+		csgo::i::dev->SetRenderState ( D3DRS_ALPHAREF, 0x08 );
+		csgo::i::dev->SetRenderState ( D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL );
+		csgo::i::dev->SetRenderState ( D3DRS_FILLMODE, D3DFILL_SOLID );
+		csgo::i::dev->SetRenderState ( D3DRS_CULLMODE, D3DCULL_CW );
+
+
+		csgo::i::dev->SetRenderState ( D3DRS_STENCILENABLE, false );
+		csgo::i::dev->SetRenderState ( D3DRS_CLIPPING, true );
+		csgo::i::dev->SetRenderState ( D3DRS_CLIPPLANEENABLE, false );
+		csgo::i::dev->SetRenderState ( D3DRS_VERTEXBLEND, D3DVBF_DISABLE );
+		csgo::i::dev->SetRenderState ( D3DRS_INDEXEDVERTEXBLENDENABLE, false );
+		csgo::i::dev->SetRenderState ( D3DRS_FOGENABLE, false );
+		csgo::i::dev->SetRenderState ( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
+
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_COLORARG1, D3DTA_CURRENT );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_COLORARG2, D3DTA_TEXTURE );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1 );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE );
+		csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLOROP, D3DTOP_SELECTARG2 );
+		csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLORARG1, D3DTA_CURRENT );
+		csgo::i::dev->SetTextureStageState ( 1, D3DTSS_COLORARG2, D3DTA_TEXTURE );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_TEXCOORDINDEX, 0 );
+		csgo::i::dev->SetTextureStageState ( 0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE );
+
+		csgo::i::dev->SetRenderState ( D3DRS_COLORVERTEX, true );
+		csgo::i::dev->SetRenderState ( D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1 );
+
+		csgo::i::dev->EndStateBlock ( &g_perfect_state );
+	}
+
 	if (!g_vertex_buffers )
-		csgo::i::dev->CreateVertexBuffer ( sizeof ( font_vertex_t ) * 12, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1, D3DPOOL_DEFAULT, &g_vertex_buffers, nullptr );
+		csgo::i::dev->CreateVertexBuffer ( sizeof ( font_vertex_t ) * 6, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1, D3DPOOL_DEFAULT, &g_vertex_buffers, nullptr );
 
 	if ( !g_sprite )
 		D3DXCreateSprite( csgo::i::dev, &g_sprite );
@@ -295,5 +343,10 @@ void truetype::end( ) {
 	if ( g_vertex_buffers ) {
 		g_vertex_buffers->Release ( );
 		g_vertex_buffers = nullptr;
+	}
+
+	if ( g_perfect_state ) {
+		g_perfect_state->Release ( );
+		g_perfect_state = nullptr;
 	}
 }

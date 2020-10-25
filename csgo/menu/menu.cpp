@@ -254,17 +254,17 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		sesui::tooltip ( _ ( "Base antiaim pitch" ) );
 		sesui::combobox( _( "Base Pitch" ), options::vars [ antiaim_config + _( "pitch" ) ].val.i, { _( "None" ), _( "Down" ), _( "Up" ), _( "Zero" ) } );
 		sesui::tooltip ( _ ( "Yaw offset from yaw base" ) );
-		sesui::slider( _( "Yaw Offset" ), options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Yaw Offset" ), options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, (char*)_( u8"{:.1f}°" ) );
 		sesui::tooltip ( _ ( "Base yaw for antiaim to build off of" ) );
 		sesui::combobox( _( "Base Yaw" ), options::vars [ antiaim_config + _( "base_yaw" ) ].val.i, { _( "Relative" ), _( "Absolute" ), _( "At Target" ), _( "Auto Direction" ) } );
 		sesui::tooltip ( _ ( "Auto direction flip amount" ) );
-		sesui::slider( _( "Auto Direction Amount" ), options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Auto Direction Amount" ), options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"{:.1f}°" ) );
 		sesui::tooltip ( _ ( "Auto direction range to hide head" ) );
 		sesui::slider( _( "Auto Direction Range" ), options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( "{:.1f} units" ) );
 		sesui::tooltip ( _ ( "Constant jitter amount" ) );
-		sesui::slider( _( "Jitter Range" ), options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Jitter Range" ), options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"{:.1f}°" ) );
 		sesui::tooltip ( _ ( "Antiaim rotation amount" ) );
-		sesui::slider( _( "Rotation Range" ), options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Rotation Range" ), options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"{:.1f}°" ) );
 		sesui::tooltip ( _ ( "Antiaim frequency in revolutions per second" ) );
 		sesui::slider( _( "Rotation Speed" ), options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( "{:.1f} Hz" ) );
 
@@ -285,9 +285,9 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		sesui::tooltip ( _ ( "Inverts desync side to face the open, messing up some resolvers" ) );
 		sesui::checkbox( _( "Anti Freestanding Prediction" ), options::vars [ antiaim_config + _( "anti_freestand_prediction" ) ].val.b );
 		sesui::tooltip ( _ ( "Desync range (from fake to real)" ) );
-		sesui::slider( _( "Desync Range" ), options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Desync Range" ), options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, ( char* ) _( u8"{:.1f}°" ) );
 		sesui::tooltip ( _ ( "Desync range on inverted side (from fake to real)" ) );
-		sesui::slider( _( "Desync Range Inverted" ), options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, _( "{:.1f}°" ) );
+		sesui::slider( _( "Desync Range Inverted" ), options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, ( char* ) _( u8"{:.1f}°" ) );
 
 		if ( antiaim_name == _( "standing" ) ) {
 			sesui::tooltip ( _ ( "Standing desync mode (LBY is extended)" ) );
@@ -721,9 +721,9 @@ void gui::draw( ) {
 									{_( "Post Processing" ), options::vars [ _( "visuals.other.removals" ) ].val.l [ 8 ]}
 									} );
 								sesui::tooltip ( _ ( "Camera FOV" ) );
-								sesui::slider( _( "FOV" ), options::vars [ _( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, _( "{:.1f}°" ) );
+								sesui::slider( _( "FOV" ), options::vars [ _( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _( u8"{:.1f}°" ) );
 								sesui::tooltip ( _ ( "Viewmodel FOV" ) );
-								sesui::slider( _( "Viewmodel FOV" ), options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _( "{:.1f}°" ) );
+								sesui::slider( _( "Viewmodel FOV" ), options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _( u8"{:.1f}°" ) );
 								sesui::tooltip ( _ ( "Screen aspect ratio (lower values will stretch screen)" ) );
 								sesui::slider( _( "Aspect Ratio" ), options::vars [ _( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
 

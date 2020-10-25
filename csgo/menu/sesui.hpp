@@ -367,8 +367,8 @@ namespace sesui {
 		vec2 color_popup = vec2( 220.0f, 220.0f );
 		float color_bar_width = 10.0f;
 
-		font control_font = font( "sesame_ui", 16, 525, false );
-		font tab_font = font( "sesame_ui", 24, 260, false );
+		font control_font = font( "sesame_ui", 14, 525, false );
+		font tab_font = font( "sesame_ui", 22, 260, false );
 	};
 
 	extern style_t style;

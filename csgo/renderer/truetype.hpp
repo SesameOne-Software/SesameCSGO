@@ -35,13 +35,7 @@ namespace truetype {
         unsigned int bitmap_height;
 
         void operator=( const font& f ) {
-            font_name = f.font_name;
-            size = f.size;
-            font_info = f.font_info;
-            pc = f.pc;
-            chars = f.chars;
-            font_map = f.font_map;
-            id = f.id;
+			memcpy ( this, &f, sizeof(*this) );
         }
 
         void create_texture( );
