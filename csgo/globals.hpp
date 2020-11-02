@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <memory>
 
-#define SESAME_VERSION "3.0.1"
+#define SESAME_VERSION "Sesame v3.2.0"
 
 struct ucmd_t;
 class vec3_t;

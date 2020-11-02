@@ -6,6 +6,8 @@
 #include <mutex>
 #include "prediction.hpp"
 
+#include "../renderer/render.hpp"
+
 /*
 nade trajectory prediction
 nade esp
@@ -299,9 +301,7 @@ void features::nade_prediction::draw( ) {
 
 				if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
 					if ( grenade_trajectories ) {
-						render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ) );
-						render::line( start.x + 1, start.y, end.x + 1, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ) );
-						render::line( start.x - 1, start.y, end.x - 1, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ) );
+						render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ), 3.0f );
 					}
 
 					if ( p.m_detonate && grenade_blast_radii ) {
@@ -323,11 +323,11 @@ void features::nade_prediction::draw( ) {
 	if ( nade_predicted ) {
 		auto base_time = csgo::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int>( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
-			auto calc_alpha2 = std::clamp( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_bounce_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_bounce_color.a * 255.0f ), 0, 255 );
 
 			if ( !p.m_valid ) {
 				break;
@@ -335,9 +335,7 @@ void features::nade_prediction::draw( ) {
 
 			if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
 				if ( grenade_trajectories ) {
-					render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ) );
-					render::line( start.x + 1, start.y, end.x + 1, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ) );
-					render::line( start.x - 1, start.y, end.x - 1, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ) );
+					render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ), 3.0f );
 				}
 
 				if ( p.m_detonate && grenade_blast_radii ) {
@@ -444,11 +442,11 @@ void features::nade_prediction::draw_beam( ) {
 	if ( nade_predicted ) {
 		auto base_time = csgo::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int> ( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
-			auto calc_alpha2 = std::clamp( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 			if ( !p.m_valid ) {
 				break;

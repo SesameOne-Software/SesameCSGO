@@ -14,7 +14,6 @@
 #include "../features/autowall.hpp"
 
 #include "../animations/resolver.hpp"
-#include "../javascript/js_api.hpp"
 
 #include "../menu/options.hpp"
 
@@ -191,11 +190,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		//	"features::ragebot::run",
 		if ( !vars::in_refresh )
 			features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
-		//);
-
-		//RUN_SAFE (
-		//	"js::process_create_move_callbacks",
-		js::process_create_move_callbacks( );
 		//);
 
 		//RUN_SAFE (

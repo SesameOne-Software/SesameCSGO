@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "../sdk/sdk.hpp"
 #include "../menu/menu.hpp"
+#include "../menu/options.hpp"
 
 namespace features {
 	enum esp_placement_t {
@@ -39,20 +40,20 @@ namespace features {
 		float reflectivity;
 		float phong;
 
-		sesui::color chams_color;
-		sesui::color chams_xqz_color;
-		sesui::color backtrack_chams_color;
-		sesui::color hit_matrix_color;
-		sesui::color glow_color;
-		sesui::color rimlight_color;
-		sesui::color box_color;
-		sesui::color health_bar_color;
-		sesui::color ammo_bar_color;
-		sesui::color desync_bar_color;
-		sesui::color name_color;
-		sesui::color weapon_color;
-		sesui::color desync_chams_color;
-		sesui::color desync_rimlight_color;
+		options::option::colorf chams_color;
+		options::option::colorf chams_xqz_color;
+		options::option::colorf backtrack_chams_color;
+		options::option::colorf hit_matrix_color;
+		options::option::colorf glow_color;
+		options::option::colorf rimlight_color;
+		options::option::colorf box_color;
+		options::option::colorf health_bar_color;
+		options::option::colorf ammo_bar_color;
+		options::option::colorf desync_bar_color;
+		options::option::colorf name_color;
+		options::option::colorf weapon_color;
+		options::option::colorf desync_chams_color;
+		options::option::colorf desync_rimlight_color;
 	};
 
 	bool get_visuals ( player_t* pl, visual_config_t& out );

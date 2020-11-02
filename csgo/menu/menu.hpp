@@ -1,8 +1,6 @@
 #pragma once
 #include <mutex>
-#include "sesui.hpp"
 #include "../sdk/sdk.hpp"
-#include "../renderer/d3d9.hpp"
 #include "../cjson/cJSON.h"
 
 namespace gui {

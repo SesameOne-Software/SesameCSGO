@@ -5,7 +5,6 @@
 #include "../security/security_handler.hpp"
 #include "../features/lagcomp.hpp"
 #include "../features/autowall.hpp"
-#include "../renderer/d3d9.hpp"
 #include "../menu/menu.hpp"
 #include "../features/esp.hpp"
 #include "../features/autowall.hpp"
@@ -13,8 +12,15 @@
 #include "../features/other_visuals.hpp"
 #include "../menu/options.hpp"
 
+#include "../renderer/render.hpp"
+
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_internal.h"
+
 template < typename ...args_t >
-void print_console( const sesui::color& clr, const char* fmt, args_t ...args ) {
+void print_console( const options::option::colorf& clr, const char* fmt, args_t ...args ) {
 	if ( !fmt )
 		return;
 
@@ -292,8 +298,8 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			impact_recs.push_back( impact_rec_t { features::ragebot::get_shot_pos( pl_idx ), rdata::impacts [ pl_idx ], _( "spread ( " ) + std::to_string( features::ragebot::get_misses( pl_idx ).spread ) + _( " )" ), csgo::i::globals->m_curtime, false, D3DCOLOR_RGBA( 161, 66, 245, 150 ) } );
 
 			if ( logs [ 1 ] ) {
-				print_console( sesui::color( 0.85f, 0.31f, 0.83f, 1.0f ), _( "[ sesame ] " ) );
-				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( "Missed shot due to spread\n" ) );
+				print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "[ sesame ] " ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( "Missed shot due to spread\n" ) );
 			}
 		}
 		else {
@@ -304,8 +310,8 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 			fix_cached_resolves( pl_idx );
 
 			if ( logs [ 2 ] ) {
-				print_console( sesui::color( 0.85f, 0.31f, 0.83f, 1.0f ), _( "[ sesame ] " ) );
-				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( "Missed shot due to bad resolve\n" ) );
+				print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "[ sesame ] " ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( "Missed shot due to bad resolve\n" ) );
 			}
 		}
 
@@ -335,48 +341,48 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		csgo::i::engine->get_player_info( pl_idx, &pl_info );
 
 		if ( logs [ 3 ] ) {
-			print_console( sesui::color( 0.85f, 0.31f, 0.83f, 1.0f ), _( "[ sesame ] " ) );
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( "Hit %s in the " ), pl_info.m_name );
+			print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "[ sesame ] " ) );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( "Hit %s in the " ), pl_info.m_name );
 
 			switch ( hit_hitgroup [ pl_idx ] ) {
-				case 0: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "generic" ) ); break;
-				case 1: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "head" ) ); break;
-				case 2: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "chest" ) ); break;
-				case 3: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "stomach" ) ); break;
-				case 4: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left arm" ) ); break;
-				case 5: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right arm" ) ); break;
-				case 6: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left leg" ) ); break;
-				case 7: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right leg" ) ); break;
-				case 10: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "gear" ) ); break;
-				default: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "unknown" ) ); break;
+				case 0: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "generic" ) ); break;
+				case 1: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "head" ) ); break;
+				case 2: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "chest" ) ); break;
+				case 3: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "stomach" ) ); break;
+				case 4: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "left arm" ) ); break;
+				case 5: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "right arm" ) ); break;
+				case 6: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "left leg" ) ); break;
+				case 7: print_console( {0.46f, 1.0f, 0.19f, 1.0f }, _( "right leg" ) ); break;
+				case 10: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "gear" ) ); break;
+				default: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "unknown" ) ); break;
 			}
 
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " for " ) );
-			print_console( sesui::color( 255, 86, 86, 255 ), _( "%d" ), rdata::player_dmg [ pl_idx ] );
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( "; Wrong hitbox ( target " ) );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " for " ) );
+			print_console ( { 255, 86, 86, 255 }, _ ( "%d" ), rdata::player_dmg [ pl_idx ] );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( "; Wrong hitbox ( target " ) );
 
 			switch ( autowall::hitbox_to_hitgroup( features::ragebot::get_hitbox( pl_idx ) ) ) {
-				case 0: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "generic" ) ); break;
-				case 1: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "head" ) ); break;
-				case 2: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "chest" ) ); break;
-				case 3: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "stomach" ) ); break;
-				case 4: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left arm" ) ); break;
-				case 5: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right arm" ) ); break;
-				case 6: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left leg" ) ); break;
-				case 7: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right leg" ) ); break;
-				case 10: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "gear" ) ); break;
-				default: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "unknown" ) ); break;
+				case 0: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "generic" ) ); break;
+				case 1: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "head" ) ); break;
+				case 2: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "chest" ) ); break;
+				case 3: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "stomach" ) ); break;
+				case 4: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "left arm" ) ); break;
+				case 5: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "right arm" ) ); break;
+				case 6: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "left leg" ) ); break;
+				case 7: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "right leg" ) ); break;
+				case 10: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "gear" ) ); break;
+				default: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "unknown" ) ); break;
 			}
 
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " )\n" ) );
 
 			if ( features::ragebot::get_lag_rec( pl_idx ).m_priority == 1 ) {
-				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( ", " ) );
-				print_console( sesui::color( 0.34f, 0.34f, 1.0f, 1.0f ), _( "On Shot Backtrack" ) );
-				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( ", " ) );
+				print_console ( { 0.34f, 0.34f, 1.0f, 1.0f }, _ ( "On Shot Backtrack" ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " )\n" ) );
 			}
 			else {
-				print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " )\n" ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " )\n" ) );
 			}
 		}
 
@@ -407,30 +413,30 @@ void animations::resolver::process_event_buffer( int pl_idx ) {
 		csgo::i::engine->get_player_info( pl_idx, &pl_info );
 
 		if ( logs [ 0 ] ) {
-			print_console( sesui::color( 0.85f, 0.31f, 0.83f, 1.0f ), _( "[ sesame ] " ) );
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( "Hit %s in the " ), pl_info.m_name );
+			print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "[ sesame ] " ) );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( "Hit %s in the " ), pl_info.m_name );
 
 			switch ( hit_hitgroup [ pl_idx ] ) {
-				case 0: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "generic" ) ); break;
-				case 1: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "head" ) ); break;
-				case 2: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "chest" ) ); break;
-				case 3: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "stomach" ) ); break;
-				case 4: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left arm" ) ); break;
-				case 5: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right arm" ) ); break;
-				case 6: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "left leg" ) ); break;
-				case 7: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "right leg" ) ); break;
-				case 10: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "gear" ) ); break;
-				default: print_console( sesui::color( 0.46f, 1.0f, 0.19f, 1.0f ), _( "unknown" ) ); break;
+				case 0: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "generic" ) ); break;
+				case 1: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "head" ) ); break;
+				case 2: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "chest" ) ); break;
+				case 3: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "stomach" ) ); break;
+				case 4: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "left arm" ) ); break;
+				case 5: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "right arm" ) ); break;
+				case 6: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "left leg" ) ); break;
+				case 7: print_console( { 0.46f, 1.0f, 0.19f, 1.0f }, _( "right leg" ) ); break;
+				case 10: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "gear" ) ); break;
+				default: print_console ( { 0.46f, 1.0f, 0.19f, 1.0f }, _ ( "unknown" ) ); break;
 			}
 
-			print_console( sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ), _( " for " ) );
+			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " for " ) );
 
 			if ( features::ragebot::get_lag_rec( pl_idx ).m_priority == 1 ) {
-				print_console( sesui::color( 1.0f, 0.34f, 0.34f, 1.0f ), _( "%d" ), rdata::player_dmg [ pl_idx ] );
-				print_console( sesui::color( 0.34f, 0.34f, 1.0f, 1.0f ), _( " (On Shot Backtrack)\n" ) );
+				print_console ( { 1.0f, 0.34f, 0.34f, 1.0f }, _ ( "%d" ), rdata::player_dmg [ pl_idx ] );
+				print_console ( { 0.34f, 0.34f, 1.0f, 1.0f }, _ ( " (On Shot Backtrack)\n" ) );
 			}
 			else {
-				print_console( sesui::color( 1.0f, 0.34f, 0.34f, 1.0f ), _( "%d\n" ), rdata::player_dmg [ pl_idx ] );
+				print_console ( { 1.0f, 0.34f, 0.34f, 1.0f }, _ ( "%d\n" ), rdata::player_dmg [ pl_idx ] );
 			}
 		}
 
@@ -1007,22 +1013,14 @@ void animations::resolver::render_impacts( ) {
 		//	render::line ( scrn_src.x, scrn_src.y, scrn_dst.x, scrn_dst.y, impact.m_clr );
 		//}
 
-		float dim_x, dim_y;
-		features::esp::esp_font.text_size ( impact.m_msg, dim_x, dim_y );
+		vec3_t dim;
+		render::text_size ( impact.m_msg, _("esp_font") , dim );
 
 		if ( impact.m_hurt && bullet_impacts ) {
-			features::esp::esp_font.draw_text ( scrn_dst.x - dim_x / 2, scrn_dst.y - 26, impact.m_msg, D3DCOLOR_RGBA ( 145, 255, 0, alpha2 ), truetype::text_flags_t::text_flags_outline );
+			render::text ( scrn_dst.x - dim.x / 2, scrn_dst.y - 26, impact.m_msg, ( "esp_font" ), D3DCOLOR_RGBA ( 145, 255, 0, alpha2 ), true );
 			//render::cube ( impact.m_dst, 4, D3DCOLOR_RGBA ( clr_bullet_impact.r, clr_bullet_impact.g, clr_bullet_impact.b, alpha1 ) );
 
-			render::line( scrn_dst.x + 3, scrn_dst.y + 3, scrn_dst.x + 8, scrn_dst.y + 8, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );
-			render::line( scrn_dst.x + 3, scrn_dst.y - 3, scrn_dst.x + 8, scrn_dst.y - 8, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );
-			render::line( scrn_dst.x - 3, scrn_dst.y + 3, scrn_dst.x - 8, scrn_dst.y + 8, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );
-			render::line( scrn_dst.x - 3, scrn_dst.y - 3, scrn_dst.x - 8, scrn_dst.y - 8, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );
-
-			render::line( scrn_dst.x + 3, scrn_dst.y + 3 + 1, scrn_dst.x + 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA( 0, 0, 0, alpha1 ) );
-			render::line( scrn_dst.x + 3, scrn_dst.y - 3 + 1, scrn_dst.x + 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA( 0, 0, 0, alpha1 ) );
-			render::line( scrn_dst.x - 3, scrn_dst.y + 3 + 1, scrn_dst.x - 8, scrn_dst.y + 8 + 1, D3DCOLOR_RGBA( 0, 0, 0, alpha1 ) );
-			render::line( scrn_dst.x - 3, scrn_dst.y - 3 + 1, scrn_dst.x - 8, scrn_dst.y - 8 + 1, D3DCOLOR_RGBA( 0, 0, 0, alpha1 ) );
+			render::line( scrn_dst.x, scrn_dst.y, scrn_dst.x, scrn_dst.y, D3DCOLOR_RGBA( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ), 3.0f );
 		}
 		else {
 			//render::text ( scrn_dst.x - dim.w / 2, scrn_dst.y - 16, D3DCOLOR_RGBA ( 255, 62, 59, alpha ), features::esp::esp_font, impact.m_msg, true, false );

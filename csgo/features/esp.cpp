@@ -7,16 +7,19 @@
 #include "autowall.hpp"
 #include <locale>
 
-truetype::font features::esp::indicator_font;
-truetype::font features::esp::watermark_font;
-truetype::font features::esp::esp_font;
-truetype::font features::esp::dbg_font;
+#include "../renderer/render.hpp"
+
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_internal.h"
+
 float box_alpha = 0.0f;
 
 std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
 std::array< features::esp::esp_data_t, 65 > features::esp::esp_data;
 
-void draw_esp_box( int x, int y, int w, int h, bool dormant, const sesui::color& esp_box_color ) {
+void draw_esp_box( int x, int y, int w, int h, bool dormant, const options::option::colorf& esp_box_color ) {
 	render::outline( x - 1, y - 1, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( esp_box_color.a * 60.0f, 0, 60 ) ) );
 	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA( 150, 150, 150, static_cast< int > ( esp_box_color.a * 255.0f * box_alpha ) ) : D3DCOLOR_RGBA( static_cast< int > ( esp_box_color.r * 255.0f ), static_cast< int > ( esp_box_color.g * 255.0f ), static_cast< int > ( esp_box_color.b * 255.0f ), static_cast< int >( esp_box_color.a * 255.0f * box_alpha ) ) );
 }
@@ -35,7 +38,7 @@ enum esp_type_t {
 	esp_type_flag
 };
 
-void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, std::string to_print = _( "" ) ) {
+void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, std::string to_print = _( "" ) ) {
 	uint32_t clr1 = D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f, 0, 125 ) );
 	uint32_t clr = D3DCOLOR_RGBA( static_cast< int > ( widget_color.r * 255.0f ), static_cast< int > ( widget_color.g * 255.0f ), static_cast< int > ( widget_color.b * 255.0f ), static_cast< int > ( widget_color.a * 255.0f ) );
 
@@ -46,43 +49,43 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 		case esp_type_bar: {
 			const auto sval = std::to_string( static_cast< int >( value ) );
 
-			float text_dim_x, text_dim_y;
-			features::esp::dbg_font.text_size ( sval, text_dim_x, text_dim_y );
+			vec3_t text_size;
+			render::text_size ( sval, _ ( "dbg_font" ), text_size );
 			
 			const auto fraction = std::clamp( value / max, 0.0, 1.0 );
-			const auto calc_height = fraction * box.h;
+			const auto calc_height = fraction * ( box.Max.y - box.Min.y );
 
 			switch ( orientation ) {
 				case features::esp_placement_left:
-					render::rounded_rect( box.x - cur_offset_left - 5 + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
-					render::rounded_rect( box.x - cur_offset_left - 5, box.y, 5, box.h, 2, 4, clr1, true );
+					render::rect( box.Min.x - cur_offset_left - 5 + 1, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1, 5 - 1, calc_height, clr );
+					render::outline ( box.Min.x - cur_offset_left - 5, box.Min.y, 5, ( box.Max.y - box.Min.y ), clr1 );
 
 					if ( show_value )
-						features::esp::dbg_font .draw_text( box.x - cur_offset_left - 5 + 1 + 5 / 2 - text_dim_x / 2, box.y + ( box.h - calc_height ) + 1 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
+						render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
 					cur_offset_left += 7;
 					break;
 				case features::esp_placement_right:
-					render::rounded_rect( box.x + box.w + cur_offset_right + 1, box.y + ( box.h - calc_height ) + 1, 5 - 1, calc_height, 2, 4, clr, false );
-					render::rounded_rect( box.x + box.w + cur_offset_right, box.y, 5, box.h, 2, 4, clr1, true );
+					render::rect ( box.Max.x + cur_offset_right + 1, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1, 5 - 1, calc_height, clr );
+					render::outline ( box.Max.x + cur_offset_right, box.Min.y, 5, ( box.Max.y - box.Min.y ), clr1 );
 
 					if ( show_value )
-						features::esp::dbg_font.draw_text ( box.x + box.w + cur_offset_right + 1 + 5 / 2 - text_dim_x / 2, box.y + ( box.h - calc_height ) + 1 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
+						render::text ( box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
 					cur_offset_right += 7;
 					break;
 				case features::esp_placement_bottom:
-					render::rounded_rect( box.x + 1, box.y + box.h + cur_offset_bottom + 1, static_cast< float >( box.w ) * fraction + 1, 5 - 1, 2, 4, clr, false );
-					render::rounded_rect( box.x, box.y + box.h + cur_offset_bottom, box.w, 5, 2, 4, clr1, true );
+					render::rect ( box.Min.x + 1, box.Max.y + cur_offset_bottom + 1, static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1, 5 - 1, clr );
+					render::outline ( box.Min.x, box.Max.y + cur_offset_bottom, box.Max.x - box.Min.x, 5, clr1 );
 
 					if ( show_value )
-						features::esp::dbg_font.draw_text ( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim_x / 2, box.y + box.h + cur_offset_bottom + 1 + 5 / 2 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
+						render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1 - text_size.x / 2, box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
 					cur_offset_bottom += 7;
 					break;
 				case features::esp_placement_top:
-					render::rounded_rect( box.x + 1, box.y - cur_offset_top - 5 + 1, static_cast< float >( box.w ) * fraction + 1, 5 - 1, 2, 4, clr, false );
-					render::rounded_rect( box.x, box.y - cur_offset_top - 5, box.w, 5, 2, 4, clr1, true );
+					render::rect ( box.Min.x + 1, box.Min.y - cur_offset_top - 5 + 1, static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1, 5 - 1, clr );
+					render::outline ( box.Min.x, box.Min.y - cur_offset_top - 5, box.Max.x- box.Min.x, 5, clr1 );
 
 					if ( show_value )
-						features::esp::dbg_font.draw_text ( box.x + 1 + static_cast< float >( box.w ) * fraction + 1 - text_dim_x / 2, box.y - cur_offset_top - 5 + 1 + 5 / 2 - text_dim_y / 2, sval, D3DCOLOR_RGBA ( 255, 255, 255, 255 ), truetype::text_flags_t::text_flags_outline );
+						render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
 					cur_offset_top += 7;
 					break;
 			}
@@ -93,25 +96,25 @@ void draw_esp_widget( const sesui::rect& box, const sesui::color& widget_color, 
 
 			std::string as_str = to_print;
 
-			float text_dim_x, text_dim_y;
-			features::esp::esp_font.text_size ( as_str, text_dim_x, text_dim_y );
+			vec3_t text_size;
+			render::text_size ( as_str, _ ( "esp_font" ), text_size );
 
 			switch ( orientation ) {
 				case features::esp_placement_left:
-					features::esp::esp_font.draw_text ( box.x - cur_offset_left - text_dim_x, box.y + cur_offset_left_height, as_str, clr, truetype::text_flags_t::text_flags_outline );
-					cur_offset_left_height += text_dim_y + 2;
+					render::text ( box.Min.x - cur_offset_left - text_size.x, box.Min.y + cur_offset_left_height, as_str, _ ( "esp_font" ), clr, true);
+					cur_offset_left_height += text_size.y + 2;
 					break;
 				case features::esp_placement_right:
-					features::esp::esp_font.draw_text ( box.x + cur_offset_right + box.w, box.y + cur_offset_right_height, as_str, clr, truetype::text_flags_t::text_flags_outline );
-					cur_offset_right_height += text_dim_y + 2;
+					render::text ( box.Min.x + cur_offset_right + ( box.Max.x - box.Min.x ), box.Min.y + cur_offset_right_height, as_str, _ ( "esp_font" ), clr, true );
+					cur_offset_right_height += text_size.y + 2;
 					break;
 				case features::esp_placement_bottom:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y + box.h + cur_offset_bottom, as_str, clr, truetype::text_flags_t::text_flags_outline );
-					cur_offset_bottom += text_dim_y + 2;
+					render::text ( box.Min.x + ( box.Max.x - box.Min.x ) / 2 - text_size.x / 2, box.Max.y + cur_offset_bottom, as_str, _ ( "esp_font" ), clr, true );
+					cur_offset_bottom += text_size.y + 2;
 					break;
 				case features::esp_placement_top:
-					features::esp::esp_font.draw_text ( box.x + box.w / 2 - text_dim_x / 2, box.y - cur_offset_top - text_dim_y, as_str, clr, truetype::text_flags_t::text_flags_outline );
-					cur_offset_top += text_dim_y + 2;
+					render::text ( box.Min.x + ( box.Max.x - box.Min.x ) / 2 - text_size.x / 2, box.Min.y - cur_offset_top - text_size.y, as_str, _ ( "esp_font" ), clr, true );
+					cur_offset_top += text_size.y + 2;
 					break;
 			}
 		} break;
@@ -356,7 +359,7 @@ void features::esp::render( ) {
 			cur_offset_bottom = 4;
 			cur_offset_top = 4;
 
-			sesui::rect esp_rect { static_cast< int >( left ), static_cast< int >( top ), static_cast< int >( right - left ), static_cast< int >( bottom - top ) };
+			ImVec4 esp_rect { left, top, right - left, bottom - top };
 
 			//if ( e == g::local ) {
 			//	int y = 20;

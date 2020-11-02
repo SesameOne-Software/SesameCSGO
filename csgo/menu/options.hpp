@@ -1,6 +1,5 @@
 #pragma once
-#include <unordered_map>
-#include "sesui.hpp"
+#include <unordered_map>=
 
 namespace options {
 	enum class option_type_t : int {
@@ -14,6 +13,10 @@ namespace options {
 
 	class option {
 	public:
+		struct colorf {
+			float r, g, b, a;
+		};
+
 		option_type_t type;
 
 		union val {
@@ -22,7 +25,7 @@ namespace options {
 			float f;
 			char s [ 128 ];
 			bool l [ 128 ];
-			sesui::color c;
+			colorf c;
 
 			val ( ) {}
 			~val ( ) {}
@@ -35,14 +38,14 @@ namespace options {
 		static void add_int ( const std::string& id, int val );
 		static void add_float ( const std::string& id, float val );
 		static void add_str ( const std::string& id, const char* val );
-		static void add_color ( const std::string& id, const sesui::color& val );
+		static void add_color ( const std::string& id, const colorf& val );
 
 		static void add_script_list ( const std::string& id, int count );
 		static void add_script_bool ( const std::string& id, bool val );
 		static void add_script_int ( const std::string& id, int val );
 		static void add_script_float ( const std::string& id, float val );
 		static void add_script_str ( const std::string& id, const char* val );
-		static void add_script_color ( const std::string& id, const sesui::color& val );
+		static void add_script_color ( const std::string& id, const colorf& val );
 	};
 
 	extern std::unordered_map< std::string, option > vars;

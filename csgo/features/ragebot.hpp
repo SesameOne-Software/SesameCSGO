@@ -2,7 +2,7 @@
 #include <mutex>
 #include "../sdk/sdk.hpp"
 #include "lagcomp.hpp"
-#include "../renderer/d3d9.hpp"
+#include "../renderer/render.hpp"
 
 namespace features {
 	namespace ragebot {
@@ -107,7 +107,7 @@ namespace features {
 
 				for ( auto& point : m_synced_points ) {
 					if ( csgo::render::world_to_screen( screen, point ) )
-						render::rectangle( screen.x - 2, screen.y - 2, 4, 4, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
+						render::rect( screen.x - 2, screen.y - 2, 4, 4, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
 				}
 			}
 		};

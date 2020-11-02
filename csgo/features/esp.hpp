@@ -1,15 +1,9 @@
 ﻿#pragma once
 #include "../sdk/sdk.hpp"
 #include <deque>
-#include "../renderer/truetype.hpp"
 
 namespace features {
 	namespace esp {
-		extern truetype::font indicator_font;
-		extern truetype::font watermark_font;
-		extern truetype::font esp_font;
-		extern truetype::font dbg_font;
-
 		extern std::array< std::deque< std::pair< vec3_t, bool > >, 65 > ps_points;
 
 		struct esp_data_t {

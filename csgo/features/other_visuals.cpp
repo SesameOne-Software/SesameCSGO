@@ -6,6 +6,9 @@
 #include "../menu/options.hpp"
 #include "esp.hpp"
 
+#include "../renderer/render.hpp"
+#include "../fmt/format.h"
+
 float features::spread_circle::total_spread = 0.0f;
 
 bool features::get_visuals( player_t* pl, visual_config_t& out ) {
@@ -213,7 +216,7 @@ void features::offscreen_esp::draw( ) {
 	if ( !g::local )
 		return;
 
-	int w = 0, h = 0;
+	float w = 0, h = 0;
 	render::screen_size( w, h );
 
 	vec3_t center( w * 0.5f, h * 0.5f, 0.0f );
@@ -270,14 +273,14 @@ void features::offscreen_esp::draw( ) {
 								const auto defuse_fraction = ( as_bomb->defuse_countdown( ) - csgo::i::globals->m_curtime ) / as_bomb->defuse_length( );
 								const auto time_left = fmt::format ( _("{:.2f} seconds"), timer );
 
-								render::rectangle( 0, 1, w * fraction, 4, D3DCOLOR_RGBA( 0, 255, 0, 255 ) );
+								render::rect( 0, 1, w * fraction, 4, D3DCOLOR_RGBA( 0, 255, 0, 255 ) );
 
 								if ( reinterpret_cast< player_t* >( as_bomb->get_defuser( ) )->valid( ) )
-									render::rectangle( 0, 5, w * defuse_fraction, 4, D3DCOLOR_RGBA( 84, 195, 255, 255 ) );
+									render::rect ( 0, 5, w * defuse_fraction, 4, D3DCOLOR_RGBA( 84, 195, 255, 255 ) );
 
-								float text_dim_x, text_dim_y;
-								features::esp::esp_font.text_size ( time_left, text_dim_x, text_dim_y );
-								features::esp::esp_font .draw_text( w / 2 - text_dim_x / 2, 65, time_left, D3DCOLOR_RGBA ( 255, 255, 255, 255 ) ,truetype::text_flags_t::text_flags_outline);
+								vec3_t text_dim;
+								render::text_size ( time_left, _("esp_font"), text_dim );
+								render ::text( w / 2 - text_dim.x / 2, 65, time_left, _ ( "esp_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ) ,true);
 							}
 
 							if ( bomb_esp ) {
@@ -301,25 +304,24 @@ void features::offscreen_esp::draw( ) {
 
 										calc_pos = center + csgo::angle_vec( top_ang ) * mag1;
 
-										float text_dim_x, text_dim_y;
-										features::esp::indicator_font.text_size ( _( "!" ), text_dim_x, text_dim_y );
+										vec3_t text_dim;
+										render::text_size ( _("!"), _ ( "indicator_font" ), text_dim );
 
-										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-										render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-										features::esp::indicator_font.draw_text ( calc_pos.x - text_dim_x / 2.0f, calc_pos.y - text_dim_y, _( "!" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), truetype::text_flags_t::text_flags_outline );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
+										render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), true );
 									}
 								}
 								else {
 									calc_pos = bomb_screen;
 
-									float text_dim_x, text_dim_y;
-									features::esp::indicator_font.text_size ( _ ( "!" ), text_dim_x, text_dim_y );
+									vec3_t text_dim;
 									
-									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-									render::circle( calc_pos.x, calc_pos.y - text_dim_y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), 0, 0, true );
-									features::esp::indicator_font.draw_text ( calc_pos.x - text_dim_x / 2.0f, calc_pos.y - text_dim_y, _( "!" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), truetype::text_flags_t::text_flags_outline );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
+									render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), true );
 								}
 							}
 						}
@@ -337,7 +339,7 @@ void features::spread_circle::draw( ) {
 	static auto& fov = options::vars [ _( "visuals.other.fov" ) ].val.f;
 	static auto& viewmodel_fov = options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f;
 
-	int w = 0, h = 0;
+	float w = 0, h = 0;
 	render::screen_size( w, h );
 
 	if ( !g::local || !g::local->alive( ) || !g::local->weapon( ) || !spread_circle || !total_spread )
@@ -380,7 +382,12 @@ void features::spread_circle::draw( ) {
 		auto x = w / 2;
 		auto y = h / 2;
 
-		std::vector< render::vtx_t > circle( 48 + 2 );
+		struct vtx_t {
+			float x, y, z, rhw;
+			std::uint32_t color;
+		};
+
+		std::vector< vtx_t > circle( 48 + 2 );
 
 		auto pi = D3DX_PI;
 		const auto angle = 0.0f;
@@ -408,14 +415,14 @@ void features::spread_circle::draw( ) {
 
 		IDirect3DVertexBuffer9* vb = nullptr;
 
-		csgo::i::dev->CreateVertexBuffer( ( 48 + 2 ) * sizeof( render::vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+		csgo::i::dev->CreateVertexBuffer( ( 48 + 2 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
 
 		void* verticies;
-		vb->Lock( 0, ( 48 + 2 ) * sizeof( render::vtx_t ), ( void** )&verticies, 0 );
-		std::memcpy( verticies, &circle [ 0 ], ( 48 + 2 ) * sizeof( render::vtx_t ) );
+		vb->Lock( 0, ( 48 + 2 ) * sizeof( vtx_t ), ( void** )&verticies, 0 );
+		std::memcpy( verticies, &circle [ 0 ], ( 48 + 2 ) * sizeof( vtx_t ) );
 		vb->Unlock( );
 
-		csgo::i::dev->SetStreamSource( 0, vb, 0, sizeof( render::vtx_t ) );
+		csgo::i::dev->SetStreamSource( 0, vb, 0, sizeof( vtx_t ) );
 		csgo::i::dev->DrawPrimitive( D3DPT_TRIANGLEFAN, 0, 48 );
 
 		if ( vb )

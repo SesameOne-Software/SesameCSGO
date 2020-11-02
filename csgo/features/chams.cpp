@@ -128,7 +128,7 @@ bool create_materials( ) {
 	return true;
 }
 
-void update_mats( const features::visual_config_t& visuals, const sesui::color& clr ) {
+void update_mats( const features::visual_config_t& visuals, const options::option::colorf& clr ) {
 	// XREF: Function DrawSpriteModel client.dll
 	auto set_vec = [ ] ( void* var, float x, float y, float z ) {
 		vfunc< void( __thiscall* )( void*, float, float, float ) >( var, 11 )( var, x, y, z );

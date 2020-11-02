@@ -9,11 +9,15 @@
 #include "../features/other_visuals.hpp"
 #include "../features/esp.hpp"
 #include "../animations/resolver.hpp"
-#include "../javascript/js_api.hpp"
 #include "../features/ragebot.hpp"
 #include "../menu/options.hpp"
 
-#include "../renderer/truetype.hpp"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_internal.h"
+
+#include "../renderer/render.hpp"
 
 decltype( &hooks::end_scene ) hooks::old::end_scene = nullptr;
 
@@ -56,59 +60,85 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	device->SetSamplerState ( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
 	device->SetSamplerState ( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
 
-	truetype::begin ( );
-
 	security_handler::update( );
 
-	RUN_SAFE(
-		"features::nade_prediction::draw",
-		features::nade_prediction::draw( );
-	);
+	// Start the Dear ImGui frame
+	ImGui_ImplDX9_NewFrame ( );
+	ImGui_ImplWin32_NewFrame ( );
+	ImGui::NewFrame ( );
 
-	RUN_SAFE(
-		"features::esp::render",
-		features::esp::render( );
-	);
+	/* use imgui to draw on screen directly */ {
+		/* begin scene */
+		ImGuiIO& io = ImGui::GetIO ( );
 
-	RUN_SAFE(
-		"animations::resolver::render_impacts",
-		animations::resolver::render_impacts( );
-	);
+		ImGui::PushStyleVar ( ImGuiStyleVar_WindowBorderSize, 0.0f );
+		ImGui::PushStyleVar ( ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f } );
+		ImGui::PushStyleColor ( ImGuiCol_WindowBg, { 0.0f, 0.0f, 0.0f, 0.0f } );
+		ImGui::Begin ( "##Backbuffer", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoInputs );
 
-	//features::ragebot::scan_points.draw( );
+		ImGui::SetWindowPos ( ImVec2 ( 0, 0 ), ImGuiCond_Always );
+		ImGui::SetWindowSize ( ImVec2 ( io.DisplaySize.x, io.DisplaySize.y ), ImGuiCond_Always );
 
-	if ( removals [ 2 ] && g::local && g::local->scoped( ) ) {
-		int w, h;
-		render::screen_size( w, h );
+		const auto draw_list = ImGui::GetCurrentWindow ( )->DrawList;
 
-		const auto crosshair_gap = 0.0296f * static_cast< float > ( h );
+		/* draw stuff here */
+		RUN_SAFE (
+			"features::nade_prediction::draw",
+			features::nade_prediction::draw ( );
+		);
 
-		render::gradient( w / 2, h / 2 + crosshair_gap, 1, h / 2.5f, D3DCOLOR_RGBA( 255, 251, 237, 150 ), D3DCOLOR_RGBA( 255, 251, 237, 0 ), false );
-		render::gradient( w / 2, h / 2 - crosshair_gap, 1, -h / 2.5f, D3DCOLOR_RGBA( 255, 251, 237, 150 ), D3DCOLOR_RGBA( 255, 251, 237, 0 ), false );
-		render::gradient( w / 2 + crosshair_gap, h / 2, h / 2.5f, 1, D3DCOLOR_RGBA( 255, 251, 237, 150 ), D3DCOLOR_RGBA( 255, 251, 237, 0 ), true );
-		render::gradient( w / 2 - crosshair_gap, h / 2, -h / 2.5f, 1, D3DCOLOR_RGBA( 255, 251, 237, 150 ), D3DCOLOR_RGBA( 255, 251, 237, 0 ), true );
+		RUN_SAFE (
+			"features::esp::render",
+			features::esp::render ( );
+		);
+
+		RUN_SAFE (
+			"animations::resolver::render_impacts",
+			animations::resolver::render_impacts ( );
+		);
+
+		//features::ragebot::scan_points.draw( );
+
+		if ( removals [ 2 ] && g::local && g::local->scoped ( ) ) {
+			float w, h;
+			render::screen_size ( w, h );
+
+			const auto crosshair_gap = 0.0296f * static_cast< float > ( h );
+
+			render::gradient ( w / 2, h / 2 + crosshair_gap, 1, h / 2.5f, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2, h / 2 - crosshair_gap, 1, -h / 2.5f, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2 + crosshair_gap, h / 2, h / 2.5f, 1, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), true );
+			render::gradient ( w / 2 - crosshair_gap, h / 2, -h / 2.5f, 1, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), true );
+		}
+
+		RUN_SAFE (
+			"features::spread_circle::draw",
+			features::spread_circle::draw ( );
+		);
+
+		RUN_SAFE (
+			"features::offscreen_esp::draw",
+			features::offscreen_esp::draw ( );
+		);
+
+		/* end scene */
+		draw_list->PushClipRectFullScreen ( );
+
+		ImGui::End ( );
+		ImGui::PopStyleColor ( );
+		ImGui::PopStyleVar ( 2 );
 	}
-
-	RUN_SAFE(
-		"features::spread_circle::draw",
-		features::spread_circle::draw( );
-	);
-
-	RUN_SAFE(
-		"features::offscreen_esp::draw",
-		features::offscreen_esp::draw( );
-	);
-
-	RUN_SAFE(
-		"js::process_render_callbacks",
-		js::process_render_callbacks( );
-	);
 
 	RUN_SAFE(
 		"menu::draw",
 		gui::draw( );
 	);
 	
+	ImGui::EndFrame ( );
+	ImGui::Render ( );
+
+	ImGui_ImplDX9_RenderDrawData ( ImGui::GetDrawData ( ) );
+
 	pixel_state->Apply ( );
 	pixel_state->Release ( );
 

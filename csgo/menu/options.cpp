@@ -32,7 +32,7 @@ void options::option::add_str( const std::string& id, const char* val ) {
 	strcpy_s( vars [ id ].val.s, val );
 }
 
-void options::option::add_color( const std::string& id, const sesui::color& val ) {
+void options::option::add_color( const std::string& id, const colorf& val ) {
 	vars [ id ].type = option_type_t::color;
 	vars [ id ].val.c = val;
 }
@@ -63,9 +63,9 @@ void options::option::add_script_str( const std::string& id, const char* val ) {
 	strcpy_s ( script_vars [ id ].val.s, val );
 }
 
-void options::option::add_script_color( const std::string& id, const sesui::color& val ) {
+void options::option::add_script_color( const std::string& id, const colorf& val ) {
 	script_vars [ id ].type = option_type_t::color;
-	script_vars [ id ].val.c = val;
+	vars [ id ].val.c = val;
 }
 
 std::vector< std::string > split( const std::string& str, const std::string& delim ) {
@@ -328,18 +328,18 @@ void options::add_player_visual_config( const std::string& player_category ) {
 	options::option::add_int( prefix + _( "weapon_name_location" ), 0 ); /* left, right, bottom, top */
 	options::option::add_float( prefix + _( "reflectivity" ), 0.0f );
 	options::option::add_float( prefix + _( "phong" ), 0.0f );
-	options::option::add_color( prefix + _( "chams_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "xqz_chams_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "backtrack_chams_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "hit_matrix_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "glow_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "rimlight_overlay_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "box_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "health_bar_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "ammo_bar_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "desync_bar_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "name_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	options::option::add_color( prefix + _( "weapon_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
+	options::option::add_color( prefix + _( "chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "xqz_chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "backtrack_chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "hit_matrix_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "glow_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "rimlight_overlay_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "box_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "health_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "ammo_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "desync_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "name_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	options::option::add_color( prefix + _( "weapon_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 
 	END_FUNC
 }
@@ -409,8 +409,8 @@ void options::init( ) {
 	option::add_list( _( "visuals.filters" ), 6 ); /* local, teammates, enemies, weapon, grenade, bomb */
 	/* player visuals configs */
 	add_player_visual_config( _( "local" ) );
-	option::add_color( _( "visuals.local.desync_chams_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.local.desync_rimlight_overlay_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
+	option::add_color ( _ ( "visuals.local.desync_chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color ( _ ( "visuals.local.desync_rimlight_overlay_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 	add_player_visual_config( _( "enemies" ) );
 	add_player_visual_config( _( "teammates" ) );
 	/* other visuals */
@@ -432,21 +432,21 @@ void options::init( ) {
 	option::add_float( _( "visuals.other.offscreen_esp_distance" ), 0.0f );
 	option::add_float( _( "visuals.other.offscreen_esp_size" ), 0.0f );
 	option::add_float( _( "visuals.other.grenade_path_fade_time" ), 0.0f );
-	option::add_color( _( "visuals.other.offscreen_esp_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.bullet_tracer_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.bullet_impact_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.grenade_trajectory_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.grenade_bounce_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.grenade_radii_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.spread_circle_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.world_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.prop_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
+	option::add_color( _( "visuals.other.offscreen_esp_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.bullet_tracer_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.bullet_impact_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.grenade_trajectory_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.grenade_bounce_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.grenade_radii_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.spread_circle_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.world_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.prop_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 	option::add_int( _( "visuals.other.hit_sound" ), 0 ); /* none, arena switch, fall pain, bolt, neck snap, power switch, glass, bell, cod, rattle, sesame */
 	option::add_bool( _( "visuals.other.watermark" ), false );
 	option::add_bool( _( "visuals.other.keybind_list" ), false );
-	option::add_color( _( "visuals.other.accent_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.secondary_accent_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
-	option::add_color( _( "visuals.other.logo_color" ), sesui::color( 1.0f, 1.0f, 1.0f, 1.0f ) );
+	option::add_color( _( "visuals.other.accent_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.secondary_accent_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color( _( "visuals.other.logo_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 
 	/* SKINS */
 

@@ -8,10 +8,8 @@
 #include "../features/nade_prediction.hpp"
 #include "../animations/animation_system.hpp"
 #include "../animations/resolver.hpp"
-#include "../javascript/js_api.hpp"
 #include "../menu/options.hpp"
 #include "../features/prediction.hpp"
-#include "../menu/d3d9_render.hpp"
 
 void* find_hud_element( const char* name ) {
 	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08" ) ).add( 1 ).deref( ).get< void* >( );
@@ -67,9 +65,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	static auto& ragdoll_force = options::vars [ _( "misc.effects.ragdoll_force_scale" ) ].val.f;
 
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
-
-	if ( stage == 5 )
-		sesui::binds::frame_time = csgo::i::globals->m_frametime;
 
 	/* reset tickbase shift data if not in game. */
 	if ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) {
@@ -147,8 +142,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			if ( removals [ 0 ] )
 				*smoke_count = 0;
 
-			static sesui::color last_prop_clr = prop_color;
-			static sesui::color last_clr = world_color;
+			static options::option::colorf last_prop_clr = prop_color;
+			static options::option::colorf last_clr = world_color;
 			static bool last_alive = false;
 
 			if ( g::local && ( g::local->alive( ) != last_alive || ( last_clr.r != world_color.r || last_clr.g != world_color.g || last_clr.b != world_color.b || last_clr.a != world_color.a ) || ( last_prop_clr.r != prop_color.r || last_prop_clr.g != prop_color.g || last_prop_clr.b != prop_color.b || last_prop_clr.a != prop_color.a ) ) ) {
@@ -196,18 +191,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 				g::local->flash_alpha( ) = 0.0f;
 				g::local->flash_duration( ) = 0.0f;
 			}
-
-			RUN_SAFE(
-				"js::process_net_update_callbacks",
-				js::process_net_update_callbacks( );
-			);
-		}
-
-		if ( stage == 2 && g::local ) {
-			RUN_SAFE(
-				"js::process_net_update_end_callbacks",
-				js::process_net_update_end_callbacks( );
-			);
 		}
 	}
 

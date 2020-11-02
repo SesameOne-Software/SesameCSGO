@@ -1,7 +1,15 @@
 ﻿#include "wnd_proc.hpp"
 #include "../menu/menu.hpp"
 
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_internal.h"
+
 extern WNDPROC hooks::old::wnd_proc = nullptr;
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler ( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
 long __stdcall hooks::wnd_proc ( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
 	auto skip_mouse_input_processing = false;
@@ -44,9 +52,11 @@ long __stdcall hooks::wnd_proc ( HWND hwnd, std::uint32_t msg, std::uintptr_t wp
 			key_down [ wparam ] = false;
 		break;
 	case WM_MOUSEWHEEL:
-		sesui::input::scroll_amount += static_cast< float > ( GET_WHEEL_DELTA_WPARAM ( wparam ) ) / static_cast< float > ( WHEEL_DELTA );
 		break;
 	}
+
+	if ( gui::opened )
+		ImGui_ImplWin32_WndProcHandler ( hwnd, msg, wparam, lparam );
 
 	if ( gui::opened && ( ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) || ( msg == WM_MOUSEWHEEL ) ) )
 		return true;

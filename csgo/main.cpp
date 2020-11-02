@@ -14,7 +14,6 @@
 #include "sdk/sdk.hpp"
 #include "hooks/hooks.hpp"
 #include "globals.hpp"
-#include "javascript/js_api.hpp"
 #include "menu/menu.hpp"
 #include "utils/networking.hpp"
 
@@ -23,6 +22,11 @@
 /* security */
 #include "security/security_handler.hpp"
 #include "plusaes.hpp"
+
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_dx9.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_internal.h"
 
 FILE* g_fp;
 
@@ -159,7 +163,7 @@ void call_init( PLoader_Info loader_info ) {
 	initdata.exception_handler = ExceptionHandler;
 	initdata.get_mod = GetModuleHandleA;
 	initdata.hooks_init = hooks::init;
-	initdata.js_init = js::init;
+	//initdata.js_init = js::init;
 	initdata.netvars_init = netvars::init;
 	initdata.server_browser = _( "serverbrowser.dll" );
 	initdata.sleep = Sleep;
@@ -203,8 +207,8 @@ int __stdcall init( uintptr_t mod ) {
 	netvars::init( );
 	erase::erase_func( netvars::init );
 	
-	js::init( );
-	erase::erase_func( js::init );
+	//js::init( );
+	//erase::erase_func( js::init );
 	
 	hooks::init( );
 	erase::erase_func( hooks::init );
@@ -419,7 +423,12 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 	}
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
-	
+
+	/* destroy imgui resources */
+	ImGui_ImplDX9_Shutdown ( );
+	ImGui_ImplWin32_Shutdown ( );
+	ImGui::DestroyContext ( );
+
 	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( hooks::old::wnd_proc ) );
 
 	MH_RemoveHook( MH_ALL_HOOKS );
