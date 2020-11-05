@@ -8,11 +8,12 @@ namespace gui {
 
 	extern std::mutex gui_mutex;
 	extern int config_access;
-	extern std::string config_code;
-	extern std::string config_description;
-	extern std::string config_user;
+	extern char config_code[128];
+	extern char config_description[128];
+	extern char config_user [ 128 ];
 	extern uint64_t last_update_time;
 
+	void scale_dpi ( );
 	void init( );
 	void load_cfg_list( );
 	void weapon_controls( const std::string& weapon_name );

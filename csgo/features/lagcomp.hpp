@@ -35,8 +35,8 @@ namespace features {
 				if ( !nci || !g::local )
 					return false;
 
-				if ( m_simtime < floorf ( prediction::curtime ( ) - g::cvars::sv_maxunlag->get_float ( ) ) )
-					return false;
+				//if ( m_simtime < floorf ( prediction::curtime ( ) - g::cvars::sv_maxunlag->get_float ( ) ) )
+				//	return false;
 
 				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, g::cvars::sv_maxunlag->get_float() );
 				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? csgo::ticks2time( m_tick ) : m_simtime ) );

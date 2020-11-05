@@ -2150,6 +2150,7 @@ bool ImGui::MultiCombo( const char* label, bool selected_items [ ], const char* 
     const ImGuiStyle& style = g.Style;
     auto& animations = animation_list [ reinterpret_cast< uintptr_t >( selected_items ) ];
 
+	PushItemWidth ( -1.0f );
     if ( ImGui::BeginCombo( label, reinterpret_cast< int* >( selected_items ), all_selected.c_str( ) ) ) {
         PushStyleColor( ImGuiCol_Text, ImLerp( ImVec4( style.Colors [ ImGuiCol_Text ].x, style.Colors [ ImGuiCol_Text ].y, style.Colors [ ImGuiCol_Text ].z, 0.0f ), style.Colors [ ImGuiCol_Text ], animations.main_fraction ) );
 
@@ -2164,6 +2165,7 @@ bool ImGui::MultiCombo( const char* label, bool selected_items [ ], const char* 
 
         ImGui::EndCombo( );
     }
+	PopItemWidth ( );
 
     return value_changed;
 }

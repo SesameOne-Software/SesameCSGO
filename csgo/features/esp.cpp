@@ -46,76 +46,73 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 		clr = D3DCOLOR_RGBA( 150, 150, 150, static_cast< int >( widget_color.a * 255.0f * box_alpha ) );
 
 	switch ( type ) {
-		case esp_type_bar: {
-			const auto sval = std::to_string( static_cast< int >( value ) );
+	case esp_type_bar: {
+		const auto sval = std::to_string ( static_cast< int >( value ) );
 
-			vec3_t text_size;
-			render::text_size ( sval, _ ( "dbg_font" ), text_size );
-			
-			const auto fraction = std::clamp( value / max, 0.0, 1.0 );
-			const auto calc_height = fraction * ( box.Max.y - box.Min.y );
+		vec3_t text_size;
+		render::text_size ( sval, _ ( "dbg_font" ), text_size );
 
-			switch ( orientation ) {
-				case features::esp_placement_left:
-					render::rect( box.Min.x - cur_offset_left - 5 + 1, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1, 5 - 1, calc_height, clr );
-					render::outline ( box.Min.x - cur_offset_left - 5, box.Min.y, 5, ( box.Max.y - box.Min.y ), clr1 );
+		const auto fraction = std::clamp ( value / max, 0.0, 1.0 );
+		const auto calc_height = fraction * box.Max.y;
 
-					if ( show_value )
-						render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
-					cur_offset_left += 7;
-					break;
-				case features::esp_placement_right:
-					render::rect ( box.Max.x + cur_offset_right + 1, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1, 5 - 1, calc_height, clr );
-					render::outline ( box.Max.x + cur_offset_right, box.Min.y, 5, ( box.Max.y - box.Min.y ), clr1 );
+		switch ( orientation ) {
+		case features::esp_placement_left:
+			render::rect ( box.Min.x - cur_offset_left - 5 + 1, box.Min.y + ( box.Max.y - calc_height ) + 1, 5 - 1, calc_height, clr );
+			render::outline ( box.Min.x - cur_offset_left - 5, box.Min.y, 5, box.Max.y, clr1 );
 
-					if ( show_value )
-						render::text ( box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( ( box.Max.y - box.Min.y ) - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
-					cur_offset_right += 7;
-					break;
-				case features::esp_placement_bottom:
-					render::rect ( box.Min.x + 1, box.Max.y + cur_offset_bottom + 1, static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1, 5 - 1, clr );
-					render::outline ( box.Min.x, box.Max.y + cur_offset_bottom, box.Max.x - box.Min.x, 5, clr1 );
+			if ( show_value )
+				render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+			cur_offset_left += 7;
+			break;
+		case features::esp_placement_right:
+			render::rect ( box.Min.x + box.Max.x + cur_offset_right + 1, box.Min.y + ( box.Max.y - calc_height ) + 1, 5 - 1, calc_height, clr );
+			render::outline ( box.Min.x + box.Max.x + cur_offset_right, box.Min.y, 5, box.Max.y, clr1 );
 
-					if ( show_value )
-						render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1 - text_size.x / 2, box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
-					cur_offset_bottom += 7;
-					break;
-				case features::esp_placement_top:
-					render::rect ( box.Min.x + 1, box.Min.y - cur_offset_top - 5 + 1, static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1, 5 - 1, clr );
-					render::outline ( box.Min.x, box.Min.y - cur_offset_top - 5, box.Max.x- box.Min.x, 5, clr1 );
+			if ( show_value )
+				render::text ( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+			cur_offset_right += 7;
+			break;
+		case features::esp_placement_bottom:
+			render::rect ( box.Min.x + 1, box.Min.y + box.Max.y + cur_offset_bottom + 1, static_cast< float >( box.Max.x )* fraction + 1, 5 - 1, clr );
+			render::outline ( box.Min.x, box.Min.y + box.Max.y + cur_offset_bottom, box.Max.x, 5, clr1 );
 
-					if ( show_value )
-						render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x - box.Min.x ) * fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
-					cur_offset_top += 7;
-					break;
-			}
-		} break;
+			if ( show_value )
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+			cur_offset_bottom += 7;
+			break;
+		case features::esp_placement_top:
+			render::rect ( box.Min.x + 1, box.Min.y - cur_offset_top - 5 + 1, static_cast< float >( box.Max.x )* fraction + 1, 5 - 1, clr );
+			render::outline ( box.Min.x, box.Min.y - cur_offset_top - 5, box.Max.x, 5, clr1 );
+
+			if ( show_value )
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+			cur_offset_top += 7;
+			break;
+		}
+	} break;
 		case esp_type_text: {
-			int to_print_len = 0;
-			wchar_t* buf_out = nullptr;
-
 			std::string as_str = to_print;
 
 			vec3_t text_size;
 			render::text_size ( as_str, _ ( "esp_font" ), text_size );
 
 			switch ( orientation ) {
-				case features::esp_placement_left:
-					render::text ( box.Min.x - cur_offset_left - text_size.x, box.Min.y + cur_offset_left_height, as_str, _ ( "esp_font" ), clr, true);
-					cur_offset_left_height += text_size.y + 2;
-					break;
-				case features::esp_placement_right:
-					render::text ( box.Min.x + cur_offset_right + ( box.Max.x - box.Min.x ), box.Min.y + cur_offset_right_height, as_str, _ ( "esp_font" ), clr, true );
-					cur_offset_right_height += text_size.y + 2;
-					break;
-				case features::esp_placement_bottom:
-					render::text ( box.Min.x + ( box.Max.x - box.Min.x ) / 2 - text_size.x / 2, box.Max.y + cur_offset_bottom, as_str, _ ( "esp_font" ), clr, true );
-					cur_offset_bottom += text_size.y + 2;
-					break;
-				case features::esp_placement_top:
-					render::text ( box.Min.x + ( box.Max.x - box.Min.x ) / 2 - text_size.x / 2, box.Min.y - cur_offset_top - text_size.y, as_str, _ ( "esp_font" ), clr, true );
-					cur_offset_top += text_size.y + 2;
-					break;
+			case features::esp_placement_left:
+				render::text ( box.Min.x - cur_offset_left - text_size.x, box.Min.y + cur_offset_left_height, as_str, _ ( "esp_font" ), clr, true );
+				cur_offset_left_height += text_size.y + 2;
+				break;
+			case features::esp_placement_right:
+				render::text ( box.Min.x + cur_offset_right + box.Max.x, box.Min.y + cur_offset_right_height, as_str, _ ( "esp_font" ), clr, true );
+				cur_offset_right_height += text_size.y + 2;
+				break;
+			case features::esp_placement_bottom:
+				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom, as_str, _ ( "esp_font" ), clr, true );
+				cur_offset_bottom += text_size.y + 2;
+				break;
+			case features::esp_placement_top:
+				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y - cur_offset_top - text_size.y, as_str, _ ( "esp_font" ), clr, true );
+				cur_offset_top += text_size.y + 2;
+				break;
 			}
 		} break;
 		case esp_type_number: {

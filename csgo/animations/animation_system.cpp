@@ -226,7 +226,7 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 		|| !ent->layers ( ) [ 6 ].m_playback_rate
 		|| !ent->weapon ( )
 		|| !ent->weapon ( )->data ( )
-		|| !( ent->vel ( ).length_2d ( ) < ( ent->scoped ( ) ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed ) * 0.34f ) )
+		/*|| !( ent->vel ( ).length_2d ( ) < ( ent->scoped ( ) ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed ) * 0.34f )*/ )
 		return desync_sign [ ent->idx ( ) ];
 	
 	ent->animstate ( )->m_speed2d = ent->vel ( ).length_2d ( );
@@ -261,7 +261,7 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 	if ( fabsf ( vel_ang_delta ) > 25.0f /*|| fabsf ( vel_mag_delta ) > 30.0f*/ )
 		return desync_sign [ ent->idx ( ) ];
 
-	if ( !seqcyclerate || !( seqcyclerate < 0.3334f /*|| seqcyclerate > 0.4545f*/ ) )
+	if ( !seqcyclerate || !( seqcyclerate < 0.3334f || seqcyclerate > 0.4545f ) )
 		return desync_sign [ ent->idx ( ) ];
 	
 	/* ratio of movement to seq. cycle */
@@ -275,16 +275,16 @@ float anims::calc_feet_cycle ( player_t* ent ) {
 	else
 		feet_playback_rate [ ent->idx ( ) ] = ( ent->layers ( ) [ 6 ].m_playback_rate / ( ent->scoped() ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed ) ) * 1000.0f;
 
-	static std::array<float, 65> last_playback_rate { 0.0f };
-	static std::array<float, 65> last_playback_rate_check { 0.0f };
-
-	if ( fabsf ( last_playback_rate_check [ ent->idx ( ) ] - features::prediction::curtime ( ) ) > 0.12f && seqcyclerate < 0.3334f ) {
-		last_playback_rate [ ent->idx ( ) ] = feet_playback_rate [ ent->idx ( ) ];
-		last_playback_rate_check [ ent->idx ( ) ] = features::prediction::curtime ( );
-	}
-
-	if ( fabsf ( last_playback_rate [ ent->idx ( ) ] - feet_playback_rate [ ent->idx ( ) ] ) > 0.0001f && seqcyclerate < 0.3334f )
-		return desync_sign [ ent->idx ( ) ];
+	//static std::array<float, 65> last_playback_rate { 0.0f };
+	//static std::array<float, 65> last_playback_rate_check { 0.0f };
+	//
+	//if ( fabsf ( last_playback_rate_check [ ent->idx ( ) ] - features::prediction::curtime ( ) ) > 0.12f && seqcyclerate < 0.3334f ) {
+	//	last_playback_rate [ ent->idx ( ) ] = feet_playback_rate [ ent->idx ( ) ];
+	//	last_playback_rate_check [ ent->idx ( ) ] = features::prediction::curtime ( );
+	//}
+	//
+	//if ( fabsf ( last_playback_rate [ ent->idx ( ) ] - feet_playback_rate [ ent->idx ( ) ] ) > 0.0001f && seqcyclerate < 0.3334f )
+	//	return desync_sign [ ent->idx ( ) ];
 
 	/* ANG - VEL DELTA LOGS */
 	/* TODO: ADD LOG FOR 50% LEFT SIDE DESYNC (EVERYONE USES THIS SAME LOW-DESYNC AMOUNT) */
@@ -660,158 +660,6 @@ void anims::calc_animlayers( player_t* ent ) {
 		jump_sequence = latest_animlayers1 [ 4 ].m_sequence;
 		jump_playback_rate = latest_animlayers1 [ 4 ].m_playback_rate;
 
-		//if ( !m_bOnGround ) {
-		//	m_bInHitGroundAnimation = false;
-		//
-		//	if ( m_bJust_LeftGround ) {
-		//		m_flTotalTimeInAir = 0.0f;
-		//	}
-		//
-		//	m_flTotalTimeInAir += /* m_flLastClientSideAnimationUpdateTimeDelta */ csgo::ticks2time ( 1 );
-		//
-		//	static auto GetLayerIdealWeightFromSeqCycle = pattern::search (  _("client.dll"), _("E8 ? ? ? ? 0F 2F 44 24 ? 76 0C")).resolve_rip().get<float(__thiscall*)(void*, int)>();
-		//
-		//	static auto get_ideal_weight_from_sequence_cycle = [ & ] ( ) -> float {
-		//		int v7 = jump_sequence;
-		//		auto v8 = *( uintptr_t** ) ( uintptr_t(ent) + 0x294C );
-		//
-		//		if ( !v8 )
-		//			return 0.0f;
-		//
-		//		auto v9 = *v8;
-		//
-		//		if ( !v9 )
-		//			return 0.0f;
-		//
-		//		if ( v7 < 0 || v7 >= *( uint32_t* ) ( v9 + 188 ) )
-		//			v7 = 0;
-		//
-		//		const auto v10 = v9 + *( uint32_t* ) ( v9 + 192 ) + 212 * v7;
-		//		
-		//		float cycle = jump_cycle;
-		//
-		//		if ( cycle >= 0.99f )
-		//			cycle = 1.0f;
-		//
-		//		float fadeintime = *( float* ) ( v10 + 104 );
-		//		float fadeouttime = *( float* ) ( v10 + 108 );
-		//		float weight = 1.0f;
-		//		float v15;
-		//
-		//		if ( fadeintime <= 0.0f || fadeintime <= cycle )
-		//		{
-		//			if ( fadeouttime >= 1.0f || cycle <= fadeouttime )
-		//			{
-		//				weight = std::min<float> ( weight, 1.0f );
-		//				return weight;
-		//			}
-		//
-		//			v15 = ( cycle - 1.0f ) / ( fadeouttime - 1.0f );
-		//			v15 = std::clamp<float> ( v15, 0.0f, 1.0f );
-		//		}
-		//		else
-		//		{
-		//			v15 = std::clamp<float> ( cycle / fadeintime, 0.0f, 1.0f );
-		//		}
-		//
-		//		weight = ( 3.0f - ( v15 + v15 ) ) * ( v15 * v15 );
-		//
-		//		if ( weight < 0.0015f )
-		//			weight = 0.0f;
-		//		else
-		//			weight = std::clamp<float> ( weight, 0.0f, 1.0f );
-		//
-		//		return weight;
-		//	};
-		//
-		//	float layer4_weight = jump_weight;
-		//
-		//	const auto backup_sequence = layers [ 4 ].m_sequence;
-		//	const auto backup_cycle = layers [ 4 ].m_cycle;
-		//
-		//	layers [ 4 ].m_sequence = jump_sequence;
-		//	layers [ 4 ].m_cycle = jump_cycle;
-		//
-		//	float layer4_idealweight = GetLayerIdealWeightFromSeqCycle ( state, 4 );
-		//
-		//	layers [ 4 ].m_sequence = backup_sequence;
-		//	layers [ 4 ].m_cycle = backup_cycle;
-		//
-		//	if ( layer4_idealweight > layer4_weight )
-		//		jump_weight = layer4_idealweight;
-		//
-		//	jump_cycle = m_flTotalTimeInAir;
-		//}
-		//else {
-		//	if ( !m_bInHitGroundAnimation ) {
-		//		if ( m_bJust_Landed ) {
-		//			//Start the hit ground animation
-		//			//int landing_activity = m_flTotalTimeInAir > 1.0f ? ACT_CSGO_LAND_HEAVY : ACT_CSGO_LAND_LIGHT;
-		//			//int new_landing_sequence = GetWeightedSequenceFromActivity ( landing_activity );
-		//			//SetLayerSequence ( LANDING_LAYER, new_landing_sequence );
-		//			//SetLayerCycle ( LANDING_LAYER, 0.0f );
-		//			m_bInHitGroundAnimation = true;
-		//		}
-		//	}
-		//
-		//	if ( m_bInHitGroundAnimation )
-		//	{
-		//		//m_bJumping = false;
-		//		//IncrementLayerCycle ( LANDING_LAYER, false );
-		//
-		//		static auto increment_layer_cycle = [ & ] ( bool looping ) {
-		//			if ( fabsf ( jump_playback_rate ) <= 0.0f )
-		//				return;
-		//
-		//			float newcycle = ( jump_playback_rate * /* m_flLastClientSideAnimationUpdateTimeDelta */ csgo::ticks2time ( 1 ) ) + jump_cycle;
-		//
-		//			if ( !looping && newcycle >= 1.0f )
-		//				newcycle = 0.999f;
-		//
-		//			newcycle -= ( float ) ( int ) newcycle; //round to integer
-		//
-		//			if ( newcycle < 0.0f )
-		//				newcycle += 1.0f;
-		//
-		//			if ( newcycle > 1.0f )
-		//				newcycle -= 1.0f;
-		//
-		//			jump_cycle = newcycle;
-		//		};
-		//
-		//		increment_layer_cycle ( false );
-		//
-		//		if ( ( /* m_flLastClientSideAnimationUpdateTimeDelta */ csgo::ticks2time ( 1 ) * landing_playback_rate ) + landing_cycle >= 1.0f )
-		//		{
-		//			//FINISHED HITTING GROUND ANIMATION
-		//			m_bInHitGroundAnimation = false;
-		//			//SetLayerWeight ( LANDING_LAYER, 0.0f );
-		//			jump_weight = 0.0f;
-		//			//m_flHitGroundWeight = 1.0f;
-		//		}
-		//		else
-		//		{
-		//			//STILL IN HITTING GROUND ANIMATION
-		//
-		//			//float layer5_idealweight = GetLayerIdealWeightFromSeqCycle ( LANDING_LAYER ) * m_flHitGroundWeight;
-		//			//float weight_mult = 0.2f;
-		//			//float v168 = 1.0f - m_fDuckAmount;
-		//			//if ( v168 >= 0.2f )
-		//			//	weight_mult = fminf ( v168, 1.0f );
-		//			//
-		//			//SetLayerWeight ( LANDING_LAYER, weight_mult * layer5_idealweight );
-		//
-		//			if ( jump_weight > 0.0f )
-		//				jump_weight = approach ( 0.0f, jump_weight, /* m_flLastClientSideAnimationUpdateTimeDelta */ csgo::ticks2time ( 1 ) * 10.0f );
-		//		}
-		//	}
-		//
-		//	//if ( !m_bInHitGroundAnimation && !m_bJumping && m_flLadderCycle <= 0.0f )
-		//	//{
-		//	//	SetLayerWeight ( LANDING_LAYER, 0.0f );
-		//	//}
-		//}
-
 static float hit_ground_time = 0.0f;
 static bool last_ground = false;
 bool landed = !last_ground && g::local->flags ( ) & 1;
@@ -961,19 +809,19 @@ void anims::calc_poses ( player_t* ent ) {
 
 	state->m_jump_fall_pose.set_value ( ent, jump_fall ( layers [ 4 ].m_cycle ) );
 
-	state->m_move_blend_walk_pose.set_value ( ent, ( 1.0f - state->m_ground_fraction ) * ( 1.0f - state->m_duck_amount ) );
-	state->m_move_blend_run_pose.set_value ( ent, ( 1.0f - state->m_duck_amount ) * state->m_ground_fraction );
-	state->m_move_blend_crouch_pose.set_value ( ent, state->m_duck_amount );
+	//state->m_move_blend_walk_pose.set_value ( ent, ( 1.0f - state->m_ground_fraction ) * ( 1.0f - state->m_duck_amount ) );
+	//state->m_move_blend_run_pose.set_value ( ent, ( 1.0f - state->m_duck_amount ) * state->m_ground_fraction );
+	//state->m_move_blend_crouch_pose.set_value ( ent, state->m_duck_amount );
 
 	// TODO: FIX THIS MOVE YAW
 	auto move_yaw = csgo::normalize ( angle_diff ( csgo::normalize ( csgo::vec_angle ( ent->vel ( ) ).y ), csgo::normalize ( state->m_abs_yaw ) ) );
 	if ( move_yaw < 0.0f )
 		move_yaw += 360.0f;
 
-	state->m_speed_pose.set_value ( ent, ent->vel ( ).length_2d ( ) );
+	//state->m_speed_pose.set_value ( ent, ent->vel ( ).length_2d ( ) );
 	state->m_move_yaw_pose.set_value ( ent, move_yaw / 360.0f );
     
-    state->m_stand_pose.set_value( ent, 1.0f - ( state->m_duck_amount * state->m_unk_fraction ) );
+    //state->m_stand_pose.set_value( ent, 1.0f - ( state->m_duck_amount * state->m_unk_fraction ) );
 
     //auto lean_yaw = csgo::normalize( state->m_eye_yaw + 180.0f );
     //if ( lean_yaw < 0.0f )
@@ -1093,6 +941,10 @@ void anims::update( player_t* ent ) {
 
     /* force animation update */
     state->m_force_update = true;
+	
+	if ( ent != g::local ) {
+		state->m_last_clientside_anim_update_time_delta = abs(features::prediction::curtime() - state->m_last_clientside_anim_update );
+	}
 
     //state->m_on_ground = ent->flags( ) & 1;
 
@@ -1526,25 +1378,8 @@ void anims::animate_local( bool copy ) {
     if ( !state || !animlayers || !g::ucmd )
         return;
 
-    static auto jump_fall = [ ] ( float air_time ) {
-        const float recalc_air_time = ( air_time - 0.72f ) * 1.25f;
-        const float clamped = recalc_air_time >= 0.0f ? std::min< float >( recalc_air_time, 1.0f ) : 0.0f;
-        float out = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
-
-        if ( out >= 0.0f )
-            out = std::min< float >( out, 1.0f );
-
-        return out;
-    };
-
-    static int last_update_tick = 0;
     static float latest_abs_yaw = 0.0f;
     static std::array< float, 24 > latest_poses { 0.0f };
-
-    static float calc_weight = 0.0f;
-    static float calc_cycle = 0.0f;
-    static float synced_weight = 0.0f;
-    static float synced_cycle = 0.0f;
 
 	if ( !copy ) {
 		if ( g::send_packet ) {
@@ -1553,23 +1388,9 @@ void anims::animate_local( bool copy ) {
 
 		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
 
-		state->m_last_clientside_anim_update_time_delta = /*std::max< float > ( 0.0f, features::prediction::curtime ( ) - state->m_last_clientside_anim_update )*/ csgo::ticks2time(1);
+		state->m_last_clientside_anim_update_time_delta = csgo::ticks2time(1);
 
-		//if ( new_tick ) {
-		//calc_local_exclusive ( calc_weight, calc_cycle );
-
-		//animlayers [ 6 ].m_weight = synced_weight;
-		//animlayers [ 4 ].m_cycle = synced_cycle;
 		animlayers [ 12 ].m_weight = 0.0f;
-
-		//if ( g::send_packet ) {
-		//    synced_weight = calc_weight;
-		//    synced_cycle = calc_cycle;
-//
-		//    latest_animlayers [ 6 ].m_weight = animlayers [ 6 ].m_weight = synced_weight;
-		//    latest_animlayers [ 4 ].m_cycle = animlayers [ 4 ].m_cycle = synced_cycle;
-		//    latest_animlayers [ 12 ].m_weight = animlayers [ 12 ].m_weight = 0.0f;
-		//}
 
 		/* recreate what holdaim var does */
 		/* TODO: check if holdaim cvar is enaled */
@@ -1593,8 +1414,6 @@ void anims::animate_local( bool copy ) {
 		update ( g::local );
 
 		if ( g::send_packet ) {
-			//state->m_jump_fall_pose.set_value( g::local, jump_fall( synced_cycle ) );
-			
 			memcpy ( latest_poses.data ( ), g::local->poses ( ).data ( ), sizeof ( latest_poses ) );
 			latest_abs_yaw = state->m_abs_yaw;
 			g::hold_aim = false;
@@ -1602,14 +1421,9 @@ void anims::animate_local( bool copy ) {
 
 		build_bones ( g::local, aim_matrix.data ( ), 0x7ff00, vec3_t ( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin ( ), features::prediction::curtime ( ) );
 
-		last_update_tick = csgo::time2ticks ( features::prediction::curtime ( ) );
-
 		animate_fake ( );
 
 		csgo::i::globals->m_curtime = backup_curtime;
-
-		//	new_tick = false;
-		//}
 	}
 	else {
 		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );

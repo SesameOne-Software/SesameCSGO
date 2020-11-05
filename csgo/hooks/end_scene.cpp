@@ -62,9 +62,13 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 	security_handler::update( );
 
+	/* scale all rendering with selected DPI setting */
+	gui::scale_dpi ( );
+
 	// Start the Dear ImGui frame
 	ImGui_ImplDX9_NewFrame ( );
 	ImGui_ImplWin32_NewFrame ( );
+
 	ImGui::NewFrame ( );
 
 	/* use imgui to draw on screen directly */ {

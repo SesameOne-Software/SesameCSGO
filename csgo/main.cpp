@@ -222,7 +222,7 @@ int __stdcall init( uintptr_t mod ) {
 
 extern std::string g_username;
 extern bool upload_to_cloud;
-extern std::string selected_config;
+extern char selected_config [ 128 ];
 extern cJSON* cloud_config_list;
 extern bool download_config_code;
 
@@ -241,183 +241,183 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 
 	while ( !g::unload ) {
 		/* save config to server if requested */
-		//if ( upload_to_cloud ) {
-		//	char appdata [ MAX_PATH ];
+		if ( upload_to_cloud ) {
+			char appdata [ MAX_PATH ];
 
-		//	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-		//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-		//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-		//	}
+			if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+			}
 
-		//	std::ifstream cfg_file ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
+			std::ifstream cfg_file ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
 
-		//	if ( cfg_file.is_open ( ) ) {
-		//		std::string total = _ ( "" );
-		//		std::string line = _ ( "" );
+			if ( cfg_file.is_open ( ) ) {
+				std::string total = _ ( "" );
+				std::string line = _ ( "" );
 
-		//		while ( std::getline ( cfg_file, line ) )
-		//			total += line;
+				while ( std::getline ( cfg_file, line ) )
+					total += line;
 
-		//		const auto post_obj = cJSON_CreateObject ( );
+				const auto post_obj = cJSON_CreateObject ( );
 
-		//		if ( post_obj ) {
-		//			cJSON_AddStringToObject ( post_obj, _ ( "config_name" ), selected_config.c_str() );
-		//			cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
-		//			cJSON_AddStringToObject ( post_obj, _ ( "description" ), gui::config_description.c_str ( ) );
-		//			cJSON_AddNumberToObject ( post_obj, _ ( "access" ), gui::config_access );
-		//			cJSON_AddStringToObject ( post_obj, _ ( "data" ), total.c_str ( ) );
+				if ( post_obj ) {
+					cJSON_AddStringToObject ( post_obj, _ ( "config_name" ), selected_config );
+					cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+					cJSON_AddStringToObject ( post_obj, _ ( "description" ), gui::config_description );
+					cJSON_AddNumberToObject ( post_obj, _ ( "access" ), gui::config_access );
+					cJSON_AddStringToObject ( post_obj, _ ( "data" ), total.c_str ( ) );
 
-		//			const auto out_str = cJSON_Print ( post_obj );
+					const auto out_str = cJSON_Print ( post_obj );
 
-		//			const auto out = networking::post (
-		//				_ ( "sesame.one/api/cloud_configs/upload.php" ),
-		//				out_str
-		//			);
+					const auto out = networking::post (
+						_ ( "sesame.one/api/cloud_configs/upload.php" ),
+						out_str
+					);
 
-		//			if ( !out.empty ( ) ) {
-		//				if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
-		//					dbg_print ( _ ( "Failed to upload config to cloud.\n" ) );
-		//				}
-		//				else {
-		//					if ( out == _ ( "1" ) )
-		//						dbg_print ( _ ( "User has too many saved configurations (maximum 16).\n" ) );
-		//					else if ( out == _ ( "2" ) )
-		//						dbg_print ( _ ( "Config name is too long (maximum 64 characters).\n" ) );
-		//					else if ( out == _ ( "3" ) )
-		//						dbg_print ( _ ( "Config size is too large (maximum 2MB).\n" ) );
-		//					else if ( out == _ ( "4" ) )
-		//						dbg_print ( _ ( "Config description is too long (maximum 64 characters).\n" ) );
-		//					else if ( out == _ ( "5" ) )
-		//						dbg_print ( _ ( "Incomplete request.\n" ) );
-		//					else if ( out == _ ( "6" ) )
-		//						dbg_print ( _ ( "User not found.\n" ) );
-		//					else if ( out == _ ( "7" ) )
-		//						dbg_print ( _ ( "Unauthorized request.\n" ) );
-		//					else {
-		//						gui::config_code = out;
+					if ( !out.empty ( ) ) {
+						if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
+							dbg_print ( _ ( "Failed to upload config to cloud.\n" ) );
+						}
+						else {
+							if ( out == _ ( "1" ) )
+								dbg_print ( _ ( "User has too many saved configurations (maximum 16).\n" ) );
+							else if ( out == _ ( "2" ) )
+								dbg_print ( _ ( "Config name is too long (maximum 64 characters).\n" ) );
+							else if ( out == _ ( "3" ) )
+								dbg_print ( _ ( "Config size is too large (maximum 2MB).\n" ) );
+							else if ( out == _ ( "4" ) )
+								dbg_print ( _ ( "Config description is too long (maximum 64 characters).\n" ) );
+							else if ( out == _ ( "5" ) )
+								dbg_print ( _ ( "Incomplete request.\n" ) );
+							else if ( out == _ ( "6" ) )
+								dbg_print ( _ ( "User not found.\n" ) );
+							else if ( out == _ ( "7" ) )
+								dbg_print ( _ ( "Unauthorized request.\n" ) );
+							else {
+								strcpy_s ( gui::config_code, out.c_str() );
 
-		//						dbg_print ( _ ( "Uploaded config to cloud successfully! Config code: %s.\n" ), out.c_str ( ) );
-		//						csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
-		//					}
-		//				}
-		//			}
-		//			else {
-		//				dbg_print ( _ ( "Empty response from server.\n" ) );
-		//			}
+								dbg_print ( _ ( "Uploaded config to cloud successfully! Config code: %s.\n" ), out.c_str ( ) );
+								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+							}
+						}
+					}
+					else {
+						dbg_print ( _ ( "Empty response from server.\n" ) );
+					}
 
-		//			cJSON_Delete ( post_obj );
-		//		}
+					cJSON_Delete ( post_obj );
+				}
 
-		//		cfg_file.close ( );
-		//	}
+				cfg_file.close ( );
+			}
 
-		//	upload_to_cloud = false;
-		//}
+			upload_to_cloud = false;
+		}
 
-		///* sync data with server */
-		//const auto post_obj = cJSON_CreateObject ( );
+		/* sync data with server */
+		const auto post_obj = cJSON_CreateObject ( );
 
-		//cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
-		//cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user.c_str ( ) );
+		cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+		cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user );
 
-		//const auto out = networking::post (
-		//	_ ( "sesame.one/api/cloud_configs/list.php" ),
-		//	cJSON_Print ( post_obj )
-		//);
+		const auto out = networking::post (
+			_ ( "sesame.one/api/cloud_configs/list.php" ),
+			cJSON_Print ( post_obj )
+		);
 
-		//if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
-		//	dbg_print ( _ ( "Failed to grab config list from cloud.\n" ) );
-		//}
-		//else {
-		//	//if ( out == _ ( "1" ) )
-		//	//	dbg_print ( _ ( "User was not specified.\n" ) );
-		//	//else if ( out == _ ( "2" ) )
-		//	//	dbg_print ( _ ( "User or configs by this user were not found.\n" ) );
-		//	//else if ( out == _ ( "0" ) );
-		//	//dbg_print ( _ ( "Config list loaded.\n" ) );
-		//}
+		if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
+			dbg_print ( _ ( "Failed to grab config list from cloud.\n" ) );
+		}
+		else {
+			//if ( out == _ ( "1" ) )
+			//	dbg_print ( _ ( "User was not specified.\n" ) );
+			//else if ( out == _ ( "2" ) )
+			//	dbg_print ( _ ( "User or configs by this user were not found.\n" ) );
+			//else if ( out == _ ( "0" ) );
+			//dbg_print ( _ ( "Config list loaded.\n" ) );
+		}
 
-		//cJSON_Delete ( post_obj );
+		cJSON_Delete ( post_obj );
 
-		//gui::gui_mutex.lock ( );
-		//if ( cloud_config_list )
-		//	cJSON_Delete ( cloud_config_list );
+		gui::gui_mutex.lock ( );
+		if ( cloud_config_list )
+			cJSON_Delete ( cloud_config_list );
 
-		//cloud_config_list = cJSON_Parse ( out.c_str ( ) );
-		//last_config_user = gui::config_user;
-		//gui::gui_mutex.unlock ( );
+		cloud_config_list = cJSON_Parse ( out.c_str ( ) );
+		last_config_user = gui::config_user;
+		gui::gui_mutex.unlock ( );
 
-		///* check if we should download the config */
-		//if ( download_config_code ) {
-		//	gui::gui_mutex.lock ( );
-		//	const auto post_obj = cJSON_CreateObject ( );
+		/* check if we should download the config */
+		if ( download_config_code ) {
+			gui::gui_mutex.lock ( );
+			const auto post_obj = cJSON_CreateObject ( );
 
-		//	cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
-		//	cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user.c_str ( ) );
-		//	cJSON_AddStringToObject ( post_obj, _ ( "config_code" ), gui::config_user.c_str ( ) );
+			cJSON_AddStringToObject ( post_obj, _ ( "username" ), g_username.c_str ( ) );
+			cJSON_AddStringToObject ( post_obj, _ ( "username_search" ), gui::config_user );
+			cJSON_AddStringToObject ( post_obj, _ ( "config_code" ), gui::config_user );
 
-		//	const auto out = networking::post (
-		//		_ ( "sesame.one/api/cloud_configs/download.php" ),
-		//		cJSON_Print ( post_obj )
-		//	);
+			const auto out = networking::post (
+				_ ( "sesame.one/api/cloud_configs/download.php" ),
+				cJSON_Print ( post_obj )
+			);
 
-		//	cJSON_Delete ( post_obj );
+			cJSON_Delete ( post_obj );
 
-		//	if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
-		//		dbg_print ( _ ( "Failed to download config from cloud.\n" ) );
-		//	}
-		//	else {
-		//		const auto as_json = cJSON_Parse ( out.c_str ( ) );
+			if ( out == _ ( "ERROR" ) || out == _ ( "NULL" ) ) {
+				dbg_print ( _ ( "Failed to download config from cloud.\n" ) );
+			}
+			else {
+				const auto as_json = cJSON_Parse ( out.c_str ( ) );
 
-		//		if ( as_json ) {
-		//			const auto config_id = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_id" ) );
-		//			const auto config_name = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_name" ) );
-		//			const auto config_code = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_code" ) );
-		//			const auto description = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "description" ) );
-		//			const auto creation_date = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "creation_date" ) );
-		//			const auto data = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "data" ) );
+				if ( as_json ) {
+					const auto config_id = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_id" ) );
+					const auto config_name = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_name" ) );
+					const auto config_code = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "config_code" ) );
+					const auto description = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "description" ) );
+					const auto creation_date = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "creation_date" ) );
+					const auto data = cJSON_GetObjectItemCaseSensitive ( as_json, _ ( "data" ) );
 
-		//			if ( config_id && cJSON_IsNumber( config_id )
-		//				&& config_name && cJSON_IsString ( config_name ) && config_name->valuestring
-		//				&& config_code && cJSON_IsString ( config_code ) && config_name->valuestring
-		//				&& description && cJSON_IsString ( description ) && config_name->valuestring
-		//				&& creation_date && cJSON_IsString ( creation_date ) && config_name->valuestring
-		//				&& data && cJSON_IsString ( data ) && config_name->valuestring ) {
-		//				//if ( out == _ ( "1" ) )
-		//		//	dbg_print ( _ ( "User was not specified.\n" ) );
-		//		//else if ( out == _ ( "2" ) )
-		//		//	dbg_print ( _ ( "User or configs by this user were not found.\n" ) );
-		//		//else if ( out == _ ( "0" ) );
-		//		//dbg_print ( _ ( "Config list loaded.\n" ) );
+					if ( config_id && cJSON_IsNumber( config_id )
+						&& config_name && cJSON_IsString ( config_name ) && config_name->valuestring
+						&& config_code && cJSON_IsString ( config_code ) && config_name->valuestring
+						&& description && cJSON_IsString ( description ) && config_name->valuestring
+						&& creation_date && cJSON_IsString ( creation_date ) && config_name->valuestring
+						&& data && cJSON_IsString ( data ) && config_name->valuestring ) {
+						//if ( out == _ ( "1" ) )
+				//	dbg_print ( _ ( "User was not specified.\n" ) );
+				//else if ( out == _ ( "2" ) )
+				//	dbg_print ( _ ( "User or configs by this user were not found.\n" ) );
+				//else if ( out == _ ( "0" ) );
+				//dbg_print ( _ ( "Config list loaded.\n" ) );
 
-		//				char appdata [ MAX_PATH ];
+						char appdata [ MAX_PATH ];
 
-		//				if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-		//					LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-		//					LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-		//				}
+						if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+							LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+						}
 
-		//				std::ofstream file_out ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + config_name->valuestring + _ ( ".xml" ) );
+						std::ofstream file_out ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + config_name->valuestring + _ ( ".xml" ) );
 
-		//				if ( file_out.is_open ( ) ) {
-		//					file_out << data->valuestring;
-		//					file_out.close ( );
-		//				}
+						if ( file_out.is_open ( ) ) {
+							file_out << data->valuestring;
+							file_out.close ( );
+						}
 
-		//				gui::load_cfg_list ( );
+						gui::load_cfg_list ( );
 
-		//				csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
-		//			}
+						csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+					}
 
-		//			cJSON_Delete ( as_json );
-		//		}
-		//	}
+					cJSON_Delete ( as_json );
+				}
+			}
 
-		//	gui::config_code = _ ( "" );
-		//	download_config_code = false;
+			strcpy_s ( gui::config_code, "" );
+			download_config_code = false;
 
-		//	gui::gui_mutex.unlock ( );
-		//}
+			gui::gui_mutex.unlock ( );
+		}
 
 		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
 	}

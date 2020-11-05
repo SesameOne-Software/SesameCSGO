@@ -4,6 +4,9 @@
 #include <functional>
 #include <string>
 
+#include "../menu/options.hpp"
+#include "../security/xorstr.hpp"
+
 ImFont* g_small_font = nullptr;
 int* g_cur_tab_ptr = nullptr;
 int g_cur_tab_idx = 0;
@@ -416,7 +419,7 @@ bool ImGui::custom::Begin( const char* name, bool* p_open, ImFont* small_font ) 
         return false;
 
     SetNextWindowBgAlpha( window_alpha );
-    SetNextWindowSize( g_window_dim );
+    SetNextWindowSize( ImVec2( g_window_dim.x * options::vars [ _ ( "gui.dpi" ) ].val.f, g_window_dim.y * options::vars [ _ ( "gui.dpi" ) ].val.f ) );
 
     if ( !ImGui::Begin(
         name,

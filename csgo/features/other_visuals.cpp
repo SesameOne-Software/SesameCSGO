@@ -256,7 +256,7 @@ void features::offscreen_esp::draw( ) {
 						const auto right_pos = center + csgo::angle_vec( right_ang ) * mag2;
 
 						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), static_cast< int > ( offscreen_esp_color.a * 255.0f ) ), false );
-						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA( 0, 0, 0, static_cast < int > ( offscreen_esp_color.a * 100.0f ) ), true );
+						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), 255 ), true, 2.5f );
 					}
 				}
 			} break;

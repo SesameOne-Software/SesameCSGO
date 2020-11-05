@@ -12,7 +12,7 @@ std::unordered_map<std::string, void*> font_list {};
 void render::create_font ( const uint8_t* data, size_t data_size, const std::string& family_name, float size, const uint16_t* ranges ) {
 	ImGuiIO& io = ImGui::GetIO ( );
 
-	font_list[ family_name ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, 28.0f, nullptr, ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
+	font_list[ family_name ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, nullptr, ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
 }
 
 void render::screen_size ( float& width, float& height ) {
@@ -31,47 +31,47 @@ void render::text_size ( std::string_view text, std::string_view font, vec3_t& d
 }
 
 void render::rect ( float x, float y, float width, float height, uint32_t color ) {
-	ImGui::GetWindowDrawList ( )->AddRectFilled ( { x,y }, {x + width, y + height}, color );
+	ImGui::GetWindowDrawList ( )->AddRectFilled ( { round(x),round(y) }, { round(x + width), round(y + height)}, color );
 }
 
 void render::gradient ( float x, float y, float width, float height, uint32_t color1, uint32_t color2, bool is_horizontal ) {
-	ImGui::GetWindowDrawList ( )->AddRectFilledMultiColor ( { x,y }, { x + width, y + height }, color1, is_horizontal ? color2 : color1, color2, is_horizontal ? color1 : color2 );
+	ImGui::GetWindowDrawList ( )->AddRectFilledMultiColor ( { round (x),round (y) }, { round(x + width), round (y + height) }, color1, is_horizontal ? color2 : color1, color2, is_horizontal ? color1 : color2 );
 }
 
 void render::outline ( float x, float y, float width, float height, uint32_t color ) {
-	ImGui::GetWindowDrawList ( )->AddRect ( { x,y }, { x + width, y + height }, color );
+	ImGui::GetWindowDrawList ( )->AddRect ( { round (x),round (y) }, { round (x + width), round (y + height) }, color );
 }
 
 void render::line ( float x, float y, float x2, float y2, uint32_t color, float thickness ) {
-	ImGui::GetWindowDrawList ( )->AddLine ( { x,y }, { x2, y2 }, color, thickness );
+	ImGui::GetWindowDrawList ( )->AddLine ( { round (x),round (y) }, { round (x2),round (y2) }, color, thickness );
 }
 
 void render::text ( float x, float y, std::string_view text, std::string_view font, uint32_t color, bool outline ) {
 	const auto draw_list = ImGui::GetWindowDrawList ( );
 
 	if ( outline ) {
-		draw_list->AddText ( { x - 1.0f, y - 1.0f }, color & IM_COL32_A_MASK, text.data ( ) );
-		draw_list->AddText ( { x - 1.0f, y + 1.0f }, color & IM_COL32_A_MASK, text.data ( ) );
-		draw_list->AddText ( { x + 1.0f, y + 1.0f }, color & IM_COL32_A_MASK, text.data ( ) );
-		draw_list->AddText ( { x + 1.0f, y - 1.0f }, color & IM_COL32_A_MASK, text.data ( ) );
+		draw_list->AddText ( { round(x - 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		draw_list->AddText ( { round(x - 1.0f), round(y + 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		draw_list->AddText ( { round(x + 1.0f), round(y + 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		draw_list->AddText ( { round(x + 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
 	}
 
-	draw_list->AddText ( {x,y}, color, text.data ( ) );
+	draw_list->AddText ( { round (x),round (y)}, color, text.data ( ) );
 }
 
 void render::circle ( float x, float y, float radius, int segments, uint32_t color, bool outline ) {
 	if(!outline )
-		ImGui::GetWindowDrawList ( )->AddCircleFilled ( { x,y }, radius, color, segments );
+		ImGui::GetWindowDrawList ( )->AddCircleFilled ( { round (x),round (y) }, radius, color, segments );
 	else
-		ImGui::GetWindowDrawList ( )->AddCircle ( { x,y }, radius, color, segments );
+		ImGui::GetWindowDrawList ( )->AddCircle ( { round (x),(y) }, radius, color, segments );
 }
 
 void render::polygon ( const std::vector< vec3_t >& verticies, uint32_t color, bool outline, float thickness ) {
 	std::vector< ImVec2 > points_2d {};
 
 	for ( auto& point : verticies )
-		points_2d.push_back ( { point.x, point.y} );
-
+		points_2d.push_back ( { round (point.x), round (point.y)} );
+		
 	if ( outline )
 		ImGui::GetWindowDrawList ( )->AddPolyline ( points_2d.data ( ), points_2d.size ( ), color, true, thickness );
 	else
@@ -79,7 +79,7 @@ void render::polygon ( const std::vector< vec3_t >& verticies, uint32_t color, b
 }
 
 void render::clip ( float x, float y, float width, float height, const std::function< void ( ) >& func ) {
-	ImGui::PushClipRect ( { x, y }, {x + width, y + height},true );
+	ImGui::PushClipRect ( { round (x), round (y) }, { round (x + width),round (y + height)},true );
 
 	func ( );
 
@@ -116,7 +116,7 @@ void render::circle3d ( const vec3_t& pos, float rad, int segments, uint32_t col
 
 		csgo::render::world_to_screen ( screen, new_point );
 
-		points.push_back ( { screen.x, screen.y } );
+		points.push_back ( { round(screen.x), round (screen.y )} );
 	}
 
 	if ( outline )

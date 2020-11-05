@@ -22,8 +22,8 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 		return;
 
 	if ( !( g::local->flags( ) & 1 ) ) {
-		if ( bhop && ucmd->m_buttons & 2 )
-			ucmd->m_buttons &= ~2;
+		if ( bhop && ucmd->m_buttons & 2 /*IN_JUMP*/ )
+			ucmd->m_buttons &= ~2 /*IN_JUMP*/;
 
 		if ( strafer ) {
 			if ( directional ) {

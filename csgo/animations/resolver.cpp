@@ -588,7 +588,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 			record_correction = false;
 		}
-		else if ( resolve_cached ( pl->idx ( ), cached_yaw ) ) {
+		/*else if ( resolve_cached ( pl->idx ( ), cached_yaw ) ) {
 			switch ( features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ) {
 			case 0:
 				yaw1 = csgo::normalize ( cached_yaw );
@@ -609,7 +609,7 @@ __forceinline void resolve_simple( player_t* pl, float& yaw1, float& yaw2, float
 
 			record_correction = false;
 		}
-		else if ( fabsf ( eye_feet_delta ) > 100.0f ) {
+		else*/ if ( fabsf ( eye_feet_delta ) > 100.0f ) {
 			yaw1 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? desync_amount : -desync_amount ) );
 			yaw2 = csgo::normalize ( pl->angles ( ).y );
 			yaw3 = csgo::normalize ( pl->angles ( ).y + ( eye_feet_delta > 0.0f ? desync_amount : -desync_amount ) * 0.5f );
