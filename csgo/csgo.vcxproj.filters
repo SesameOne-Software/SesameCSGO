@@ -518,11 +518,17 @@
     <ClInclude Include="renderer\render.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="features\autopeek.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="features\exploits.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="crc32\crc32.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="renderer\d3d9.cpp">
-      <Filter>Source Files\renderer</Filter>
-    </ClCompile>
     <ClCompile Include="utils\miniz.c">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
@@ -667,22 +673,13 @@
     <ClCompile Include="hooks\run_command.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="menu\sesui.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="menu\menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="menu\options.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="menu\d3d9_render.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tinyxml2\tinyxml2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="menu\sesui_custom.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="animations\animation_system.cpp">
@@ -715,9 +712,6 @@
     <ClCompile Include="hooks\cl_fireevents.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\truetype.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -740,6 +734,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="renderer\render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="features\autopeek.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="features\exploits.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

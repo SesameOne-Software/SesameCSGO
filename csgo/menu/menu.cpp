@@ -131,10 +131,33 @@ float g_last_dpi = 0.0f;
 extern std::unordered_map<std::string, void*> font_list;
 
 void gui::scale_dpi ( ) {
+	static bool first_scale = true;
+
 	if ( g_last_dpi == options::vars [ _ ( "gui.dpi" ) ].val.f )
 		return;
 
+	if ( !first_scale ) {
+		ImGui_ImplWin32_Shutdown ( );
+		ImGui_ImplDX9_Shutdown ( );
+		ImGui::DestroyContext ( );
+	}
+
+	first_scale = false;
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION ( );
+	ImGui::CreateContext ( );
 	ImGuiIO& io = ImGui::GetIO ( );
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsSesame ( );
+	//ImGui::StyleColorsClassic();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ) );
+	ImGui_ImplDX9_Init ( csgo::i::dev );
 
 	const ImWchar custom_font_ranges [ ] = {
 		0x0020, 0x00FF, // Basic Latin + Latin Supplement
@@ -161,18 +184,14 @@ void gui::scale_dpi ( ) {
 		0
 	};
 
-	io.Fonts->Clear ( );
-
 	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, /*custom_font_ranges*/io.Fonts->GetGlyphRangesDefault ( ) );
 	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, /*custom_font_ranges*/io.Fonts->GetGlyphRangesDefault ( ) );
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "dbg_font" ), 16.0f );
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "esp_font" ), 16.0f, custom_font_ranges );
+	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "dbg_font" ), 18.0f );
+	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "esp_font" ), 18.0f );
 	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "indicator_font" ), 32.0f );
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "watermark_font" ), 16.0f );
-
-	io.Fonts->Build ( );
+	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "watermark_font" ), 18.0f );
 
 	ImGui::GetStyle ( ).AntiAliasedFill = ImGui::GetStyle ( ).AntiAliasedLines = true;
 
@@ -184,10 +203,10 @@ void gui::scale_dpi ( ) {
 void gui::init( ) {
 	g_username = ( g::loader_data && g::loader_data->username ) ? g::loader_data->username : _ ( "sesame" );
 //
-	if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
-		g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
-	else
-		g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
+	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
+	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
+	//else
+	//	g_pfp_data = std::string( g::loader_data->avatar, g::loader_data->avatar + g::loader_data->avatar_sz );
 
 	/* initialize cheat config */
 	options::init( );
@@ -196,24 +215,7 @@ void gui::init( ) {
 	//erase::erase_func ( options::add_player_visual_config );
 	//erase::erase_func ( options::add_weapon_config );
 
-	// Setup Dear ImGui context
-	IMGUI_CHECKVERSION ( );
-	ImGui::CreateContext ( );
-	ImGuiIO& io = ImGui::GetIO ( );
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
-	// Setup Dear ImGui style
-	ImGui::StyleColorsSesame ( );
-	//ImGui::StyleColorsClassic();
-
-	// Setup Platform/Renderer backends
-	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( _ ( "Valve001" ), nullptr ) );
-	ImGui_ImplDX9_Init ( csgo::i::dev );
-	
 	scale_dpi ( );
-
-	//io.FontGlobalScale = 1.0f / 2.0f/*pixel_ratio*/;
 
 	gui_mutex.lock ( );
 	load_cfg_list ( );
@@ -265,11 +267,12 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::Checkbox ( _ ( "Doubletap Teleport" ), &options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
 		ImGui::Checkbox( _( "Doubletap" ), &options::vars [ ragebot_weapon + _( "dt_enabled" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderInt( _( "Doubletap Ticks" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
+		ImGui::SliderInt ( _ ( "Doubletap Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
+		ImGui::SliderInt( _( "Doubletap Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
-		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f" ) );
-		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f" ) );
-		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f" ) );
+		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
 		ImGui::PopItemWidth ( );
 
 		ImGui::EndChildFrame( );
@@ -290,8 +293,8 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::PopItemWidth ( );
 		ImGui::Checkbox( _( "Headshot Only" ), &options::vars [ ragebot_weapon + _( "headshot_only" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderFloat( _( "Head Point Scale" ), &options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f" ) );
-		ImGui::SliderFloat( _( "Body Point Scale" ), &options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f" ) );
+		ImGui::SliderFloat( _( "Head Point Scale" ), &options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Body Point Scale" ), &options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
 		ImGui::PopItemWidth ( );
 
 		static std::vector<const char*> hitboxes {
@@ -508,7 +511,7 @@ void gui::draw( ) {
 	/* HANDLE DPI */
 	//sesui::globals::dpi = options::vars [ _( "gui.dpi" ) ].val.f;
 
-	if ( !utils::key_state( VK_INSERT ) && open_button_pressed )
+	if ( ImGui::IsKeyReleased ( VK_INSERT ) )
 		opened = !opened;
 
 	open_button_pressed = utils::key_state( VK_INSERT );
@@ -519,7 +522,8 @@ void gui::draw( ) {
 	if ( opened ) {
 		ImGui::PushFont ( gui_ui_font );
 
-		if ( ImGui::custom::Begin ( SESAME_VERSION, &opened, gui_small_font ) ) {
+		if ( ImGui::custom::Begin ( SESAME_VERSION, &opened, gui_small_font ) ) {			
+			/* main menu objects */
 			if ( ImGui::custom::BeginTabs ( &current_tab_idx, gui_icons_font ) ) {
 				ImGui::custom::AddTab ( "A" );
 				ImGui::custom::AddTab ( "B" );
@@ -530,6 +534,44 @@ void gui::draw( ) {
 
 				ImGui::custom::EndTabs ( );
 			}
+
+			/* confirm config save (overwrite) popup */
+			ImGui::SetNextWindowPos ( ImVec2 ( ImGui::GetWindowPos ( ).x + ImGui::GetWindowSize ( ).x * 0.5f, ImGui::GetWindowPos ( ).y + ImGui::GetWindowSize ( ).y * 0.5f ), ImGuiCond_Always, ImVec2 ( 0.5f, 0.5f ) );
+
+			if ( ImGui::BeginPopupModal ( "Save Config##popup", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
+				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), "There already is a config with the same name in this location.\nAre you sure you want to overwrite the config?" );
+
+				if ( ImGui::Button ( "Confirm", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					char appdata [ MAX_PATH ];
+
+					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+					}
+
+					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
+
+					options::save ( options::vars, file );
+
+					gui_mutex.lock ( );
+					load_cfg_list ( );
+					gui_mutex.unlock ( );
+
+					csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::SameLine ( );
+
+				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::EndPopup ( );
+			}
+
+			bool open_save_modal = false;
 
 			switch ( current_tab_idx ) {
 				case tab_legit: {
@@ -602,6 +644,9 @@ void gui::draw( ) {
 							ImGui::PopItemWidth ( );
 							ImGui::Checkbox ( _ ( "Knife Bot" ), &options::vars [ _ ( "ragebot.knife_bot" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Zeus Bot" ), &options::vars [ _ ( "ragebot.zeus_bot" ) ].val.b );
+							ImGui::Checkbox ( _ ( "Auto Peek" ), &options::vars [ _ ( "ragebot.autopeek" ) ].val.b );
+							ImGui::SameLine ( );
+							ImGui::Keybind ( _ ( "##Auto Peek Key" ), &options::vars [ _ ( "ragebot.autopeek_key" ) ].val.i, &options::vars [ _ ( "ragebot.autopeek_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 
 							ImGui::EndChildFrame ( );
 						}
@@ -709,19 +754,19 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Bomb Timer" ), &options::vars [ _ ( "visuals.other.bomb_timer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bullet Tracers" ), &options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Bullet Tracer Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_tracer_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Bullet Tracer Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_tracer_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Bullet Impacts" ), &options::vars [ _ ( "visuals.other.bullet_impacts" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Bullet Impacts Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_impact_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Bullet Impacts Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_impact_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Grenade Trajectories" ), &options::vars [ _ ( "visuals.other.grenade_trajectories" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Grenade Trajectories Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_trajectory_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Grenade Trajectories Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_trajectory_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Grenade Bounces" ), &options::vars [ _ ( "visuals.other.grenade_bounces" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Grenade Bounces Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_bounce_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Grenade Bounces Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_bounce_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Grenade Blast Radii" ), &options::vars [ _ ( "visuals.other.grenade_blast_radii" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Grenade Blast Radii Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_radii_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Grenade Blast Radii Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_radii_color" ) ].val.c );
 
 							ImGui::EndChildFrame ( );
 						}
@@ -764,11 +809,11 @@ void gui::draw( ) {
 
 							ImGui::Checkbox ( _ ( "Spread Circle" ), &options::vars [ _ ( "visuals.other.spread_circle" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Spread Circle Color" ), ( float* ) &options::vars [ _ ( "visuals.other.spread_circle_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Spread Circle Color" ), ( float* ) &options::vars [ _ ( "visuals.other.spread_circle_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Gradient Spread Circle" ), &options::vars [ _ ( "visuals.other.gradient_spread_circle" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Offscreen ESP" ), &options::vars [ _ ( "visuals.other.offscreen_esp" ) ].val.b );
 							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "Offscreen ESP Color" ), ( float* ) &options::vars [ _ ( "visuals.other.offscreen_esp_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "##Offscreen ESP Color" ), ( float* ) &options::vars [ _ ( "visuals.other.offscreen_esp_color" ) ].val.c );
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::SliderFloat ( _ ( "Offscreen ESP Distance" ), &options::vars [ _ ( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%" ) );
 							ImGui::SliderFloat ( _ ( "Offscreen ESP Size" ), &options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, (std::to_string ( static_cast< int >( options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f ) ) + _ ( " px" )).c_str() );
@@ -779,6 +824,7 @@ void gui::draw( ) {
 
 							ImGui::ColorEdit4 ( _ ( "World Color" ), ( float* ) &options::vars [ _ ( "visuals.other.world_color" ) ].val.c );
 							ImGui::ColorEdit4 ( _ ( "Prop Color" ), ( float* ) &options::vars [ _ ( "visuals.other.prop_color" ) ].val.c );
+							ImGui::ColorEdit4 ( _ ( "Auto Peek Target" ), ( float* ) &options::vars [ _ ( "visuals.other.autopeek_color" ) ].val.c );
 							//ImGui::ColorEdit4( _( "Accent Color" ), &options::vars [ _( "visuals.other.accent_color" ) ].val.c );
 							//ImGui::ColorEdit4( _( "Secondary Accent Color" ), &options::vars [ _( "visuals.other.secondary_accent_color" ) ].val.c );
 							//ImGui::ColorEdit4( _( "Logo Color" ), &options::vars [ _( "visuals.other.logo_color" ) ].val.c );
@@ -814,8 +860,8 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Auto Forward" ), &options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Auto Strafer" ), &options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Directional Auto Strafer" ), &options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b );
-							//ImGui::Checkbox ( _ ( "Air Stuck" ), &options::vars [ _ ( "misc.movement.airstuck" ) ].val.b );
-							//ImGui::Keybind ( _ ( "Air Stuck Key" ), &options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i, &options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i );
+							ImGui::Checkbox ( _ ( "Air Stuck" ), &options::vars [ _ ( "misc.movement.airstuck" ) ].val.b );
+							ImGui::Keybind ( _ ( "Air Stuck Key" ), &options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i, &options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i );
 
 							ImGui::EndChildFrame ( );
 						}
@@ -831,7 +877,7 @@ void gui::draw( ) {
 							ImGui::Keybind ( _ ( "##Third Person Key" ), &options::vars [ _ ( "misc.effects.third_person_key" ) ].val.i, &options::vars [ _ ( "misc.effects.third_person_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::SliderFloat ( _ ( "Third Person Range" ), &options::vars [ _ ( "misc.effects.third_person_range" ) ].val.f, 0.0f, 500.0f, _ ( "%.1f units" ) );
-							ImGui::SliderFloat ( _ ( "Ragdoll Force Scale" ), &options::vars [ _ ( "misc.effects.ragdoll_force_scale" ) ].val.f, 0.0f, 10.0f, _ ( "%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Ragdoll Force Scale" ), &options::vars [ _ ( "misc.effects.ragdoll_force_scale" ) ].val.f, 0.0f, 10.0f, _ ( "x%.1f" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::Checkbox ( _ ( "Clan Tag" ), &options::vars [ _ ( "misc.effects.clantag" ) ].val.b );
 							static std::vector<const char*> tag_anims {  "Static",  "Marquee", "Capitalize" ,  "Heart" };
@@ -839,8 +885,8 @@ void gui::draw( ) {
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::Combo ( _ ( "Clan Tag Animation" ), &options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i, tag_anims.data ( ), tag_anims.size ( ) );
 							ImGui::InputText ( _ ( "Clan Tag Text" ), options::vars [ _ ( "misc.effects.clantag_text" ) ].val.s, 128 );
-							ImGui::SliderFloat ( _ ( "Revolver Cock Volume" ), &options::vars [ _ ( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _ ( "%.1f" ) );
-							ImGui::SliderFloat ( _ ( "Weapon Volume" ), &options::vars [ _ ( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _ ( "%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Revolver Cock Volume" ), &options::vars [ _ ( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Weapon Volume" ), &options::vars [ _ ( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
 							ImGui::PopItemWidth ( );
 
 							ImGui::EndChildFrame ( );
@@ -855,19 +901,19 @@ void gui::draw( ) {
 							ImGui::Text ( "Menu" );
 							ImGui::Separator ( );
 
-							int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
-							static std::vector<const char*> dpis { "0.5",  "1.0", "2.0" , "3.0" };
-
-							ImGui::PushItemWidth ( -1.0f );
-							ImGui::Combo ( _ ( "GUI DPI" ), &dpi, dpis.data ( ), dpis.size ( ) );
-							ImGui::PopItemWidth ( );
-
-							switch ( dpi ) {
-							case 0: options::vars [ _ ( "gui.dpi" ) ].val.f = 0.5f; break;
-							case 1: options::vars [ _ ( "gui.dpi" ) ].val.f = 1.0f; break;
-							case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
-							case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
-							}
+							//int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
+							//static std::vector<const char*> dpis { "0.5",  "1.0", "2.0" , "3.0" };
+							//
+							//ImGui::PushItemWidth ( -1.0f );
+							//ImGui::Combo ( _ ( "GUI DPI" ), &dpi, dpis.data ( ), dpis.size ( ) );
+							//ImGui::PopItemWidth ( );
+							//
+							//switch ( dpi ) {
+							//case 0: options::vars [ _ ( "gui.dpi" ) ].val.f = 0.5f; break;
+							//case 1: options::vars [ _ ( "gui.dpi" ) ].val.f = 1.0f; break;
+							//case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
+							//case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
+							//}
 
 							ImGui::EndChildFrame ( );
 						}
@@ -916,13 +962,25 @@ void gui::draw( ) {
 									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
 								}
 
-								options::save ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
+								auto file_exists = [ ] ( const std::string& path ) {
+									std::ifstream file ( path );
+									return file.good ( );
+								};
 
-								gui_mutex.lock ( );
-								load_cfg_list ( );
-								gui_mutex.unlock ( );
+								const auto file = std::string ( appdata ).append( _ ( "\\sesame\\configs\\" ) ).append( selected_config ).append(_ ( ".xml" ));
 
-								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								if ( file_exists ( file ) ) {
+									open_save_modal = true;
+								}
+								else {
+									options::save ( options::vars, file );
+
+									gui_mutex.lock ( );
+									load_cfg_list ( );
+									gui_mutex.unlock ( );
+
+									csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								}
 							}
 
 							if ( ImGui::Button ( _ ( "Load" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
@@ -1057,6 +1115,34 @@ void gui::draw( ) {
 				} break;
 			}
 
+			//auto load_texture = [ ] ( IDirect3DTexture9*& out_texture, float& out_width, float& out_height ) {
+			//	IDirect3DTexture9* texture;
+			//	HRESULT hr = D3DXCreateTextureFromFileInMemory ( csgo::i::dev, g_pfp_data.data ( ), g_pfp_data.size ( ), &texture );
+			//
+			//	if ( hr != S_OK )
+			//		return false;
+			//
+			//	D3DSURFACE_DESC my_image_desc;
+			//	texture->GetLevelDesc ( 0, &my_image_desc );
+			//
+			//	out_texture = texture;
+			//	out_width = my_image_desc.Width;
+			//	out_height = my_image_desc.Height;
+			//
+			//	return true;
+			//};
+			//
+			//IDirect3DTexture9* tex = nullptr;
+			//float width = 0.0f, height = 0.0f;
+			//
+			//if ( load_texture ( tex, width, height ) ) {
+			//	ImGui::Image ( reinterpret_cast< void* >( tex ), ImVec2 ( 20.0f, 20.0f ) );
+			//	tex->Release ( );
+			//}
+
+			if ( open_save_modal )
+				ImGui::OpenPopup ( "Save Config##popup" );
+
 			ImGui::custom::End ( );
 		}
 
@@ -1099,6 +1185,7 @@ void gui::keybinds::draw( ) {
 	static auto& fakeduck = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
 	static auto& assistance_type = options::vars [ _( "global.assistance_type" ) ].val.i;
 	static auto& third_person = options::vars [ _( "misc.effects.third_person" ) ].val.b;
+	static auto& autopeek = options::vars [ _ ( "ragebot.autopeek" ) ].val.b;
 
 	static auto triggerbot_key = find_keybind( _( "legitbot.triggerbot_key" ) );
 	static auto safe_point_key = find_keybind( _( "ragebot.safe_point_key" ) );
@@ -1111,24 +1198,35 @@ void gui::keybinds::draw( ) {
 	static auto inverter_key = find_keybind( _( "antiaim.desync_invert_key" ) );
 	static auto blockbot_key = find_keybind( _( "misc.movement.block_bot_key" ) );
 	static auto thirdperson_key = find_keybind( _( "misc.effects.third_person_key" ) );
+	static auto autopeek_key = find_keybind ( _ ( "ragebot.autopeek_key" ) );
 
 	if ( csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
 		if ( triggerbot && assistance_type == 1 )
 			add_key_entry( triggerbot_key, _( "Trigger Bot" ) );
+
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.safe_point )
 			add_key_entry( safe_point_key, _( "Safe Point" ) );
+
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.dt_enabled )
 			add_key_entry( doubletap_key, _( "Double Tap (" ) + std::to_string( static_cast< int > ( features::ragebot::active_config.max_dt_ticks ) ) + _( " ticks)" ) );
+
 		if ( features::antiaim::antiaiming )
 			add_key_entry( slow_walk_key, _( "Slow Walk" ) );
+
 		if ( fakeduck )
 			add_key_entry( fakeduck_key, _( "Fake Duck" ) );
+
 		if ( features::antiaim::antiaiming )
 			add_key_entry( inverter_key, _( "Antiaim Inverter" ) );
+
 		if ( blockbot )
 			add_key_entry( blockbot_key, _( "Block Bot" ) );
+
 		if ( third_person )
 			add_key_entry( thirdperson_key, _( "Third-Person" ) );
+
+		if ( autopeek )
+			add_key_entry ( autopeek_key, _ ( "Autopeek" ) );
 
 		if ( features::antiaim::antiaiming ) {
 			switch ( features::antiaim::side ) {

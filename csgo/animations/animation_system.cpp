@@ -1016,17 +1016,17 @@ void anims::store_frame( player_t* ent, bool anim_update ) {
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw1;
     calc_poses( ent );
     memcpy( animation_frame.m_poses1.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
-    build_bones( ent, animation_frame.m_matrix1.data( ), 0x7ff00, vec3_t( 0.0f, abs_yaw1, 0.0f ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix1.data( ), 256, vec3_t( 0.0f, abs_yaw1, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw2;
     calc_poses( ent );
     memcpy( animation_frame.m_poses2.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
-    build_bones( ent, animation_frame.m_matrix2.data( ), 0x7ff00, vec3_t( 0.0f, abs_yaw2, 0.0f ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix2.data( ), 256, vec3_t( 0.0f, abs_yaw2, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     state->m_feet_yaw = state->m_abs_yaw = abs_yaw3;
     calc_poses( ent );
     memcpy( animation_frame.m_poses3.data( ), ent->poses( ).data( ), sizeof( ent->poses( ) ) );
-    build_bones( ent, animation_frame.m_matrix3.data( ), 0x7ff00, vec3_t( 0.0f, abs_yaw3, 0.0f ), ent->origin( ), ent->simtime( ) );
+    build_bones( ent, animation_frame.m_matrix3.data( ), 256, vec3_t( 0.0f, abs_yaw3, 0.0f ), ent->origin( ), ent->simtime( ) );
 
     frames [ ent->idx( ) ].push_back( animation_frame );
 }

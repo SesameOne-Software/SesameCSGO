@@ -12,6 +12,8 @@
 #include "../features/legitbot.hpp"
 #include "../features/blockbot.hpp"
 #include "../features/autowall.hpp"
+#include "../features/autopeek.hpp"
+#include "../features/exploits.hpp"
 
 #include "../animations/resolver.hpp"
 
@@ -22,12 +24,8 @@ bool in_cm = false;
 bool ducking = false;
 int restore_ticks = 0;
 bool last_attack = false;
-bool last_tickbase_shot = false;
-int g_refresh_counter = 0;
 bool delay_tick = false;
 vec3_t old_angles;
-
-bool hooks::vars::in_refresh = false;
 
 void fix_event_delay( ucmd_t* ucmd ) {
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
@@ -48,28 +46,22 @@ void fix_event_delay( ucmd_t* ucmd ) {
 
 decltype( &hooks::create_move ) hooks::old::create_move = nullptr;
 
-//bool airstuck ( ucmd_t* ucmd ) {
-//	static auto& airstuck = options::vars [ _ ( "misc.movement.airstuck" ) ].val.b;
-//	static auto& airstuck_key = options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i;
-//	static auto& airstuck_mode = options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i;
-//
-//	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) ) {
-//		ucmd->m_tickcount = INT_MAX;
-//		ucmd->m_cmdnum= INT_MAX;
-//		return true;
-//	}
-//
-//	return false;
-//}
+void airstuck ( ucmd_t* ucmd ) {
+	static auto& airstuck = options::vars [ _ ( "misc.movement.airstuck" ) ].val.b;
+	static auto& airstuck_key = options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i;
+	static auto& airstuck_mode = options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i;
+
+	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) && !csgo::is_valve_server() ) {
+		ucmd->m_tickcount = INT_MAX;
+		ucmd->m_cmdnum = INT_MAX;
+	}
+}
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
 
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
-
-	//if ( airstuck ( ucmd ) )
-	//	return false;
 
 	if ( ret )
 		csgo::i::engine->set_viewangles( ucmd->m_angs );
@@ -78,6 +70,10 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	in_cm = true;
 
 	utils::update_key_toggles( );
+
+	/* recharge if we need, and return */
+	if ( exploits::recharge ( ucmd ) )
+		return false;
 
 	//RUN_SAFE (
 	//	"features::ragebot::get_weapon_config",
@@ -89,24 +85,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	}
 
 	security_handler::update( );
-
-	if ( g_refresh_counter < g::shifted_amount ) {
-		//ucmd->m_buttons &= ~1;
-		//ucmd->m_fmove = ucmd->m_smove = 0.0f;
-		//ucmd->m_angs = old_angles;
-		//csgo::clamp( ucmd->m_angs );
-
-		*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = true;
-		ucmd->m_tickcount += 666;
-		in_cm = false;
-		g_refresh_counter++;
-		vars::in_refresh = true;
-		return false;
-	}
-	else {
-		g::shifted_amount = 0;
-		vars::in_refresh = false;
-	}
 
 	if ( g::local && g::local->weapon( ) ) {
 		const auto weapon = g::local->weapon( );
@@ -183,36 +161,24 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::antiaim::simulate_lby( );
 		ducking = ucmd->m_buttons & 4;
 
-		if ( !vars::in_refresh )
-			features::legitbot::run( ucmd );
+		features::legitbot::run( ucmd );
 
 		//RUN_SAFE (
 		//	"features::ragebot::run",
-		if ( !vars::in_refresh )
 			features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
 		//);
 
 		//RUN_SAFE (
 		//	"features::antiaim::run",
 		features::antiaim::run( ucmd, old_smove, old_fmove );
+
+		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
 		} );
 	//);
 
 	fix_event_delay( ucmd );
 
-	if ( ucmd->m_buttons & 1 )
-		g::next_tickbase_shot = false;
-
-	if ( !g::next_tickbase_shot && last_tickbase_shot ) {
-		/* disables refreshing tickbase after shot */
-		g_refresh_counter = 0;
-		//g::shifted_amount = 0;
-		//delay_tick = true;
-	}
-	//
-	last_tickbase_shot = g::next_tickbase_shot;
-
-	if ( !vars::in_refresh && g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
+	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == 64 && !( ucmd->m_buttons & 1 ) ) {
 		if ( csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~1;
 			g::cock_ticks = csgo::time2ticks( csgo::i::globals->m_curtime + 0.25f ) - 2;
@@ -251,6 +217,19 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? 1024 : 512 );
 			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? 1024 : 512 );
 		}
+
+		/* slide to opposite side (anti-toeaim) */
+		/*
+		if ( ucmd->m_fmove ) {
+			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? 16 : 8 );
+			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? 16 : 8 );
+		}
+
+		if ( ucmd->m_smove ) {
+			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? 512 : 1024 );
+			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? 512 : 1024 );
+		}
+		*/
 	}
 
 	features::ragebot::tickbase_controller( ucmd );
@@ -266,5 +245,11 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	anims::new_tick = true;
 
 	in_cm = false;
+
+	/* airstuck (only on community servers) */
+	airstuck ( ucmd );
+
+	exploits::run ( ucmd );
+
 	return false;
 }

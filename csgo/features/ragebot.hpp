@@ -48,7 +48,8 @@ namespace features {
 			int inherit_from,
 				dt_key, dt_key_mode,
 				triggerbot_key, triggerbot_key_mode,
-				safe_point_key, safe_point_key_mode;
+				safe_point_key, safe_point_key_mode,
+				dt_recharge_delay;
 		};
 
 		extern weapon_config_t active_config;
@@ -107,7 +108,7 @@ namespace features {
 
 				for ( auto& point : m_synced_points ) {
 					if ( csgo::render::world_to_screen( screen, point ) )
-						render::rect( screen.x - 2, screen.y - 2, 4, 4, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
+						render::rect( screen.x - 2, screen.y - 2, 4, 4, rgba ( 255, 0, 0, 255 ) );
 				}
 			}
 		};

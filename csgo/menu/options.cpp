@@ -255,91 +255,98 @@ void options::load( std::unordered_map< std::string, option >& options, const st
 }
 
 void options::add_weapon_config( const std::string& weapon_category ) {
+	using namespace options;
+
 	const std::string prefix = _( "ragebot." ) + weapon_category + _( "." );
 
-	options::option::add_bool( prefix + _( "inherit_default" ), false );
-	options::option::add_bool( prefix + _( "headshot_only" ), false );
-	options::option::add_bool( prefix + _( "choke_onshot" ), false );
-	options::option::add_bool( prefix + _( "silent" ), false );
-	options::option::add_bool( prefix + _( "auto_shoot" ), false );
-	options::option::add_bool( prefix + _( "auto_scope" ), false );
-	options::option::add_bool( prefix + _( "auto_slow" ), false );
-	options::option::add_bool( prefix + _( "dt_teleport" ), false );
-	options::option::add_bool( prefix + _( "dt_enabled" ), false );
-	options::option::add_int( prefix + _( "dt_ticks" ), 0 );
-	options::option::add_float( prefix + _( "min_dmg" ), 0.0f );
-	options::option::add_float( prefix + _( "dmg_accuracy" ), 0.0f );
-	options::option::add_float( prefix + _( "hit_chance" ), 0.0f );
-	options::option::add_float( prefix + _( "dt_hit_chance" ), 0.0f );
-	options::option::add_bool( prefix + _( "baim_if_lethal" ), false );
-	options::option::add_bool( prefix + _( "baim_in_air" ), false );
-	options::option::add_bool ( prefix + _ ( "onshot_only" ), false );
-	options::option::add_int( prefix + _( "force_baim" ), 0 );
-	options::option::add_float( prefix + _( "head_pointscale" ), 0.0f );
-	options::option::add_float( prefix + _( "body_pointscale" ), 0.0f );
-	options::option::add_list( prefix + _( "hitboxes" ), 7 ); /* head, neck, chest, pelvis, arms, legs, feet */
+	option::add_bool( prefix + _( "inherit_default" ), false );
+	option::add_bool( prefix + _( "headshot_only" ), false );
+	option::add_bool( prefix + _( "choke_onshot" ), false );
+	option::add_bool( prefix + _( "silent" ), false );
+	option::add_bool( prefix + _( "auto_shoot" ), false );
+	option::add_bool( prefix + _( "auto_scope" ), false );
+	option::add_bool( prefix + _( "auto_slow" ), false );
+	option::add_bool( prefix + _( "dt_teleport" ), false );
+	option::add_bool( prefix + _( "dt_enabled" ), false );
+	option::add_int( prefix + _( "dt_ticks" ), 0 );
+	option::add_int ( prefix + _ ( "dt_recharge_delay" ), 0 );
+	option::add_float( prefix + _( "min_dmg" ), 0.0f );
+	option::add_float( prefix + _( "dmg_accuracy" ), 0.0f );
+	option::add_float( prefix + _( "hit_chance" ), 0.0f );
+	option::add_float( prefix + _( "dt_hit_chance" ), 0.0f );
+	option::add_bool( prefix + _( "baim_if_lethal" ), false );
+	option::add_bool( prefix + _( "baim_in_air" ), false );
+	option::add_bool ( prefix + _ ( "onshot_only" ), false );
+	option::add_int( prefix + _( "force_baim" ), 0 );
+	option::add_float( prefix + _( "head_pointscale" ), 0.0f );
+	option::add_float( prefix + _( "body_pointscale" ), 0.0f );
+	option::add_list( prefix + _( "hitboxes" ), 7 ); /* head, neck, chest, pelvis, arms, legs, feet */
 
 	END_FUNC
 }
 
 void options::add_antiaim_config( const std::string& antiaim_category ) {
+	using namespace options;
+
 	const std::string prefix = _( "antiaim." ) + antiaim_category + _( "." );
 
-	options::option::add_int( prefix + _( "fakelag_factor" ), 0 );
-	options::option::add_bool( prefix + _( "enabled" ), false );
-	options::option::add_int( prefix + _( "pitch" ), 0 ); /* none, down, up, zero */
-	options::option::add_float( prefix + _( "yaw_offset" ), 0.0f );
-	options::option::add_int( prefix + _( "base_yaw" ), 0 ); /* relative, absolute, at target, auto direction */
-	options::option::add_float( prefix + _( "auto_direction_amount" ), 0.0f );
-	options::option::add_float( prefix + _( "auto_direction_range" ), 0.0f );
-	options::option::add_float( prefix + _( "jitter_range" ), 0.0f );
-	options::option::add_float( prefix + _( "rotation_range" ), 0.0f );
-	options::option::add_float( prefix + _( "rotation_speed" ), 0.0f );
-	options::option::add_bool( prefix + _( "desync" ), false );
-	options::option::add_float( prefix + _( "desync_range_inverted" ), 0.0f );
-	options::option::add_float( prefix + _( "desync_range" ), 0.0f );
-	options::option::add_bool( prefix + _( "invert_initial_side" ), false );
-	options::option::add_bool( prefix + _( "jitter_desync_side" ), false );
-	options::option::add_bool( prefix + _( "center_real" ), false );
-	options::option::add_bool( prefix + _( "anti_bruteforce" ), false );
-	options::option::add_bool( prefix + _( "anti_freestand_prediction" ), false );
+	option::add_int( prefix + _( "fakelag_factor" ), 0 );
+	option::add_bool( prefix + _( "enabled" ), false );
+	option::add_int( prefix + _( "pitch" ), 0 ); /* none, down, up, zero */
+	option::add_float( prefix + _( "yaw_offset" ), 0.0f );
+	option::add_int( prefix + _( "base_yaw" ), 0 ); /* relative, absolute, at target, auto direction */
+	option::add_float( prefix + _( "auto_direction_amount" ), 0.0f );
+	option::add_float( prefix + _( "auto_direction_range" ), 0.0f );
+	option::add_float( prefix + _( "jitter_range" ), 0.0f );
+	option::add_float( prefix + _( "rotation_range" ), 0.0f );
+	option::add_float( prefix + _( "rotation_speed" ), 0.0f );
+	option::add_bool( prefix + _( "desync" ), false );
+	option::add_float( prefix + _( "desync_range_inverted" ), 0.0f );
+	option::add_float( prefix + _( "desync_range" ), 0.0f );
+	option::add_bool( prefix + _( "invert_initial_side" ), false );
+	option::add_bool( prefix + _( "jitter_desync_side" ), false );
+	option::add_bool( prefix + _( "center_real" ), false );
+	option::add_bool( prefix + _( "anti_bruteforce" ), false );
+	option::add_bool( prefix + _( "anti_freestand_prediction" ), false );
 
 	END_FUNC
 }
 
 void options::add_player_visual_config( const std::string& player_category ) {
+	using namespace options;
+
 	const std::string prefix = _( "visuals." ) + player_category + _( "." );
 
 	/* ENEMIES: chams, chams flat, chams xqz, backtrack chams, hit matrix, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name */
 	/* TEAMMATES: chams, chams flat, chams xqz, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name */
 	/* LOCAL: chams, chams flat, chams xqz, desync chams, desync chams fakelag, desync chams rimlight, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name */
 	if ( player_category == _( "local" ) )
-		options::option::add_list( prefix + _( "options" ), 15 );
+		option::add_list( prefix + _( "options" ), 15 );
 	else if ( player_category == _( "enemies" ) )
-		options::option::add_list( prefix + _( "options" ), 14 );
+		option::add_list( prefix + _( "options" ), 14 );
 	else if ( player_category == _( "teammates" ) )
-		options::option::add_list( prefix + _( "options" ), 12 );
+		option::add_list( prefix + _( "options" ), 12 );
 
-	options::option::add_int( prefix + _( "health_bar_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_int( prefix + _( "ammo_bar_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_int( prefix + _( "desync_bar_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_int( prefix + _( "value_text_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_int( prefix + _( "nametag_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_int( prefix + _( "weapon_name_location" ), 0 ); /* left, right, bottom, top */
-	options::option::add_float( prefix + _( "reflectivity" ), 0.0f );
-	options::option::add_float( prefix + _( "phong" ), 0.0f );
-	options::option::add_color( prefix + _( "chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "xqz_chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "backtrack_chams_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "hit_matrix_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "glow_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "rimlight_overlay_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "box_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "health_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "ammo_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "desync_bar_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "name_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	options::option::add_color( prefix + _( "weapon_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_int( prefix + _( "health_bar_location" ), 2 ); /* left, right, bottom, top */
+	option::add_int( prefix + _( "ammo_bar_location" ), 1 ); /* left, right, bottom, top */
+	option::add_int( prefix + _( "desync_bar_location" ), 1 ); /* left, right, bottom, top */
+	option::add_int( prefix + _( "value_text_location" ), 0 ); /* left, right, bottom, top */
+	option::add_int( prefix + _( "nametag_location" ), 3 ); /* left, right, bottom, top */
+	option::add_int( prefix + _( "weapon_name_location" ), 2 ); /* left, right, bottom, top */
+	option::add_float( prefix + _( "reflectivity" ), 0.0f );
+	option::add_float( prefix + _( "phong" ), 0.0f );
+	option::add_color( prefix + _( "chams_color" ), { 0.81f, 0.96f, 1.0f, 0.12f } );
+	option::add_color( prefix + _( "xqz_chams_color" ), { 0.23f, 0.84f, 1.0f, 0.024f } );
+	option::add_color( prefix + _( "backtrack_chams_color" ), { 1.0f, 0.99f, 0.99f, 0.53f } );
+	option::add_color( prefix + _( "hit_matrix_color" ), { 1.0f, 0.99f, 0.99f, 1.0f } );
+	option::add_color( prefix + _( "glow_color" ), { 0.99f, 1.0f, 0.99f, 0.35f } );
+	option::add_color( prefix + _( "rimlight_overlay_color" ), { 1.0f, 0.99f, 0.99f, 0.0f } );
+	option::add_color( prefix + _( "box_color" ), { 1.0f, 0.99f, 0.99f, 0.30f } );
+	option::add_color( prefix + _( "health_bar_color" ), { 0.99f, 1.0f, 0.99f, 0.42f } );
+	option::add_color( prefix + _( "ammo_bar_color" ), { 0.53f, 0.61f, 1.0f, 0.35f } );
+	option::add_color( prefix + _( "desync_bar_color" ), { 0.53f, 0.61f, 1.0f, 0.35f } );
+	option::add_color( prefix + _( "name_color" ), { 0.99f, 1.0f, 0.99f, 0.72f } );
+	option::add_color( prefix + _( "weapon_color" ), { 0.99f, 1.0f, 0.99f, 0.72f } );
 
 	END_FUNC
 }
@@ -365,6 +372,9 @@ void options::init( ) {
 	option::add_bool( _( "ragebot.resolve_desync" ), false );
 	option::add_bool( _( "ragebot.safe_point" ), false );
 	option::add_bool( _( "ragebot.auto_revolver" ), false );
+	option::add_bool ( _ ( "ragebot.autopeek" ), false );
+	option::add_int ( _ ( "ragebot.autopeek_key" ), 0 );
+	option::add_int ( _ ( "ragebot.autopeek_key_mode" ), 0 );
 	option::add_int( _( "ragebot.safe_point_key" ), 0 );
 	option::add_int( _( "ragebot.safe_point_key_mode" ), 0 );
 	option::add_int( _( "ragebot.dt_key" ), 0 );
@@ -401,8 +411,8 @@ void options::init( ) {
 	add_antiaim_config( _( "moving" ) );
 	add_antiaim_config( _( "slow_walk" ) );
 	add_antiaim_config( _( "standing" ) );
-	options::option::add_int( _( "antiaim.standing.desync_type" ), 0 ); /* real around fake, fake around real */
-	options::option::add_int( _( "antiaim.standing.desync_type_inverted" ), 0 ); /* real around fake, fake around real */
+	option::add_int( _( "antiaim.standing.desync_type" ), 0 ); /* real around fake, fake around real */
+	option::add_int( _( "antiaim.standing.desync_type_inverted" ), 0 ); /* real around fake, fake around real */
 
 	/* VISUALS */
 	/* global visuals */
@@ -432,13 +442,14 @@ void options::init( ) {
 	option::add_float( _( "visuals.other.offscreen_esp_distance" ), 0.0f );
 	option::add_float( _( "visuals.other.offscreen_esp_size" ), 0.0f );
 	option::add_float( _( "visuals.other.grenade_path_fade_time" ), 0.0f );
-	option::add_color( _( "visuals.other.offscreen_esp_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.bullet_tracer_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.bullet_impact_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.grenade_trajectory_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.grenade_bounce_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.grenade_radii_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
-	option::add_color( _( "visuals.other.spread_circle_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
+	option::add_color ( _ ( "visuals.other.autopeek_color" ), { 0.80f, 1.0f, 0.95f, 0.15f } );
+	option::add_color( _( "visuals.other.offscreen_esp_color" ), { 0.69f, 1.0f, 0.92f, 0.36f } );
+	option::add_color( _( "visuals.other.bullet_tracer_color" ), { 0.69f, 1.0f, 0.92f, 0.25f } );
+	option::add_color( _( "visuals.other.bullet_impact_color" ), { 0.69f, 1.0f, 0.92f, 0.68f } );
+	option::add_color( _( "visuals.other.grenade_trajectory_color" ), { 0.86f, 0.98f, 1.0f, 0.24f } );
+	option::add_color( _( "visuals.other.grenade_bounce_color" ), { 0.86f, 0.987f, 1.0f, 0.52f } );
+	option::add_color( _( "visuals.other.grenade_radii_color" ), { 1.0f, 0.343f, 0.343f, 0.217f } );
+	option::add_color( _( "visuals.other.spread_circle_color" ), { 0.56f, 0.858f, 0.90f, 0.333f } );
 	option::add_color( _( "visuals.other.world_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 	option::add_color( _( "visuals.other.prop_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 	option::add_int( _( "visuals.other.hit_sound" ), 0 ); /* none, arena switch, fall pain, bolt, neck snap, power switch, glass, bell, cod, rattle, sesame */

@@ -7,6 +7,8 @@
 #include "../animations/resolver.hpp"
 #include "../menu/options.hpp"
 
+#include "exploits.hpp"
+
 player_t* last_target = nullptr;
 int target_idx = 0;
 std::array< features::ragebot::misses_t, 65 > misses { 0 };
@@ -79,7 +81,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.revolver.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.revolver.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.revolver.onshot_only" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.revolver.dt_recharge_delay" ) ].val.b;
 
+		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
 		config.silent = silent;
@@ -135,7 +139,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.pistol.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.pistol.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.pistol.onshot_only" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.pistol.dt_recharge_delay" ) ].val.b;
 
+		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
 		config.silent = silent;
@@ -191,7 +197,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.rifle.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.rifle.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.rifle.onshot_only" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.rifle.dt_recharge_delay" ) ].val.b;
 
+		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
 		config.silent = silent;
@@ -248,7 +256,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.awp.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.awp.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.awp.onshot_only" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.awp.dt_recharge_delay" ) ].val.b;
 
+			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
 			config.silent = silent;
@@ -304,7 +314,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.auto.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.auto.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.auto.onshot_only" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.auto.dt_recharge_delay" ) ].val.b;
 
+			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
 			config.silent = silent;
@@ -360,7 +372,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.scout.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.scout.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.scout.onshot_only" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.scout.dt_recharge_delay" ) ].val.b;
 
+			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
 			config.silent = silent;
@@ -422,7 +436,9 @@ set_default:
 	static auto& dt_hit_chance = options::vars [ _( "ragebot.default.dt_hit_chance" ) ].val.f;
 	static auto& headshot_only = options::vars [ _( "ragebot.default.headshot_only" ) ].val.b;
 	static auto& onshot_only = options::vars [ _ ( "ragebot.default.onshot_only" ) ].val.b;
+	static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.default.dt_recharge_delay" ) ].val.b;
 
+	config.dt_recharge_delay = dt_recharge_delay;
 	config.dmg_accuracy = dmg_accuracy;
 	config.choke_on_shot = choke_onshot;
 	config.silent = silent;
@@ -636,54 +652,13 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 	//dbg_print( _( "calculated chance: %.1f\n" ), calc_chance );
 
-	if ( calc_chance < ( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
+	/* TODO: change when doubletap is fixed */
+	if ( calc_chance < /*( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance )*/ features::ragebot::active_config.hit_chance )
 		return false;
 
 	return true;
 	//return dmg_hitchance( ang, pl, point, rays, hitbox );
 }
-
-//void features::ragebot::pack ( ucmd_t* ucmd, int ticks, bool teleport ) {
-//	auto net_chan = csgo::i::client_state->net_channel ( );
-//	if ( !net_chan )
-//		return;
-//
-//	auto from_cmd = ucmd;
-//
-//	for ( auto i = 0; i < ticks; i++ ) {
-//		auto next_veri_cmd = csgo::i::input->get_verified_cmd ( from_cmd->m_cmdnum + 1 );
-//		auto next_cmd = csgo::i::input->get_usercmd ( 0, from_cmd->m_cmdnum + 1 );
-//
-//		//	create next command
-//		*next_cmd = *from_cmd;
-//		next_cmd->m_cmdnum++;
-//		next_cmd->m_hasbeenpredicted = false;
-//		next_cmd->m_buttons &= ~in_attack;
-//		next_cmd->m_buttons &= ~in_attack2;
-//
-//		if ( !teleport )
-//			next_cmd->m_tickcount = INT_MAX;
-//		else {
-//			math::correct_movement ( next_cmd, wish_angle );
-//			m_ticks_allowed--;
-//		}
-//
-//		//	verify command
-//		next_veri_cmd->m_cmd = *next_cmd;
-//		next_veri_cmd->m_crc = next_cmd->get_checksum ( );
-//
-//		//	set from_cmd
-//		from_cmd = next_cmd;
-//
-//		//	set clientstate shit
-//		csgo::i::client_state->choked ( )++;
-//		net_chan->m_choked_packets++;
-//		net_chan->m_out_sequence_nr++;
-//	}
-//
-//	csgo::i::pred->m_previous_start_frame = -1; //0xC
-//	csgo::i::pred->m_commands_predicted = 0; //0x1C
-//}
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	auto can_shoot = [ & ] ( ) {
@@ -693,8 +668,6 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
 			return false;
 
-		//if ( g::shifted_tickbase )
-		//	return csgo::ticks2time ( g::local->tick_base ( ) - ( ( g::shifted_tickbase > 0 ) ? 1 + g::shifted_tickbase : 0 ) ) <= g::local->weapon ( )->next_primary_attack ( );
 		return csgo::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= csgo::i::globals->m_curtime;
 	};
 
@@ -706,17 +679,13 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	//auto tickbase_as_int = std::clamp< int >( csgo::time2ticks( fire_rate ) - 1, 0, std::clamp( static_cast< int >( active_config.max_dt_ticks ), 0, sv_maxusrcmdprocessticks->get_int() ) );
 	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - csgo::i::client_state->choked() - 1 );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
 
-	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && std::abs( ucmd->m_cmdnum - g::dt_recharge_time ) > tickbase_as_int && !g::dt_ticks_to_shift && !( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) ) {
-		g::dt_ticks_to_shift = tickbase_as_int;
-		g::dt_recharge_time = ucmd->m_cmdnum + tickbase_as_int;
-		g::shifted_tickbase = ucmd->m_cmdnum;
-	}
+	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
+		exploits::shift_tickbase( tickbase_as_int, csgo::time2ticks( static_cast<float>( active_config.dt_recharge_delay ) / 1000.0f ) );
 }
 
 bool features::ragebot::can_shoot( ) {
@@ -1206,7 +1175,9 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
 	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
-	const auto damage_scalar = g::next_tickbase_shot ? 1.0f : 1.0f;
+	//const auto damage_scalar = g::next_tickbase_shot ? 1.0f : 1.0f;
+	/* TODO: remove when doubletap fixed */
+	const auto damage_scalar = 1.0f;
 
 	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;
 //

@@ -301,15 +301,15 @@ void features::nade_prediction::draw( ) {
 
 				if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
 					if ( grenade_trajectories ) {
-						render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ), 3.0f );
+						render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ), 2.5f );
 					}
 
 					if ( p.m_detonate && grenade_blast_radii ) {
-						render::circle3d( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), false );
-						render::circle3d( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), true );
+						render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), false );
+						render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), true, 2.5f );
 					}
 					else if ( p.m_plane && grenade_bounces ) {
-						render::cube( p.m_start, 4, D3DCOLOR_RGBA( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), alpha1 ) );
+						render::cube( p.m_start, 4, rgba ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), alpha1 ) );
 					}
 				}
 
@@ -335,15 +335,15 @@ void features::nade_prediction::draw( ) {
 
 			if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
 				if ( grenade_trajectories ) {
-					render::line( start.x, start.y, end.x, end.y, D3DCOLOR_RGBA( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ), 3.0f );
+					render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ), 2.5f );
 				}
 
 				if ( p.m_detonate && grenade_blast_radii ) {
-					render::circle3d( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), false );
-					render::circle3d( p.m_end, p.m_radius, 64, D3DCOLOR_RGBA( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), true );
+					render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), false );
+					render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), true, 2.5f );
 				}
 				else if ( p.m_plane && grenade_bounces ) {
-					render::cube( p.m_start, 4, D3DCOLOR_RGBA( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), calc_alpha2 ) );
+					render::cube( p.m_start, 4, rgba ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), calc_alpha2 ) );
 				}
 			}
 

@@ -255,8 +255,8 @@ void features::offscreen_esp::draw( ) {
 						const auto left_pos = center + csgo::angle_vec( left_ang ) * mag2;
 						const auto right_pos = center + csgo::angle_vec( right_ang ) * mag2;
 
-						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), static_cast< int > ( offscreen_esp_color.a * 255.0f ) ), false );
-						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, D3DCOLOR_RGBA ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), 255 ), true, 2.5f );
+						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, rgba ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), static_cast< int > ( offscreen_esp_color.a * 255.0f ) ), false );
+						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, rgba ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), 255 ), true, 2.5f );
 					}
 				}
 			} break;
@@ -273,14 +273,14 @@ void features::offscreen_esp::draw( ) {
 								const auto defuse_fraction = ( as_bomb->defuse_countdown( ) - csgo::i::globals->m_curtime ) / as_bomb->defuse_length( );
 								const auto time_left = fmt::format ( _("{:.2f} seconds"), timer );
 
-								render::rect( 0, 1, w * fraction, 4, D3DCOLOR_RGBA( 0, 255, 0, 255 ) );
+								render::rect( 0, 1, w * fraction, 4, rgba ( 0, 255, 0, 255 ) );
 
 								if ( reinterpret_cast< player_t* >( as_bomb->get_defuser( ) )->valid( ) )
-									render::rect ( 0, 5, w * defuse_fraction, 4, D3DCOLOR_RGBA( 84, 195, 255, 255 ) );
+									render::rect ( 0, 5, w * defuse_fraction, 4, rgba ( 84, 195, 255, 255 ) );
 
 								vec3_t text_dim;
 								render::text_size ( time_left, _("esp_font"), text_dim );
-								render ::text( w / 2 - text_dim.x / 2, 65, time_left, _ ( "esp_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ) ,true);
+								render ::text( w / 2 - text_dim.x / 2, 65, time_left, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ) ,true);
 							}
 
 							if ( bomb_esp ) {
@@ -307,10 +307,10 @@ void features::offscreen_esp::draw( ) {
 										vec3_t text_dim;
 										render::text_size ( _("!"), _ ( "indicator_font" ), text_dim );
 
-										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
-										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
-										render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), true );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 19, 19, 19, 255 ) );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 255, 0, 0, 255 ), true );
+										render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, rgba ( 255, 0, 0, 255 ), true );
+										render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), rgba ( 255, 0, 0, 255 ), true );
 									}
 								}
 								else {
@@ -318,10 +318,10 @@ void features::offscreen_esp::draw( ) {
 
 									vec3_t text_dim;
 									
-									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 19, 19, 19, 255 ) );
-									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
-									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, D3DCOLOR_RGBA( 255, 0, 0, 255 ), true );
-									render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), D3DCOLOR_RGBA ( 255, 0, 0, 255 ), true );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 19, 19, 19, 255 ) );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 255, 0, 0, 255 ), true );
+									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, rgba ( 255, 0, 0, 255 ), true );
+									render::text ( calc_pos.x - text_dim.x / 2.0f, calc_pos.y - text_dim.y, _( "!" ), _ ( "indicator_font" ), rgba ( 255, 0, 0, 255 ), true );
 								}
 							}
 						}
@@ -371,8 +371,8 @@ void features::spread_circle::draw( ) {
 //
 	//vec3_t screen_left, screen_right;
 	//if ( csgo::render::world_to_screen( screen_left, tr.m_endpos ) && csgo::render::world_to_screen( screen_right, tr1.m_endpos ) ) {
-	//	render::rectangle( screen_left.x, screen_left.y, 2, 2, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
-	//	render::rectangle( screen_right.x, screen_right.y, 2, 2, D3DCOLOR_RGBA( 255, 0, 0, 255 ) );
+	//	render::rectangle( screen_left.x, screen_left.y, 2, 2, rgba( 255, 0, 0, 255 ) );
+	//	render::rectangle( screen_right.x, screen_right.y, 2, 2, rgba( 255, 0, 0, 255 ) );
 	//}
 
 	const auto weapon = g::local->weapon( );
@@ -396,7 +396,7 @@ void features::spread_circle::draw( ) {
 		circle [ 0 ].y = static_cast< float > ( y ) - 0.5f;
 		circle [ 0 ].z = 0;
 		circle [ 0 ].rhw = 1;
-		circle [ 0 ].color = D3DCOLOR_RGBA( 0, 0, 0, 0 );
+		circle [ 0 ].color = D3DCOLOR_RGBA( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), 0 );
 
 		for ( auto i = 1; i < 48 + 2; i++ ) {
 			circle [ i ].x = ( float )( x - radius * std::cosf( pi * ( ( i - 1 ) / ( 48.0f / 2.0f ) ) ) ) - 0.5f;
@@ -429,7 +429,7 @@ void features::spread_circle::draw( ) {
 			vb->Release( );
 	}
 	else {
-		render::circle( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ) );
-		render::circle( w / 2, h / 2, radius, 48, D3DCOLOR_RGBA( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ), true );
+		render::circle( w / 2, h / 2, radius, 48, rgba ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ) );
+		render::circle( w / 2, h / 2, radius, 48, rgba ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ), true );
 	}
 }

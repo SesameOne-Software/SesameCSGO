@@ -11,19 +11,23 @@ extern WNDPROC hooks::old::wnd_proc = nullptr;
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler ( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
 
-long __stdcall hooks::wnd_proc ( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam ) {
+LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 	auto skip_mouse_input_processing = false;
 
-	switch ( msg ) {
+	switch ( uMsg ) {
+	case WM_SYSCOMMAND:
+		if ( ( wParam & 0xfff0 ) == SC_KEYMENU ) // Disable ALT application menu
+			return 0;
+		break;
 	case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK:
 	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
 	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
 	case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: {
 		int button = 0;
-		if ( msg == WM_LBUTTONDOWN || msg == WM_LBUTTONDBLCLK ) { button = 0; }
-		if ( msg == WM_RBUTTONDOWN || msg == WM_RBUTTONDBLCLK ) { button = 1; }
-		if ( msg == WM_MBUTTONDOWN || msg == WM_MBUTTONDBLCLK ) { button = 2; }
-		if ( msg == WM_XBUTTONDOWN || msg == WM_XBUTTONDBLCLK ) { button = ( GET_XBUTTON_WPARAM ( wparam ) == XBUTTON1 ) ? 3 : 4; }
+		if ( uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONDBLCLK ) { button = 0; }
+		if ( uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONDBLCLK ) { button = 1; }
+		if ( uMsg == WM_MBUTTONDOWN || uMsg == WM_MBUTTONDBLCLK ) { button = 2; }
+		if ( uMsg == WM_XBUTTONDOWN || uMsg == WM_XBUTTONDBLCLK ) { button = ( GET_XBUTTON_WPARAM ( wParam ) == XBUTTON1 ) ? 3 : 4; }
 		mouse_down [ button ] = true;
 		skip_mouse_input_processing = true;
 		break;
@@ -33,33 +37,32 @@ long __stdcall hooks::wnd_proc ( HWND hwnd, std::uint32_t msg, std::uintptr_t wp
 	case WM_MBUTTONUP:
 	case WM_XBUTTONUP: {
 		int button = 0;
-		if ( msg == WM_LBUTTONUP ) { button = 0; }
-		if ( msg == WM_RBUTTONUP ) { button = 1; }
-		if ( msg == WM_MBUTTONUP ) { button = 2; }
-		if ( msg == WM_XBUTTONUP ) { button = ( GET_XBUTTON_WPARAM ( wparam ) == XBUTTON1 ) ? 3 : 4; }
+		if ( uMsg == WM_LBUTTONUP ) { button = 0; }
+		if ( uMsg == WM_RBUTTONUP ) { button = 1; }
+		if ( uMsg == WM_MBUTTONUP ) { button = 2; }
+		if ( uMsg == WM_XBUTTONUP ) { button = ( GET_XBUTTON_WPARAM ( wParam ) == XBUTTON1 ) ? 3 : 4; }
 		mouse_down [ button ] = false;
 		skip_mouse_input_processing = true;
 		break;
 	}
 	case WM_KEYDOWN:
 	case WM_SYSKEYDOWN:
-		if ( wparam < 256 )
-			key_down [ wparam ] = true;
+		if ( wParam < 256 )
+			key_down [ wParam ] = true;
 		break;
 	case WM_KEYUP:
 	case WM_SYSKEYUP:
-		if ( wparam < 256 )
-			key_down [ wparam ] = false;
+		if ( wParam < 256 )
+			key_down [ wParam ] = false;
 		break;
 	case WM_MOUSEWHEEL:
 		break;
 	}
 
-	if ( gui::opened )
-		ImGui_ImplWin32_WndProcHandler ( hwnd, msg, wparam, lparam );
+	ImGui_ImplWin32_WndProcHandler ( hWnd, uMsg, wParam, lParam );
 
-	if ( gui::opened && ( ( skip_mouse_input_processing || wparam <= VK_XBUTTON2 ) || ( msg == WM_MOUSEWHEEL ) ) )
+	if ( gui::opened && ( ( skip_mouse_input_processing || wParam <= VK_XBUTTON2 ) || ( uMsg == WM_MOUSEWHEEL ) ) )
 		return true;
 
-	return CallWindowProcA ( old::wnd_proc, hwnd, msg, wparam, lparam );
+	return CallWindowProcA ( old::wnd_proc, hWnd, uMsg, wParam, lParam );
 }

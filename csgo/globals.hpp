@@ -4,6 +4,11 @@
 
 #define SESAME_VERSION "Sesame v3.2.0"
 
+template < typename type >
+constexpr uint32_t rgba ( type r, type g, type b, type a ) {
+	return ( ( static_cast< uint32_t >( r ) & 0xFF ) << 0 ) | ( ( static_cast< uint32_t >( g ) & 0xFF ) << 8 ) | ( ( static_cast<uint32_t>( b ) & 0xFF ) << 16 ) | ( ( static_cast< uint32_t >( a ) & 0xFF ) << 24 );
+}
+
 struct ucmd_t;
 class vec3_t;
 class player_t;
@@ -37,14 +42,8 @@ namespace g {
 	extern ucmd_t sent_cmd;
 	extern vec3_t angles;
 	extern bool hold_aim;
-	extern bool next_tickbase_shot;
 	extern bool send_packet;
-	extern int shifted_tickbase;
-	extern int shifted_amount;
-	extern int dt_ticks_to_shift;
-	extern int dt_recharge_time;
 	extern int cock_ticks;
-	extern int tickbase_at_shift;
 	extern bool can_fire_revolver;
 	extern round_t round;
 	extern PLoader_Info loader_data;

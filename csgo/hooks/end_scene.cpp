@@ -11,6 +11,7 @@
 #include "../animations/resolver.hpp"
 #include "../features/ragebot.hpp"
 #include "../menu/options.hpp"
+#include "../features/autopeek.hpp"
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_dx9.h"
@@ -18,6 +19,8 @@
 #include "../imgui/imgui_internal.h"
 
 #include "../renderer/render.hpp"
+
+#include "../fmt/format.h"
 
 decltype( &hooks::end_scene ) hooks::old::end_scene = nullptr;
 
@@ -87,6 +90,11 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 		/* draw stuff here */
 		RUN_SAFE (
+			"features::autopeek::draw",
+			features::autopeek::draw ( );
+		);
+
+		RUN_SAFE (
 			"features::nade_prediction::draw",
 			features::nade_prediction::draw ( );
 		);
@@ -109,10 +117,10 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 			const auto crosshair_gap = 0.0296f * static_cast< float > ( h );
 
-			render::gradient ( w / 2, h / 2 + crosshair_gap, 1, h / 2.5f, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), false );
-			render::gradient ( w / 2, h / 2 - crosshair_gap, 1, -h / 2.5f, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), false );
-			render::gradient ( w / 2 + crosshair_gap, h / 2, h / 2.5f, 1, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), true );
-			render::gradient ( w / 2 - crosshair_gap, h / 2, -h / 2.5f, 1, D3DCOLOR_RGBA ( 255, 251, 237, 150 ), D3DCOLOR_RGBA ( 255, 251, 237, 0 ), true );
+			render::gradient ( w / 2, h / 2 + crosshair_gap, 1, h / 2.5f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2, h / 2 - crosshair_gap, 1, -h / 2.5f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2 + crosshair_gap, h / 2, h / 2.5f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
+			render::gradient ( w / 2 - crosshair_gap, h / 2, -h / 2.5f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
 		}
 
 		RUN_SAFE (

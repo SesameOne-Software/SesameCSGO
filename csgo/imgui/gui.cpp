@@ -410,9 +410,6 @@ bool ImGui::custom::Begin( const char* name, bool* p_open, ImFont* small_font ) 
     g_small_font = small_font;
     g_window_name = name;
 
-    if ( IsKeyPressed( VK_INSERT, false ) )
-        *p_open = !*p_open;
-
     const auto window_alpha = animate( g_window_fade, *p_open ? 1.0f : -1.0f, 0.0f, 1.0f );
 
     if ( !window_alpha )

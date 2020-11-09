@@ -20,8 +20,8 @@ std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_poin
 std::array< features::esp::esp_data_t, 65 > features::esp::esp_data;
 
 void draw_esp_box( int x, int y, int w, int h, bool dormant, const options::option::colorf& esp_box_color ) {
-	render::outline( x - 1, y - 1, w + 2, h + 2, D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( esp_box_color.a * 60.0f, 0, 60 ) ) );
-	render::outline( x, y, w, h, dormant ? D3DCOLOR_RGBA( 150, 150, 150, static_cast< int > ( esp_box_color.a * 255.0f * box_alpha ) ) : D3DCOLOR_RGBA( static_cast< int > ( esp_box_color.r * 255.0f ), static_cast< int > ( esp_box_color.g * 255.0f ), static_cast< int > ( esp_box_color.b * 255.0f ), static_cast< int >( esp_box_color.a * 255.0f * box_alpha ) ) );
+	render::outline( x - 1, y - 1, w + 2, h + 2, rgba ( 0, 0, 0, std::clamp< int >( esp_box_color.a * 60.0f, 0, 60 ) ) );
+	render::outline( x, y, w, h, dormant ? rgba ( 150, 150, 150, static_cast< int > ( esp_box_color.a * 255.0f * box_alpha ) ) : rgba ( static_cast< int > ( esp_box_color.r * 255.0f ), static_cast< int > ( esp_box_color.g * 255.0f ), static_cast< int > ( esp_box_color.b * 255.0f ), static_cast< int >( esp_box_color.a * 255.0f * box_alpha ) ) );
 }
 
 auto cur_offset_left_height = 0;
@@ -39,11 +39,11 @@ enum esp_type_t {
 };
 
 void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_color, esp_type_t type, bool show_value, const int orientation, bool dormant, double value, double max, std::string to_print = _( "" ) ) {
-	uint32_t clr1 = D3DCOLOR_RGBA( 0, 0, 0, std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f, 0, 125 ) );
-	uint32_t clr = D3DCOLOR_RGBA( static_cast< int > ( widget_color.r * 255.0f ), static_cast< int > ( widget_color.g * 255.0f ), static_cast< int > ( widget_color.b * 255.0f ), static_cast< int > ( widget_color.a * 255.0f ) );
+	uint32_t clr1 = rgba ( 0, 0, 0, std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f, 0, 125 ) );
+	uint32_t clr = rgba ( static_cast< int > ( widget_color.r * 255.0f ), static_cast< int > ( widget_color.g * 255.0f ), static_cast< int > ( widget_color.b * 255.0f ), static_cast< int > ( widget_color.a * 255.0f ) );
 
 	if ( dormant )
-		clr = D3DCOLOR_RGBA( 150, 150, 150, static_cast< int >( widget_color.a * 255.0f * box_alpha ) );
+		clr = rgba ( 150, 150, 150, static_cast< int >( widget_color.a * 255.0f * box_alpha ) );
 
 	switch ( type ) {
 	case esp_type_bar: {
@@ -61,7 +61,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x - cur_offset_left - 5, box.Min.y, 5, box.Max.y, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_left += 7;
 			break;
 		case features::esp_placement_right:
@@ -69,7 +69,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x + box.Max.x + cur_offset_right, box.Min.y, 5, box.Max.y, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_right += 7;
 			break;
 		case features::esp_placement_bottom:
@@ -77,7 +77,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x, box.Min.y + box.Max.y + cur_offset_bottom, box.Max.x, 5, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_bottom += 7;
 			break;
 		case features::esp_placement_top:
@@ -85,7 +85,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x, box.Min.y - cur_offset_top - 5, box.Max.x, 5, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), D3DCOLOR_RGBA ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_top += 7;
 			break;
 		}

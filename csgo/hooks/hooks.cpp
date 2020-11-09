@@ -65,6 +65,8 @@ void hooks::init( ) {
 	/* load default config */
 	//menu::load_default( );
 
+	old::wnd_proc = ( WNDPROC ) LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ), GWLP_WNDPROC, LONG_PTR ( wnd_proc ) );
+
 	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
 
 	if ( clsm_numUsrCmdProcessTicksMax_clamp ) {
@@ -156,19 +158,6 @@ void hooks::init( ) {
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
 
 	ent_listener->add ( );
-
-	///* load default config for testing */ {
-	//	char appdata [ MAX_PATH ];
-	//
-	//	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-	//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-	//		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
-	//	}
-	//
-	//	options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\hvh max desync.xml" ) );
-	//}
-
-	old::wnd_proc = ( WNDPROC )LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( _( "Valve001" ), nullptr ), GWLP_WNDPROC, long( wnd_proc ) );
 
 	END_FUNC
 }

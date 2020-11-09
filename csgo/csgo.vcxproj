@@ -27,6 +27,7 @@
     <ClCompile Include="features\chams.cpp" />
     <ClCompile Include="features\clantag.cpp" />
     <ClCompile Include="features\esp.cpp" />
+    <ClCompile Include="features\exploits.cpp" />
     <ClCompile Include="features\glow.cpp" />
     <ClCompile Include="features\lagcomp.cpp" />
     <ClCompile Include="features\legitbot.cpp" />
@@ -34,6 +35,7 @@
     <ClCompile Include="features\nade_prediction.cpp" />
     <ClCompile Include="features\other_visuals.cpp" />
     <ClCompile Include="features\prediction.cpp" />
+    <ClCompile Include="features\autopeek.cpp" />
     <ClCompile Include="features\ragebot.cpp" />
     <ClCompile Include="fmt\format.cc" />
     <ClCompile Include="fmt\os.cc" />
@@ -95,12 +97,14 @@
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
+    <ClInclude Include="crc32\crc32.hpp" />
     <ClInclude Include="features\antiaim.hpp" />
     <ClInclude Include="features\autowall.hpp" />
     <ClInclude Include="features\blockbot.hpp" />
     <ClInclude Include="features\chams.hpp" />
     <ClInclude Include="features\clantag.hpp" />
     <ClInclude Include="features\esp.hpp" />
+    <ClInclude Include="features\exploits.hpp" />
     <ClInclude Include="features\glow.hpp" />
     <ClInclude Include="features\lagcomp.hpp" />
     <ClInclude Include="features\legitbot.hpp" />
@@ -108,6 +112,7 @@
     <ClInclude Include="features\nade_prediction.hpp" />
     <ClInclude Include="features\other_visuals.hpp" />
     <ClInclude Include="features\prediction.hpp" />
+    <ClInclude Include="features\autopeek.hpp" />
     <ClInclude Include="features\ragebot.hpp" />
     <ClInclude Include="fmt\chrono.h" />
     <ClInclude Include="fmt\color.h" />
@@ -324,14 +329,14 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;ANTI_DEBUG;DEV_BUILD;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>false</ControlFlowGuard>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -348,7 +353,7 @@
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
       <IgnoreEmbeddedIDL>false</IgnoreEmbeddedIDL>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

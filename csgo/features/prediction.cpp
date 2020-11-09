@@ -28,8 +28,8 @@ namespace prediction_util {
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
-		if ( csgo::i::client_state->choked( ) > 0 ) {
-			hooks::prediction::disable_sounds = true;
+		if ( csgo::i::client_state->choked ( ) > 0 ) {
+			//hooks::prediction::disable_sounds = true;
 			//
 			csgo::i::pred->update(
 				csgo::i::client_state->delta_tick( ),
@@ -38,7 +38,7 @@ namespace prediction_util {
 				csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( )
 			);
 			//
-			hooks::prediction::disable_sounds = false;
+			//hooks::prediction::disable_sounds = false;
 		}
 
 		const auto first_time_pred = csgo::i::pred->m_is_first_time_predicted;
@@ -114,12 +114,12 @@ int features::prediction::shift( const int& cur ) {
 	auto tick_base = csgo::i::client_state->server_tickcount( ) + latency_ticks + 1;
 	auto ideal_server_start = tick_base + clock_correction;
 
-	if ( g::shifted_amount ) {
-		//    this value will have to change once hide shots is added back in, look @ commented code above for reference
-		auto first_tick_in_batch_tc = ideal_server_start + std::min<int>( g::cvars::sv_maxusrcmdprocessticks->get_int(), csgo::i::client_state->choked( ) + 1 + g::shifted_amount ) + 1;
-
-		return first_tick_in_batch_tc + csgo::i::client_state->choked( );
-	}
+	//if ( g::shifted_amount ) {
+	//	//    this value will have to change once hide shots is added back in, look @ commented code above for reference
+	//	auto first_tick_in_batch_tc = ideal_server_start + std::min<int>( g::cvars::sv_maxusrcmdprocessticks->get_int(), csgo::i::client_state->choked( ) + 1 + g::shifted_amount ) + 1;
+	//
+	//	return first_tick_in_batch_tc + csgo::i::client_state->choked( );
+	//}
 	//else if ( will_hs ( ) ) {
 	//	//    this value will have to change once hide shots is added back in, look @ commented code above for reference
 	//	auto expected_shift = std::min< int > ( 6, g::shifted_amount );

@@ -126,7 +126,7 @@ std::unordered_map< uintptr_t/*option_address*/, animation_data_t/*animation_dat
 
 template <typename type>
 constexpr auto animate( float& t, float change_dir, const type& min, const type& max ) {
-    constexpr auto animation_time = 0.200f;
+    constexpr auto animation_time = 0.35f;
 
     t = ImClamp( t + ImGui::GetIO( ).DeltaTime * ( change_dir * ( 1.0f / animation_time ) ), 0.0f, 1.0f );
     return ImLerp( min, max, t );
@@ -1251,7 +1251,7 @@ void ImGui::Bullet( ) {
 bool ImGui::Keybind( const char* label, int* key, int* key_mode, const ImVec2& size ) {
     static std::vector<const char*> keybind_menu { "Disable", "On Hold", "On Toggle", "Always On" };
 
-    static auto button = [ & ] ( const char* slabel, bool open, bool& left_clicked, const ImVec2& size_arg = ImVec2( 0, 0 ), ImGuiButtonFlags flags = ImGuiButtonFlags_None ) -> bool {
+    auto button = [ & ] ( const char* slabel, bool open, bool& left_clicked, const ImVec2& size_arg = ImVec2( 0, 0 ), ImGuiButtonFlags flags = ImGuiButtonFlags_None ) -> bool {
         ImGuiWindow* window = GetCurrentWindow( );
         if ( window->SkipItems )
             return false;

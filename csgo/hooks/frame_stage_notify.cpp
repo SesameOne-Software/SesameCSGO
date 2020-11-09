@@ -66,12 +66,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
 
-	/* reset tickbase shift data if not in game. */
-	if ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) {
-		g::dt_ticks_to_shift = 0;
-		g::dt_recharge_time = 0;
-	}
-
 	/* fix rate problems */ {
 		const auto rate = static_cast< int >( 1.0f / csgo::i::globals->m_ipt + 0.5f );
 

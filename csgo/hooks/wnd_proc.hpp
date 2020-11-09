@@ -2,7 +2,7 @@
 #include "../sdk/sdk.hpp"
 
 namespace hooks {
-	long __stdcall wnd_proc( HWND hwnd, std::uint32_t msg, std::uintptr_t wparam, std::uint32_t lparam );
+	LRESULT wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 
 	namespace old {
 		extern WNDPROC wnd_proc;

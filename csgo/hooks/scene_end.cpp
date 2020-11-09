@@ -15,7 +15,8 @@ decltype( &hooks::scene_end ) hooks::old::scene_end = nullptr;
 
 void __fastcall hooks::scene_end( REG ) {
 	old::scene_end( REG_OUT );
-
+	
+	/*
 	if ( !g::local || !g::local->alive( ) )
 		hit_matrix_rec.clear( );
 
@@ -57,7 +58,7 @@ void __fastcall hooks::scene_end( REG ) {
 				}
 			}
 		}
-	}
+	}*/
 
 	RUN_SAFE(
 		"features::glow::cache_entities",

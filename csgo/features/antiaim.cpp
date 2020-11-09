@@ -6,7 +6,7 @@
 #include "autowall.hpp"
 #include "../menu/options.hpp"
 
-extern int g_refresh_counter;
+#include "exploits.hpp"
 
 bool features::antiaim::antiaiming = false;
 
@@ -282,36 +282,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		max_lag = std::clamp( max_lag, 1, choke_limit );
 
-		if ( aa::old_lag_air != static_cast< int >( lag_air ) ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = lag_air;
-			aa::old_lag_air = static_cast< int >( lag_air );
-		}
-
-		if ( aa::old_lag_slow_walk != static_cast< int >( lag_slow_walk ) ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = lag_slow_walk;
-			aa::old_lag_slow_walk = static_cast< int >( lag_slow_walk );
-		}
-
-		if ( aa::old_lag_move != static_cast< int >( lag_move ) ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = lag_move;
-			aa::old_lag_move = static_cast< int >( lag_move );
-		}
-
-		if ( aa::old_lag_stand != static_cast< int >( lag_stand ) ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = lag_stand;
-			aa::old_lag_stand = static_cast< int >( lag_stand );
-		}
-
-		/* make up for lost frames */
-		if ( csgo::i::globals->m_frametime > csgo::i::globals->m_ipt ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = std::clamp( csgo::time2ticks( csgo::i::globals->m_frametime ), 0, choke_limit );
-		}
-
 		static auto last_final_shift_amount = 0;
 		auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
 
@@ -322,23 +292,20 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && ( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) )
 			final_shift_amount_max = 0;
 
-		if ( final_shift_amount_max && !last_final_shift_amount ) {
-			g_refresh_counter = 0;
-			g::shifted_amount = std::clamp( static_cast< int >( features::ragebot::active_config.max_dt_ticks ), 0, choke_limit );
-		}
+		/* amount of ticks to shift increased */
+		if ( final_shift_amount_max > last_final_shift_amount )
+			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, csgo::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
 
 		last_final_shift_amount = final_shift_amount_max;
 
 		max_lag = std::clamp< int >( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
 
 		/* allow 1 extra tick just for when we land (if we are in air) */
-		if ( !( g::local->flags( ) & 1 ) ) {
+		if ( !( g::local->flags( ) & 1 ) )
 			max_lag = std::clamp< int >( max_lag, 1, g::cvars::sv_maxusrcmdprocessticks->get_int() - 1 );
-		}
 
-		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) ) {
+		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = 14;
-		}
 
 		g::send_packet = csgo::i::client_state->choked( ) >= max_lag;
 
@@ -369,8 +336,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 		else if ( aa::was_fd ) {
 			ducked_ticks = 0;
-			g_refresh_counter = 0;
-			g::shifted_amount = choke_limit;
 			aa::was_fd = false;
 		}
 
@@ -769,7 +734,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 						aa::move_flip = !aa::move_flip;
 
-						desync_amnt *= 0.5f;
+						//desync_amnt *= 0.5f;
 
 						if ( desync_stand && jitter_stand && !g::send_packet ) {
 							if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
@@ -806,11 +771,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 							if ( lby::in_update ) {
 								ucmd->m_angs.y -= copysignf( 120.0f, desync_side_stand ? -desync_amnt : desync_amnt );
-								//ucmd->m_angs.y += 180.0f;
 								g::send_packet = false;
 							}
 							else if ( !g::send_packet ) {
-								ucmd->m_angs.y += copysignf( fabsf( desync_amnt ) * 90.0f, desync_side_stand ? -desync_amnt : desync_amnt );
+								ucmd->m_angs.y += copysignf( fabsf( desync_amnt ) * 110.0f, desync_side_stand ? -desync_amnt : desync_amnt );
 							}
 						}
 					}break;
