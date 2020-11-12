@@ -17,9 +17,15 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* cmd, c_move_help
 		return;
 	}
 
-	//features::prediction::shift ( );
+	const auto backup_tickbase = g::local->tick_base ( );
+
+	if ( cmd->m_cmdnum == exploits::shifted_command ( ) )
+		g::local->tick_base ( ) = exploits::shifted_tickbase ( );
 
 	old::run_command( REG_OUT, ent, cmd, move_helper );
+
+	if ( cmd->m_cmdnum == exploits::shifted_command ( ) )
+		g::local->tick_base ( ) = backup_tickbase;
 
 	/* TODO: run local animfix here */
 	anims::animate_local ( );

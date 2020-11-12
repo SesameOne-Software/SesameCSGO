@@ -11,6 +11,8 @@
 #include "../menu/options.hpp"
 #include "../features/prediction.hpp"
 
+#include "../features/skinchanger.hpp"
+
 void* find_hud_element( const char* name ) {
 	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08" ) ).add( 1 ).deref( ).get< void* >( );
 	static auto find_hud_element_func = pattern::search( _( "client.dll" ), _( "55 8B EC 53 8B 5D 08 56 57 8B F9 33 F6 39 77 28" ) ).get< void* ( __thiscall* )( void*, const char* ) >( );
@@ -195,5 +197,12 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			g::local->aim_punch( ) = old_aimpunch;
 			g::local->view_punch( ) = old_viewpunch;
 		}
+	}
+
+	if ( stage == 2 ) {
+		RUN_SAFE (
+			"features::skinchanger::run",
+			features::skinchanger::run ( );
+		);
 	}
 }

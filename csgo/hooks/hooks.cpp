@@ -44,6 +44,7 @@
 
 /* features */
 #include "../features/esp.hpp"
+#include "../features/skinchanger.hpp"
 
 #include "../menu/menu.hpp"
 
@@ -61,6 +62,8 @@ void hooks::init( ) {
 	/* initialize cheat config */
 	gui::init( );
 	erase::erase_func( gui::init );
+
+	features::skinchanger::init ( );
 
 	/* load default config */
 	//menu::load_default( );

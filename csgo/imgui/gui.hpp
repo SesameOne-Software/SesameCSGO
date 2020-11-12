@@ -14,6 +14,7 @@
 #include <functional>
 
 #include "imgui_internal.h"
+#include "../features/skinchanger.hpp"
 
 namespace ImGui {
     namespace custom {
@@ -30,5 +31,9 @@ namespace ImGui {
         void TextOutlined( const ImVec2& pos, ImU32 color, const char* text );
         bool Begin( const char* name, bool* p_open, ImFont* small_font );
         void End( );
+
+		bool InventoryBegin ( int rows, int columns );
+		bool InventoryButton ( const char* label, features::skinchanger::c_skin* skin = nullptr );
+		void InventoryEnd ( );
     }
 }

@@ -81,7 +81,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.revolver.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.revolver.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.revolver.onshot_only" ) ].val.b;
-		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.revolver.dt_recharge_delay" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.revolver.dt_recharge_delay" ) ].val.i;
 
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
@@ -139,7 +139,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.pistol.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.pistol.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.pistol.onshot_only" ) ].val.b;
-		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.pistol.dt_recharge_delay" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.pistol.dt_recharge_delay" ) ].val.i;
 
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
@@ -197,7 +197,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.rifle.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.rifle.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.rifle.onshot_only" ) ].val.b;
-		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.rifle.dt_recharge_delay" ) ].val.b;
+		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.rifle.dt_recharge_delay" ) ].val.i;
 
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
@@ -256,7 +256,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.awp.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.awp.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.awp.onshot_only" ) ].val.b;
-			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.awp.dt_recharge_delay" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.awp.dt_recharge_delay" ) ].val.i;
 
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
@@ -314,7 +314,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.auto.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.auto.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.auto.onshot_only" ) ].val.b;
-			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.auto.dt_recharge_delay" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.auto.dt_recharge_delay" ) ].val.i;
 
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
@@ -372,7 +372,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.scout.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.scout.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.scout.onshot_only" ) ].val.b;
-			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.scout.dt_recharge_delay" ) ].val.b;
+			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.scout.dt_recharge_delay" ) ].val.i;
 
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
@@ -436,7 +436,7 @@ set_default:
 	static auto& dt_hit_chance = options::vars [ _( "ragebot.default.dt_hit_chance" ) ].val.f;
 	static auto& headshot_only = options::vars [ _( "ragebot.default.headshot_only" ) ].val.b;
 	static auto& onshot_only = options::vars [ _ ( "ragebot.default.onshot_only" ) ].val.b;
-	static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.default.dt_recharge_delay" ) ].val.b;
+	static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.default.dt_recharge_delay" ) ].val.i;
 
 	config.dt_recharge_delay = dt_recharge_delay;
 	config.dmg_accuracy = dmg_accuracy;
@@ -653,7 +653,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	//dbg_print( _( "calculated chance: %.1f\n" ), calc_chance );
 
 	/* TODO: change when doubletap is fixed */
-	if ( calc_chance < /*( g::next_tickbase_shot ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance )*/ features::ragebot::active_config.hit_chance )
+	if ( calc_chance < ( exploits::has_shifted ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
 		return false;
 
 	return true;
@@ -1163,7 +1163,8 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	if ( /*(get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses)
 		||*/ ( active_config.baim_air && !( rec.m_flags & 1 ) )
-		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) ) ) {
+		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) )
+		|| (( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) )) {
 		std::deque<int> new_hitboxes {};
 	
 		for ( auto& hitbox : hitboxes )
@@ -1175,9 +1176,8 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
 	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
-	//const auto damage_scalar = g::next_tickbase_shot ? 1.0f : 1.0f;
+	const auto damage_scalar = exploits::has_shifted ? 1.0f : 1.0f;
 	/* TODO: remove when doubletap fixed */
-	const auto damage_scalar = 1.0f;
 
 	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;
 //

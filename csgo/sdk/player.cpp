@@ -165,3 +165,22 @@ matrix3x4_t*& player_t::bone_cache( ) {
 weapon_t* player_t::weapon( ) {
 	return csgo::i::ent_list->get_by_handle< weapon_t* >( weapon_handle( ) );
 }
+
+std::vector<weapon_t*> player_t::weapons ( ) {
+	static auto offset = netvars::get_offset ( _ ( "DT_BaseCombatCharacter->m_hMyWeapons" ) );
+
+	std::vector<weapon_t*> ret {};
+
+	const auto my_weapons = reinterpret_cast<uint32_t*>( reinterpret_cast< uintptr_t >( this ) + offset );
+
+	for ( auto i = 0; my_weapons [ i ] != 0xFFFFFFFF; i++ ) {
+		const auto weapon = csgo::i::ent_list->get_by_handle<weapon_t*> ( my_weapons [ i ] );
+		
+		if ( !weapon )
+			continue;
+
+		ret.push_back ( weapon );
+	}
+
+	return ret;
+}

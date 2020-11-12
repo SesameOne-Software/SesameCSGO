@@ -147,6 +147,10 @@ std::string decrypt_cbc( const std::string& encrypted, const unsigned char* key,
 
 typedef int( __stdcall* pinit )( void* );
 
+void js_init_placeholder ( ) {
+	csgo::i::engine->client_cmd_unrestricted ( _("clear"));
+}
+
 void call_init( PLoader_Info loader_info ) {
 	g_ImageStartAddr = PVOID( loader_info->hMod );
 	g_ImageEndAddr = PVOID( loader_info->hMod + loader_info->hMod_sz );
@@ -163,7 +167,7 @@ void call_init( PLoader_Info loader_info ) {
 	initdata.exception_handler = ExceptionHandler;
 	initdata.get_mod = GetModuleHandleA;
 	initdata.hooks_init = hooks::init;
-	//initdata.js_init = js::init;
+	initdata.js_init = js_init_placeholder;
 	initdata.netvars_init = netvars::init;
 	initdata.server_browser = _( "serverbrowser.dll" );
 	initdata.sleep = Sleep;

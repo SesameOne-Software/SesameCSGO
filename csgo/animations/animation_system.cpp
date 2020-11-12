@@ -885,11 +885,11 @@ int anims::predict_choke_sequence( player_t* ent ) {
 
 void anims::update( player_t* ent ) {
     /* update viewmodel manually tox fix it dissappearing*/
-    //using update_all_viewmodel_addons_t = int( __fastcall* )( void* );
-    //static auto update_all_viewmodel_addons = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t >( );
-	//
-    //if ( ent->viewmodel_handle( ) != -1 && csgo::i::ent_list->get_by_handle< void* >( ent->viewmodel_handle( ) ) )
-    //    update_all_viewmodel_addons( csgo::i::ent_list->get_by_handle< void* >( ent->viewmodel_handle( ) ) );
+    using update_all_viewmodel_addons_t = int( __fastcall* )( void* );
+    static auto update_all_viewmodel_addons = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t >( );
+	
+    if ( ent->viewmodel_handle( ) != -1 && csgo::i::ent_list->get_by_handle< void* >( ent->viewmodel_handle( ) ) )
+        update_all_viewmodel_addons( csgo::i::ent_list->get_by_handle< void* >( ent->viewmodel_handle( ) ) );
 
     /* update all animation and animation data */
     auto& abs_vel = *reinterpret_cast< vec3_t* >( uintptr_t( ent ) + 0x94 );

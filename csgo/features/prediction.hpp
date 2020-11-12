@@ -5,7 +5,7 @@ namespace features {
 	namespace prediction {
 		float curtime( );
 		
-		int shift ( const int& cur );
+		int shift_tickbase ( );
 		void update( int stage );
 		void run( const std::function< void( ) >& fn );
 	}

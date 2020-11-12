@@ -15,6 +15,11 @@ float g_sidebar = 0.0f;
 ImVec2 g_window_dim = ImVec2( 520, 400 );
 std::string g_window_name;
 
+int inventory_columns = 3;
+int inventory_rows = 2;
+int inventory_column_counter = 0;
+float inventory_first_content_height = 0.0f;
+
 constexpr auto animation_time = 0.100f;
 
 std::unordered_map<int/*tab*/, std::string/*open_node*/> g_nodes_opened { };
@@ -114,6 +119,9 @@ void ImGui::custom::EndTabs( ) {
     SetNextWindowPos( ImVec2( window_pos.x + menu_bar_width, window_pos.y + menu_bar_width ) );
 
     ImGui::BeginChildFrame( GetID( "##main_space" ), ImVec2( window_size.x - menu_bar_width, window_size.y - menu_bar_width - title_size.y - style.FramePadding.y * 2.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove );
+
+	/* HACK: DISABLE HORIZONTAL SCROLLING */
+	ImGui::SetScrollX ( 0.0f );
 
     draw_list->AddRectFilled( ImVec2( ImGui::GetWindowPos( ).x, ImGui::GetWindowPos( ).y ), ImVec2( ImGui::GetWindowPos( ).x + ImGui::GetWindowSize( ).x + 1.0f, ImGui::GetWindowPos( ).y + ImGui::GetWindowSize( ).y + 1.0f ), GetColorU32( style.Colors [ ImGuiCol_WindowBg ] ) );
 }
@@ -475,4 +483,96 @@ void ImGui::custom::End( ) {
     ImGui::End( );
 
     g_small_font = nullptr;
+}
+
+bool ImGui::custom::InventoryButton ( const char* label, features::skinchanger::c_skin* skin ) {
+	ImGuiWindow* window = GetCurrentWindow ( );
+
+	if(!inventory_column_counter )
+		inventory_first_content_height = GetWindowContentRegionMax ( ).y - GetWindowContentRegionMin ( ).y;
+
+	if ( window->SkipItems ) {
+		inventory_column_counter++;
+		return false;
+	}
+	
+	std::string label_new = std::string ( label ).append ( "##inventory_button_").append(std::to_string( inventory_column_counter ));
+
+	auto& animations = animation_list [ static_cast< uintptr_t >( ImGui::GetID ( label_new.c_str() ) ) ];
+
+	/* go to new line every inventory_columns amount of clumns, stay on same line if there is stil space */
+	if ( inventory_column_counter && inventory_column_counter % inventory_columns )
+		ImGui::SameLine ( );
+	
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const ImGuiID id = window->GetID ( label_new.c_str ( ) );
+	
+	ImGuiButtonFlags flags = ImGuiButtonFlags_None;
+	
+	const ImVec2 label_size = CalcTextSize ( label_new.c_str ( ), NULL, true );
+
+	const ImVec2 size_arg = ImVec2 ( GetWindowContentRegionWidth ( )/ static_cast< float >( inventory_columns ) - style.FramePadding.x, inventory_first_content_height / static_cast< float >( inventory_rows ) - style.FramePadding.y );
+
+	ImVec2 pos = window->DC.CursorPos;
+	if ( ( flags & ImGuiButtonFlags_AlignTextBaseLine ) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset ) // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+		pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
+	ImVec2 size = CalcItemSize ( size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f );
+
+	const ImRect bb ( pos, ImVec2( pos.x + size.x , pos.y + size.y ) );
+	ItemSize ( size, style.FramePadding.y );
+	if ( !ItemAdd ( bb, id ) ) {
+		inventory_column_counter++;
+		return false;
+	}
+
+	if ( window->DC.ItemFlags & ImGuiItemFlags_ButtonRepeat )
+		flags |= ImGuiButtonFlags_Repeat;
+	bool hovered, held;
+	bool pressed = ButtonBehavior ( bb, id, &hovered, &held, flags );
+
+	/* will be clamped next frame, just so we can have color change starting from active color */
+	if ( pressed )
+		animations.hover_fraction_inner = animations.hover_fraction_outer = 100.0f;
+
+	const auto hover_color_inner = ColorConvertFloat4ToU32 (
+		animate ( animations.hover_fraction_inner, hovered ? 1.0f : -1.0f, style.Colors [ ImGuiCol_Button ], style.Colors [ ImGuiCol_ButtonHovered ] )
+	);
+
+	const auto border_transition_outer = animate ( animations.hover_fraction_outer, -0.5f, 0.0f, 1.0f );
+
+	// Render
+	RenderNavHighlight ( bb, id );
+
+	PushStyleColor ( ImGuiCol_Border, hover_color_inner );
+	PushStyleVar ( ImGuiStyleVar_FrameBorderSize, ImLerp ( 0.0f, style.FrameBorderSize * 1.5f, border_transition_outer ) );
+	RenderFrame ( bb.Min, bb.Max, ColorConvertFloat4ToU32( style.Colors [ ImGuiCol_FrameBg ] ), border_transition_outer > 0.0f, 0.0f );
+	PopStyleVar ( );
+	PopStyleColor ( );
+
+	RenderTextClipped ( ImVec2( bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y ), ImVec2( bb.Max.y - style.FramePadding.x, bb.Max.y - style.FramePadding.y ), label_new.c_str ( ), NULL, &label_size, style.ButtonTextAlign, &bb );
+
+	// Automatically close popups
+	//if (pressed && !(flags & ImGuiButtonFlags_DontClosePopups) && (window->Flags & ImGuiWindowFlags_Popup))
+	//    CloseCurrentPopup();
+
+	IMGUI_TEST_ENGINE_ITEM_INFO ( id, label_new.c_str ( ), window->DC.LastItemStatusFlags );
+
+	inventory_column_counter++;
+
+	return pressed;
+}
+
+bool ImGui::custom::InventoryBegin ( int rows, int columns ) {
+	inventory_rows = rows;
+	inventory_columns = columns;
+	inventory_column_counter = 0;
+
+	return true;
+}
+
+void ImGui::custom::InventoryEnd ( ) {
+	inventory_rows = 0;
+	inventory_columns = 0;
+	inventory_column_counter = 0;
 }

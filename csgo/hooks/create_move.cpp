@@ -176,6 +176,9 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		} );
 	//);
 
+	if( ucmd->m_buttons & 1 )
+		exploits::has_shifted = false;
+
 	fix_event_delay( ucmd );
 
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == 64 && !( ucmd->m_buttons & 1 ) ) {

@@ -124,7 +124,7 @@ void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, 
 template < typename t >
 t csgo::create_interface( const char* module, const char* iname ) {
 	using createinterface_fn = void* ( __cdecl* )( const char*, int );
-	const auto createinterface_export = GetProcAddress( GetModuleHandleA( module ), _( "CreateInterface" ) );
+	const auto createinterface_export = LI_FN( GetProcAddress )( LI_FN( GetModuleHandleA )( module ), _( "CreateInterface" ) );
 	const auto fn = ( createinterface_fn ) createinterface_export;
 
 	return reinterpret_cast< t >( fn( iname, 0 ) );

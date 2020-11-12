@@ -153,7 +153,7 @@ struct anim_list_t {
 class player_t : public entity_t {
 public:
 	NETVAR( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
-	NETVAR( std::uint32_t, flags, "DT_BasePlayer->m_fFlags" );
+	NETVAR( uint32_t, flags, "DT_BasePlayer->m_fFlags" );
 	NETVAR( bool, has_defuser, "DT_CSPlayer->m_bHasDefuser" );
 	NETVAR( bool, immune, "DT_CSPlayer->m_bGunGameImmunity" );
 	NETVAR( vec3_t, angles, "DT_CSPlayer->m_angEyeAngles[0]" );
@@ -165,21 +165,22 @@ public:
 	NETVAR( float, lby, "DT_CSPlayer->m_flLowerBodyYawTarget" );
 	NETVAR( float, flash_duration, "DT_CSPlayer->m_flFlashDuration" );
 	NETVAR( float, flash_alpha, "DT_CSPlayer->m_flFlashMaxAlpha" );
-	NETVAR( std::uint8_t, life_state, "DT_BasePlayer->m_lifeState" );
-	NETVAR( std::uint32_t, tick_base, "DT_BasePlayer->m_nTickBase" );
+	NETVAR( uint8_t, life_state, "DT_BasePlayer->m_lifeState" );
+	NETVAR( uint32_t, tick_base, "DT_BasePlayer->m_nTickBase" );
 	NETVAR( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
 	NETVAR( float, crouch_speed, "DT_BasePlayer->m_flDuckSpeed" );
 	NETVAR( vec3_t, view_punch, "DT_BasePlayer->m_viewPunchAngle" );
 	NETVAR( vec3_t, aim_punch, "DT_BasePlayer->m_aimPunchAngle" );
 	NETVAR( vec3_t, vel, "DT_BasePlayer->m_vecVelocity[0]" );
 	NETVAR( bool, animate, "DT_BaseAnimating->m_bClientSideAnimation" );
-	NETVAR( std::uint32_t, weapon_handle, "DT_BaseCombatCharacter->m_hActiveWeapon" );
+	NETVAR( uint32_t, weapon_handle, "DT_BaseCombatCharacter->m_hActiveWeapon" );
+	NETVAR ( uint32_t*, weapons_handle, "DT_BaseCombatCharacter->m_hMyWeapons[0]" );
 	NETVAR( vec3_t, view_offset, "DT_BasePlayer->m_vecViewOffset[0]" );
 	NETVAR( float, simtime, "DT_BaseEntity->m_flSimulationTime" );
 	NETVAR_ADDITIVE( movetypes, movetype, "DT_BaseEntity->m_nRenderMode", 1 );
 	NETVAR( vec3_t, mins, "DT_CSPlayer->m_vecMins" );
 	NETVAR( vec3_t, maxs, "DT_CSPlayer->m_vecMaxs" );
-	NETVAR( std::uint32_t, observer_mode, "DT_CSPlayer->m_iObserverMode" );
+	NETVAR( uint32_t, observer_mode, "DT_CSPlayer->m_iObserverMode" );
 	NETVAR( uint32_t, ragdoll_handle, "DT_CSPlayer->m_hRagdoll" );
 	NETVAR( uint32_t, viewmodel_handle, "DT_BasePlayer->m_hViewModel[0]" );
 	NETVAR( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
@@ -189,7 +190,7 @@ public:
 	OFFSET( int, eflags, 0xF0 );
 	OFFSET( void*, iks, 0x266C );
 	OFFSET( bool, should_update, 0x289C );
-	OFFSET( std::uint32_t, num_overlays, 0x298C );
+	OFFSET( uint32_t, num_overlays, 0x298C );
 	OFFSET( float, spawn_time, 0xA370 );
 	OFFSET( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
 	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
@@ -313,7 +314,8 @@ public:
 	vec3_t eyes( );
 	std::uint32_t& bone_count( );
 	matrix3x4_t*& bone_cache( );
-	weapon_t* weapon( );
+	weapon_t* weapon ( );
+	std::vector<weapon_t*> weapons ( );
 
 	float desync_amount( ) {
 		auto state = animstate( );

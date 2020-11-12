@@ -19,6 +19,8 @@
 
 #include "../imgui/gui.hpp"
 
+#include "../features/skinchanger.hpp"
+
 extern std::string last_config_user;
 
 bool upload_to_cloud = false;
@@ -35,7 +37,7 @@ bool download_config_code = false;
 
 cJSON* cloud_config_list = nullptr;
 
-bool gui::opened = false;
+bool gui::opened = true;
 bool open_button_pressed = false;
 
 enum tabs_t {
@@ -159,33 +161,35 @@ void gui::scale_dpi ( ) {
 	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ) );
 	ImGui_ImplDX9_Init ( csgo::i::dev );
 
-	const ImWchar custom_font_ranges [ ] = {
-		0x0020, 0x00FF, // Basic Latin + Latin Supplement
-		0x2000, 0x206F, // General Punctuation
-		0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
-		0x31F0, 0x31FF, // Katakana Phonetic Extensions
-		0xFF00, 0xFFEF, // Half-width characters
-		0x4e00, 0x9FAF, // CJK Ideograms
-		0x3131, 0x3163, // Korean alphabets
-		0xAC00, 0xD7A3, // Korean characters
-		0x0400, 0x052F, // Cyrillic + Cyrillic Supplement
-		0x2DE0, 0x2DFF, // Cyrillic Extended-A
-		0xA640, 0xA69F, // Cyrillic Extended-B
-		0x2010, 0x205E, // Punctuations
-		0x0E00, 0x0E7F, // Thai
-		// Vietnamese
-		0x0102, 0x0103,
-		0x0110, 0x0111,
-		0x0128, 0x0129,
-		0x0168, 0x0169,
-		0x01A0, 0x01A1,
-		0x01AF, 0x01B0,
-		0x1EA0, 0x1EF9,
-		0
-	};
+	//const ImWchar custom_font_ranges [ ] = {
+	//	0x0020, 0x00FF, // Basic Latin + Latin Supplement
+	//	0x2000, 0x206F, // General Punctuation
+	//	0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
+	//	0x31F0, 0x31FF, // Katakana Phonetic Extensions
+	//	0xFF00, 0xFFEF, // Half-width characters
+	//	0x4e00, 0x9FAF, // CJK Ideograms
+	//	0x3131, 0x3163, // Korean alphabets
+	//	0xAC00, 0xD7A3, // Korean characters
+	//	0x0400, 0x052F, // Cyrillic + Cyrillic Supplement
+	//	0x2DE0, 0x2DFF, // Cyrillic Extended-A
+	//	0xA640, 0xA69F, // Cyrillic Extended-B
+	//	0x2010, 0x205E, // Punctuations
+	//	0x0E00, 0x0E7F, // Thai
+	//	// Vietnamese
+	//	0x0102, 0x0103,
+	//	0x0110, 0x0111,
+	//	0x0128, 0x0129,
+	//	0x0168, 0x0169,
+	//	0x01A0, 0x01A1,
+	//	0x01AF, 0x01B0,
+	//	0x1EA0, 0x1EF9,
+	//	0
+	//};
 
-	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, /*custom_font_ranges*/io.Fonts->GetGlyphRangesDefault ( ) );
-	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, /*custom_font_ranges*/io.Fonts->GetGlyphRangesDefault ( ) );
+	const ImWchar custom_font_ranges [ ] = { 0x20, 0xFFFF, 0 };
+
+	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 
 	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "dbg_font" ), 18.0f );
@@ -840,8 +844,32 @@ void gui::draw( ) {
 				} break;
 				case tab_skins: {
 					ImGui::custom::AddSubtab ( "Skin Changer", "Apply custom skins to your weapons", [ & ] ( ) {
+						if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
+							if ( ImGui::custom::InventoryButton ( _ ( "Add Item" ) ) ) {
+								features::skinchanger::add_item ( {
+									false,
+									knife_skeleton,
+									0,
+									43,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+							}
 
+							for ( auto& skin : features::skinchanger::skins ) {
+								const auto kit = skin.get_kit ( );
+
+								if ( !kit )
+									continue;
+
+								ImGui::custom::InventoryButton ( kit.value ( ).name.c_str ( ), &skin );
+							}
+
+							ImGui::custom::InventoryEnd ( );
+						}
 					} );
+
 					ImGui::custom::AddSubtab ( "Model Changer", "Replace game models with your own", [ & ] ( ) {
 
 					} );
