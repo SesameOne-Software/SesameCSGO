@@ -2,39 +2,39 @@
 #include "netvar.hpp"
 #include "../globals.hpp"
 
-c_entlist* csgo::i::ent_list = nullptr;
-c_matsys* csgo::i::mat_sys = nullptr;
-c_mdlinfo* csgo::i::mdl_info = nullptr;
-c_mdlrender* csgo::i::mdl_render = nullptr;
-c_renderview* csgo::i::render_view = nullptr;
-c_client* csgo::i::client = nullptr;
-c_surface* csgo::i::surface = nullptr;
-c_panel* csgo::i::panel = nullptr;
-c_engine* csgo::i::engine = nullptr;
-c_globals* csgo::i::globals = nullptr;
-c_phys* csgo::i::phys = nullptr;
-c_engine_trace* csgo::i::trace = nullptr;
-c_clientstate* csgo::i::client_state = nullptr;
-c_mem_alloc* csgo::i::mem_alloc = nullptr;
-c_prediction* csgo::i::pred = nullptr;
-c_move_helper* csgo::i::move_helper = nullptr;
-c_movement* csgo::i::move = nullptr;
-mdl_cache_t* csgo::i::mdl_cache = nullptr;
-c_input* csgo::i::input = nullptr;
-c_cvar* csgo::i::cvar = nullptr;
-c_game_event_mgr* csgo::i::events = nullptr;
-c_view_render_beams* csgo::i::beams = nullptr;
-IDirect3DDevice9* csgo::i::dev = nullptr;
+c_entlist* cs::i::ent_list = nullptr;
+c_matsys* cs::i::mat_sys = nullptr;
+c_mdlinfo* cs::i::mdl_info = nullptr;
+c_mdlrender* cs::i::mdl_render = nullptr;
+c_renderview* cs::i::render_view = nullptr;
+c_client* cs::i::client = nullptr;
+c_surface* cs::i::surface = nullptr;
+c_panel* cs::i::panel = nullptr;
+c_engine* cs::i::engine = nullptr;
+c_globals* cs::i::globals = nullptr;
+c_phys* cs::i::phys = nullptr;
+c_engine_trace* cs::i::trace = nullptr;
+c_clientstate* cs::i::client_state = nullptr;
+c_mem_alloc* cs::i::mem_alloc = nullptr;
+c_prediction* cs::i::pred = nullptr;
+c_move_helper* cs::i::move_helper = nullptr;
+c_movement* cs::i::move = nullptr;
+mdl_cache_t* cs::i::mdl_cache = nullptr;
+c_input* cs::i::input = nullptr;
+c_cvar* cs::i::cvar = nullptr;
+c_game_event_mgr* cs::i::events = nullptr;
+c_view_render_beams* cs::i::beams = nullptr;
+IDirect3DDevice9* cs::i::dev = nullptr;
 
 c_mdl_cache_critical_section::c_mdl_cache_critical_section( ) {
-	csgo::i::mdl_cache->begin_lock( );
+	cs::i::mdl_cache->begin_lock( );
 }
 
 c_mdl_cache_critical_section::~c_mdl_cache_critical_section( ) {
-	csgo::i::mdl_cache->end_lock( );
+	cs::i::mdl_cache->end_lock( );
 }
 
-bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
+bool cs::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	static auto view_matrix = pattern::search( _( "client.dll" ), _( "0F 10 05 ? ? ? ? 8D 85 ? ? ? ? B9" ) ).add( 3 ).deref( ).add( 176 ).get< std::uintptr_t >( );
 
 	const auto& world_matrix = *( matrix3x4_t* ) view_matrix;
@@ -58,7 +58,7 @@ bool csgo::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	return false;
 }
 
-bool csgo::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
+bool cs::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
 	const auto find_point = [ ] ( vec3_t& point, int screen_w, int screen_h, float deg ) {
 		const auto x2 = screen_w / 2.0f;
 		const auto y2 = screen_h / 2.0f;
@@ -74,7 +74,7 @@ bool csgo::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
 	const auto transform = screen_transform ( screen, origin );
 
 	int width, height;
-	csgo::i::engine->get_screen_size ( width, height );
+	cs::i::engine->get_screen_size ( width, height );
 
 	screen.x = ( width * 0.5f ) + ( screen.x * width ) * 0.5f;
 	screen.y = ( height * 0.5f ) - ( screen.y * height ) * 0.5f;
@@ -87,13 +87,13 @@ bool csgo::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
 	return true;
 }
 
-void csgo::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32_t mask, const entity_t* ignore, trace_t* ptr ) {
+void cs::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32_t mask, const entity_t* ignore, trace_t* ptr ) {
 	trace_filter_t filter( ( void* ) ignore );
 
 	ray_t ray;
 	ray.init( start, end );
 
-	csgo::i::trace->trace_ray( ray, mask, &filter, ptr );
+	cs::i::trace->trace_ray( ray, mask, &filter, ptr );
 
 	/*
 	using fn = void( __fastcall* )( const vec3_t&, const vec3_t&, std::uint32_t, const entity_t*, std::uint32_t, trace_t* );
@@ -102,7 +102,7 @@ void csgo::util::trace_line( const vec3_t& start, const vec3_t& end, std::uint32
 	*/
 }
 
-void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace_ptr ) {
+void cs::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* trace_ptr ) {
 	static auto util_cliptracetoplayers = pattern::search( _( "client.dll" ), _( "53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 81 EC D8 ? ? ? 0F 57 C9" ) ).get< std::uint32_t >( );
 
 	if ( !util_cliptracetoplayers )
@@ -122,7 +122,7 @@ void csgo::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, 
 }
 
 template < typename t >
-t csgo::create_interface( const char* module, const char* iname ) {
+t cs::create_interface( const char* module, const char* iname ) {
 	using createinterface_fn = void* ( __cdecl* )( const char*, int );
 	const auto createinterface_export = LI_FN( GetProcAddress )( LI_FN( GetModuleHandleA )( module ), _( "CreateInterface" ) );
 	const auto fn = ( createinterface_fn ) createinterface_export;
@@ -130,7 +130,7 @@ t csgo::create_interface( const char* module, const char* iname ) {
 	return reinterpret_cast< t >( fn( iname, 0 ) );
 }
 
-bool csgo::init( ) {
+bool cs::init( ) {
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? F3 0F 10 8F ? ? ? ? F3 0F 10 05 ? ? ? ? ? ? ? ? ? 0F 2F C1 0F 86" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );
 	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll" ), _( "VMaterialSystem080" ) );

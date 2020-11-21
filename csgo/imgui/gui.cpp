@@ -195,12 +195,12 @@ bool ImGui::custom::TreeNodeEx( const char* label, const char* desc ) {
     window->DC.LastItemStatusFlags |= ImGuiItemStatusFlags_HasDisplayRect;
     window->DC.LastItemDisplayRect = frame_bb;
 
-    if ( !item_add ) {
-        if ( is_open && !( flags & ImGuiTreeNodeFlags_NoTreePushOnOpen ) )
-            TreePushOverrideID( id );
-        IMGUI_TEST_ENGINE_ITEM_INFO( window->DC.LastItemId, label, window->DC.ItemFlags | ( is_leaf ? 0 : ImGuiItemStatusFlags_Openable ) | ( is_open ? ImGuiItemStatusFlags_Opened : 0 ) );
-        return is_open;
-    }
+    //if ( !item_add ) {
+    //    if ( is_open && !( flags & ImGuiTreeNodeFlags_NoTreePushOnOpen ) )
+    //        TreePushOverrideID( id );
+    //    IMGUI_TEST_ENGINE_ITEM_INFO( window->DC.LastItemId, label, window->DC.ItemFlags | ( is_leaf ? 0 : ImGuiItemStatusFlags_Openable ) | ( is_open ? ImGuiItemStatusFlags_Opened : 0 ) );
+    //    return is_open;
+    //}
 
     ImGuiButtonFlags button_flags = ImGuiTreeNodeFlags_None;
     if ( flags & ImGuiTreeNodeFlags_AllowItemOverlap )
@@ -510,8 +510,7 @@ bool ImGui::custom::InventoryButton ( const char* label, features::skinchanger::
 	
 	ImGuiButtonFlags flags = ImGuiButtonFlags_None;
 	
-	const ImVec2 label_size = CalcTextSize ( label_new.c_str ( ), NULL, true );
-
+    const ImVec2 label_size = CalcTextSize ( label_new.c_str ( ), NULL, true );
 	const ImVec2 size_arg = ImVec2 ( GetWindowContentRegionWidth ( )/ static_cast< float >( inventory_columns ) - style.FramePadding.x, inventory_first_content_height / static_cast< float >( inventory_rows ) - style.FramePadding.y );
 
 	ImVec2 pos = window->DC.CursorPos;
@@ -539,19 +538,68 @@ bool ImGui::custom::InventoryButton ( const char* label, features::skinchanger::
 		animate ( animations.hover_fraction_inner, hovered ? 1.0f : -1.0f, style.Colors [ ImGuiCol_Button ], style.Colors [ ImGuiCol_ButtonHovered ] )
 	);
 
-	const auto border_transition_outer = animate ( animations.hover_fraction_outer, -0.5f, 0.0f, 1.0f );
+    const auto hover_color_outer = animate ( animations.hover_fraction_outer, ( hovered || pressed ) ? 1.0f : -1.0f, style.Colors [ ImGuiCol_Border ], ImLerp ( style.Colors [ ImGuiCol_Border ], style.Colors [ ImGuiCol_CheckMark ], 0.5f ) );
+
+    const auto image_max = ImVec2 ( bb.Max.x, bb.Max.y - label_size.y - style.FramePadding.y );
 
 	// Render
 	RenderNavHighlight ( bb, id );
 
-	PushStyleColor ( ImGuiCol_Border, hover_color_inner );
-	PushStyleVar ( ImGuiStyleVar_FrameBorderSize, ImLerp ( 0.0f, style.FrameBorderSize * 1.5f, border_transition_outer ) );
-	RenderFrame ( bb.Min, bb.Max, ColorConvertFloat4ToU32( style.Colors [ ImGuiCol_FrameBg ] ), border_transition_outer > 0.0f, 0.0f );
+	PushStyleVar ( ImGuiStyleVar_FrameBorderSize, ImLerp ( 0.0f, style.FrameBorderSize * 1.5f, animations.hover_fraction_outer ) );
+	RenderFrame ( bb.Min, image_max, ColorConvertFloat4ToU32( style.Colors [ ImGuiCol_FrameBg ] ), true, (bb.Max.x - bb.Min.x)*0.05f );
 	PopStyleVar ( );
-	PopStyleColor ( );
 
-	RenderTextClipped ( ImVec2( bb.Min.x + style.FramePadding.x, bb.Min.y + style.FramePadding.y ), ImVec2( bb.Max.y - style.FramePadding.x, bb.Max.y - style.FramePadding.y ), label_new.c_str ( ), NULL, &label_size, style.ButtonTextAlign, &bb );
+    /* item preview image */
+    /* large images are 512x318 by default */
+    constexpr auto height_ratio = 318.0f / 512.0f;
 
+    if ( skin ) {
+        const auto calc_height = ( image_max.x - bb.Min.x ) * height_ratio;
+        const auto spare_height = ( image_max.y - bb.Min.y ) - calc_height;
+        const auto height_padding = spare_height * 0.5f;
+
+        window->DrawList->AddImage ( skin->m_cached_preview, ImVec2( bb.Min.x, bb.Min.y + height_padding ), ImVec2 ( image_max.x, bb.Min.y + calc_height + height_padding ) );
+
+        const auto weapon_name = cs::get_weapon_name ( static_cast< weapons_t >( skin->m_item_definition_index ) );
+        const ImVec2 item_name = CalcTextSize ( weapon_name.c_str(), NULL, true );
+
+        const auto color = ColorConvertFloat4ToU32 ( ImVec4 ( 0.922f, 0.294f, 0.294f, 1.0f ));
+
+        PushStyleColor ( ImGuiCol_Border, hover_color_outer );
+        PushStyleVar ( ImGuiStyleVar_FrameBorderSize, ImLerp ( style.FrameBorderSize, style.FrameBorderSize * 2.5f, animations.hover_fraction_outer ) );
+        RenderFrame ( ImVec2 ( bb.Min.x, image_max.y - style.FramePadding.y * 2.0f - label_size.y ), ImVec2 ( bb.Max.x, image_max.y ), color, false, ( bb.Max.x - bb.Min.x ) * 0.05f );
+        PopStyleVar ( );
+        PopStyleColor ( );
+
+        TextOutlined ( ImVec2 ( bb.Min.x + ( image_max.x - bb.Min.x ) * 0.5f - label_size.x * 0.5f, image_max.y - style.FramePadding.y - label_size.y ), ColorConvertFloat4ToU32 ( ImVec4 ( 1.0f, 1.0f, 1.0f, 1.0f ) ), label );
+
+        RenderTextClipped ( ImVec2 ( bb.Min.x, image_max.y + style.FramePadding.y ), ImVec2 ( bb.Max.x, bb.Max.y ), weapon_name.c_str ( ), NULL, &item_name, ImVec2 ( 0.0f, 0.0f ), &bb );
+    }
+    else {
+        const auto plus_width = ( bb.Max.x - bb.Min.x ) * 0.03f;
+        const auto plus_size = ( bb.Max.x - bb.Min.x ) * 0.25f;
+
+        const auto plus_color = ColorConvertFloat4ToU32 ( ImVec4 ( 1.0f, 1.0f, 1.0f, 1.0f ) );
+
+        // plus icon (add item)
+        window->DrawList->AddLine (
+            ImVec2 ( bb.Min.x + ( bb.Max.x - bb.Min.x ) * 0.5f, bb.Min.y + ( image_max.y - bb.Min.y ) * 0.5f - plus_size * 0.5f ),
+            ImVec2 ( bb.Min.x + ( bb.Max.x - bb.Min.x ) * 0.5f, bb.Min.y + ( image_max.y - bb.Min.y ) * 0.5f + plus_size * 0.5f ),
+            plus_color,
+            plus_width
+            );
+
+        window->DrawList->AddLine (
+            ImVec2 ( bb.Min.x + ( bb.Max.x - bb.Min.x ) * 0.5f - plus_size * 0.5f, bb.Min.y + ( image_max.y - bb.Min.y ) * 0.5f ),
+            ImVec2 ( bb.Min.x + ( bb.Max.x - bb.Min.x ) * 0.5f + plus_size * 0.5f, bb.Min.y + ( image_max.y - bb.Min.y ) * 0.5f ),
+            plus_color,
+            plus_width
+        );
+
+        RenderTextClipped ( ImVec2 ( bb.Min.x, image_max.y + style.FramePadding.y ), ImVec2 ( bb.Max.x, bb.Max.y ), label, NULL, &label_size, ImVec2 ( 0.0f, 0.0f ), &bb );
+    }
+        
+    
 	// Automatically close popups
 	//if (pressed && !(flags & ImGuiButtonFlags_DontClosePopups) && (window->Flags & ImGuiWindowFlags_Popup))
 	//    CloseCurrentPopup();

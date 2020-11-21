@@ -7,7 +7,7 @@
 decltype( &hooks::get_viewmodel_fov ) hooks::old::get_viewmodel_fov = nullptr;
 
 float __fastcall hooks::get_viewmodel_fov( REG ) {
-	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) )
+	if ( !cs::i::engine->is_in_game( ) || !cs::i::engine->is_connected( ) )
 		return old::get_viewmodel_fov( REG_OUT );
 
 	static auto& viewmodel_fov = options::vars [ _( "visuals.other.viewmodel_fov" ) ].val.f;

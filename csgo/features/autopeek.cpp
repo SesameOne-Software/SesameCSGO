@@ -11,7 +11,7 @@ void features::autopeek::draw ( ) {
 		return;
 
 	/* sine wave from 0.0 to 1.0 */
-	const auto fade_amount = sin ( csgo::i::globals->m_curtime * 4.0f ) * 0.5f + 0.5f;
+	const auto fade_amount = sin ( cs::i::globals->m_curtime * 4.0f ) * 0.5f + 0.5f;
 	const auto fade_radius = peek.m_fade * 16.0f/* radius */ + fade_amount * 1.0f /* breathing effect */;
 
 	render::circle3d ( peek.m_pos, fade_radius, 48, rgba ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( color.a * peek.m_fade * 255.0f ) ) );
@@ -23,9 +23,9 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 	static auto& autopeek_key = options::vars [ _ ( "ragebot.autopeek_key" ) ].val.i;
 	static auto& autopeek_key_mode = options::vars [ _ ( "ragebot.autopeek_key_mode" ) ].val.i;
 
-	peek.m_fade = std::clamp ( peek.m_fade + ( peek.m_recorded ? 1.0f : -1.0f ) / 0.25f/* time to fade (sec)*/ * csgo::i::globals->m_frametime, 0.0f, 1.0f );
+	peek.m_fade = std::clamp ( peek.m_fade + ( peek.m_recorded ? 1.0f : -1.0f ) / 0.25f/* time to fade (sec)*/ * cs::i::globals->m_frametime, 0.0f, 1.0f );
 
-	if ( !enabled || !g::local || !g::local->alive ( ) || !(g::local->flags() & 1) ) {
+	if ( !enabled || !g::local || !g::local->alive ( ) || !(g::local->flags() & flags_t::on_ground) ) {
 		peek.m_time = 0.0f;
 		peek.m_retrack = peek.m_recorded = false;
 		peek.m_fade = 0.0f;
@@ -33,7 +33,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 	}
 
 	/* start retracking postion if we attacked */
-	if ( ucmd->m_buttons & 1 )
+	if ( !!(ucmd->m_buttons & buttons_t::attack ))
 		peek.m_retrack = true;
 
 	const auto key_active = utils::keybind_active ( autopeek_key, autopeek_key_mode );
@@ -41,7 +41,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 	/* record initial position if peek key pressed */
 	if ( key_active && !peek.m_recorded ) {
 		peek.m_pos = g::local->abs_origin ( );
-		peek.m_time = csgo::i::globals->m_curtime;
+		peek.m_time = cs::i::globals->m_curtime;
 		peek.m_recorded = true;
 	}
 	/* stop recording if we already have position and are in movement phase */
@@ -54,7 +54,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 	/* retrack position */
 	if ( peek.m_retrack ) {
 		/* move towards original position */
-		move_ang.y = csgo::normalize ( csgo::calc_angle ( g::local->abs_origin ( ), peek.m_pos ).y );
+		move_ang.y = cs::normalize ( cs::calc_angle ( g::local->abs_origin ( ), peek.m_pos ).y );
 
 		/* move with full speed */
 		fwd_move = 450.0f;
@@ -71,7 +71,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 
 				if ( speed >= 0.1f ) {
 					const auto stop_speed = std::max< float > ( speed, g::cvars::sv_stopspeed->get_float ( ) );
-					vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * csgo::i::globals->m_ipt / speed );
+					vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::i::globals->m_ipt / speed );
 				}
 			};
 
@@ -83,7 +83,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 				if ( pred_vel.length_2d ( ) < 5.0f )
 					break;
 
-				needed_dist += pred_vel.length_2d ( ) * csgo::ticks2time ( 1 );
+				needed_dist += pred_vel.length_2d ( ) * cs::ticks2time ( 1 );
 
 				predict_stop ( pred_vel );
 			}

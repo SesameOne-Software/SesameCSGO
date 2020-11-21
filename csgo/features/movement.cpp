@@ -17,27 +17,27 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 	static auto& directional = options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b;
 
 	if ( !g::local->valid( )
-		|| g::local->movetype( ) == movetypes::movetype_noclip
-		|| g::local->movetype( ) == movetypes::movetype_ladder )
+		|| g::local->movetype ( ) == movetypes_t::noclip
+		|| g::local->movetype( ) == movetypes_t::ladder )
 		return;
 
-	if ( !( g::local->flags( ) & 1 ) ) {
-		if ( bhop && ucmd->m_buttons & 2 /*IN_JUMP*/ )
-			ucmd->m_buttons &= ~2 /*IN_JUMP*/;
+	if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
+		if ( bhop && !!(ucmd->m_buttons & buttons_t::jump) )
+			ucmd->m_buttons &= ~buttons_t::jump /*IN_JUMP*/;
 
 		if ( strafer ) {
 			if ( directional ) {
 				/* credits to chambers, TY ^.^ */
-				const auto back = ucmd->m_buttons & 16;
-				const auto left = ucmd->m_buttons & 512;
-				const auto right = ucmd->m_buttons & 1024;
-				const auto front = ucmd->m_buttons & 8;
+				const auto back = !!(ucmd->m_buttons & buttons_t::back);
+				const auto left = !!(ucmd->m_buttons & buttons_t::left);
+				const auto right = !!( ucmd->m_buttons & buttons_t::right);
+				const auto front = !!( ucmd->m_buttons & buttons_t::forward);
 
 				static bool of, ort, ob, ol;
 
 				auto vel = g::local->vel ( );
 
-				if ( !( g::local->flags ( ) & 1 ) ) {
+				if ( !( g::local->flags ( ) & flags_t::on_ground ) ) {
 					//	manually turning
 					if ( abs ( ucmd->m_mousedx ) > 2 ) {
 						ucmd->m_smove = ucmd->m_mousedx < 0 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
@@ -123,7 +123,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 						else if ( ir ) old_angs.y -= 90.0f;
 						else if ( il ) old_angs.y += 90.0f;
 
-						csgo::clamp ( old_angs );
+						cs::clamp ( old_angs );
 					}
 
 					//	for easy strafe
@@ -133,11 +133,11 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 					ort = right;
 
 					//	find difference in goal vs current vel as a yaw
-					const float vel_dir = csgo::rad2deg ( std::atan2f ( vel.y, vel.x ) );
-					const float target_vel_diff = csgo::normalize ( old_angs.y - vel_dir );
+					const float vel_dir = cs::rad2deg ( std::atan2f ( vel.y, vel.x ) );
+					const float target_vel_diff = cs::normalize ( old_angs.y - vel_dir );
 
 					//	if we are turning greatly, don't do any forwardmove to keep the angle tight
-					auto change_diff = std::clamp< float > ( csgo::rad2deg ( std::asinf ( 15.0f / vel.length_2d ( ) ) ), 0.0f, 90.0f );
+					auto change_diff = std::clamp< float > ( cs::rad2deg ( std::asinf ( 15.0f / vel.length_2d ( ) ) ), 0.0f, 90.0f );
 
 					old_angs.y = vel_dir - ( target_vel_diff > 0.0f ? -change_diff : change_diff );
 					ucmd->m_smove = ( target_vel_diff > 0.0f ) ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );

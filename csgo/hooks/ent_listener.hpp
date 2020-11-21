@@ -26,7 +26,7 @@ class c_entity_listener_mgr : public c_entity_listener {
 };
 
 static void clear_shit ( int idx ) {
-	if ( !idx || idx > csgo::i::globals->m_max_clients )
+	if ( !idx || idx > cs::i::globals->m_max_clients )
 		return;
 
 	/* anims */

@@ -3,6 +3,60 @@
 #include "sdk.hpp"
 #include "../features/skinchanger.hpp"
 
+std::string c_econ_item::build_inventory_image ( ) {
+	struct String_t
+	{
+		char* buffer;	//0x0000
+		int capacity;	//0x0004
+		int grow_size;	//0x0008
+		int length;		//0x000C
+	}; //Size=0x0010
+
+	struct CPaintKit
+	{
+		int id;						//0x0000
+
+		String_t name;				//0x0004
+		String_t description;		//0x0014
+		String_t item_name;			//0x0024
+		String_t material_name;		//0x0034
+		String_t image_inventory;	//0x0044
+
+		char pad_0x0054 [ 0x8C ];		//0x0054
+	}; //Size=0x00E0
+
+	using fn = void ( * )( char*, int, const char*, const char*, bool, float, bool );
+	using fn1 = int ( __thiscall* )( c_econ_item* );
+	using fn2 = float ( __thiscall* )( c_econ_item* );
+	static auto build_inventory_image_path = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F8 81 EC ? ? ? ? 53 8B 5D 08 8B CB 56 57 E8" ) ).get<fn> ( );
+	static auto get_custom_paintkit_index = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F8 A1 ? ? ? ? 83 EC 18 56 57 8B F9 A8 01" ) ).get<fn1> ( );
+	static auto get_paint_kit_definition_fn = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B F0 8B 4E 6C" ) ).resolve_rip ( ).get<CPaintKit* ( __thiscall* )( void*, int )> ( );
+	static auto item_schema =*reinterpret_cast<void**>( pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? FF 76 0C 8D 48 04 E8" ) ).resolve_rip ( ).get<uintptr_t (* )( )> ( )()+4);
+	char outfile [ MAX_PATH ];
+
+	const auto definition_name = static_data ( )->get_definition_name ( );
+	const auto custom_paintkit_index = vfunc<int(__thiscall*)(void*)> ( this, 1 )( this );
+
+	std::string paintkit_name;
+
+	for ( auto& skin : features::skinchanger::skin_kits ) {
+		if ( skin.id == custom_paintkit_index ) {
+			paintkit_name = skin.image_name;
+			break;
+		}
+	}
+
+	float wear = 0.0f;
+	const auto has_wear = vfunc<bool ( __thiscall* )( void*, float& )> ( this, 3 )( this, wear );
+	
+	build_inventory_image_path ( outfile, sizeof( outfile ), definition_name,
+		custom_paintkit_index == 0 ? nullptr : paintkit_name.c_str(),
+		has_wear, wear,
+		false );
+
+	return outfile;
+}
+
 c_econ_item* c_econ_item::static_data ( ) {
 	using fn = c_econ_item * ( __thiscall* )( c_econ_item* );
 	static auto get_static_data = pattern::search ( _("client.dll"), _("55 8B EC 51 53 8B D9 8B 0D ? ? ? ? 56 57 8B B9" )).get<fn> ( );
@@ -76,12 +130,12 @@ c_econ_item* c_econ_item::soc_data ( ) {
 
 weapon_info_t* weapon_t::data( ) {
 	static auto weapon_system = pattern::search( _( "client.dll" ), _( "8B 35 ? ? ? ? FF 10 0F B7 C0" ) ).add( 2 ).deref( ).get< void* >( );
-	using ffn = weapon_info_t * ( __thiscall* )( void*, std::uint16_t );
+	using ffn = weapon_info_t * ( __thiscall* )( void*, weapons_t );
 	return vfunc< ffn >( weapon_system, 2 )( weapon_system, item_definition_index( ) );
 }
 
 weapon_t* weapon_t::world_mdl ( ) {
-	return csgo::i::ent_list->get_by_handle<weapon_t*>( world_model_handle() );
+	return cs::i::ent_list->get_by_handle<weapon_t*>( world_model_handle() );
 }
 
 float weapon_t::inaccuracy( ) {

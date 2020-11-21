@@ -28,6 +28,15 @@
 #include <windows.h>
 #include <algorithm>
 
+class CEconItemDefinition {
+public:
+	const char* get_definition_name ( ) {
+		return *reinterpret_cast< const char** >( reinterpret_cast< uintptr_t >( this ) + 0x1BC );
+	}
+
+	// SKIN ICON PREVIEW
+};
+
 class CCStrike15ItemSchema;
 class CCStrike15ItemSystem;
 
@@ -109,9 +118,9 @@ struct CStickerKit
 };
 
 template < typename t >
-t create_interface ( const char* module, const char* iname ) {
+t create_interface ( const char* _module, const char* iname ) {
 	using createinterface_fn = void* ( __cdecl* )( const char*, int );
-	const auto createinterface_export = LI_FN ( GetProcAddress )( LI_FN ( GetModuleHandleA )( module ), _ ( "CreateInterface" ) );
+	const auto createinterface_export = LI_FN ( GetProcAddress )( LI_FN ( GetModuleHandleA )( _module ), _ ( "CreateInterface" ) );
 	const auto fn = ( createinterface_fn ) createinterface_export;
 
 	return reinterpret_cast< t >( fn ( iname, 0 ) );
@@ -147,30 +156,18 @@ void features::skinchanger::dump_kits ( )
 			char name [ 256 ];
 			V_UCS2ToUTF8 ( wide_name, name, sizeof ( name ) );
 
+			auto get_item_definition_by_map_idx = [ ] ( void* item_schema,  int i ) -> CEconItemDefinition* {
+				if ( i < 0 || i >= vfunc<int ( __thiscall* )( void* )>( item_schema,3)(item_schema) )
+					return nullptr;
+
+				return *reinterpret_cast< CEconItemDefinition** >( *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>( item_schema ) + 0xD0) + 4 * ( i * 3 ) + 4 );
+			};
+
 			if ( paint_kit->id < 10000 ) {
-				skin_kits.push_back ( { paint_kit->id, name, std::string ( _ ( "resource/flash/econ/default_generated/weapon_" ) ).append ( paint_kit->name.buffer ).append ( _ ( "_light_large.png" ) ), *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
+				skin_kits.push_back ( { paint_kit->id, name, paint_kit->name.buffer, *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
 			}
 			else {
-				std::string base_dir;
-
-				//DRIVER GLOVES MISSING
-
-				if ( strstr ( paint_kit->name.buffer, _ ( "sporty_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/sporty_gloves_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "hydra_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/studded_hydra_gloves_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "bloodhound_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/studded_bloodhound_gloves_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "handwrap_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/leather_handwraps_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "motorcycle_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/motorcycle_gloves_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "specialist_" ) ) )
-					base_dir = _ ( "resource/flash/econ/default_generated/specialist_gloves_" );
-				else if ( strstr ( paint_kit->name.buffer, _ ( "slick_" ) ) /* driver gloves???? */)
-					base_dir = _ ( "resource/flash/econ/default_generated/slick_gloves_" );
-
-				glove_kits.push_back ( { paint_kit->id, name, base_dir.append ( paint_kit->name.buffer ).append ( _ ( "_light_large.png" ) ), *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
+				glove_kits.push_back ( { paint_kit->id, name, paint_kit->name.buffer, *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
 			}
 		}
 		
@@ -214,7 +211,7 @@ void features::skinchanger::dump_kits ( )
 			char name [ 256 ];
 			V_UCS2ToUTF8 ( wide_name, name, sizeof ( name ) );
 
-			sticker_kits.push_back ( { sticker_kit->id, name, std::string( _ ( "resource/flash/econ/stickers/" ) ).append(sticker_kit->material_name.buffer).append(_("_large.png")), sticker_kit->item_rarity, 0 } );
+			sticker_kits.push_back ( { sticker_kit->id, name, std::string ( _ ( "resource/flash/econ/stickers/" ) ).append ( sticker_kit->material_name.buffer ).append ( _ ( "_large.png" ) ), sticker_kit->item_rarity, 0 } );
 		}
 
 		std::sort ( sticker_kits.begin ( ), sticker_kits.end ( ));

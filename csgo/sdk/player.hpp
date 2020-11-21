@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <array>
 #include "weapon.hpp"
 #include "matrix3x4.hpp"
@@ -7,21 +7,56 @@
 #include "entity.hpp"
 #include "client.hpp"
 
-enum class movetypes {
-	movetype_none = 0,
-	movetype_isometric,
-	movetype_walk,
-	movetype_step,
-	movetype_fly,
-	movetype_flygravity,
-	movetype_vphysics,
-	movetype_push,
-	movetype_noclip,
-	movetype_ladder,
-	movetype_observer,
-	movetype_custom,
-	movetype_last = movetype_custom,
-	movetype_max_bits = 4
+enum class flags_t : uint32_t {
+	on_ground = ( 1 << 0 ),
+	ducking = ( 1 << 1 ),
+	water_jump = ( 1 << 2 ),
+	on_train = ( 1 << 3 ),
+	in_rain = ( 1 << 4 ),
+	frozen = ( 1 << 5 ),
+	at_controls = ( 1 << 6 ),
+	client = ( 1 << 7 ),
+	fake_client = ( 1 << 8 )
+};
+
+ENUM_BITMASK ( flags_t );
+
+enum class hitbox_t : uint32_t {
+	head = 0,
+	neck,
+	pelvis,
+	stomach,
+	thorax,
+	l_chest,
+	u_chest,
+	r_thigh,
+	l_thigh,
+	r_calf,
+	l_calf,
+	r_foot,
+	l_foot,
+	r_hand,
+	l_hand,
+	r_upperarm,
+	r_forearm,
+	l_upperarm,
+	l_forearm,
+	max_hitbox,
+};
+
+enum class movetypes_t : uint8_t {
+	none = 0,   
+	isometric,  
+	walk,       
+	step,       
+	fly,        
+	flygravity, 
+	vphysics,   
+	push,       
+	noclip,     
+	ladder,     
+	observer,   
+	custom      
 };
 
 // Generated using ReClass 2016
@@ -39,8 +74,8 @@ class vec3_t;
 class vec2_t;
 
 struct animstate_pose_param_cache_t {
-	std::uint8_t pad_0x0 [ 0x4 ]; //0x0
-	std::uint32_t m_idx; //0x4
+	PAD ( 4);
+	uint32_t m_idx; //0x4
 	char* m_name; //0x8
 
 	void set_value( player_t* e, float val );
@@ -48,14 +83,14 @@ struct animstate_pose_param_cache_t {
 
 class animstate_t {
 public:
-	std::uint8_t pad_0x0000 [ 0x4 ]; //0x0000
+	PAD ( 4 );
 	bool m_force_update; //0x0005
-	std::uint8_t pad_0x0006 [ 0x5A ]; //0x0006
+	PAD ( 90 );
 	player_t* m_entity; //0x0060
 	weapon_t* m_weapon; //0x0064
 	weapon_t* m_last_weapon; //0x0068
 	float m_last_clientside_anim_update; //0x006C
-	std::uint32_t m_last_clientside_anim_framecount; //0x0070
+	uint32_t m_last_clientside_anim_framecount; //0x0070
 	float m_last_clientside_anim_update_time_delta; //0x0074
 	float m_eye_yaw; //0x0078
 	float m_pitch; //0x007C
@@ -64,19 +99,19 @@ public:
 	float m_body_yaw; //0x0088
 	float m_body_yaw_clamped; //0x008C
 	float m_feet_vel_dir_delta; //0x0090
-	std::uint8_t pad_0x0094 [ 0x4 ]; //0x0094
+	PAD ( 4 );
 	float m_feet_cycle; //0x0098
 	float m_feet_yaw_rate; //0x009C
-	std::uint8_t pad_0x00A0 [ 0x4 ]; //0x00A0
+	PAD ( 4 );
 	float m_duck_amount; //0x00A4
 	float m_landing_duck_additive; //0x00A8
-	std::uint8_t pad_0x00AC [ 0x4 ]; //0x00AC
+	PAD ( 4 );
 	vec3_t m_origin; //0x00B0
 	vec3_t m_old_origin; //0x00BC
 	vec2_t m_vel2d; //0x00C8
-	std::uint8_t pad_0x00D0 [ 0x10 ]; //0x00D0
+	uint8_t pad_0x00D0 [ 0x10 ]; //0x00D0
 	vec2_t m_last_accelerating_vel; //0x00E0
-	std::uint8_t pad_0x00E8 [ 0x4 ]; //0x00E8
+	uint8_t pad_0x00E8 [ 0x4 ]; //0x00E8
 	float m_speed2d; //0x00EC
 	float m_up_vel; //0x00F0
 	float m_speed_normalized; //0x00F4
@@ -86,15 +121,15 @@ public:
 	float m_time_since_stop; //0x0104
 	bool m_on_ground; //0x0108
 	bool m_hit_ground; //0x0109
-	std::uint8_t pad_0x010A [ 0x4 ]; //0x010A
+	PAD ( 4 );
 	float m_time_in_air; //0x0110
-	std::uint8_t pad_0x0114 [ 0x6 ]; //0x0114
+	PAD ( 6 );
 	float m_ground_fraction; //0x011C
-	std::uint8_t pad_0x0120 [ 0x2 ]; //0x0120
+	PAD ( 2 );
 	float m_unk_fraction; //0x0124
-	std::uint8_t pad_0x0128 [ 0xC ]; //0x0128
+	PAD ( 12 );
 	bool m_moving; //0x0134
-	std::uint8_t pad_0x0135 [ 0x7B ]; //0x0135
+	PAD ( 123 );
 	animstate_pose_param_cache_t m_lean_yaw_pose; //0x1B0
 	animstate_pose_param_cache_t m_speed_pose; //0x01BC
 	animstate_pose_param_cache_t m_ladder_speed_pose; //0x01C8
@@ -115,9 +150,9 @@ public:
 	animstate_pose_param_cache_t m_move_blend_walk_pose; //0x027C
 	animstate_pose_param_cache_t m_move_blend_run_pose; //0x0288
 	animstate_pose_param_cache_t m_move_blend_crouch_pose; //0x0294
-	std::uint8_t pad_0x02A0 [ 0x4 ]; //0x02A0
+	PAD ( 4 );
 	float m_vel_unk; //0x02A4
-	std::uint8_t pad_0x02A8 [ 0x86 ]; //0x02A8
+	PAD ( 134 );
 	float m_min_yaw; //0x0330
 	float m_max_yaw; //0x0334
 	float m_max_pitch; //0x0338
@@ -153,7 +188,7 @@ struct anim_list_t {
 class player_t : public entity_t {
 public:
 	NETVAR( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
-	NETVAR( uint32_t, flags, "DT_BasePlayer->m_fFlags" );
+	NETVAR( flags_t, flags, "DT_BasePlayer->m_fFlags" );
 	NETVAR( bool, has_defuser, "DT_CSPlayer->m_bHasDefuser" );
 	NETVAR( bool, immune, "DT_CSPlayer->m_bGunGameImmunity" );
 	NETVAR( vec3_t, angles, "DT_CSPlayer->m_angEyeAngles[0]" );
@@ -177,7 +212,7 @@ public:
 	NETVAR ( uint32_t*, weapons_handle, "DT_BaseCombatCharacter->m_hMyWeapons[0]" );
 	NETVAR( vec3_t, view_offset, "DT_BasePlayer->m_vecViewOffset[0]" );
 	NETVAR( float, simtime, "DT_BaseEntity->m_flSimulationTime" );
-	NETVAR_ADDITIVE( movetypes, movetype, "DT_BaseEntity->m_nRenderMode", 1 );
+	NETVAR_ADDITIVE( movetypes_t, movetype, "DT_BaseEntity->m_nRenderMode", 1 );
 	NETVAR( vec3_t, mins, "DT_CSPlayer->m_vecMins" );
 	NETVAR( vec3_t, maxs, "DT_CSPlayer->m_vecMaxs" );
 	NETVAR( uint32_t, observer_mode, "DT_CSPlayer->m_iObserverMode" );
@@ -186,6 +221,7 @@ public:
 	NETVAR( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
 	NETVAR( vec3_t, ragdoll_vel, "DT_CSRagdoll->m_vecRagdollVelocity" );
 	NETVAR( float, next_attack, "DT_CSPlayer->m_flNextAttack" );
+	NETVAR ( uint32_t*, wearables_handle, "DT_BaseCombatCharacter->m_hMyWearables" );
 	OFFSET( int, effects, 0xE8 );
 	OFFSET( int, eflags, 0xF0 );
 	OFFSET( void*, iks, 0x266C );
@@ -195,6 +231,7 @@ public:
 	OFFSET( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
 	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
 	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
+	NETVAR ( int, body, "DT_CSPlayer->m_nBody" );
 
 	bool is_player( ) {
 		return client_class ( ) && client_class ( )->m_class_id == 40;
@@ -316,6 +353,7 @@ public:
 	matrix3x4_t*& bone_cache( );
 	weapon_t* weapon ( );
 	std::vector<weapon_t*> weapons ( );
+	std::vector<weapon_t*> wearables ( );
 
 	float desync_amount( ) {
 		auto state = animstate( );

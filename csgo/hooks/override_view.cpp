@@ -7,7 +7,7 @@
 decltype( &hooks::override_view ) hooks::old::override_view = nullptr;
 
 void __fastcall hooks::override_view( REG, void* setup ) {
-	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) )
+	if ( !cs::i::engine->is_in_game( ) || !cs::i::engine->is_connected( ) )
 		return old::override_view( REG_OUT, setup );
 
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
@@ -28,17 +28,17 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
 		vec3_t inverse;
-		csgo::i::engine->get_viewangles( inverse );
+		cs::i::engine->get_viewangles( inverse );
 
 		inverse.x *= -1.0f, inverse.y += 180.0f;
 
-		vec3_t direction = csgo::angle_vec( inverse );
+		vec3_t direction = cs::angle_vec( inverse );
 
 		ray_t ray;
 		trace_t trace;
 		trace_filter_t filter( g::local );
 		
-		csgo::util_traceline( g::local->eyes( ), g::local->eyes( ) + ( direction * ideal_distance ), mask_playersolid, g::local, &trace );
+		cs::util_traceline( g::local->eyes( ), g::local->eyes( ) + ( direction * ideal_distance ), mask_playersolid, g::local, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
@@ -46,17 +46,17 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 	if ( third_person && utils::keybind_active( third_person_key, third_person_key_mode ) && g::local ) {
 		if ( g::local->alive( ) ) {
 			vec3_t ang;
-			csgo::i::engine->get_viewangles( ang );
-			csgo::i::input->m_camera_in_thirdperson = true;
-			csgo::i::input->m_camera_offset = vec3_t( ang.x, ang.y, get_ideal_dist( third_person_range ) );
+			cs::i::engine->get_viewangles( ang );
+			cs::i::input->m_camera_in_thirdperson = true;
+			cs::i::input->m_camera_offset = vec3_t( ang.x, ang.y, get_ideal_dist( third_person_range ) );
 		}
 		else {
-			csgo::i::input->m_camera_in_thirdperson = false;
+			cs::i::input->m_camera_in_thirdperson = false;
 			g::local->observer_mode( ) = 5;
 		}
 	}
 	else {
-		csgo::i::input->m_camera_in_thirdperson = false;
+		cs::i::input->m_camera_in_thirdperson = false;
 	}
 
 	if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) && g::local && g::local->alive( ) )

@@ -36,10 +36,10 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	IDirect3DVertexDeclaration9* vertex_decleration = nullptr;
 	IDirect3DVertexShader9* vertex_shader = nullptr;
 
-	csgo::i::dev->GetVertexDeclaration ( &vertex_decleration );
-	csgo::i::dev->GetVertexShader ( &vertex_shader );
+	cs::i::dev->GetVertexDeclaration ( &vertex_decleration );
+	cs::i::dev->GetVertexShader ( &vertex_shader );
 
-	csgo::i::dev->CreateStateBlock ( D3DSBT_ALL, &pixel_state );
+	cs::i::dev->CreateStateBlock ( D3DSBT_ALL, &pixel_state );
 	pixel_state->Capture ( );
 
 	device->SetRenderState ( D3DRS_COLORWRITEENABLE, 0xFFFFFFFF );
@@ -154,8 +154,8 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	pixel_state->Apply ( );
 	pixel_state->Release ( );
 
-	csgo::i::dev->SetVertexDeclaration ( vertex_decleration );
-	csgo::i::dev->SetVertexShader ( vertex_shader );
+	cs::i::dev->SetVertexDeclaration ( vertex_decleration );
+	cs::i::dev->SetVertexShader ( vertex_shader );
 
 	//truetype::end ( );
 

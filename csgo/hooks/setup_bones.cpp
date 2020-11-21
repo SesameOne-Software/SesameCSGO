@@ -20,14 +20,14 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xA68 ) = 0;
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xe8 ) |= 8;
 
-		const auto backup_frametime = csgo::i::globals->m_frametime;
-		const auto backup_framecount = csgo::i::globals->m_framecount;
+		const auto backup_frametime = cs::i::globals->m_frametime;
+		const auto backup_framecount = cs::i::globals->m_framecount;
 
-		csgo::i::globals->m_framecount = INT_MAX;
+		cs::i::globals->m_framecount = INT_MAX;
 
 		const auto ret = old::setup_bones( REG_OUT, out, max_bones, mask, curtime );
 
-		csgo::i::globals->m_framecount = backup_framecount;
+		cs::i::globals->m_framecount = backup_framecount;
 
 		*reinterpret_cast< int* >( uintptr_t( pl ) + 0xe8 ) = backup_flags;
 

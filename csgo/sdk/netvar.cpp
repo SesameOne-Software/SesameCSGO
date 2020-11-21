@@ -27,11 +27,11 @@ std::vector< std::string > split( std::string to_split, std::string delimeter ) 
 
 bool netvars::init( ) {
 	// sanity check on client->
-	if ( !csgo::i::client )
+	if ( !cs::i::client )
 		return false;
 
 	// grab linked list.
-	auto list = csgo::i::client->get_all_classes( );
+	auto list = cs::i::client->get_all_classes( );
 	if ( !list )
 		return false;
 

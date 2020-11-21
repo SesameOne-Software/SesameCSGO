@@ -171,7 +171,7 @@ void features::esp::handle_dynamic_updates( ) {
 		if ( !sound.m_from_server || !sound.m_sound_src || sound.m_sound_src > 64 || !sound.m_origin || *sound.m_origin == vec3_t( 0.0f, 0.0f, 0.0f ) )
 			continue;
 
-		auto pl = csgo::i::ent_list->get< player_t* >( sound.m_sound_src );
+		auto pl = cs::i::ent_list->get< player_t* >( sound.m_sound_src );
 
 		if ( !pl || !pl->dormant( ) )
 			continue;
@@ -179,7 +179,7 @@ void features::esp::handle_dynamic_updates( ) {
 		vec3_t end_pos = *sound.m_origin;
 
 		trace_t tr;
-		csgo::util_tracehull( *sound.m_origin + vec3_t( 0.0f, 0.0f, 1.0f ), *sound.m_origin - vec3_t( 0.0f, 0.0f, 4096.0f ), pl->mins( ), pl->maxs( ), 0x201400B, pl, &tr );
+		cs::util_tracehull( *sound.m_origin + vec3_t( 0.0f, 0.0f, 1.0f ), *sound.m_origin - vec3_t( 0.0f, 0.0f, 4096.0f ), pl->mins( ), pl->maxs( ), 0x201400B, pl, &tr );
 
 		if ( tr.did_hit( ) )
 			end_pos = tr.m_endpos;
@@ -201,7 +201,7 @@ void features::esp::render( ) {
 	static auto spawn_time = 0.0f;
 
 	if ( g::local->spawn_time( ) != spawn_time ) {
-		for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 			esp_data [ i ].m_pl = nullptr;
 			esp_data [ i ].m_dormant = true;
 			esp_data [ i ].m_first_seen = esp_data [ i ].m_last_seen = 0.0f;
@@ -212,8 +212,8 @@ void features::esp::render( ) {
 		return;
 	}
 
-	for ( auto i = 1; i <= csgo::i::globals->m_max_clients; i++ ) {
-		auto e = csgo::i::ent_list->get< player_t* >( i );
+	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+		auto e = cs::i::ent_list->get< player_t* >( i );
 
 		if ( !e || !e->alive() ) {
 			esp_data [ i ].m_pl = nullptr;
@@ -247,14 +247,14 @@ void features::esp::render( ) {
 			vec3_t( max.x, min.y, max.z )
 		};
 
-		if ( !csgo::render::world_to_screen( flb, points [ 3 ] )
-			|| !csgo::render::world_to_screen( brt, points [ 5 ] )
-			|| !csgo::render::world_to_screen( blb, points [ 0 ] )
-			|| !csgo::render::world_to_screen( frt, points [ 4 ] )
-			|| !csgo::render::world_to_screen( frb, points [ 2 ] )
-			|| !csgo::render::world_to_screen( brb, points [ 1 ] )
-			|| !csgo::render::world_to_screen( blt, points [ 6 ] )
-			|| !csgo::render::world_to_screen( flt, points [ 7 ] ) ) {
+		if ( !cs::render::world_to_screen( flb, points [ 3 ] )
+			|| !cs::render::world_to_screen( brt, points [ 5 ] )
+			|| !cs::render::world_to_screen( blb, points [ 0 ] )
+			|| !cs::render::world_to_screen( frt, points [ 4 ] )
+			|| !cs::render::world_to_screen( frb, points [ 2 ] )
+			|| !cs::render::world_to_screen( brb, points [ 1 ] )
+			|| !cs::render::world_to_screen( blt, points [ 6 ] )
+			|| !cs::render::world_to_screen( flt, points [ 7 ] ) ) {
 			continue;
 		}
 
@@ -319,7 +319,7 @@ void features::esp::render( ) {
 
 				esp_data [ e->idx( ) ].m_weapon_name = hud_name;
 
-				if ( e->weapon( ) && e->weapon( )->item_definition_index( ) == 64 )
+				if ( e->weapon( ) && e->weapon( )->item_definition_index( ) == weapons_t::revolver )
 					esp_data [ e->idx( ) ].m_weapon_name = _( "revolver" );
 			}
 		}
@@ -343,7 +343,7 @@ void features::esp::render( ) {
 
 			player_info_t info;
 
-			if ( csgo::i::engine->get_player_info ( e->idx ( ), &info ) )
+			if ( cs::i::engine->get_player_info ( e->idx ( ), &info ) )
 				name = info.m_name;
 
 			if ( visuals.esp_box )

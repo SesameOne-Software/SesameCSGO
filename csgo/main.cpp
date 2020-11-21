@@ -148,7 +148,7 @@ std::string decrypt_cbc( const std::string& encrypted, const unsigned char* key,
 typedef int( __stdcall* pinit )( void* );
 
 void js_init_placeholder ( ) {
-	csgo::i::engine->client_cmd_unrestricted ( _("clear"));
+	cs::i::engine->client_cmd_unrestricted ( _("clear"));
 }
 
 void call_init( PLoader_Info loader_info ) {
@@ -162,7 +162,7 @@ void call_init( PLoader_Info loader_info ) {
 	memset( &initdata, 0, sizeof( init_data ) );
 
 	initdata.add_veh = AddVectoredExceptionHandler;
-	initdata.csgo_init = csgo::init;
+	initdata.csgo_init = cs::init;
 	initdata.erase_func = erase::erase_func;
 	initdata.exception_handler = ExceptionHandler;
 	initdata.get_mod = GetModuleHandleA;
@@ -205,8 +205,8 @@ int __stdcall init( uintptr_t mod ) {
 		std::this_thread::sleep_for( std::chrono::milliseconds( N( 100 ) ) );
 
 	/* initialize hack */
-	csgo::init( );
-	erase::erase_func( csgo::init );
+	cs::init( );
+	erase::erase_func( cs::init );
 	
 	netvars::init( );
 	erase::erase_func( netvars::init );
@@ -443,7 +443,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 	if ( g::local )
 		g::local->animate( ) = true;
 
-	csgo::i::input->m_camera_in_thirdperson = false;
+	cs::i::input->m_camera_in_thirdperson = false;
 
 	g::cvars::r_aspectratio->set_value ( 1.777777f );
 	g::cvars::r_aspectratio->no_callback ( );
@@ -453,8 +453,8 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 
 		load_named_sky( _( "nukeblank" ) );
 
-		for ( auto i = csgo::i::mat_sys->first_material( ); i != csgo::i::mat_sys->invalid_material( ); i = csgo::i::mat_sys->next_material( i ) ) {
-			auto mat = csgo::i::mat_sys->get_material( i );
+		for ( auto i = cs::i::mat_sys->first_material( ); i != cs::i::mat_sys->invalid_material( ); i = cs::i::mat_sys->next_material( i ) ) {
+			auto mat = cs::i::mat_sys->get_material( i );
 
 			if ( !mat || mat->is_error_material( ) )
 				continue;

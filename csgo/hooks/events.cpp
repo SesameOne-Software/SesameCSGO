@@ -4,17 +4,17 @@
 #include "../animations/resolver.hpp"
 
 hooks::c_event_handler::c_event_handler ( ) {
-	csgo::i::events->add_listener ( this, _ ( "weapon_fire" ), false );
-	csgo::i::events->add_listener ( this, _ ( "player_say" ), false );
-	csgo::i::events->add_listener ( this, _ ( "player_hurt" ), false );
-	csgo::i::events->add_listener ( this, _ ( "bullet_impact" ), true );
-	csgo::i::events->add_listener ( this, _ ( "round_freeze_end" ), false );
-	csgo::i::events->add_listener ( this, _ ( "round_start" ), false );
-	csgo::i::events->add_listener ( this, _ ( "round_end" ), false );
+	cs::i::events->add_listener ( this, _ ( "weapon_fire" ), false );
+	cs::i::events->add_listener ( this, _ ( "player_say" ), false );
+	cs::i::events->add_listener ( this, _ ( "player_hurt" ), false );
+	cs::i::events->add_listener ( this, _ ( "bullet_impact" ), true );
+	cs::i::events->add_listener ( this, _ ( "round_freeze_end" ), false );
+	cs::i::events->add_listener ( this, _ ( "round_start" ), false );
+	cs::i::events->add_listener ( this, _ ( "round_end" ), false );
 }
 
 hooks::c_event_handler::~c_event_handler ( ) {
-	csgo::i::events->remove_listener ( this );
+	cs::i::events->remove_listener ( this );
 }
 
 void process_hurt_ex ( event_t* event ) {

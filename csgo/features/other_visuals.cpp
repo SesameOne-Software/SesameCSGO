@@ -223,8 +223,8 @@ void features::offscreen_esp::draw( ) {
 
 	const auto calc_distance = offscreen_esp_distance / 100.0f * ( h * 0.5f );
 
-	for ( auto i = 1; i <= csgo::i::ent_list->get_highest_index( ); i++ ) {
-		const auto pl = csgo::i::ent_list->get< player_t* >( i );
+	for ( auto i = 1; i <= cs::i::ent_list->get_highest_index( ); i++ ) {
+		const auto pl = cs::i::ent_list->get< player_t* >( i );
 
 		if ( !pl || !pl->client_class( ) )
 			continue;
@@ -236,24 +236,24 @@ void features::offscreen_esp::draw( ) {
 
 					//auto interp_origin = lagcomp::data::cham_records [ pl->idx( ) ].m_bones1 [ 1 ].origin( );
 
-					if ( !csgo::render::world_to_screen( screen, pl->abs_origin( ) ) ) {
-						auto target_ang = csgo::vec_angle( center - screen );
-						target_ang.y = csgo::normalize( target_ang.y - 90.0f );
+					if ( !cs::render::world_to_screen( screen, pl->abs_origin( ) ) ) {
+						auto target_ang = cs::vec_angle( center - screen );
+						target_ang.y = cs::normalize( target_ang.y - 90.0f );
 
-						auto top_ang = csgo::vec_angle( vec3_t( 0.0f, -calc_distance - offscreen_esp_size * 0.5f ) ) + target_ang;
-						auto left_ang = csgo::vec_angle( vec3_t( -offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
-						auto right_ang = csgo::vec_angle( vec3_t( offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
+						auto top_ang = cs::vec_angle( vec3_t( 0.0f, -calc_distance - offscreen_esp_size * 0.5f ) ) + target_ang;
+						auto left_ang = cs::vec_angle( vec3_t( -offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
+						auto right_ang = cs::vec_angle( vec3_t( offscreen_esp_size * 0.5f, -calc_distance + offscreen_esp_size * 0.5f ) ) + target_ang;
 
-						top_ang.y = csgo::normalize( top_ang.y );
-						left_ang.y = csgo::normalize( left_ang.y );
-						right_ang.y = csgo::normalize( right_ang.y );
+						top_ang.y = cs::normalize( top_ang.y );
+						left_ang.y = cs::normalize( left_ang.y );
+						right_ang.y = cs::normalize( right_ang.y );
 
 						const auto mag1 = calc_distance + offscreen_esp_size * 0.5f;
 						const auto mag2 = calc_distance - offscreen_esp_size * 0.5f;
 
-						const auto top_pos = center + csgo::angle_vec( top_ang ) * mag1;
-						const auto left_pos = center + csgo::angle_vec( left_ang ) * mag2;
-						const auto right_pos = center + csgo::angle_vec( right_ang ) * mag2;
+						const auto top_pos = center + cs::angle_vec( top_ang ) * mag1;
+						const auto left_pos = center + cs::angle_vec( left_ang ) * mag2;
+						const auto right_pos = center + cs::angle_vec( right_ang ) * mag2;
 
 						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, rgba ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), static_cast< int > ( offscreen_esp_color.a * 255.0f ) ), false );
 						render::polygon( { {top_pos.x, top_pos.y}, {left_pos.x, left_pos.y}, {right_pos.x, right_pos.y} }, rgba ( static_cast< int > ( offscreen_esp_color.r * 255.0f ), static_cast< int > ( offscreen_esp_color.g * 255.0f ), static_cast< int > ( offscreen_esp_color.b * 255.0f ), 255 ), true, 2.5f );
@@ -265,12 +265,12 @@ void features::offscreen_esp::draw( ) {
 
 				if ( as_bomb ) {
 					if ( !as_bomb->bomb_defused( ) ) {
-						const auto timer = as_bomb->c4_blow( ) - csgo::i::globals->m_curtime;
+						const auto timer = as_bomb->c4_blow( ) - cs::i::globals->m_curtime;
 						const auto fraction = timer / 40.0f;
 
 						if ( fraction >= 0.0f ) {
 							if ( bomb_timer ) {
-								const auto defuse_fraction = ( as_bomb->defuse_countdown( ) - csgo::i::globals->m_curtime ) / as_bomb->defuse_length( );
+								const auto defuse_fraction = ( as_bomb->defuse_countdown( ) - cs::i::globals->m_curtime ) / as_bomb->defuse_length( );
 								const auto time_left = fmt::format ( _("{:.2f} seconds"), timer );
 
 								render::rect( 0, 1, w * fraction, 4, rgba ( 0, 255, 0, 255 ) );
@@ -287,22 +287,22 @@ void features::offscreen_esp::draw( ) {
 								auto c4_origin = as_bomb->origin( ) + vec3_t( 0.0f, 0.0f, 8.0f );
 
 								vec3_t bomb_screen;
-								const auto transformed = csgo::render::world_to_screen( bomb_screen, c4_origin );
+								const auto transformed = cs::render::world_to_screen( bomb_screen, c4_origin );
 
 								vec3_t calc_pos;
 
 								if ( !transformed ) {
 									if ( offscreen_esp ) {
-										auto target_ang = csgo::vec_angle( center - bomb_screen );
-										target_ang.y = csgo::normalize( target_ang.y - 90.0f );
+										auto target_ang = cs::vec_angle( center - bomb_screen );
+										target_ang.y = cs::normalize( target_ang.y - 90.0f );
 
-										auto top_ang = csgo::vec_angle( vec3_t( 0.0f, -calc_distance - offscreen_esp_size * 0.5f ) ) + target_ang;
+										auto top_ang = cs::vec_angle( vec3_t( 0.0f, -calc_distance - offscreen_esp_size * 0.5f ) ) + target_ang;
 
-										top_ang.y = csgo::normalize( top_ang.y );
+										top_ang.y = cs::normalize( top_ang.y );
 
 										const auto mag1 = calc_distance + offscreen_esp_size * 0.5f;
 
-										calc_pos = center + csgo::angle_vec( top_ang ) * mag1;
+										calc_pos = center + cs::angle_vec( top_ang ) * mag1;
 
 										vec3_t text_dim;
 										render::text_size ( _("!"), _ ( "indicator_font" ), text_dim );
@@ -376,7 +376,7 @@ void features::spread_circle::draw( ) {
 	//}
 
 	const auto weapon = g::local->weapon( );
-	const auto radius = ( total_spread * 320.0f ) / std::tanf( csgo::deg2rad( fov ) * 0.5f );
+	const auto radius = ( total_spread * 320.0f ) / std::tanf( cs::deg2rad( fov ) * 0.5f );
 
 	if ( gradient_spread_circle ) {
 		auto x = w / 2;
@@ -415,15 +415,15 @@ void features::spread_circle::draw( ) {
 
 		IDirect3DVertexBuffer9* vb = nullptr;
 
-		csgo::i::dev->CreateVertexBuffer( ( 48 + 2 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+		cs::i::dev->CreateVertexBuffer( ( 48 + 2 ) * sizeof( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
 
 		void* verticies;
 		vb->Lock( 0, ( 48 + 2 ) * sizeof( vtx_t ), ( void** )&verticies, 0 );
 		std::memcpy( verticies, &circle [ 0 ], ( 48 + 2 ) * sizeof( vtx_t ) );
 		vb->Unlock( );
 
-		csgo::i::dev->SetStreamSource( 0, vb, 0, sizeof( vtx_t ) );
-		csgo::i::dev->DrawPrimitive( D3DPT_TRIANGLEFAN, 0, 48 );
+		cs::i::dev->SetStreamSource( 0, vb, 0, sizeof( vtx_t ) );
+		cs::i::dev->DrawPrimitive( D3DPT_TRIANGLEFAN, 0, 48 );
 
 		if ( vb )
 			vb->Release( );

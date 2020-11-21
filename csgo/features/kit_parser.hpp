@@ -43,7 +43,7 @@ namespace features {
 		inline std::vector<paint_kit> skin_kits;
 		inline std::vector<paint_kit> glove_kits;
 		inline std::vector<paint_kit> sticker_kits;
-
+		
 		void dump_kits ( );
 	}
 }

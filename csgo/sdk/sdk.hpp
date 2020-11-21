@@ -30,7 +30,7 @@
 #include "beams.hpp"
 #include "cvar.hpp"
 
-namespace csgo {
+namespace cs {
 	constexpr auto pi = 3.14159265358979f;
 
 	namespace i {
@@ -228,8 +228,8 @@ namespace csgo {
 
 		dv = 360.0f - dv;
 
-		ucmd->m_fmove = std::cosf( csgo::deg2rad( dv ) ) * old_fmove + std::cosf( csgo::deg2rad( dv + 90.0f ) ) * old_smove;
-		ucmd->m_smove = std::sinf( csgo::deg2rad( dv ) ) * old_fmove + std::sinf( csgo::deg2rad( dv + 90.0f ) ) * old_smove;
+		ucmd->m_fmove = std::cosf( cs::deg2rad( dv ) ) * old_fmove + std::cosf( cs::deg2rad( dv + 90.0f ) ) * old_smove;
+		ucmd->m_smove = std::sinf( cs::deg2rad( dv ) ) * old_fmove + std::sinf( cs::deg2rad( dv + 90.0f ) ) * old_smove;
 	}
 
 	__forceinline void angle_matrix( const vec3_t& angles, matrix3x4_t& matrix ) {
@@ -270,6 +270,87 @@ namespace csgo {
 	__forceinline bool is_valve_server( ) {
 		static auto cs_game_rules = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 74 38" ) ).add( 1 ).deref( ).get< void* >( );
 		return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x75 );
+	}
+
+	__forceinline std::string get_weapon_name ( weapons_t idx ) {
+		static std::unordered_map<weapons_t, std::string> weapon_names {
+	{weapons_t::deagle,"Deagle"},
+	{weapons_t::elite,										"Dualies"},
+	{weapons_t::fiveseven,									"Five-SeveN"},
+	{weapons_t::glock,										"Glock-18"},
+	{weapons_t::ak47,										"AK-47"},
+	{weapons_t::aug,										"AUG"},
+	{weapons_t::awp,										"AWP"},
+	{weapons_t::famas,										"FAMAS"},
+	{weapons_t::g3sg1,										"G3SG1"},
+	{weapons_t::galil,										"Galil AR"},
+	{weapons_t::m249,										"M249"},
+	{weapons_t::m4a4,										"M4A4"},
+	{weapons_t::mac10,										"MAC-10"},
+	{weapons_t::p90,										"P90"},
+	{weapons_t::mp5_sd,										"MP5"},
+	{weapons_t::ump45,										"UMP-45"},
+	{weapons_t::xm1014,										"XM1014"},
+	{weapons_t::bizon,										"PP-Bizon"},
+	{weapons_t::mag7 ,										"MAG-7"},
+	{weapons_t::negev ,										"Negev"},
+	{weapons_t::sawedoff ,									"Sawed-Off"},
+	{weapons_t::tec9,										"Tec-9"},
+	{weapons_t::taser ,										"Taser"},
+	{weapons_t::p2000 ,										"P2000"},
+	{weapons_t::mp7 ,										"MP7"},
+	{weapons_t::mp9 ,										"MP9"},
+	{weapons_t::nova,										"Nova"},
+	{weapons_t::p250 ,										"P250"},
+	{weapons_t::scar20,										"SCAR-20"},
+	{weapons_t::sg553,										"SG 553"},
+	{weapons_t::ssg08,										"SSG 08"},
+	{weapons_t::knife_ct,									"Knife"},
+	{weapons_t::flashbang ,									"Flashbang"},
+	{weapons_t::hegrenade,									"HE Grenade"},
+	{weapons_t::smoke ,										"Smoke Grenade"},
+	{weapons_t::molotov,									"Molotov"},
+	{weapons_t::decoy,										"Decoy Grenade"},
+	{weapons_t::firebomb ,									"Incendiary Grenade"},
+	{weapons_t::c4,											"C4"},
+	{weapons_t::musickit ,									"Music Kit"},
+	{weapons_t::knife_t ,									"Knife"},
+	{weapons_t::m4a1s ,										"M4A1-S"},
+	{weapons_t::usps ,										"USP-S"},
+	{weapons_t::tradeupcontract ,							"Trade Up Contract"},
+	{weapons_t::cz75a,										"CZ-75A"},
+	{weapons_t::revolver ,									"Revolver"},
+	{weapons_t::knife_bayonet ,								"Bayonet"},
+	{weapons_t::knife_css ,									"Classic Knife"},
+	{weapons_t::knife_flip ,								"Flip Knife"},
+	{weapons_t::knife_gut ,									"Gut Knife"},
+	{weapons_t::knife_karambit ,							"Karambit"},
+	{weapons_t::knife_m9_bayonet ,							"M9-Bayonet"},
+	{weapons_t::knife_huntsman ,							"Huntsman Knife"},
+	{weapons_t::knife_falchion ,							"Falchion Knife"},
+	{weapons_t::knife_bowie ,								"Bowie Knife"},
+	{weapons_t::knife_butterfly ,							"Butterfly Knife"},
+	{weapons_t::knife_shadow_daggers ,						"Shadow Daggers"},
+	{weapons_t::knife_cord ,								"Paracord Knife"},
+	{weapons_t::knife_canis ,								"Canis Knife"},
+	{weapons_t::knife_ursus ,								"Ursus Knife"},
+	{weapons_t::knife_gypsy_jackknife ,						"Gypsy Jackknife"},
+	{weapons_t::knife_outdoor,								"Outdoor Knife"},
+	{weapons_t::knife_stiletto,								"Stiletto Knife"},
+	{weapons_t::knife_widowmaker,							"Widowmaker Knife"},
+	{weapons_t::knife_skeleton,								"Skeleton Knife"},
+	{weapons_t::glove_studded_bloodhound ,"Bloodhound Gloves"},
+	{weapons_t::glove_t_side ,		"Gloves"	},
+	{weapons_t::glove_ct_side ,		"Gloves"	},
+	{weapons_t::glove_sporty ,		"Sport Gloves"	},
+	{weapons_t::glove_slick ,		"Driver Gloves"		},
+	{weapons_t::glove_leather_wrap,	"Hand Wraps"	},
+	{weapons_t::glove_motorcycle,	"Moto Gloves"	},
+	{weapons_t::glove_specialist ,	"Specialist Gloves"	},
+	{weapons_t::glove_studded_hydra, 	"Hydra Gloves"	}
+		};
+
+		return weapon_names [ idx ];
 	}
 
 #define DOT_PROD( a, b ) ( a.x * b.x + a.y * b.y + a.z * b.z )

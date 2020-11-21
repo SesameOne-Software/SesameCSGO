@@ -25,7 +25,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 		return;
 	}
 
-	if ( !state->m_hit_ground && state->m_duck_amount == 0.0f && csgo::i::ent_list->get_by_handle< entity_t* >( pl->ground_entity_handle( ) ) )
+	if ( !state->m_hit_ground && state->m_duck_amount == 0.0f && cs::i::ent_list->get_by_handle< entity_t* >( pl->ground_entity_handle( ) ) )
 		return;
 
 	auto bone_idx = lookup_bone( pl, _( "head_0" ) );

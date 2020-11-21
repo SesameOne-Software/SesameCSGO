@@ -65,7 +65,7 @@ namespace autowall {
 		if ( filter && !filter->should_hit_ent( pl, mask ) )
 			return;
 
-		csgo::i::trace->clip_ray_to_entity( ray, mask_shot_hull | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
+		cs::i::trace->clip_ray_to_entity( ray, mask_shot_hull | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
 
 		if ( trace.m_fraction < tr->m_fraction )
 			*tr = trace;
@@ -133,7 +133,7 @@ namespace autowall {
 			dist += 4.0f;
 			start = start + dir * dist;
 
-			const auto point_contents = csgo::i::trace->get_point_contents( start, mask_shot_hull | contents_hitbox, nullptr );
+			const auto point_contents = cs::i::trace->get_point_contents( start, mask_shot_hull | contents_hitbox, nullptr );
 
 			if ( point_contents & mask_shot_hull && !( point_contents & contents_hitbox ) )
 				continue;
@@ -142,13 +142,13 @@ namespace autowall {
 
 			ray_t ray;
 			ray.init( start, end );
-			csgo::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, nullptr, exit_tr );
+			cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, nullptr, exit_tr );
 
 			if ( exit_tr->m_startsolid && exit_tr->m_surface.m_flags & surf_hitbox ) {
 				ray_t ray;
 				ray.init( start, end );
 				trace_filter_t filter( exit_tr->m_hit_entity );
-				csgo::i::trace->trace_ray( ray, mask_shot_hull, nullptr, exit_tr );
+				cs::i::trace->trace_ray( ray, mask_shot_hull, nullptr, exit_tr );
 
 				if ( exit_tr->did_hit( ) && !exit_tr->m_startsolid ) {
 					start = exit_tr->m_endpos;
@@ -159,7 +159,7 @@ namespace autowall {
 			}
 
 			if ( !exit_tr->did_hit( ) || exit_tr->m_startsolid ) {
-				if ( tr->m_hit_entity && tr->m_hit_entity != csgo::i::ent_list->get< void* >( 0 ) && is_breakable ( static_cast< player_t* >( tr->m_hit_entity ) ) ) {
+				if ( tr->m_hit_entity && tr->m_hit_entity != cs::i::ent_list->get< void* >( 0 ) && is_breakable ( static_cast< player_t* >( tr->m_hit_entity ) ) ) {
 					*exit_tr = *tr;
 					exit_tr->m_endpos = start + dir;
 					return true;
@@ -185,7 +185,7 @@ namespace autowall {
 			return false;
 
 		trace_t trace_exit;
-		const auto enter_m_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
+		const auto enter_m_surface_data = cs::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 
 		const bool is_solid_m_surface = ( ( data.enter_trace.m_contents >> 3 ) & 1 );
 		const bool is_light_m_surface = ( ( data.enter_trace.m_surface.m_flags >> 7 ) & 1 );
@@ -202,11 +202,11 @@ namespace autowall {
 			return false;
 
 		if ( !trace_to_exit( &data.enter_trace, dst_entity, data.enter_trace.m_endpos, data.direction, &trace_exit ) ) {
-			if ( !( csgo::i::trace->get_point_contents( data.enter_trace.m_endpos, 0x600400B, nullptr ) & 0x600400B ) )
+			if ( !( cs::i::trace->get_point_contents( data.enter_trace.m_endpos, 0x600400B, nullptr ) & 0x600400B ) )
 				return false;
 		}
 
-		const auto exit_m_surface_data = csgo::i::phys->surface( trace_exit.m_surface.m_surface_props );
+		const auto exit_m_surface_data = cs::i::phys->surface( trace_exit.m_surface.m_surface_props );
 
 		if ( enter_m_surface_data->m_game.m_material == 'Y' || enter_m_surface_data->m_game.m_material == 'G' ) {
 			combined_penetration_modifier = 3.0f;
@@ -281,7 +281,7 @@ namespace autowall {
 
 		//auto trace_len = weapon_data->m_range;
 		auto trace_len = ( hitgroup != -1 ) ? data.src.dist_to( end_pos ) : weapon_data->m_range;
-		auto enter_surface_data = csgo::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
+		auto enter_surface_data = cs::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 		auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
 
 		data.penetrate_count = 4;
@@ -297,7 +297,7 @@ namespace autowall {
 
 				ray_t ray;
 				ray.init( data.src, end );
-				csgo::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
+				cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 				clip_trace_to_players_fast( dst_entity, data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
 
 				if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {

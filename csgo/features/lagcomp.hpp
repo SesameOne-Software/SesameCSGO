@@ -11,7 +11,8 @@ namespace features {
 
 		struct lag_record_t {
 			player_t* m_pl;
-			int m_tick, m_flags, m_priority;
+			int m_tick, m_priority;
+			flags_t m_flags;
 			float m_simtime, m_lby, m_abs_yaw, m_unresolved_abs;
 			bool m_lc, m_needs_matrix_construction, m_extrapolated;
 			vec3_t m_min, m_max, m_vel, m_origin, m_ang;
@@ -30,7 +31,7 @@ namespace features {
 			bool store( player_t* pl, const vec3_t& last_origin, bool simulated = false );
 
 			bool valid( bool use_tick = false ) {
-				const auto nci = csgo::i::engine->get_net_channel_info( );
+				const auto nci = cs::i::engine->get_net_channel_info( );
 
 				if ( !nci || !g::local )
 					return false;
@@ -39,7 +40,7 @@ namespace features {
 				//	return false;
 
 				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, g::cvars::sv_maxunlag->get_float() );
-				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? csgo::ticks2time( m_tick ) : m_simtime ) );
+				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? cs::ticks2time( m_tick ) : m_simtime ) );
 
 				return std::abs( dt ) < 0.2f;
 			}
@@ -47,17 +48,17 @@ namespace features {
 			void backtrack( ucmd_t* ucmd );
 
 			void extrapolate( ) {
-				auto dst = m_origin + m_vel * csgo::i::globals->m_ipt;
+				auto dst = m_origin + m_vel * cs::i::globals->m_ipt;
 
 				trace_t tr;
-				csgo::util_tracehull( m_origin + vec3_t( 0.0f, 0.0f, 2.0f ), dst, m_min, m_max, 0x201400B, m_pl, &tr );
-
-				m_flags &= ~1;
+				cs::util_tracehull( m_origin + vec3_t( 0.0f, 0.0f, 2.0f ), dst, m_min, m_max, 0x201400B, m_pl, &tr );
+				
+				m_flags &= ~flags_t::on_ground;
 				m_origin = dst;
 
 				if ( tr.did_hit( ) && tr.m_plane.m_normal.z > 0.7f ) {
 					m_origin = tr.m_endpos;
-					m_flags |= 1;
+					m_flags |= flags_t::on_ground;
 				}
 			}
 		};
@@ -109,7 +110,7 @@ namespace features {
 			while ( !data::records [ pl->idx( ) ].empty( ) && !data::records [ pl->idx( ) ].back( ).valid( ) )
 				data::records [ pl->idx( ) ].pop_back( );
 
-			while ( !data::all_records [ pl->idx( ) ].empty( ) && data::all_records [ pl->idx( ) ].size( ) > csgo::time2ticks(0.5f) )
+			while ( !data::all_records [ pl->idx( ) ].empty( ) && data::all_records [ pl->idx( ) ].size( ) > cs::time2ticks(0.5f) )
 				data::all_records [ pl->idx( ) ].pop_back( );
 
 			if ( !data::shot_records [ pl->idx( ) ].valid( ) )

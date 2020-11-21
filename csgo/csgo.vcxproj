@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="animations\animation_system.cpp" />
+    <ClCompile Include="animations\logger.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="cjson\cJSON.c" />
     <ClCompile Include="features\antiaim.cpp" />
@@ -92,10 +93,13 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="utils\miniz.c" />
     <ClCompile Include="utils\utils.cpp" />
+    <ClCompile Include="vdf\vdf_parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\animation_system.hpp" />
+    <ClInclude Include="animations\anim_dump.hpp" />
+    <ClInclude Include="animations\logger.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
@@ -237,6 +241,7 @@
     <ClInclude Include="utils\registers.hpp" />
     <ClInclude Include="utils\utils.hpp" />
     <ClInclude Include="utils\vfunc.hpp" />
+    <ClInclude Include="vdf\vdf_parser.hpp" />
     <ClInclude Include="vpk\vpkparser.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

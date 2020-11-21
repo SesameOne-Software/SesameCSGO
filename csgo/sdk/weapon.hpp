@@ -4,6 +4,97 @@
 
 // Generated using ReClass 2016
 
+enum class weapons_t : uint16_t {
+	none = 0,
+	deagle = 1,
+	elite = 2,
+	fiveseven = 3,
+	glock = 4,
+	ak47 = 7,
+	aug = 8,
+	awp = 9,
+	famas = 10,
+	g3sg1 = 11,
+	galil = 13,
+	m249 = 14,
+	m4a4 = 16,
+	mac10 = 17,
+	p90 = 19,
+	mp5_sd = 23,
+	ump45 = 24,
+	xm1014 = 25,
+	bizon = 26,
+	mag7 = 27,
+	negev = 28,
+	sawedoff = 29,
+	tec9 = 30,
+	taser = 31,
+	p2000 = 32,
+	mp7 = 33,
+	mp9 = 34,
+	nova = 35,
+	p250 = 36,
+	scar20 = 38,
+	sg553 = 39,
+	ssg08 = 40,
+	knife_ct = 42,
+	flashbang = 43,
+	hegrenade = 44,
+	smoke = 45,
+	molotov = 46,
+	decoy = 47,
+	firebomb = 48,
+	c4 = 49,
+	musickit = 58,
+	knife_t = 59,
+	m4a1s = 60,
+	usps = 61,
+	tradeupcontract = 62,
+	cz75a = 63,
+	revolver = 64,
+	knife_bayonet = 500,
+	knife_css = 503,
+	knife_flip = 505,
+	knife_gut = 506,
+	knife_karambit = 507,
+	knife_m9_bayonet = 508,
+	knife_huntsman = 509,
+	knife_falchion = 512,
+	knife_bowie = 514,
+	knife_butterfly = 515,
+	knife_shadow_daggers = 516,
+	knife_cord = 517,
+	knife_canis = 518,
+	knife_ursus = 519,
+	knife_gypsy_jackknife = 520,
+	knife_outdoor = 521,
+	knife_stiletto = 522,
+	knife_widowmaker = 523,
+	knife_skeleton = 525,
+	glove_studded_bloodhound = 5027,
+	glove_t_side = 5028,
+	glove_ct_side = 5029,
+	glove_sporty = 5030,
+	glove_slick = 5031,
+	glove_leather_wrap = 5032,
+	glove_motorcycle = 5033,
+	glove_specialist = 5034,
+	glove_studded_hydra = 5035
+};
+
+enum weapon_type_t : uint32_t {
+	knife = 0,
+	pistol,
+	smg,
+	rifle,
+	shotgun,
+	sniper,
+	lmg,
+	c4,
+	grenade,
+	unknown
+};
+
 class weapon_info_t;
 
 class weapon_info_t
@@ -17,7 +108,7 @@ public:
 	char* m_hud_name;
 	char* m_weapon_name;
 	PAD ( 56 );
-	int m_type;
+	weapon_type_t m_type;
 	PAD ( 4 );
 	int m_price;
 	int m_reward;
@@ -71,8 +162,8 @@ public:
 		return *reinterpret_cast< uint64_t* >( reinterpret_cast< uintptr_t >( this ) + 0x10 );
 	}
 
-	uint16_t& item_definition_index ( ) {
-		return *reinterpret_cast< uint16_t* >( reinterpret_cast< uintptr_t >( this ) + 0x24 );
+	weapons_t& item_definition_index ( ) {
+		return *reinterpret_cast< weapons_t* >( reinterpret_cast< uintptr_t >( this ) + 0x24 );
 	}
 
 	uint32_t& inventory ( ) {
@@ -140,6 +231,14 @@ public:
 	int& equipped_position ( ) {
 		return *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( this ) + 0x248 );
 	}
+
+	/*
+	*	XREF: "Error Parsing PaintData in %s! \n" offset is in same function call
+	*	https://github.com/perilouswithadollarsign/cstrike15_src/blob/29e4c1fda9698d5cebcdaf1a0de4b829fa149bf8/game/shared/cstrike15/cstrike15_item_schema.cpp#L188
+	*/
+	const char* get_definition_name ( ) {
+		return *reinterpret_cast< const char** >( reinterpret_cast< uintptr_t >( this ) + 0x1BC );
+	}
 	
 	void set_custom_name ( const char* name );
 	void set_custom_desc ( const char* name );
@@ -156,11 +255,13 @@ public:
 
 	c_econ_item* static_data ( );
 	c_econ_item* soc_data ( );
+
+	std::string build_inventory_image ( );
 };
 
 class weapon_t : public entity_t {
 public:
-	NETVAR( uint16_t, item_definition_index, "DT_BaseAttributableItem->m_iItemDefinitionIndex" );
+	NETVAR( weapons_t, item_definition_index, "DT_BaseAttributableItem->m_iItemDefinitionIndex" );
 	NETVAR ( int, mdl_idx, "DT_BaseAttributableItem->m_nModelIndex" );
 	NETVAR( float, next_primary_attack, "DT_BaseCombatWeapon->m_flNextPrimaryAttack" );
 	NETVAR( float, next_secondary_attack, "DT_BaseCombatWeapon->m_flNextSecondaryAttack" );
@@ -185,6 +286,7 @@ public:
 	NETVAR( const char*, name, "DT_BaseAttributableItem->m_szCustomName" );
 	NETVAR ( float, last_shot_time, "DT_WeaponCSBase->m_fLastShotTime" );
 	NETVAR ( int, sequence, "DT_BaseViewModel->m_nSequence" );
+	NETVAR ( bool, initialized, "DT_BaseAttributableItem->m_bInitialized" );
 
 	weapon_t* world_mdl ( );
 	c_econ_item* econ_item ( );

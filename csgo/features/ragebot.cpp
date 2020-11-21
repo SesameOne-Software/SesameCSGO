@@ -9,6 +9,9 @@
 
 #include "exploits.hpp"
 
+#undef min
+#undef max
+
 player_t* last_target = nullptr;
 int target_idx = 0;
 std::array< features::ragebot::misses_t, 65 > misses { 0 };
@@ -55,7 +58,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 	config.safe_point_key_mode = safe_point_key_mode;
 	config.auto_revolver = auto_revolver;
 
-	if ( g::local->weapon( )->item_definition_index( ) == 64 && g::local->weapon( )->item_definition_index( ) != 1 ) {
+	if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver ) {
 		static auto& inherit_default = options::vars [ _( "ragebot.revolver.inherit_default" ) ].val.b;
 
 		if ( inherit_default )
@@ -229,8 +232,8 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 
 		return;
 	}
-	else if ( g::local->weapon( )->data( )->m_type == 5 ) {
-		if ( g::local->weapon( )->item_definition_index( ) == 9 ) {
+	else if ( g::local->weapon( )->data( )->m_type == weapon_type_t::sniper ) {
+		if ( g::local->weapon( )->item_definition_index( ) == weapons_t::awp ) {
 			static auto& inherit_default = options::vars [ _( "ragebot.awp.inherit_default" ) ].val.b;
 
 			if ( inherit_default )
@@ -288,7 +291,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 
 			return;
 		}
-		else if ( g::local->weapon( )->item_definition_index( ) == 38 || g::local->weapon( )->item_definition_index( ) == 11 ) {
+		else if ( g::local->weapon( )->item_definition_index( ) == weapons_t::scar20 || g::local->weapon( )->item_definition_index( ) == weapons_t::g3sg1 ) {
 			static auto& inherit_default = options::vars [ _( "ragebot.auto.inherit_default" ) ].val.b;
 
 			if ( inherit_default )
@@ -346,7 +349,7 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 
 			return;
 		}
-		else if ( g::local->weapon( )->item_definition_index( ) == 40 ) {
+		else if ( g::local->weapon( )->item_definition_index( ) == weapons_t::ssg08 ) {
 			static auto& inherit_default = options::vars [ _( "ragebot.scout.inherit_default" ) ].val.b;
 
 			if ( inherit_default )
@@ -514,12 +517,12 @@ bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, i
 
 	auto src = g::local->eyes( );
 
-	ang = csgo::calc_angle( src, point );
-	csgo::clamp( ang );
+	ang = cs::calc_angle( src, point );
+	cs::clamp( ang );
 
-	auto forward = csgo::angle_vec( ang );
-	auto right = csgo::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
-	auto up = csgo::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
+	auto forward = cs::angle_vec( ang );
+	auto right = cs::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
+	auto up = cs::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
 
 	forward.normalize( );
 	right.normalize( );
@@ -552,17 +555,17 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	if ( !weapon || !weapon->data( ) )
 		return false;
 
-	if ( weapon->item_definition_index ( ) == 40 && weapon->inaccuracy ( ) < 0.009f )
+	if ( weapon->item_definition_index ( ) == weapons_t::ssg08 && weapon->inaccuracy ( ) < 0.009f )
 		return true;
 
 	auto src = g::local->eyes( );
 
-	ang = csgo::calc_angle( src, point );
-	csgo::clamp( ang );
+	ang = cs::calc_angle( src, point );
+	cs::clamp( ang );
 
-	auto forward = csgo::angle_vec( ang );
-	auto right = csgo::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
-	auto up = csgo::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
+	auto forward = cs::angle_vec( ang );
+	auto right = cs::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
+	auto up = cs::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
 
 	forward.normalize( );
 	right.normalize( );
@@ -584,7 +587,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		if ( !mdl )
 			return false;
 
-		auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
+		auto studio_mdl = cs::i::mdl_info->studio_mdl( mdl );
 
 		if ( !studio_mdl )
 			return false;
@@ -665,10 +668,10 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) || !g::local->weapon( )->data( ) )
 			return false;
 
-		if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+		if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( g::can_fire_revolver || cs::time2ticks( cs::i::globals->m_curtime ) > g::cock_ticks ) )
 			return false;
 
-		return csgo::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= csgo::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= csgo::i::globals->m_curtime;
+		return cs::i::globals->m_curtime >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= cs::i::globals->m_curtime && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= cs::i::globals->m_curtime;
 	};
 
 	/* tickbase manip controller */
@@ -679,42 +682,42 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
 	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - csgo::i::client_state->choked() - 1 );
+	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - cs::i::client_state->choked() - 1 );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
 
-	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && ucmd->m_buttons & 1 && can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
-		exploits::shift_tickbase( tickbase_as_int, csgo::time2ticks( static_cast<float>( active_config.dt_recharge_delay ) / 1000.0f ) );
+	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && !!( ucmd->m_buttons & buttons_t::attack ) && can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == weapon_type_t::knife || g::local->weapon( )->data( )->m_type >= weapon_type_t::c4 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
+		exploits::shift_tickbase( tickbase_as_int, cs::time2ticks( static_cast<float>( active_config.dt_recharge_delay ) / 1000.0f ) );
 }
 
 bool features::ragebot::can_shoot( ) {
 	if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
 		return false;
 
-	if ( g::local->weapon( )->item_definition_index( ) == 64 && !( g::can_fire_revolver || csgo::time2ticks( csgo::i::globals->m_curtime ) > g::cock_ticks ) )
+	if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( g::can_fire_revolver || cs::time2ticks( cs::i::globals->m_curtime ) > g::cock_ticks ) )
 		return false;
 
-	return csgo::i::globals->m_curtime >= g::local->next_attack( ) && csgo::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
+	return cs::i::globals->m_curtime >= g::local->next_attack( ) && cs::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
 }
 
 void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out ) {
 	vec3_t engine_angles;
-	csgo::i::engine->get_viewangles( engine_angles );
+	cs::i::engine->get_viewangles( engine_angles );
 
-	csgo::clamp( engine_angles );
+	cs::clamp( engine_angles );
 
-	csgo::for_each_player( [ & ] ( player_t* ent ) {
+	cs::for_each_player( [ & ] ( player_t* ent ) {
 		if ( ent->team( ) == g::local->team( ) || ent->immune( ) )
 			return;
 
-		auto angle_to = csgo::calc_angle( g::local->eyes( ), ent->eyes( ) );
+		auto angle_to = cs::calc_angle( g::local->eyes( ), ent->eyes( ) );
 
-		csgo::clamp( angle_to );
+		cs::clamp( angle_to );
 
 		targets_out.push_back( {
 			ent,
-			csgo::calc_fov( engine_angles, angle_to ),
+			cs::calc_fov( engine_angles, angle_to ),
 			g::local->origin( ).dist_to( ent->origin( ) ),
 			ent->health( )
 			}
@@ -738,7 +741,7 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 }
 
 void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
-	if ( !active_config.auto_slow || !( g::local->flags ( ) & 1 ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
+	if ( !active_config.auto_slow || !( g::local->flags ( ) & flags_t::on_ground ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
 
 	const auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
@@ -748,14 +751,14 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 	const auto speed_ratio = max_speed * 0.33f;
 
 	if ( g::local->vel ( ).length_2d ( ) > max_speed * 0.34f ) {
-		auto vel_ang = csgo::vec_angle ( vec_move );
+		auto vel_ang = cs::vec_angle ( vec_move );
 
 		if ( !vel_ang.is_valid() )
 			return;
 
-		vel_ang.y = csgo::normalize ( vel_ang.y + 180.0f );
+		vel_ang.y = cs::normalize ( vel_ang.y + 180.0f );
 
-		auto vel_dir = csgo::angle_vec ( vel_ang );
+		auto vel_dir = cs::angle_vec ( vel_ang );
 
 		if ( !vel_dir.is_valid ( ) )
 			return;
@@ -771,7 +774,7 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 		old_smove = ( old_smove / magnitude ) * speed_ratio;
 	}*/
 
-	ucmd->m_buttons &= ~0x20000;
+	ucmd->m_buttons &= ~buttons_t::walk;
 }
 
 void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
@@ -780,13 +783,13 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 	if ( !can_shoot( ) ) {
 		if ( active_config.auto_shoot )
-			ucmd->m_buttons &= ~1;
+			ucmd->m_buttons &= ~buttons_t::attack;
 
 		return;
 	}
 
 	/* Don't knifebot without an actual knifebot lmao, currently the hack just fucking shoots the air constantly w/a knife */
-	if ( g::local->weapon ( ) && g::local->weapon ( )->data ( )->m_type == 0/*type_knife*/ && g::local->weapon ( )->item_definition_index ( ) != 31 /*taser*/ )
+	if ( g::local->weapon ( ) && g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife/*type_knife*/ && g::local->weapon ( )->item_definition_index ( ) != weapons_t::taser /*taser*/ )
 		return;
 
 	/* get potential ragebot targets */
@@ -840,18 +843,18 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 			player_t* ret = nullptr;
 
 			vec3_t angs;
-			csgo::i::engine->get_viewangles ( angs );
-			csgo::clamp ( angs );
+			cs::i::engine->get_viewangles ( angs );
+			cs::clamp ( angs );
 
 			auto best_fov = 180.0f;
 
-			csgo::for_each_player ( [ & ] ( player_t* pl ) {
+			cs::for_each_player ( [ & ] ( player_t* pl ) {
 				if ( pl->team ( ) == g::local->team ( ) )
 					return;
 
-				auto angle_to = csgo::calc_angle ( g::local->origin ( ), pl->origin ( ) );
-				csgo::clamp ( angle_to );
-				auto fov = csgo::calc_fov ( angle_to, angs );
+				auto angle_to = cs::calc_angle ( g::local->origin ( ), pl->origin ( ) );
+				cs::clamp ( angle_to );
+				auto fov = cs::calc_fov ( angle_to, angs );
 
 				if ( fov < best_fov ) {
 					ret = pl;
@@ -875,7 +878,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 					if ( speed >= 0.1f ) {
 						const auto stop_speed = std::max< float > ( speed, g::cvars::sv_stopspeed->get_float ( ) );
-						vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * csgo::i::globals->m_ipt / speed );
+						vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::i::globals->m_ipt / speed );
 					}
 				};
 
@@ -888,20 +891,20 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 					calc_velocity ( vel );
 				}
 
-				const auto autostop_time = csgo::ticks2time ( ticks_until_accurate );
+				const auto autostop_time = cs::ticks2time ( ticks_until_accurate );
 
 				const auto pred_origin = g::local->origin ( ) + g::local->vel ( ) * autostop_time;
 				//const auto pred_eyes = pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
 				const auto pred_eyes = g::local->eyes ( ) + g::local->vel ( ) * autostop_time;
 
 				const auto ent_vel = at_target->vel ( );
-				const auto choke_time = csgo::ticks2time ( anims::choked_commands [ at_target->idx ( ) ] );
+				const auto choke_time = cs::ticks2time ( anims::choked_commands [ at_target->idx ( ) ] );
 				const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( choke_time + autostop_time );
 				//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
 				const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset ( ) + ent_vel * ( choke_time + autostop_time );
 
 				trace_t tr;
-				csgo::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
+				cs::util_traceline ( pred_eyes, ent_pred_eyes, 0x46004003, g::local, &tr );
 
 				if ( tr.m_fraction > 0.97f
 					|| tr.m_hit_entity == at_target ) {
@@ -914,8 +917,8 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 	if ( !best.m_ent )
 		return;
 
-	auto angle_to = csgo::calc_angle( g::local->eyes( ), best.m_point );
-	csgo::clamp( angle_to );
+	auto angle_to = cs::calc_angle( g::local->eyes( ), best.m_point );
+	cs::clamp( angle_to );
 
 	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 255, best.m_hitbox, best.m_record );
 	auto should_aim = best.m_dmg && hc;
@@ -924,28 +927,30 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		slow ( ucmd, old_smove, old_fmove);
 
 	if ( !active_config.auto_shoot )
-		should_aim = ucmd->m_buttons & 1 && best.m_dmg;
+		should_aim = !!( ucmd->m_buttons & buttons_t::attack ) && best.m_dmg;
 
 	if ( should_aim ) {
 		if ( active_config.auto_shoot ) {
-			ucmd->m_buttons |= 1;
+			ucmd->m_buttons |= buttons_t::attack;
 			g::send_packet = true;
 		}
 
 		if ( active_config.auto_scope && !g::local->scoped( ) &&
-			( g::local->weapon( )->item_definition_index( ) == 9
-				|| g::local->weapon( )->item_definition_index( ) == 40
-				|| g::local->weapon( )->item_definition_index( ) == 38
-				|| g::local->weapon( )->item_definition_index( ) == 11 ) )
-			ucmd->m_buttons |= 2048;
+			( g::local->weapon( )->item_definition_index( ) == weapons_t::awp
+				|| g::local->weapon( )->item_definition_index( ) == weapons_t::scar20
+				|| g::local->weapon( )->item_definition_index( ) == weapons_t::g3sg1
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::ssg08
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::aug 
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::sg553 ) )
+			ucmd->m_buttons |= buttons_t::attack2;
 
 		auto ang = angle_to - g::local->aim_punch( ) * g::cvars::weapon_recoil_scale->get_float();
-		csgo::clamp( ang );
+		cs::clamp( ang );
 
 		ucmd->m_angs = ang;
 
 		if ( !active_config.silent )
-			csgo::i::engine->set_viewangles( ang );
+			cs::i::engine->set_viewangles( ang );
 
 		best.m_record.backtrack( ucmd );
 
@@ -958,14 +963,16 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 		get_hitbox( best.m_ent->idx( ) ) = best.m_hitbox;
 	}
 	else if ( best.m_dmg ) {
-		if ( g::local->weapon( )->item_definition_index( ) == 9
-			|| g::local->weapon( )->item_definition_index( ) == 40
-			|| g::local->weapon( )->item_definition_index( ) == 38
-			|| g::local->weapon( )->item_definition_index( ) == 11 ) {
+		if ( g::local->weapon ( )->item_definition_index ( ) == weapons_t::awp
+			|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::scar20
+			|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::g3sg1
+			|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::ssg08
+			|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::aug
+			|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::sg553 ) {
 			if ( active_config.auto_scope && !g::local->scoped( ) )
-				ucmd->m_buttons |= 2048;
+				ucmd->m_buttons |= buttons_t::attack2;
 			else if ( active_config.auto_scope && g::local->scoped( ) )
-				ucmd->m_buttons &= ~2048;
+				ucmd->m_buttons &= ~buttons_t::attack2;
 		}
 	}
 }
@@ -978,15 +985,15 @@ bool features::ragebot::create_points( lagcomp::lag_record_t& rec, int i, std::d
 	if ( !get_hitbox( rec, i, hitbox_pos, hitbox_rad, hitbox_zrad ) )
 		return false;
 
-	uint32_t multipoint_mask = mp_none;
+	multipoint_mode_t multipoint_mask = multipoint_mode_t::none;
 
 	/* enable multipoint for these_hitboxes */
-	multipoint_mask |= mp_center;
+	multipoint_mask |= multipoint_mode_t::center;
 
 	float pointscale = 0.0f;
 
 	if ( i == hitbox_head ) {
-		multipoint_mask |= mp_top;
+		multipoint_mask |= multipoint_mode_t::top;
 		pointscale = active_config.head_pointscale;
 	}
 	else if ( i >= hitbox_pelvis && i <= hitbox_upper_chest ) {
@@ -994,9 +1001,9 @@ bool features::ragebot::create_points( lagcomp::lag_record_t& rec, int i, std::d
 		/* all we need to do is see if we can hit most points on either side before scanning all of them */
 		/* (scan 1 point which will help us rule out one side completely... maybe even 9+ points saved) */
 		switch ( multipoint_side ) {
-			case mp_side_none: multipoint_mask |= mp_none; break;
-			case mp_side_left: multipoint_mask |= mp_left; break;
-			case mp_side_right: multipoint_mask |= mp_right; break;
+			case multipoint_side_t::none: multipoint_mask |= multipoint_mode_t::none; break;
+			case multipoint_side_t::left: multipoint_mask |= multipoint_mode_t::left; break;
+			case multipoint_side_t::right: multipoint_mask |= multipoint_mode_t::right; break;
 		}
 
 		pointscale = active_config.body_pointscale;
@@ -1016,21 +1023,21 @@ bool features::ragebot::create_points( lagcomp::lag_record_t& rec, int i, std::d
 
 	/* force multipoint to only center if pointscale is 0 */
 	if ( !pointscale )
-		multipoint_mask = mp_none | mp_center;
+		multipoint_mask = multipoint_mode_t::none | multipoint_mode_t::center;
 
-	if ( multipoint_mask & mp_center )
+	if ( !!(multipoint_mask & multipoint_mode_t::center) )
 		points.push_back( hitbox_pos );
 
-	if ( multipoint_mask & mp_left )
+	if ( !!(multipoint_mask & multipoint_mode_t::left ))
 		points.push_back( hitbox_pos + side_vec * hitbox_rad * pointscale );
 
-	if ( multipoint_mask & mp_right )
+	if ( !!(multipoint_mask & multipoint_mode_t::right) )
 		points.push_back( hitbox_pos + vec3_t( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale );
 
-	if ( multipoint_mask & mp_bottom )
+	if ( !!(multipoint_mask & multipoint_mode_t::bottom ))
 		points.push_back( hitbox_pos - vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
 
-	if ( multipoint_mask & mp_top )
+	if ( !!(multipoint_mask & multipoint_mode_t::top ))
 		points.push_back( hitbox_pos + vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
 
 	for ( auto& point : points )
@@ -1045,7 +1052,7 @@ bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& p
 	if ( !mdl )
 		return false;
 
-	auto studio_mdl = csgo::i::mdl_info->studio_mdl( mdl );
+	auto studio_mdl = cs::i::mdl_info->studio_mdl( mdl );
 
 	if ( !studio_mdl )
 		return false;
@@ -1101,7 +1108,7 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 		return false;
 
 	/* select side to multipoint on (only one side at a time, saves a shit ton of frames) */
-	multipoint_side_t multipoint_side = mp_side_none;
+	multipoint_side_t multipoint_side = multipoint_side_t::none;
 
 	const auto src = g::local->eyes( );
 
@@ -1162,7 +1169,7 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 	autowall::scale_dmg( rec.m_pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
 
 	if ( /*(get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses)
-		||*/ ( active_config.baim_air && !( rec.m_flags & 1 ) )
+		||*/ ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
 		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) )
 		|| (( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) )) {
 		std::deque<int> new_hitboxes {};
@@ -1197,11 +1204,11 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* select side to multipoint on (only one side at a time, saves a shit ton of frames) */
 	if ( !dmg_left && !dmg_right )
-		multipoint_side = mp_side_none;
+		multipoint_side = multipoint_side_t::none;
 	else if ( dmg_left > dmg_right )
-		multipoint_side = mp_side_left;
+		multipoint_side = multipoint_side_t::left;
 	else if ( dmg_right > dmg_left )
-		multipoint_side = mp_side_right;
+		multipoint_side = multipoint_side_t::right;
 
 	const auto safe_point_active = active_config.safe_point && utils::keybind_active( active_config.safe_point_key, active_config.safe_point_key_mode );
 
@@ -1318,7 +1325,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	if ( shot.second ) {
 		best_recs.push_back( shot.first );
 		//
-		float oldest_simtime = FLT_MAX;
+		float oldest_simtime = std::numeric_limits<float>::max ( );
 		//
 		lagcomp::lag_record_t* oldest_rec = nullptr;
 		//
@@ -1337,7 +1344,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	else if ( recs.second && !active_config.onshot_only ) {
 		float newest_simtime = 0.0f;
 		float newest_simulated_simtime = 0.0f;
-		float oldest_simtime = FLT_MAX;
+		float oldest_simtime = std::numeric_limits<float>::max ( );
 		float highest_speed = 0.0f;
 		float highest_sideways_amount = 0.0f;
 
@@ -1348,7 +1355,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 		lagcomp::lag_record_t* speed_rec = nullptr;
 		lagcomp::lag_record_t* ang_diff_rec = nullptr;
 
-		const auto at_target_yaw = csgo::normalize( csgo::calc_angle( g::local->eyes( ), ent->eyes( ) ).y );
+		const auto at_target_yaw = cs::normalize( cs::calc_angle( g::local->eyes( ), ent->eyes( ) ).y );
 		//
 		for ( auto& rec : recs.first ) {
 			if ( rec.m_simtime < oldest_simtime && !rec.m_extrapolated ) {
@@ -1363,12 +1370,12 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 
 			const auto speed2d = rec.m_vel.length_2d( );
 
-			if ( rec.m_flags & 1 && speed2d > highest_speed && !rec.m_extrapolated ) {
+			if ( !!(rec.m_flags & flags_t::on_ground) && speed2d > highest_speed && !rec.m_extrapolated ) {
 				speed_rec = &rec;
 				highest_speed = speed2d;
 			}
 
-			const auto ang_diff = fabsf( csgo::normalize( at_target_yaw - csgo::normalize( rec.m_abs_yaw ) ) );
+			const auto ang_diff = fabsf( cs::normalize( at_target_yaw - cs::normalize( rec.m_abs_yaw ) ) );
 
 			if ( ang_diff > highest_sideways_amount && !rec.m_extrapolated ) {
 				ang_diff_rec = &rec;
@@ -1417,12 +1424,12 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	}
 
 	/* manually fix annoying airstuckers */
-	if ( fabsf( csgo::i::globals->m_curtime - ent->simtime( ) ) > 0.5f && !anims::frames [ ent->idx ( ) ].empty() ) {
+	if ( fabsf( cs::i::globals->m_curtime - ent->simtime( ) ) > 0.5f && !anims::frames [ ent->idx ( ) ].empty() ) {
 		lagcomp::lag_record_t rec;
 
 		if ( rec.store ( ent, ent->origin ( ), false ) ) {
-			rec.m_tick = csgo::time2ticks ( csgo::i::globals->m_curtime );
-			rec.m_simtime = csgo::i::globals->m_curtime;
+			rec.m_tick = cs::time2ticks ( cs::i::globals->m_curtime );
+			rec.m_simtime = cs::i::globals->m_curtime;
 
 			best_recs.clear ( );
 			best_recs.push_back ( rec );

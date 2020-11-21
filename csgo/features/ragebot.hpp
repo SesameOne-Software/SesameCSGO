@@ -107,7 +107,7 @@ namespace features {
 				vec3_t screen;
 
 				for ( auto& point : m_synced_points ) {
-					if ( csgo::render::world_to_screen( screen, point ) )
+					if ( cs::render::world_to_screen( screen, point ) )
 						render::rect( screen.x - 2, screen.y - 2, 4, 4, rgba ( 255, 0, 0, 255 ) );
 				}
 			}
@@ -125,20 +125,22 @@ namespace features {
 		void select_targets( std::deque < aim_target_t >& targets_out );
 
 		/* hitscan */
-		enum multipoint_side_t {
-			mp_side_none = 0,
-			mp_side_left,
-			mp_side_right
+		enum class multipoint_side_t : uint32_t {
+			none = 0,
+			left,
+			right
 		};
 
-		enum multipoint_mode_t {
-			mp_none = 0,
-			mp_center = ( 1 << 1 ),
-			mp_left = ( 1 << 2 ),
-			mp_right = ( 1 << 3 ),
-			mp_bottom = ( 1 << 4 ),
-			mp_top = ( 1 << 5 )
+		enum class multipoint_mode_t : uint32_t {
+			none = 0,
+			center = ( 1 << 1 ),
+			left = ( 1 << 2 ),
+			right = ( 1 << 3 ),
+			bottom = ( 1 << 4 ),
+			top = ( 1 << 5 )
 		};
+
+		ENUM_BITMASK ( multipoint_mode_t );
 
 		bool hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg );
 		bool create_points( lagcomp::lag_record_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );

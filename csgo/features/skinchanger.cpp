@@ -155,7 +155,7 @@ void features::skinchanger::update_equipped ( ) {
 
 		/* force update if a skin was equipped/unequipped */
 		if ( skin.m_equipped_t != new_equipped_t || skin.m_equipped_ct != new_equipped_ct ) {
-			csgo::i::client_state->delta_tick ( ) = -1;
+			cs::i::client_state->delta_tick ( ) = -1;
 		}
 
 		skin.m_equipped_t = new_equipped_t;
@@ -163,7 +163,7 @@ void features::skinchanger::update_equipped ( ) {
 	}
 }
 
-int features::skinchanger::remap_sequence ( int from_item, int to_item, int from_sequence ) {
+int features::skinchanger::remap_sequence ( weapons_t from_item, weapons_t to_item, int from_sequence ) {
 	auto clean_str = [ ] ( std::string& str ) -> void {
 		/* search for 2char number, ex: 06 */
 		if ( isdigit ( str [ str.size ( ) - 2 ] ) )
@@ -210,6 +210,11 @@ void features::skinchanger::run ( ) {
 	static auto C_BaseViewModel__SendViewModelMatchingSequence = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 56 FF 75 08 8B F1 8B 06 FF 90 ? ? ? ? 8B 86" ) ).get<void ( __thiscall* )( void*, int )> ( );
 	static auto CBaseEntity__GetSequenceActivity = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 53 8B 5D 08 56 8B F1 83" ) ).get<int ( __thiscall* )( void*, int )> ( );
 
+	static auto fnEquip = pattern::search (_( "client.dll"),_( "55 8B EC 83 EC 10 53 8B 5D 08 57 8B F9") ).get<int ( __thiscall* )( void*, void* )>();
+	static auto fnInitializeAttributes = pattern::search ( _("client.dll"),_( "55 8B EC 83 E4 F8 83 EC 0C 53 56 8B F1 8B 86") ).get<int ( __thiscall* )( void* )>();
+
+	static auto g_ClientLeafSystem = pattern::search ( "client.dll", "A1 ? ? ? ? FF 50 14 8B 86 ? ? ? ? B9 ? ? ? ? C1 E8 0E 24 01 0F B6 C0 50 0F B7 86 ? ? ? ? 50 A1 ? ? ? ? FF 50 18 8B 86 ? ? ? ? B9 ? ? ? ? C1 E8 0C 24 01 0F B6 C0 50 0F B7 86 ? ? ? ? 50 A1 ? ? ? ? FF 90 ? ? ? ? 8B 0D" ).add(1).deref().get<void*>();
+
 	const auto inventory = inventory::get_local_inventory ( );
 
 	/* update all weapon equip status (sync with config if we equip in game) */
@@ -220,12 +225,18 @@ void features::skinchanger::run ( ) {
 		return;
 
 	player_info_t player_info;
-	csgo::i::engine->get_player_info ( g::local->idx(), &player_info );
+	cs::i::engine->get_player_info ( g::local->idx(), &player_info );
 
 	const auto weapons = g::local->weapons ( );
 
 	for ( auto& weapon : weapons ) {
 		if ( !weapon )
+			continue;
+		
+		if ( player_info.m_xuid_high != weapon->original_owner_xuid_high ( ) )
+			continue;
+
+		if ( player_info.m_xuid_low != weapon->original_owner_xuid_low ( ) )
 			continue;
 
 		const auto econ_item_view = weapon->econ_item ( );
@@ -258,13 +269,13 @@ void features::skinchanger::run ( ) {
 		const auto item_definition_index = weapon->item_definition_index ( );
 
 		/* do extra stuff if it's a knife */
-		if ( item_definition_index == knife_t || item_definition_index == knife_ct || ( item_definition_index >= knife_bayonet && item_definition_index <= knife_skeleton ) ) {
+		if ( item_definition_index == weapons_t::knife_t || item_definition_index == weapons_t::knife_ct || ( item_definition_index >= weapons_t::knife_bayonet && item_definition_index <= weapons_t::knife_skeleton ) ) {
 			weapon->item_definition_index ( ) = new_econ_skin_data->item_definition_index ( );
 			
 			const auto new_econ_item_definition = new_econ_item_view->static_data ( );
 
 			if ( new_econ_item_definition ) {
-				const auto new_mdl_idx = csgo::i::mdl_info->mdl_idx ( new_econ_item_definition->mdl_name ( ) );
+				const auto new_mdl_idx = cs::i::mdl_info->mdl_idx ( new_econ_item_definition->mdl_name ( ) );
 
 				weapon->mdl_idx ( ) = new_mdl_idx;
 
@@ -273,10 +284,10 @@ void features::skinchanger::run ( ) {
 				if( world_mdl )
 					world_mdl->mdl_idx()= new_mdl_idx;
 				
-				const auto view_mdl = csgo::i::ent_list->get_by_handle< weapon_t* > ( g::local->viewmodel_handle ( ) );
+				const auto view_mdl = cs::i::ent_list->get_by_handle< weapon_t* > ( g::local->viewmodel_handle ( ) );
 
 				if ( view_mdl && g::local->weapon ( ) &&
-					( g::local->weapon ( )->item_definition_index ( ) == knife_t || g::local->weapon ( )->item_definition_index ( ) == knife_ct || ( g::local->weapon ( )->item_definition_index ( ) >= knife_bayonet && g::local->weapon ( )->item_definition_index ( ) <= knife_skeleton ) ) ) {
+					( g::local->weapon ( )->item_definition_index ( ) == weapons_t::knife_t || g::local->weapon ( )->item_definition_index ( ) == weapons_t::knife_ct || ( g::local->weapon ( )->item_definition_index ( ) >= weapons_t::knife_bayonet && g::local->weapon ( )->item_definition_index ( ) <= weapons_t::knife_skeleton ) ) ) {
 					/* set current viewmodel model index if we are on knife viewmodel */
 					view_mdl->mdl_idx ( ) = new_mdl_idx;
 
@@ -285,17 +296,81 @@ void features::skinchanger::run ( ) {
 					/* replace knife animations with different ones right after update */
 					if ( last_sequence != view_mdl->sequence ( ) )
 						/* grab animations from non-default knife with same animation sequences */
-						last_sequence = view_mdl->sequence ( ) = remap_sequence ( knife_bayonet, new_econ_skin_data->item_definition_index ( ), view_mdl->sequence ( ) );
+						last_sequence = view_mdl->sequence ( ) = remap_sequence ( weapons_t::knife_bayonet, new_econ_skin_data->item_definition_index ( ), view_mdl->sequence ( ) );
 				}
+			}
+		}
+	}
+
+	auto get_wearable_create_fn = [ ] ( ) -> create_client_class_t {
+		auto clazz = cs::i::client->get_all_classes ( );
+
+		while ( strcmp ( clazz->m_network_name, _ ( "CEconWearable" ) ) )
+			clazz = clazz->m_next;
+
+		return clazz->m_create_fn;
+	};
+
+	/* glove changer */
+	static auto wearables_offset = netvars::get_offset ( _ ( "DT_BaseCombatCharacter->m_hMyWearables" ) );
+	
+	auto wearables = reinterpret_cast<uint32_t*>(reinterpret_cast<uintptr_t>(g::local) + wearables_offset );
+
+	if ( !cs::i::ent_list->get_by_handle<weapon_t*> ( wearables [ 0 ] ) ) {
+		auto skin_data = inventory->item_in_loadout ( g::local->team ( ), 41 );
+
+		if ( skin_data ) {
+			auto entry = cs::i::ent_list->get_highest_index ( ) + 1;
+
+			for ( int i = 0; i < cs::i::ent_list->get_highest_index ( ); i++ ) {
+				auto temp_ent = cs::i::ent_list->get<entity_t*> ( i );
+
+				if ( temp_ent && temp_ent->client_class ( ) && !strcmp ( temp_ent->client_class ( )->m_network_name, _ ( "CRopeKeyframe" ) ) ) {
+					entry = i;
+					break;
+				}
+			}
+
+			const auto serial = ( rand ( ) % 4096 ) + 1;
+			const auto create_wearable_fn = get_wearable_create_fn ( );
+			create_wearable_fn ( entry, serial );
+			auto wearable = cs::i::ent_list->get<weapon_t*> ( entry );
+
+			if ( wearable ) {
+				wearables [ 0 ] = entry | serial << 16;
+
+				auto econ_data = skin_data->soc_data ( );
+				auto item_definition = skin_data->static_data ( );
+
+				if ( !econ_data || !item_definition )
+					return;
+
+				const auto id = econ_data->item_id ( );
+
+				*reinterpret_cast< uint64_t* >( reinterpret_cast< uintptr_t >( &wearable->item_id_high ( ) ) - sizeof ( uint64_t ) ) = id;
+				wearable->item_id_low ( ) = id & 0xFFFFFFFF;
+				wearable->item_id_high ( ) = id >> 32;
+				wearable->account ( ) = player_info.m_xuid_low;
+
+				wearable->item_definition_index ( ) = econ_data->item_definition_index ( );
+				wearable->initialized ( ) = true;
+				wearable->mdl_idx ( ) = cs::i::mdl_info->mdl_idx ( item_definition->world_mdl_name ( ) );
+
+				fnEquip ( wearable, g::local );
+
+				g::local->body ( ) = 1;
+
+				fnInitializeAttributes ( wearable );
+
+				vfunc<void ( __thiscall* )( void*, int, int, bool, int, bool )> ( g_ClientLeafSystem, 0 )( g_ClientLeafSystem, reinterpret_cast< uintptr_t >( wearable ) + 4, 0, 0, 0xFFFFFFFF, 0xFFFFFFFF );
 			}
 		}
 	}
 }
 
-std::vector<uint8_t>& features::skinchanger::skin_preview ( const std::string& file ) {
+std::vector<uint8_t> features::skinchanger::skin_preview ( const std::string& file ) {
 	static auto vpk_dir = std::string( pattern::search ( _ ( "engine.dll" ), _ ( "68 ? ? ? ? 8D 85 ? ? ? ? 50 68 ? ? ? ? 68" ) ).add ( 1 ).deref ( ).get<const char*> ( )).append(_("\\pak01_dir.vpk"));
 	static c_vpk_archive pak01_archive( vpk_dir );
-	static std::vector<uint8_t> null_file {};
 
 	std::optional<c_vpk_entry> entry = pak01_archive.get_file ( file );
 
@@ -306,11 +381,11 @@ std::vector<uint8_t>& features::skinchanger::skin_preview ( const std::string& f
 			return png_data.value();
 	}
 
-	return null_file;
+	return {};
 }
 
 void features::skinchanger::dump_sequences ( ) {
-	std::unordered_map<int, std::string> knife_anim_model_names {
+	std::unordered_map<weapons_t, std::string> knife_anim_model_names {
 		{weapons_t::knife_bayonet, "models/weapons/v_knife_bayonet_anim.mdl"},
 		{weapons_t::knife_css,"models/weapons/v_knife_css_anim.mdl"},
 		{weapons_t::knife_flip,"models/weapons/v_knife_flip_anim.mdl"},

@@ -55,7 +55,7 @@ const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get
 void features::lagcomp::lag_record_t::backtrack( ucmd_t* ucmd ) {
 	//if ( ragebot::active_config.fix_fakelag )
 	//dbg_print( "1: %d\n", ucmd->m_tickcount );
-	ucmd->m_tickcount = csgo::time2ticks( m_simtime ) + csgo::time2ticks( lerp( ) );
+	ucmd->m_tickcount = cs::time2ticks( m_simtime ) + cs::time2ticks( lerp( ) );
 	//dbg_print( "2: %d\n", ucmd->m_tickcount );
 }
 
@@ -68,7 +68,7 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 	m_priority = 0;
 	m_extrapolated = simulated;
 	m_needs_matrix_construction = false;
-	m_tick = csgo::time2ticks( pl->simtime( ) );
+	m_tick = cs::time2ticks( pl->simtime( ) );
 	m_simtime = pl->simtime( );
 	m_flags = pl->flags( );
 	m_ang = pl->angles( );

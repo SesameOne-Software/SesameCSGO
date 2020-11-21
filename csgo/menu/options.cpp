@@ -486,5 +486,7 @@ void options::init( ) {
 
 	option::add_float( _( "gui.dpi" ), 1.0f );
 
+	option::add_float ( _ ( "debug.desync_amount" ), 0.0f );
+
 	END_FUNC
 }

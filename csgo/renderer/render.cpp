@@ -17,7 +17,7 @@ void render::create_font ( const uint8_t* data, size_t data_size, const std::str
 
 void render::screen_size ( float& width, float& height ) {
 	int temp_w, temp_h;
-	csgo::i::engine->get_screen_size ( temp_w, temp_h );
+	cs::i::engine->get_screen_size ( temp_w, temp_h );
 	width = temp_w;
 	height = temp_h;
 }
@@ -110,11 +110,11 @@ void render::circle3d ( const vec3_t& pos, float rad, int segments, uint32_t col
 
 	auto segment_num = 0;
 
-	for ( auto i = 0.0f; i < csgo::pi * 2.0f; i += ( csgo::pi * 2.0f ) / static_cast< float > ( segments ) ) {
+	for ( auto i = 0.0f; i < cs::pi * 2.0f; i += ( cs::pi * 2.0f ) / static_cast< float > ( segments ) ) {
 		auto new_point = rotate_point ( pos, src_point, i );
 		vec3_t screen;
 
-		csgo::render::world_to_screen ( screen, new_point );
+		cs::render::world_to_screen ( screen, new_point );
 
 		points.push_back ( { round(screen.x), round (screen.y )} );
 	}
@@ -155,14 +155,14 @@ void render::cube ( const vec3_t& pos, float size, uint32_t color, float thickne
 	seven = vec3_t ( pos.x + mdist, pos.y + mdist, pos.z + mdist );
 	eight = vec3_t ( pos.x + mdist, pos.y + mdist, pos.z - mdist );
 
-	if ( !csgo::render::world_to_screen ( scrn_one, one )
-		|| !csgo::render::world_to_screen ( scrn_two, two )
-		|| !csgo::render::world_to_screen ( scrn_three, three )
-		|| !csgo::render::world_to_screen ( scrn_four, four )
-		|| !csgo::render::world_to_screen ( scrn_five, five )
-		|| !csgo::render::world_to_screen ( scrn_six, six )
-		|| !csgo::render::world_to_screen ( scrn_seven, seven )
-		|| !csgo::render::world_to_screen ( scrn_eight, eight ) )
+	if ( !cs::render::world_to_screen ( scrn_one, one )
+		|| !cs::render::world_to_screen ( scrn_two, two )
+		|| !cs::render::world_to_screen ( scrn_three, three )
+		|| !cs::render::world_to_screen ( scrn_four, four )
+		|| !cs::render::world_to_screen ( scrn_five, five )
+		|| !cs::render::world_to_screen ( scrn_six, six )
+		|| !cs::render::world_to_screen ( scrn_seven, seven )
+		|| !cs::render::world_to_screen ( scrn_eight, eight ) )
 		return;
 
 	/* back */

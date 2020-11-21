@@ -13,6 +13,9 @@
 
 #include "../features/skinchanger.hpp"
 
+#undef min
+#undef max
+
 void* find_hud_element( const char* name ) {
 	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08" ) ).add( 1 ).deref( ).get< void* >( );
 	static auto find_hud_element_func = pattern::search( _( "client.dll" ), _( "55 8B EC 53 8B 5D 08 56 57 8B F9 33 F6 39 77 28" ) ).get< void* ( __thiscall* )( void*, const char* ) >( );
@@ -34,7 +37,7 @@ void run_preserve_death_notices( ) {
 			auto* local_death_notice = reinterpret_cast< float* > ( uintptr_t( death_notice ) + 80 );
 
 			if ( local_death_notice )
-				*local_death_notice = removals [ 7 ] ? FLT_MAX : 1.5f;
+				*local_death_notice = removals [ 7 ] ? std::numeric_limits<float>::max ( ) : 1.5f;
 		}
 
 		if ( g::round == round_t::starting && uintptr_t( death_notice ) - 20 > 0 )
@@ -66,10 +69,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	static auto& prop_color = options::vars [ _( "visuals.other.prop_color" ) ].val.c;
 	static auto& ragdoll_force = options::vars [ _( "misc.effects.ragdoll_force_scale" ) ].val.f;
 
-	g::local = ( !csgo::i::engine->is_connected( ) || !csgo::i::engine->is_in_game( ) ) ? nullptr : csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
+	g::local = ( !cs::i::engine->is_connected( ) || !cs::i::engine->is_in_game( ) ) ? nullptr : cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
 
 	/* fix rate problems */ {
-		const auto rate = static_cast< int >( 1.0f / csgo::i::globals->m_ipt + 0.5f );
+		const auto rate = static_cast< int >( 1.0f / cs::i::globals->m_ipt + 0.5f );
 
 		g::cvars::cl_updaterate->no_callback ( );
 		g::cvars::cl_cmdrate->no_callback ( );
@@ -87,7 +90,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	float old_flashalpha;
 	float old_flashtime;
 
-	if ( csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
+	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		anims::run( stage );
 
 		features::prediction::update( stage );
@@ -127,7 +130,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			};
 
 			for ( auto mat_s : smoke_mats ) {
-				const auto mat = csgo::i::mat_sys->findmat( mat_s, _( "Other textures" ) );
+				const auto mat = cs::i::mat_sys->findmat( mat_s, _( "Other textures" ) );
 
 				if ( mat )
 					mat->set_material_var_flag( 4, removals [ 0 ] );
@@ -147,8 +150,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 				load_named_sky( _( "sky_csgo_night02" ) );
 
-				for ( auto i = csgo::i::mat_sys->first_material( ); i != csgo::i::mat_sys->invalid_material( ); i = csgo::i::mat_sys->next_material( i ) ) {
-					auto mat = csgo::i::mat_sys->get_material( i );
+				for ( auto i = cs::i::mat_sys->first_material( ); i != cs::i::mat_sys->invalid_material( ); i = cs::i::mat_sys->next_material( i ) ) {
+					auto mat = cs::i::mat_sys->get_material( i );
 
 					if ( !mat || mat->is_error_material( ) )
 						continue;
@@ -171,8 +174,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 			last_alive = g::local && g::local->alive( );
 
-			for ( int i = 1; i <= csgo::i::ent_list->get_highest_index( ); i++ ) {
-				const auto pl = csgo::i::ent_list->get < player_t* >( i );
+			for ( int i = 1; i <= cs::i::ent_list->get_highest_index( ); i++ ) {
+				const auto pl = cs::i::ent_list->get < player_t* >( i );
 
 				if ( !pl || pl->dormant( ) || !pl->client_class( ) || pl->client_class( )->m_class_id != 42 )
 					continue;
@@ -192,7 +195,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	old::frame_stage_notify( REG_OUT, stage );
 
-	if ( stage == 5 && g::local && csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
+	if ( stage == 5 && g::local && cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( g::local->alive( ) ) {
 			g::local->aim_punch( ) = old_aimpunch;
 			g::local->view_punch( ) = old_viewpunch;

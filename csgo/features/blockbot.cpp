@@ -1,6 +1,9 @@
 #include "blockbot.hpp"
 #include "../menu/options.hpp"
 
+#undef min
+#undef max
+
 void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
 	if ( !g::cvars::mp_solid_teammates->get_int ( ) )
 		return;
@@ -14,10 +17,10 @@ void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
 
     vec3_t nearest_pos = vec3_t( 0.0f, 0.0f, 0.0f );
     player_t* nearest_ent = nullptr;
-    float nearest_dist = FLT_MAX;
+    float nearest_dist = std::numeric_limits<float>::max ( );
 
-    for ( auto i = 1; i < csgo::i::globals->m_max_clients; i++ ) {
-        const auto ent = csgo::i::ent_list->get< player_t*>( i );
+    for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
+        const auto ent = cs::i::ent_list->get< player_t*>( i );
 
         if ( !ent->valid( ) || ent == g::local )
             continue;
@@ -32,21 +35,21 @@ void features::blockbot::run( ucmd_t* ucmd, vec3_t& move_ang ) {
     }
 
     if ( nearest_ent ) {
-        const auto extrap_pos = nearest_pos + nearest_ent->vel( ) * csgo::ticks2time( 1 );
+        const auto extrap_pos = nearest_pos + nearest_ent->vel( ) * cs::ticks2time( 1 );
 
         if ( std::fabsf( extrap_pos.z - g::local->abs_origin( ).z ) > 40.0f ) {
             if ( ( extrap_pos - g::local->abs_origin( ) ).length_2d( ) < 4.0f )
                 return;
 
-            move_ang.y = csgo::calc_angle( g::local->abs_origin( ), extrap_pos ).y;
+            move_ang.y = cs::calc_angle( g::local->abs_origin( ), extrap_pos ).y;
             ucmd->m_fmove = g::cvars::cl_forwardspeed->get_float ( );
         }
         else {
             vec3_t client_ang;
-            csgo::i::engine->get_viewangles( client_ang );
+            cs::i::engine->get_viewangles( client_ang );
 
-            const auto ang_to = csgo::calc_angle( g::local->abs_origin( ), nearest_pos ).y;
-            const auto yaw_delta = csgo::normalize( ang_to - client_ang.y );
+            const auto ang_to = cs::calc_angle( g::local->abs_origin( ), nearest_pos ).y;
+            const auto yaw_delta = cs::normalize( ang_to - client_ang.y );
 
             if ( fabsf( yaw_delta ) < 5.0f )
                 return;

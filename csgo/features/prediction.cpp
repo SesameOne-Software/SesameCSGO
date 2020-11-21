@@ -8,16 +8,16 @@ namespace prediction_util {
 	float frametime;
 	float curtime;
 	int tickcount;
-	int flags;
+	flags_t flags;
 	vec3_t velocity;
 	void* movedata;
 	uintptr_t prediction_player;
 	uintptr_t prediction_seed;
 
 	void start( ucmd_t* ucmd ) {
-		auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
+		auto local = cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
 
-		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
+		if ( !cs::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
 		if ( !movedata )
@@ -28,21 +28,21 @@ namespace prediction_util {
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
-		if ( csgo::i::client_state->choked ( ) > 0 ) {
+		if ( cs::i::client_state->choked ( ) > 0 ) {
 			//hooks::prediction::disable_sounds = true;
 			//
-			csgo::i::pred->update(
-				csgo::i::client_state->delta_tick( ),
-				csgo::i::client_state->delta_tick( ) > 0,
-				csgo::i::client_state->last_command_ack( ),
-				csgo::i::client_state->last_outgoing_cmd( ) + csgo::i::client_state->choked( )
+			cs::i::pred->update(
+				cs::i::client_state->delta_tick( ),
+				cs::i::client_state->delta_tick( ) > 0,
+				cs::i::client_state->last_command_ack( ),
+				cs::i::client_state->last_outgoing_cmd( ) + cs::i::client_state->choked( )
 			);
 			//
 			//hooks::prediction::disable_sounds = false;
 		}
 
-		const auto first_time_pred = csgo::i::pred->m_is_first_time_predicted;
-		const auto in_pred = csgo::i::pred->m_in_prediction;
+		const auto first_time_pred = cs::i::pred->m_is_first_time_predicted;
+		const auto in_pred = cs::i::pred->m_in_prediction;
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
 		*reinterpret_cast< int* >( prediction_player ) = reinterpret_cast< int >( local );
@@ -51,60 +51,60 @@ namespace prediction_util {
 		flags = local->flags( );
 		velocity = local->vel( );
 
-		curtime = csgo::i::globals->m_curtime;
-		frametime = csgo::i::globals->m_frametime;
-		tickcount = csgo::i::globals->m_tickcount;
+		curtime = cs::i::globals->m_curtime;
+		frametime = cs::i::globals->m_frametime;
+		tickcount = cs::i::globals->m_tickcount;
 
-		csgo::i::globals->m_curtime = predicted_curtime = csgo::ticks2time( local->tick_base( ) );
-		csgo::i::globals->m_frametime = csgo::i::pred->m_engine_paused ? 0.0f : csgo::i::globals->m_ipt;
-		csgo::i::globals->m_tickcount = local->tick_base( );
+		cs::i::globals->m_curtime = predicted_curtime = cs::ticks2time( local->tick_base( ) );
+		cs::i::globals->m_frametime = cs::i::pred->m_engine_paused ? 0.0f : cs::i::globals->m_ipt;
+		cs::i::globals->m_tickcount = local->tick_base( );
 
-		csgo::i::pred->m_is_first_time_predicted = false;
-		csgo::i::pred->m_in_prediction = true;
+		cs::i::pred->m_is_first_time_predicted = false;
+		cs::i::pred->m_in_prediction = true;
 
 		if ( ucmd->m_impulse )
 			*reinterpret_cast< std::uint32_t* >( std::uintptr_t( local ) + 0x31FC ) = ucmd->m_impulse;
 
-		ucmd->m_buttons |= ( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3334 ) );
-		ucmd->m_buttons &= ~( *reinterpret_cast< int* >( uintptr_t( local ) + 0x3330 ) );
+		ucmd->m_buttons |= *reinterpret_cast< buttons_t* >( uintptr_t( local ) + 0x3334 );
+		ucmd->m_buttons &= ~*reinterpret_cast< buttons_t* >( uintptr_t( local ) + 0x3330 );
 
 		const auto v16 = ucmd->m_buttons;
-		const auto unk02 = reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F8 );
+		const auto unk02 = reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F8 );
 		const auto v17 = v16 ^ *unk02;
 
-		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31EC ) = *unk02;
+		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31EC ) = *unk02;
 		*unk02 = v16;
-		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F0 ) = v16 & v17;
-		*reinterpret_cast< int* >( std::uintptr_t( local ) + 0x31F4 ) = v17 & ~v16;
+		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F0 ) = v16 & v17;
+		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F4 ) = v17 & ~v16;
 
-		csgo::i::move_helper->set_host( local );
-		csgo::i::move->start_track_prediction_errors( local );
-		csgo::i::pred->setup_move( local, ucmd, csgo::i::move_helper, movedata );
-		csgo::i::move->process_movement( local, movedata );
-		csgo::i::pred->finish_move( local, ucmd, movedata );
-		csgo::i::move_helper->process_impacts( );
-		csgo::i::move->finish_track_prediction_errors( local );
-		csgo::i::move_helper->set_host( nullptr );
+		cs::i::move_helper->set_host( local );
+		cs::i::move->start_track_prediction_errors( local );
+		cs::i::pred->setup_move( local, ucmd, cs::i::move_helper, movedata );
+		cs::i::move->process_movement( local, movedata );
+		cs::i::pred->finish_move( local, ucmd, movedata );
+		cs::i::move_helper->process_impacts( );
+		cs::i::move->finish_track_prediction_errors( local );
+		cs::i::move_helper->set_host( nullptr );
 
-		csgo::i::pred->m_is_first_time_predicted = first_time_pred;
-		csgo::i::pred->m_in_prediction = in_pred;
+		cs::i::pred->m_is_first_time_predicted = first_time_pred;
+		cs::i::pred->m_in_prediction = in_pred;
 	}
 
 	void end( ucmd_t* ucmd ) {
-		auto local = csgo::i::ent_list->get< player_t* >( csgo::i::engine->get_local_player( ) );
+		auto local = cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
 
-		if ( !csgo::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
+		if ( !cs::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
-		csgo::i::globals->m_curtime = curtime;
-		csgo::i::globals->m_frametime = frametime;
-		csgo::i::globals->m_tickcount = tickcount;
+		cs::i::globals->m_curtime = curtime;
+		cs::i::globals->m_frametime = frametime;
+		cs::i::globals->m_tickcount = tickcount;
 
 		*reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3338 ) = 0;
 		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;
 
-		csgo::i::move->reset( );
+		cs::i::move->reset( );
 	}
 }
 
@@ -121,7 +121,7 @@ void features::prediction::update( int stage ) {
 	//	*reinterpret_cast< int* >( uintptr_t( csgo::i::pred ) + 36 ) = 1;
 	//}
 
-	if ( !csgo::i::engine->is_in_game( ) || !csgo::i::engine->is_connected( ) || stage != 4 )
+	if ( !cs::i::engine->is_in_game( ) || !cs::i::engine->is_connected( ) || stage != 4 )
 		return;
 }
 

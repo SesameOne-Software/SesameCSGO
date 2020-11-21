@@ -536,6 +536,15 @@
     <ClInclude Include="vpk\vpkparser.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="vdf\vdf_parser.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="animations\logger.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="animations\anim_dump.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -755,6 +764,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="features\kit_parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vdf\vdf_parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

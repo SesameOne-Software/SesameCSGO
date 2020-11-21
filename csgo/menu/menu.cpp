@@ -21,6 +21,8 @@
 
 #include "../features/skinchanger.hpp"
 
+#include "../animations/logger.hpp"
+
 extern std::string last_config_user;
 
 bool upload_to_cloud = false;
@@ -37,7 +39,7 @@ bool download_config_code = false;
 
 cJSON* cloud_config_list = nullptr;
 
-bool gui::opened = true;
+bool gui::opened = false;
 bool open_button_pressed = false;
 
 enum tabs_t {
@@ -159,7 +161,7 @@ void gui::scale_dpi ( ) {
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ) );
-	ImGui_ImplDX9_Init ( csgo::i::dev );
+	ImGui_ImplDX9_Init ( cs::i::dev );
 
 	//const ImWchar custom_font_ranges [ ] = {
 	//	0x0020, 0x00FF, // Basic Latin + Latin Supplement
@@ -274,9 +276,9 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::SliderInt ( _ ( "Doubletap Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
 		ImGui::SliderInt( _( "Doubletap Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
-		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
-		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
-		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
 
 		ImGui::EndChildFrame( );
@@ -297,8 +299,8 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::PopItemWidth ( );
 		ImGui::Checkbox( _( "Headshot Only" ), &options::vars [ ragebot_weapon + _( "headshot_only" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderFloat( _( "Head Point Scale" ), &options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
-		ImGui::SliderFloat( _( "Body Point Scale" ), &options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Head Point Scale" ), &options::vars [ ragebot_weapon + _( "head_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat( _( "Body Point Scale" ), &options::vars [ ragebot_weapon + _( "body_pointscale" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
 
 		static std::vector<const char*> hitboxes {
@@ -468,8 +470,8 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 		ImGui::Combo( _( "Value Text Location" ), &options::vars [ visuals_config + _( "value_text_location" ) ].val.i, element_locations.data(), element_locations.size() );
 		ImGui::Combo( _( "Name Tag Location" ), &options::vars [ visuals_config + _( "nametag_location" ) ].val.i, element_locations.data(), element_locations.size() );
 		ImGui::Combo( _( "Weapon Name Location" ), &options::vars [ visuals_config + _( "weapon_name_location" ) ].val.i, element_locations.data(), element_locations.size() );
-		ImGui::SliderFloat( _( "Chams Reflectivity" ), &options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
-		ImGui::SliderFloat( _( "Chams Phong" ), &options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( "%.1f%" ) );
+		ImGui::SliderFloat( _( "Chams Reflectivity" ), &options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat( _( "Chams Phong" ), &options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
 
 		ImGui::EndChildFrame( );
@@ -561,7 +563,7 @@ void gui::draw( ) {
 					load_cfg_list ( );
 					gui_mutex.unlock ( );
 
-					csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+					cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 
 					ImGui::CloseCurrentPopup ( );
 				}
@@ -716,7 +718,7 @@ void gui::draw( ) {
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::SliderFloat ( _ ( "Slow Walk Speed" ), &options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%" ) );
+							ImGui::SliderFloat ( _ ( "Slow Walk Speed" ), &options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%%" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "Slow Walk Key" ), &options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i, &options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
@@ -819,7 +821,7 @@ void gui::draw( ) {
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Offscreen ESP Color" ), ( float* ) &options::vars [ _ ( "visuals.other.offscreen_esp_color" ) ].val.c );
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::SliderFloat ( _ ( "Offscreen ESP Distance" ), &options::vars [ _ ( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%" ) );
+							ImGui::SliderFloat ( _ ( "Offscreen ESP Distance" ), &options::vars [ _ ( "visuals.other.offscreen_esp_distance" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%%" ) );
 							ImGui::SliderFloat ( _ ( "Offscreen ESP Size" ), &options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f, 0.0f, 100.0f, (std::to_string ( static_cast< int >( options::vars [ _ ( "visuals.other.offscreen_esp_size" ) ].val.f ) ) + _ ( " px" )).c_str() );
 							ImGui::PopItemWidth ( );
 
@@ -843,14 +845,94 @@ void gui::draw( ) {
 					} );
 				} break;
 				case tab_skins: {
-					ImGui::custom::AddSubtab ( "Skin Changer", "Apply custom skins to your weapons", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( "Inventory Changer", "Add items to your inventory (Including custom skins!)", [ & ] ( ) {
 						if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
 							if ( ImGui::custom::InventoryButton ( _ ( "Add Item" ) ) ) {
 								features::skinchanger::add_item ( {
 									false,
-									knife_skeleton,
+									weapons_t::ak47,
+									0,
+									302,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+								
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::awp,
+									0,
+									344,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::knife_skeleton,
 									0,
 									43,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::m4a4,
+									0,
+									309,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::revolver,
+									0,
+									595,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::knife_karambit,
+									0,
+									413,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::m4a1s,
+									0,
+									440,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::usps,
+									0,
+									313,
+									rand ( ),
+									0.0f,
+									{}
+									} );
+
+								features::skinchanger::add_item ( {
+									false,
+									weapons_t::glove_motorcycle,
+									0,
+									10026,
 									rand ( ),
 									0.0f,
 									{}
@@ -862,8 +944,8 @@ void gui::draw( ) {
 
 								if ( !kit )
 									continue;
-
-								ImGui::custom::InventoryButton ( kit.value ( ).name.c_str ( ), &skin );
+								
+								ImGui::custom::InventoryButton ( kit->name.c_str(), &skin );
 							}
 
 							ImGui::custom::InventoryEnd ( );
@@ -953,6 +1035,19 @@ void gui::draw( ) {
 							ImGui::Text ( "Cheat" );
 							ImGui::Separator ( );
 
+#ifdef ANIMATION_LOGGER
+							ImGui::SliderFloat ( _ ( "Debug Desync Amount" ), &options::vars [ _ ( "debug.desync_amount" ) ].val.f, -60.0f, 60.0f, _ ( "%.1f deg" ) );
+
+							if ( ImGui::Button("Dump Animation Data") ) {
+								std::ofstream animation_dump ( "anim_dump.hpp" );
+
+								if ( animation_dump.is_open ( ) ) {
+									animation_dump << anims::logger::dump ( );
+									animation_dump.close ( );
+								}
+							}
+#endif
+
 							ImGui::EndChildFrame ( );
 						}
 					} );
@@ -1007,7 +1102,7 @@ void gui::draw( ) {
 									load_cfg_list ( );
 									gui_mutex.unlock ( );
 
-									csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+									cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 								}
 							}
 
@@ -1021,7 +1116,7 @@ void gui::draw( ) {
 
 								options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
 
-								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 
 							if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
@@ -1038,14 +1133,14 @@ void gui::draw( ) {
 								load_cfg_list ( );
 								gui_mutex.unlock ( );
 
-								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 
 							if ( ImGui::Button ( _ ( "Refresh List" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
 								gui_mutex.lock ( );
 								load_cfg_list ( );
 								gui_mutex.unlock ( );
-								csgo::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 
 							ImGui::PushItemWidth ( -1.0f );
@@ -1228,7 +1323,7 @@ void gui::keybinds::draw( ) {
 	static auto thirdperson_key = find_keybind( _( "misc.effects.third_person_key" ) );
 	static auto autopeek_key = find_keybind ( _ ( "ragebot.autopeek_key" ) );
 
-	if ( csgo::i::engine->is_in_game( ) && csgo::i::engine->is_connected( ) ) {
+	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( triggerbot && assistance_type == 1 )
 			add_key_entry( triggerbot_key, _( "Trigger Bot" ) );
 

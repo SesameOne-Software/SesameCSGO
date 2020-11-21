@@ -1,77 +1,9 @@
-#pragma once
+﻿#pragma once
 #include "../sdk/sdk.hpp"
 
 #include <optional>
 
 #include "kit_parser.hpp"
-
-enum weapons_t : int {
-	deagle = 1,
-	elite = 2,
-	fiveseven = 3,
-	glock = 4,
-	ak47 = 7,
-	aug = 8,
-	awp = 9,
-	famas = 10,
-	g3sg1 = 11,
-	galil = 13,
-	m249 = 14,
-	m4a4 = 16,
-	mac10 = 17,
-	p90 = 19,
-	mp5_sd = 23,
-	ump45 = 24,
-	xm1014 = 25,
-	bizon = 26,
-	mag7 = 27,
-	negev = 28,
-	sawedoff = 29,
-	tec9 = 30,
-	zeus = 31,
-	p2000 = 32,
-	mp7 = 33,
-	mp9 = 34,
-	nova = 35,
-	p250 = 36,
-	scar20 = 38,
-	sg553 = 39,
-	ssg08 = 40,
-	knife_ct = 42,
-	flashbang = 43,
-	hegrenade = 44,
-	smoke = 45,
-	molotov = 46,
-	decoy = 47,
-	firebomb = 48,
-	c4 = 49,
-	musickit = 58,
-	knife_t = 59,
-	m4a1s = 60,
-	usps = 61,
-	tradeupcontract = 62,
-	cz75a = 63,
-	revolver = 64,
-	knife_bayonet = 500,
-	knife_css = 503,
-	knife_flip = 505,
-	knife_gut = 506,
-	knife_karambit = 507,
-	knife_m9_bayonet = 508,
-	knife_huntsman = 509,
-	knife_falchion = 512,
-	knife_bowie = 514,
-	knife_butterfly = 515,
-	knife_shadow_daggers = 516,
-	knife_cord = 517,
-	knife_canis = 518,
-	knife_ursus = 519,
-	knife_gypsy_jackknife = 520,
-	knife_outdoor = 521,
-	knife_stiletto = 522,
-	knife_widowmaker = 523,
-	knife_skeleton = 525,
-};
 
 namespace features {
 	namespace inventory {
@@ -105,7 +37,7 @@ namespace features {
 	}
 
 	namespace skinchanger {
-		std::vector<uint8_t>& skin_preview ( const std::string& file );
+		std::vector<uint8_t> skin_preview ( const std::string& file );
 
 		class c_sticker {
 		public:
@@ -120,51 +52,129 @@ namespace features {
 
 		class c_skin {
 		public:
+			~c_skin ( ) {
+				//release_preview ( );
+			}
+
 			/* main stuff */
 			bool m_stattrak = false;
-			uint16_t m_item_definition_index = 0;
+			weapons_t m_item_definition_index = weapons_t::none;
 			int m_stattrak_counter = 0, m_paintkit = 0, m_seed = 0;
 			float m_wear = 0.0f;
 			std::vector<c_sticker> m_stickers {};
 
-		private:
-			std::vector<uint8_t>* m_cached_preview = nullptr;
+		//private:
+			IDirect3DTexture9* m_cached_preview = nullptr;
+			std::vector<uint8_t> m_preview_data {};
 			paint_kit* m_cached_kit = nullptr;
 
 		public:
-
 			/* misc stuff (only used internally *NOT TO BE USED*) */
 			bool m_equipped_t = false, m_equipped_ct = false;
 			c_econ_item* m_item = nullptr;
-
+			
 			void remove ( );
 			void equip ( );
 
-			void add ( ) {
-				add_item ( *this );
-				equip ( );
-				cache ( );
-			}
-
 			void cache ( ) {
+				std::string weapon_identifier;
+
+				/* fix gloves */
+				if ( m_item_definition_index >= weapons_t::glove_studded_bloodhound ) {
+					switch ( m_item_definition_index ) {
+					case weapons_t::glove_ct_side:
+					case weapons_t::glove_t_side: weapon_identifier = _ ( "<GLOVES_UNKNOWN>" ); break;
+					case weapons_t::glove_studded_bloodhound: weapon_identifier = _ ( "studded_bloodhound_gloves" ); break;
+					case weapons_t::glove_sporty: weapon_identifier = _ ( "sporty_gloves" ); break;
+					case weapons_t::glove_slick: weapon_identifier = _ ( "slick_gloves" ); break;
+					case weapons_t::glove_leather_wrap: weapon_identifier = _ ( "leather_handwraps" ); break;
+					case weapons_t::glove_motorcycle: weapon_identifier = _ ( "motorcycle_gloves" ); break;
+					case weapons_t::glove_specialist: weapon_identifier = _ ( "specialist_gloves" ); break;
+					case weapons_t::glove_studded_hydra: weapon_identifier = _ ( "studded_hydra_gloves" ); break;
+					default: weapon_identifier = _ ( "<GLOVES_UNKNOWN>" ); break;
+					}
+				}
+				else {
+					static auto weapon_system = pattern::search ( _ ( "client.dll" ), _ ( "8B 35 ? ? ? ? FF 10 0F B7 C0" ) ).add ( 2 ).deref ( ).get< void* > ( );
+					using fn = weapon_info_t * ( __thiscall* )( void*, weapons_t );
+					const auto weapon_info = vfunc< fn > ( weapon_system, 2 )( weapon_system, m_item_definition_index );
+
+					weapon_identifier = weapon_info->m_weapon_name;
+
+					/* fix revolver */
+					if ( m_item_definition_index == weapons_t::revolver ) {
+						weapon_identifier = _ ( "weapon_revolver" );
+					}
+					/* fix silenced weapons */
+					else if ( weapon_info->m_silencer ) {
+						switch ( m_item_definition_index ) {
+						case weapons_t::m4a1s: weapon_identifier = _ ( "weapon_m4a1_silencer" ); break;
+						case weapons_t::usps: weapon_identifier = _ ( "weapon_usp_silencer" ); break;
+						default: weapon_identifier = _ ( "<SILENCED_UNKNOWN>" ); break;
+						}
+					}
+					/* fix knives */
+					else if ( m_item_definition_index >= weapons_t::knife_bayonet ) {
+						switch ( m_item_definition_index ) {
+						case weapons_t::knife_ct:
+						case weapons_t::knife_t: break;
+						case weapons_t::knife_bayonet: weapon_identifier = _ ( "weapon_bayonet" ); break;
+						case weapons_t::knife_bowie: weapon_identifier.append ( _ ( "_bowie" ) ); break;
+						case weapons_t::knife_butterfly: weapon_identifier.append ( _ ( "_butterfly" ) ); break;
+						case weapons_t::knife_canis: weapon_identifier.append ( _ ( "_canis" ) ); break;
+						case weapons_t::knife_cord: weapon_identifier.append ( _ ( "_cord" ) ); break;
+						case weapons_t::knife_css: weapon_identifier.append ( _ ( "_css" ) ); break;
+						case weapons_t::knife_falchion: weapon_identifier.append ( _ ( "_falchion" ) ); break;
+						case weapons_t::knife_flip: weapon_identifier.append ( _ ( "_flip" ) ); break;
+						case weapons_t::knife_gut: weapon_identifier.append ( _ ( "_gut" ) ); break;
+						case weapons_t::knife_gypsy_jackknife: weapon_identifier.append ( _ ( "_gypsy_jackknife" ) ); break;
+						case weapons_t::knife_huntsman: weapon_identifier.append ( _ ( "_tactical" ) ); break;
+						case weapons_t::knife_karambit:weapon_identifier.append ( _ ( "_karambit" ) ); break;
+						case weapons_t::knife_m9_bayonet: weapon_identifier.append ( _ ( "_m9_bayonet" ) ); break;
+						case weapons_t::knife_outdoor: weapon_identifier.append ( _ ( "_outdoor" ) ); break;
+						case weapons_t::knife_shadow_daggers:weapon_identifier.append ( _ ( "_push" ) ); break;
+						case weapons_t::knife_skeleton: weapon_identifier.append ( _ ( "_skeleton" ) ); break;
+						case weapons_t::knife_stiletto: weapon_identifier.append ( _ ( "_stiletto" ) ); break;
+						case weapons_t::knife_ursus: weapon_identifier.append ( _ ( "_ursus" ) ); break;
+						case weapons_t::knife_widowmaker: weapon_identifier.append ( _ ( "_widowmaker" ) ); break;
+						default: weapon_identifier = _ ( "<KNIFE_UNKNOWN>" ); break;
+						}
+					}
+				}
+
 				/* paintkit < 10000 is weapon skin, else is glove skin */
-				for ( auto& paintkit : ( m_paintkit < 10000 ? skin_kits : glove_kits ) ) {
+				for ( auto& paintkit : ( (m_paintkit < 10000) ? skin_kits : glove_kits ) ) {
 					if ( paintkit.id == m_paintkit ) {
 						m_cached_kit = &paintkit;
-						m_cached_preview = skin_preview ( paintkit.image_name );
+						m_preview_data = skin_preview ( std::string( _ ( "resource/flash/econ/default_generated/" )).append( weapon_identifier ).append(_("_")).append( paintkit.image_name ).append(_("_light_large.png")) );
+						
 						return;
 					}
 				}
 			}
 
-			std::optional<std::vector<uint8_t>&> get_preview ( ) {
-				if ( !m_cached_preview )
+			IDirect3DTexture9* get_preview ( ) {
+				if ( !m_cached_preview ) {
 					cache ( );
+					build_preview ( );
+				}
 
 				return m_cached_preview;
 			}
 
-			std::optional<paint_kit&> get_kit ( ) {
+			void release_preview ( ) {
+				if ( m_cached_preview ) {
+					m_cached_preview->Release ( );
+					m_cached_preview = nullptr;
+				}
+			}
+
+			void build_preview ( ) {
+				D3DXCreateTextureFromFileInMemoryEx ( cs::i::dev, m_preview_data.data ( ), m_preview_data.size ( ), D3DX_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT, D3DX_DEFAULT, D3DX_DEFAULT, 0, NULL, NULL, &m_cached_preview );
+				//D3DXCreateTextureFromFileInMemory ( csgo::i::dev, m_preview_data.data ( ), m_preview_data.size ( ), &m_cached_preview );
+			}
+
+			paint_kit* get_kit ( ) {
 				if ( !m_cached_kit )
 					cache ( );
 
@@ -184,6 +194,8 @@ namespace features {
 
 				/* remove weapon from inventory */
 				inventory::get_local_inventory ( )->remove_item ( skin.m_item );
+
+				skin.release_preview ( );
 			}
 
 			/* clear skins list */
@@ -225,14 +237,20 @@ namespace features {
 			item->set_level ( 1 );
 			item->set_in_use ( false );
 
-			if ( skin.m_item_definition_index >= knife_bayonet && skin.m_item_definition_index <= knife_skeleton )
+			if ( skin.m_item_definition_index >= weapons_t::knife_bayonet && skin.m_item_definition_index <= weapons_t::knife_skeleton )
 				item->set_quality ( 3 );
 			else
 				item->set_rarity ( 6 );
 
+			item->set_custom_name ( (char*)_(u8"✨ sesame.one ✨") );
+
 			item->clean_inventory_image_cache_dir ( );
 
 			inventory->add_econ_item ( item );
+			
+			//skin.equip ( );
+			skin.cache ( );
+			skin.build_preview ( );
 
 			skins.push_back ( skin );
 
@@ -244,10 +262,20 @@ namespace features {
 			std::string m_name;
 		};
 
-		inline std::unordered_map<int, std::vector<sequence_mapping>> knife_sequences;
+		inline std::unordered_map<weapons_t, std::vector<sequence_mapping>> knife_sequences;
+
+		inline void release_previews ( ) {
+			for ( auto& item : skins )
+				item.release_preview ( );
+		}
+
+		inline void rebuild_previews ( ) {
+			for ( auto& item : skins )
+				item.build_preview ( );
+		}
 
 		void dump_sequences ( );
-		int remap_sequence ( int from_item, int to_item, int from_sequence );
+		int remap_sequence ( weapons_t from_item, weapons_t to_item, int from_sequence );
 		void update_equipped ( );
 		void run ( );
 		void init ( );

@@ -54,14 +54,14 @@ void features::antiaim::simulate_lby( ) {
 	}
 
 	if ( g::local->vel( ).length_2d( ) > 0.1f )
-		lby::last_breaker_time = csgo::i::globals->m_curtime + 0.22f;
-	else if ( csgo::i::globals->m_curtime >= lby::last_breaker_time ) {
+		lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
+	else if ( cs::i::globals->m_curtime >= lby::last_breaker_time ) {
 		lby::in_update = true;
 		//dbg_print( "updated\n" );
-		lby::last_breaker_time = csgo::i::globals->m_curtime + 1.1f;
+		lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
 	}
 
-	if ( lby::last_breaker_time - csgo::i::globals->m_ipt < csgo::i::globals->m_curtime )
+	if ( lby::last_breaker_time - cs::i::globals->m_ipt < cs::i::globals->m_curtime )
 		lby::balance_update = true;
 }
 
@@ -69,18 +69,18 @@ player_t* looking_at( ) {
 	player_t* ret = nullptr;
 
 	vec3_t angs;
-	csgo::i::engine->get_viewangles( angs );
-	csgo::clamp( angs );
+	cs::i::engine->get_viewangles( angs );
+	cs::clamp( angs );
 
 	auto best_fov = 180.0f;
 
-	csgo::for_each_player( [ & ] ( player_t* pl ) {
+	cs::for_each_player( [ & ] ( player_t* pl ) {
 		if ( pl->team( ) == g::local->team( ) )
 			return;
 
-		auto angle_to = csgo::calc_angle( g::local->origin( ), pl->origin( ) );
-		csgo::clamp( angle_to );
-		auto fov = csgo::calc_fov( angle_to, angs );
+		auto angle_to = cs::calc_angle( g::local->origin( ), pl->origin( ) );
+		cs::clamp( angle_to );
+		auto fov = cs::calc_fov( angle_to, angs );
 
 		if ( fov < best_fov ) {
 			ret = pl;
@@ -92,10 +92,10 @@ player_t* looking_at( ) {
 }
 
 int find_freestand_side( player_t* pl, float range ) {
-	const auto cross = csgo::angle_vec( csgo::calc_angle( g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ), pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ) ) ).cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
+	const auto cross = cs::angle_vec( cs::calc_angle( g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ), pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ) ) ).cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
 
 	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
-	const auto dst = pl->origin( ) + pl->vel( ) * ( csgo::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
+	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
 	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, 0 );
 	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst - cross * range, 0 );
@@ -271,7 +271,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	if ( g::local->valid( ) && g::round != round_t::starting ) {
 		auto max_lag = 1;
 
-		if ( air && !( g::local->flags( ) & 1 ) )
+		if ( air && !( g::local->flags( ) & flags_t::on_ground ) )
 			max_lag = lag_air;
 		else if ( slow_walk && g::local->vel( ).length_2d( ) > 5.0f && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = lag_slow_walk;
@@ -289,50 +289,50 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			final_shift_amount_max = 0;
 
 		/* dont shift tickbase with revolver */
-		if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && ( g::local->weapon( )->item_definition_index( ) == 64 || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) )
+		if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) )
 			final_shift_amount_max = 0;
 
 		/* amount of ticks to shift increased */
 		if ( final_shift_amount_max > last_final_shift_amount )
-			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, csgo::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
+			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
 
 		last_final_shift_amount = final_shift_amount_max;
 
 		max_lag = std::clamp< int >( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
 
 		/* allow 1 extra tick just for when we land (if we are in air) */
-		if ( !( g::local->flags( ) & 1 ) )
+		if ( !( g::local->flags( ) & flags_t::on_ground ) )
 			max_lag = std::clamp< int >( max_lag, 1, g::cvars::sv_maxusrcmdprocessticks->get_int() - 1 );
 
 		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = 14;
 
-		g::send_packet = csgo::i::client_state->choked( ) >= max_lag;
+		g::send_packet = cs::i::client_state->choked( ) >= max_lag;
 
-		if ( g::local->flags( ) & 1 && !aa::was_on_ground && g::local->weapon( )->item_definition_index( ) != 64 )
+		if ( !!(g::local->flags( ) & flags_t::on_ground) && !aa::was_on_ground && g::local->weapon( )->item_definition_index( ) != weapons_t::revolver )
 			g::send_packet = false;
 
-		aa::was_on_ground = g::local->flags( ) & 1;
+		aa::was_on_ground = !!(g::local->flags( ) & flags_t::on_ground);
 
 		if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) {
 			aa::was_fd = true;
-			g::send_packet = csgo::i::client_state->choked( ) >= choke_limit;
+			g::send_packet = cs::i::client_state->choked( ) >= choke_limit;
 
-			if ( csgo::is_valve_server( ) ) {
+			if ( cs::is_valve_server( ) ) {
 				if ( ducked_ticks <= 9 ) {
-					ucmd->m_buttons |= 4;
+					ucmd->m_buttons |= buttons_t::duck;
 					g::send_packet = true;
 				}
 				else
-					ucmd->m_buttons = ( csgo::i::client_state->choked( ) > 3 ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
+					ucmd->m_buttons = ( cs::i::client_state->choked( ) > 3 ) ? ( ucmd->m_buttons | buttons_t::duck ) : ( ucmd->m_buttons & ~buttons_t::duck );
 
 				ducked_ticks++;
 			}
 			else {
-				ucmd->m_buttons = ( csgo::i::client_state->choked( ) > ( fd_mode == 0 ? 9 : 8 ) ) ? ( ucmd->m_buttons | 4 ) : ( ucmd->m_buttons & ~4 );
+				ucmd->m_buttons = ( cs::i::client_state->choked( ) > ( fd_mode == 0 ? 9 : 8 ) ) ? ( ucmd->m_buttons | buttons_t::duck ) : ( ucmd->m_buttons & ~buttons_t::duck );
 			}
 
-			ucmd->m_buttons |= 0x400000;
+			ucmd->m_buttons |= buttons_t::bullrush;
 		}
 		else if ( aa::was_fd ) {
 			ducked_ticks = 0;
@@ -347,9 +347,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					old_fmove = old_smove = 0.0f;
 				}
 				else {
-					auto as_ang = csgo::vec_angle( vec_move );
-					as_ang.y = csgo::normalize( as_ang.y + 180.0f );
-					const auto inverted_move = csgo::angle_vec( as_ang );
+					auto as_ang = cs::vec_angle( vec_move );
+					as_ang.y = cs::normalize( as_ang.y + 180.0f );
+					const auto inverted_move = cs::angle_vec( as_ang );
 
 					old_fmove = inverted_move.x * g::cvars::cl_forwardspeed->get_float ( );
 					old_smove = inverted_move.y * g::cvars::cl_forwardspeed->get_float ( );
@@ -362,14 +362,14 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				old_smove = ( old_smove / magnitude ) * target_speed;
 			}
 
-			ucmd->m_buttons &= ~0x20000;
+			ucmd->m_buttons &= ~buttons_t::walk;
 		};
 
 		if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
 			if ( fakewalk ) {
 				force_standing_antiaim = true;
 
-				if ( csgo::i::client_state->choked( ) > 7 )
+				if ( cs::i::client_state->choked( ) > 7 )
 					approach_speed( 0.0f );
 
 				/* force lby flick, will update when we stand still and send packet... */
@@ -407,19 +407,19 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		aa::flip = !aa::flip;
 
 	if ( !g::local->valid( )
-		|| g::local->movetype( ) == movetypes::movetype_noclip
-		|| g::local->movetype( ) == movetypes::movetype_ladder
-		|| ucmd->m_buttons & 32
+		|| g::local->movetype( ) == movetypes_t::noclip
+		|| g::local->movetype( ) == movetypes_t::ladder
+		|| !!(ucmd->m_buttons & buttons_t::use)
 		|| !g::local->weapon( )
 		|| !g::local->weapon( )->data( )
-		|| ( g::local->weapon( )->data( )->m_type == 0 && ucmd->m_buttons & 2048 )
+		|| ( g::local->weapon( )->data( )->m_type == weapon_type_t::knife && !!( ucmd->m_buttons & buttons_t::attack2 ) )
 		//|| g::local->weapon( )->data( )->m_type == 0
 		|| g::round == round_t::starting ) {
 		antiaiming = false;
 		return;
 	}
 
-	if ( ( g::local->weapon( )->data( )->m_type == 9 ) ? ( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) : ( ucmd->m_buttons & 1 ) ) {
+	if ( ( g::local->weapon( )->data( )->m_type == 9 ) ? ( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) : !!( ucmd->m_buttons & buttons_t::attack ) ) {
 		antiaiming = false;
 		return;
 	}
@@ -432,7 +432,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		switch ( base_yaw ) {
 			case 0: {
 				vec3_t ang;
-				csgo::i::engine->get_viewangles( ang );
+				cs::i::engine->get_viewangles( ang );
 				ucmd->m_angs.y = ang.y;
 			} break;
 			case 1: {
@@ -440,12 +440,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			} break;
 			case 2: {
 				if ( target_player ) {
-					const auto yaw_to = csgo::normalize( csgo::calc_angle( g::local->origin( ), target_player->origin( ) ).y );
+					const auto yaw_to = cs::normalize( cs::calc_angle( g::local->origin( ), target_player->origin( ) ).y );
 					ucmd->m_angs.y = yaw_to;
 				}
 				else {
 					vec3_t ang;
-					csgo::i::engine->get_viewangles( ang );
+					cs::i::engine->get_viewangles( ang );
 					ucmd->m_angs.y = ang.y;
 				}
 			} break;
@@ -457,13 +457,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						ucmd->m_angs.y += desync_side ? -auto_dir_amount : auto_dir_amount;
 					}
 					else {
-						const auto yaw_to = csgo::normalize( csgo::calc_angle( g::local->origin( ), target_player->origin( ) ).y + 180.0f );
+						const auto yaw_to = cs::normalize( cs::calc_angle( g::local->origin( ), target_player->origin( ) ).y + 180.0f );
 						ucmd->m_angs.y = yaw_to;
 					}
 				}
 				else {
 					vec3_t ang;
-					csgo::i::engine->get_viewangles( ang );
+					cs::i::engine->get_viewangles( ang );
 					ucmd->m_angs.y = ang.y + 180.0f;
 				}
 			} break;
@@ -471,7 +471,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	};
 
 	/* manage antiaim */ {
-		if ( !( g::local->flags( ) & 1 ) ) {
+		if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
 			if ( air ) {
 				process_base_yaw( base_yaw_air, auto_direction_amount_air, auto_direction_range_air );
 
@@ -479,7 +479,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( side != -1 ) {
 					vec3_t ang;
-					csgo::i::engine->get_viewangles( ang );
+					cs::i::engine->get_viewangles( ang );
 
 					switch ( side ) {
 						case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
@@ -534,7 +534,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_air : jitter_amount_air;
 
 				if ( rotation_range_air )
-					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
+					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
 
 				antiaiming = true;
 			}
@@ -550,7 +550,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( side != -1 ) {
 					vec3_t ang;
-					csgo::i::engine->get_viewangles( ang );
+					cs::i::engine->get_viewangles( ang );
 
 					switch ( side ) {
 						case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
@@ -605,7 +605,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_slow_walk : jitter_amount_slow_walk;
 
 				if ( rotation_range_slow_walk )
-					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
+					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
 
 				antiaiming = true;
 			}
@@ -616,7 +616,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( side != -1 ) {
 					vec3_t ang;
-					csgo::i::engine->get_viewangles( ang );
+					cs::i::engine->get_viewangles( ang );
 
 					switch ( side ) {
 						case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
@@ -671,7 +671,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_move : jitter_amount_move;
 
 				if ( rotation_range_move )
-					ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
+					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
 
 				antiaiming = true;
 			}
@@ -686,7 +686,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 			if ( side != -1 ) {
 				vec3_t ang;
-				csgo::i::engine->get_viewangles( ang );
+				cs::i::engine->get_viewangles( ang );
 
 				switch ( side ) {
 					case 0: ucmd->m_angs.y = ang.y + 180.0f; break;
@@ -722,7 +722,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				switch ( selected_desync_type ) {
 					case 0: /* real around fake */ {
-						static float last_update_time = csgo::i::globals->m_curtime;
+						static float last_update_time = cs::i::globals->m_curtime;
 
 						/* micro movements */
 						old_fmove += aa::move_flip ? -( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f ) : ( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f );
@@ -793,7 +793,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			ucmd->m_angs.y += aa::flip ? -jitter_amount_stand : jitter_amount_stand;
 
 			if ( rotation_range_stand )
-				ucmd->m_angs.y += std::fmodf( csgo::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
+				ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
 
 			antiaiming = true;
 		}

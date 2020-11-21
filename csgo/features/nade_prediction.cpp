@@ -59,7 +59,7 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 
 	//	calculate step and actual gravity value
 	gravity = 800.0f / 8.0f;
-	step = csgo::i::globals->m_ipt;
+	step = cs::i::globals->m_ipt;
 
 	//	get local view and eye origin
 	eye_origin = g::local->eyes( );
@@ -76,8 +76,8 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	}
 
 	//	find out how we're throwing the grenade
-	auto primary_attack = ucmd->m_buttons & 1;
-	auto secondary_attack = ucmd->m_buttons & 2048;
+	auto primary_attack = !!(ucmd->m_buttons & buttons_t::attack);
+	auto secondary_attack = !!(ucmd->m_buttons & buttons_t::attack2);
 
 	if ( primary_attack && secondary_attack ) {
 		grenade_act = ACT_LOB;
@@ -104,7 +104,7 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	new_velocity = velocity * unk01;
 
 	//	here's where the fun begins
-	thrown_direction = csgo::angle_vec( thrown );
+	thrown_direction = cs::angle_vec( thrown );
 
 	start = eye_origin + vec3_t( 0.0f, 0.0f, ( throw_strength * 12.f ) - 12.f );
 	thrown_direction = ( thrown_direction * new_velocity ) + ( g::local->vel( ).length_2d( ) < 5.0f ? vec3_t( 0.0f, 0.0f, 0.0f ) : g::local->vel( ) );
@@ -115,16 +115,18 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	auto nade_radius = 0.0f;
 
 	switch ( item_def_index ) {
-		case 43:
-		case 44:
-		case 47:
-		case 48:
-		case 45:
-			nade_radius = 115.0f;
-			break;
-		case 46:
-			nade_radius = 166.0f;
-			break;
+	case weapons_t::flashbang:
+	case weapons_t::decoy:
+		nade_radius = 0.0f;
+		break;
+	case weapons_t::hegrenade:
+	case weapons_t::smoke:
+		nade_radius = 115.0f;
+		break;
+	case weapons_t::molotov:
+	case weapons_t::firebomb:
+		nade_radius = 166.0f;
+		break;
 	}
 
 	//	let's go ahead and predict
@@ -133,7 +135,7 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 
 		//	setup trace
 		trace_t trace;
-		csgo::util_tracehull( start, pos, vec3_t( -2.0f, -2.0f, -2.0f ), vec3_t( 2.0f, 2.0f, 2.0f ), 0x46004003, g::local, &trace );
+		cs::util_tracehull( start, pos, vec3_t( -2.0f, -2.0f, -2.0f ), vec3_t( 2.0f, 2.0f, 2.0f ), 0x46004003, g::local, &trace );
 
 		//	modify path if we have hit something
 		if ( trace.m_fraction != 1.0f ) {
@@ -179,19 +181,22 @@ bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t
 	const auto index = weapon->item_definition_index( );
 
 	switch ( index ) {
-		case 43:
-		case 44:
-			if ( time > 2.5f )
+	case weapons_t::smoke:
+		if ( time > 1.5f )
+			return true;
+		break;
+	case weapons_t::decoy:
+		if ( time > 2.0f )
+			return true;
+		break;
+	case weapons_t::flashbang:
+	case weapons_t::hegrenade:
+			if ( time > 1.5f )
 				return true;
 			break;
-		case 46:
-		case 48:
-			if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > cosf(csgo::deg2rad( g::cvars::weapon_molotov_maxdetonateslope->get_float() )) || time > g::cvars::molotov_throw_detonate_time->get_float() )
-				return true;
-			break;
-		case 47:
-		case 45:
-			if ( time > 2.5f )
+	case weapons_t::molotov:
+	case weapons_t::firebomb:
+			if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > cosf(cs::deg2rad( g::cvars::weapon_molotov_maxdetonateslope->get_float() )) || time > g::cvars::molotov_throw_detonate_time->get_float() )
 				return true;
 			break;
 	}
@@ -223,13 +228,13 @@ void features::nade_prediction::trace( ucmd_t* ucmd ) {
 
 	auto weapon = g::local->weapon( );
 
-	const static std::vector< int > nades {
-		43,
-		45,
-		44,
-		46,
-		47,
-		48
+	const static std::vector< weapons_t > nades {
+		weapons_t::flashbang,
+		weapons_t::hegrenade,
+		weapons_t::smoke,
+		weapons_t::molotov,
+		weapons_t::decoy,
+		weapons_t::firebomb
 	};
 
 	const auto has_nade = std::find( nades.begin( ), nades.end( ), weapon->item_definition_index( ) ) != nades.end( );
@@ -245,7 +250,7 @@ void features::nade_prediction::trace( ucmd_t* ucmd ) {
 	cur_nade_track.clear( );
 
 	if ( has_nade && !( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) ) {
-		was_attacking_last_tick = ucmd->m_buttons & 1 || ucmd->m_buttons & 2048;
+		was_attacking_last_tick = !!(ucmd->m_buttons & buttons_t::attack) || !!(ucmd->m_buttons & buttons_t::attack2);
 		return predict( ucmd );
 	}
 
@@ -264,7 +269,7 @@ void features::nade_prediction::draw( ) {
 	//if ( !g_vars.visuals.grenade_pred )
 	//	return;
 
-	if ( !csgo::i::engine->is_in_game( ) || !g::local || !g::local->alive( ) )
+	if ( !cs::i::engine->is_in_game( ) || !g::local || !g::local->alive( ) )
 		return;
 
 	vec3_t start, end;
@@ -299,14 +304,14 @@ void features::nade_prediction::draw( ) {
 					break;
 				}
 
-				if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
+				if ( cs::render::world_to_screen( start, p.m_start ) && cs::render::world_to_screen( end, p.m_end ) ) {
 					if ( grenade_trajectories ) {
-						render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ), 2.5f );
+						render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), alpha ), 3.0f );
 					}
 
-					if ( p.m_detonate && grenade_blast_radii ) {
+					if ( p.m_detonate && grenade_blast_radii && p.m_radius ) {
 						render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), false );
-						render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), true, 2.5f );
+						render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), alpha2 ), true, 3.0f );
 					}
 					else if ( p.m_plane && grenade_bounces ) {
 						render::cube( p.m_start, 4, rgba ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), alpha1 ) );
@@ -321,9 +326,9 @@ void features::nade_prediction::draw( ) {
 	}
 
 	if ( nade_predicted ) {
-		auto base_time = csgo::i::globals->m_curtime;
+		auto base_time = cs::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp<int>( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int>( static_cast< int >( std::sinf( cs::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
 			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
@@ -333,21 +338,21 @@ void features::nade_prediction::draw( ) {
 				break;
 			}
 
-			if ( csgo::render::world_to_screen( start, p.m_start ) && csgo::render::world_to_screen( end, p.m_end ) ) {
+			if ( cs::render::world_to_screen( start, p.m_start ) && cs::render::world_to_screen( end, p.m_end ) ) {
 				if ( grenade_trajectories ) {
-					render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ), 2.5f );
+					render::line( start.x, start.y, end.x, end.y, rgba ( static_cast< int > ( grenade_trajectory_color.r * 255.0f ), static_cast< int > ( grenade_trajectory_color.g * 255.0f ), static_cast< int > ( grenade_trajectory_color.b * 255.0f ), calc_alpha ), 3.0f );
 				}
 
-				if ( p.m_detonate && grenade_blast_radii ) {
+				if ( p.m_detonate && grenade_blast_radii && p.m_radius ) {
 					render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), false );
-					render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), true, 2.5f );
+					render::circle3d( p.m_end, p.m_radius, 64, rgba ( static_cast< int > ( grenade_radii_color.r * 255.0f ), static_cast< int > ( grenade_radii_color.g * 255.0f ), static_cast< int > ( grenade_radii_color.b * 255.0f ), calc_alpha1 ), true, 3.0f );
 				}
 				else if ( p.m_plane && grenade_bounces ) {
 					render::cube( p.m_start, 4, rgba ( static_cast< int > ( grenade_bounce_color.r * 255.0f ), static_cast< int > ( grenade_bounce_color.g * 255.0f ), static_cast< int > ( grenade_bounce_color.b * 255.0f ), calc_alpha2 ) );
 				}
 			}
 
-			base_time += csgo::i::globals->m_ipt * 3.0f;
+			base_time += cs::i::globals->m_ipt * 3.0f;
 		}
 	}
 }
@@ -364,14 +369,14 @@ void features::nade_prediction::draw_beam( ) {
 	//if ( !g_vars.visuals.grenade_pred )
 	//	return;
 
-	if ( !csgo::i::engine->is_in_game( ) || !g::local || !g::local->alive( ) )
+	if ( !cs::i::engine->is_in_game( ) || !g::local || !g::local->alive( ) )
 		return;
 
 	vec3_t start, end;
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
 		const auto dormant_time = grenade_path_fade_time;
-		return static_cast< int >( ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( csgo::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf( csgo::i::globals->m_curtime - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
+		return static_cast< int >( ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( cs::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf( cs::i::globals->m_curtime - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
 
 	auto cur_track = 0;
@@ -382,7 +387,7 @@ void features::nade_prediction::draw_beam( ) {
 	beam_info.m_model_name = _("sprites/physbeam.vmt");
 	beam_info.m_model_idx = -1;
 	beam_info.m_halo_scale = 0.0f;
-	beam_info.m_life = csgo::i::globals->m_frametime;
+	beam_info.m_life = cs::i::globals->m_frametime;
 	beam_info.m_fade_len = 2.0f;
 	beam_info.m_amplitude = 2.3f;
 	beam_info.m_segments = 2;
@@ -426,10 +431,10 @@ void features::nade_prediction::draw_beam( ) {
 					beam_info.m_start = p.m_start;
 					beam_info.m_end = p.m_end;
 
-					auto beam = csgo::i::beams->create_beam_points( beam_info );
+					auto beam = cs::i::beams->create_beam_points( beam_info );
 
 					if ( beam )
-						csgo::i::beams->draw_beam( beam );
+						cs::i::beams->draw_beam( beam );
 				}
 
 				cur_point++;
@@ -440,9 +445,9 @@ void features::nade_prediction::draw_beam( ) {
 	}
 
 	if ( nade_predicted ) {
-		auto base_time = csgo::i::globals->m_curtime;
+		auto base_time = cs::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp<int> ( static_cast< int >( std::sinf( csgo::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int> ( static_cast< int >( std::sinf( cs::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
 			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
@@ -456,13 +461,13 @@ void features::nade_prediction::draw_beam( ) {
 				beam_info.m_start = p.m_start;
 				beam_info.m_end = p.m_end;
 
-				auto beam = csgo::i::beams->create_beam_points( beam_info );
+				auto beam = cs::i::beams->create_beam_points( beam_info );
 
 				if ( beam )
-					csgo::i::beams->draw_beam( beam );
+					cs::i::beams->draw_beam( beam );
 			}
 
-			base_time += csgo::i::globals->m_ipt * 3.0f;
+			base_time += cs::i::globals->m_ipt * 3.0f;
 		}
 	}
 }

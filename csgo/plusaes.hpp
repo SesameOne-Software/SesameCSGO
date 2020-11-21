@@ -19,7 +19,7 @@ namespace plusaes {
 
 		const int kBlockSize = 4;
 		/** @private */
-		typedef struct {
+		struct State {
 			Word w[4];
 			Word& operator[](const int index) {
 				return w[index];
@@ -27,7 +27,7 @@ namespace plusaes {
 			const Word& operator[](const int index) const {
 				return w[index];
 			}
-		} State;
+		};
 
 		const int kStateSize = 16; // Word * BlockSize
 		typedef State RoundKey;
