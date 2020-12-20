@@ -30,24 +30,25 @@ namespace features {
 
 			bool store( player_t* pl, const vec3_t& last_origin, bool simulated = false );
 
-			bool valid( bool use_tick = false ) {
+			inline bool valid( bool use_tick = false ) {
 				const auto nci = cs::i::engine->get_net_channel_info( );
 
 				if ( !nci || !g::local )
 					return false;
 
-				//if ( m_simtime < floorf ( prediction::curtime ( ) - g::cvars::sv_maxunlag->get_float ( ) ) )
-				//	return false;
+				if ( m_simtime < int ( prediction::curtime ( ) - g::cvars::sv_maxunlag->get_float ( ) ) )
+					return false;
 
-				const auto correct = std::clamp( nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ), 0.0f, g::cvars::sv_maxunlag->get_float() );
-				const auto dt = correct - ( prediction::curtime( ) - ( use_tick ? cs::ticks2time( m_tick ) : m_simtime ) );
+				const auto correct = std::clamp ( nci->get_latency ( 0 )
+					+ nci->get_latency ( 1 )
+					+ lerp(), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
 
-				return std::abs( dt ) < 0.2f;
+				return abs ( correct - ( prediction::curtime() - m_simtime ) ) <= 0.2f;
 			}
 
 			void backtrack( ucmd_t* ucmd );
 
-			void extrapolate( ) {
+			inline void extrapolate( ) {
 				auto dst = m_origin + m_vel * cs::i::globals->m_ipt;
 
 				trace_t tr;
@@ -79,11 +80,12 @@ namespace features {
 		const std::pair< std::deque< lag_record_t >&, bool > get_all( player_t* pl );
 		const std::pair< lag_record_t&, bool > get_extrapolated( player_t* pl );
 		const std::pair< lag_record_t&, bool > get_shot( player_t* pl );
+		bool get_render_record ( player_t* ent, matrix3x4_t* out ); // nave
 		void cache( player_t* pl, bool predicted );
 		bool breaking_lc( player_t* pl );
 		bool has_onshot( player_t* pl );
 
-		__forceinline void pop( player_t* pl ) {
+		inline void pop( player_t* pl ) {
 			/*
 			@CBRs
 				this is bad. you should not pop from the main deque, but rather pop from a copy of it during create move - otherwise, you'll be popping off valid records that you may be able to shoot at if you were to modify

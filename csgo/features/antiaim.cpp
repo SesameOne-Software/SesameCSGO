@@ -275,7 +275,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			max_lag = lag_air;
 		else if ( slow_walk && g::local->vel( ).length_2d( ) > 5.0f && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = lag_slow_walk;
-		else if ( move && g::local->vel( ).length_2d( ) > 0.1f )
+		else if ( move && g::local->vel( ).length_2d( ) > 5.0f )
 			max_lag = lag_move;
 		else if ( stand )
 			max_lag = lag_stand;

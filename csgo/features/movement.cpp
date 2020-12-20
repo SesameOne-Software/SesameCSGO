@@ -3,6 +3,8 @@
 #include "../globals.hpp"
 #include "../menu/options.hpp"
 
+#include "ragebot.hpp"
+
 enum e_strafe_dirs {
 	qd_front,
 	qd_left,
@@ -15,6 +17,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 	static auto& auto_forward = options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b;
 	static auto& strafer = options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b;
 	static auto& directional = options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b;
+	static auto& accurate_move = options::vars [ _ ( "misc.movement.accurate_move" ) ].val.b;
 
 	if ( !g::local->valid( )
 		|| g::local->movetype ( ) == movetypes_t::noclip
@@ -158,5 +161,24 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 					ucmd->m_fmove = g::cvars::cl_forwardspeed->get_float ( );
 			}
 		}
+	}
+	else {
+	if ( accurate_move
+		&& !( ucmd->m_buttons & buttons_t::back )
+		&& !( ucmd->m_buttons & buttons_t::left )
+		&& !( ucmd->m_buttons & buttons_t::right )
+		&& !( ucmd->m_buttons & buttons_t::forward ) ) {
+		if ( g::local->vel ( ).length_2d ( ) > 12.0f ) {
+			auto fwd = cs::angle_vec ( old_angs );
+			auto right = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+
+			auto wishvel = -g::local->vel ( );
+
+			ucmd->m_fmove = ( wishvel.y - ( right.y / right.x ) * wishvel.x ) / ( fwd.y - ( right.y / right.x ) * fwd.x );
+			ucmd->m_smove = ( wishvel.x - fwd.x * ucmd->m_fmove ) / right.x;
+
+			ucmd->m_buttons &= ~buttons_t::walk;
+		}
+	}
 	}
 }

@@ -2,42 +2,37 @@
 
 #include "../animations/resolver.hpp"
 
+#include "../animations/animation_system.hpp"
+#include "../features/exploits.hpp"
+#include "../features/prediction.hpp"
+
 decltype( &hooks::run_simulation ) hooks::old::run_simulation = nullptr;
 
-__declspec( naked ) void hooks::run_simulation( ) {
-    __asm {
-        /* call proxy func */
-        pushad
-        pushfd
-        push 0
-        push [ ebp + 16 ]
-        push [ ebp + 12 ]
-        push [ ebp + 8 ]
-        call hooks::run_simulation_proxy
-        popad
-        popfd
+/* cbrs */
+void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, player_t* localplayer ) {
+    if ( !localplayer || localplayer != g::local || !g::local )
+        return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-        /* call original */
-        push [ ebp + 16 ]
-        push [ ebp + 12 ]
-        //mov xmm2, xmm2
-        push [ ebp + 8 ]
-        //mov ecx, ecx
-        call hooks::old::run_simulation
-
-        /* call post proxy func */
-        pushad
-        pushfd
-        push 1
-        push [ ebp + 16 ]
-        push [ ebp + 12 ]
-        push [ ebp + 8 ]
-        call hooks::run_simulation_proxy
-        popad
-        popfd
+    if ( cmd->m_tickcount == INT_MAX ) {
+        cmd->m_hasbeenpredicted = true;
+        localplayer->tick_base ( )++;
+        return;
     }
-}
 
-void hooks::run_simulation_proxy( int current_command, ucmd_t* ucmd, player_t* local, int post_simulation ) {
-    dbg_print( _( "run_simulation\n" ) );
+    if ( exploits::shifted_command ( ) == current_command )
+        localplayer->tick_base ( ) -= exploits::shifted_tickbase ( );
+
+    auto curtime = cs::i::globals->m_curtime = cs::ticks2time( localplayer->tick_base ( ) ); 
+    __asm movss xmm2, curtime
+
+    old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
+
+    if ( exploits::shifted_command ( ) == current_command )
+        localplayer->tick_base ( ) += exploits::shifted_tickbase ( );
+
+    anims::animate_local ( );
+
+    features::prediction::fix_viewmodel ( true );
+    //g_engine_pred.fix_compressed_netvars ( true );
+    //g_engine_pred.fix_viewmodel ( true );
 }

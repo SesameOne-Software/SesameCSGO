@@ -32,36 +32,49 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	if ( ret != _ReturnAddress( ) )
 		return old::end_scene( REG_OUT, device );
 
-	IDirect3DStateBlock9* pixel_state = nullptr;
-	IDirect3DVertexDeclaration9* vertex_decleration = nullptr;
-	IDirect3DVertexShader9* vertex_shader = nullptr;
+	D3DVIEWPORT9 d3d_viewport;
+	device->GetViewport ( &d3d_viewport );
 
-	cs::i::dev->GetVertexDeclaration ( &vertex_decleration );
-	cs::i::dev->GetVertexShader ( &vertex_shader );
+	IDirect3DStateBlock9* pixel_state = NULL; IDirect3DVertexDeclaration9* vertDec; IDirect3DVertexShader9* vertShader;
+	DWORD dwOld_D3DRS_COLORWRITEENABLE;
+	DWORD srgbwrite;
 
-	cs::i::dev->CreateStateBlock ( D3DSBT_ALL, &pixel_state );
+	device->CreateStateBlock ( D3DSBT_ALL, &pixel_state );
 	pixel_state->Capture ( );
 
-	device->SetRenderState ( D3DRS_COLORWRITEENABLE, 0xFFFFFFFF );
+	//cs::i::dev->GetVertexDeclaration ( &vertDec );
+	//cs::i::dev->GetVertexShader ( &vertShader );
+
+	device->GetRenderState ( D3DRS_COLORWRITEENABLE, &dwOld_D3DRS_COLORWRITEENABLE );
+	device->GetRenderState ( D3DRS_SRGBWRITEENABLE, &srgbwrite );
+
+	device->SetVertexShader ( nullptr );
+	device->SetPixelShader ( nullptr );
+	device->SetFVF ( D3DFVF_XYZRHW | D3DFVF_DIFFUSE );
+
+	device->SetRenderState ( D3DRS_LIGHTING, FALSE );
+	device->SetRenderState ( D3DRS_FOGENABLE, FALSE );
 	device->SetRenderState ( D3DRS_CULLMODE, D3DCULL_NONE );
-	device->SetRenderState ( D3DRS_LIGHTING, false );
-	device->SetRenderState ( D3DRS_ZENABLE, false );
-	device->SetRenderState ( D3DRS_ALPHABLENDENABLE, true );
-	device->SetRenderState ( D3DRS_ALPHATESTENABLE, false );
-	device->SetRenderState ( D3DRS_BLENDOP, D3DBLENDOP_ADD );
+	device->SetRenderState ( D3DRS_FILLMODE, D3DFILL_SOLID );
+
+	device->SetRenderState ( D3DRS_ZENABLE, D3DZB_FALSE );
+	device->SetRenderState ( D3DRS_SCISSORTESTENABLE, TRUE );
+	device->SetRenderState ( D3DRS_ZWRITEENABLE, FALSE );
+	device->SetRenderState ( D3DRS_STENCILENABLE, FALSE );
+
+	device->SetRenderState ( D3DRS_MULTISAMPLEANTIALIAS, TRUE );
+	device->SetRenderState ( D3DRS_ANTIALIASEDLINEENABLE, TRUE );
+
+	device->SetRenderState ( D3DRS_ALPHABLENDENABLE, TRUE );
+	device->SetRenderState ( D3DRS_ALPHATESTENABLE, FALSE );
+	device->SetRenderState ( D3DRS_SEPARATEALPHABLENDENABLE, TRUE );
 	device->SetRenderState ( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+	device->SetRenderState ( D3DRS_SRCBLENDALPHA, D3DBLEND_INVDESTALPHA );
 	device->SetRenderState ( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
-	device->SetRenderState ( D3DRS_SCISSORTESTENABLE, false );
-	device->SetRenderState ( D3DRS_SHADEMODE, D3DSHADE_GOURAUD );
-	device->SetRenderState ( D3DRS_FOGENABLE, false );
-	device->SetTextureStageState ( 0, D3DTSS_COLOROP, D3DTOP_MODULATE );
-	device->SetTextureStageState ( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
-	device->SetTextureStageState ( 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE );
-	device->SetTextureStageState ( 0, D3DTSS_ALPHAOP, D3DTOP_MODULATE );
-	device->SetTextureStageState ( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE );
-	device->SetTextureStageState ( 0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE );
-	device->SetSamplerState ( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
-	device->SetSamplerState ( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
+	device->SetRenderState ( D3DRS_DESTBLENDALPHA, D3DBLEND_ONE );
+
+	device->SetRenderState ( D3DRS_SRGBWRITEENABLE, FALSE );
+	device->SetRenderState ( D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA );
 
 	security_handler::update( );
 
@@ -151,11 +164,17 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 	ImGui_ImplDX9_RenderDrawData ( ImGui::GetDrawData ( ) );
 
+	device->SetRenderState ( D3DRS_COLORWRITEENABLE, dwOld_D3DRS_COLORWRITEENABLE );
+	device->SetRenderState ( D3DRS_SRGBWRITEENABLE, srgbwrite );
+
+	//cs::i::dev->SetVertexDeclaration ( vertDec );
+	//cs::i::dev->SetVertexShader ( vertShader );
+	//
+	//vertDec->Release ( );
+	//vertShader->Release ( );
+
 	pixel_state->Apply ( );
 	pixel_state->Release ( );
-
-	cs::i::dev->SetVertexDeclaration ( vertex_decleration );
-	cs::i::dev->SetVertexShader ( vertex_shader );
 
 	//truetype::end ( );
 

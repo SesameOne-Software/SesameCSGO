@@ -16,7 +16,7 @@ struct fire_bullet_data_t {
 namespace autowall {
 #pragma optimize( "2", on )
 
-	static void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
+	inline void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
 		if ( !entity->valid( ) )
 			return;
 
@@ -53,33 +53,55 @@ namespace autowall {
 		}
 	}
 
-	__forceinline void clip_trace_to_players_fast( player_t* pl, const vec3_t& start, const vec3_t& end, std::uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
-		trace_t trace;
-		ray_t ray;
-
-		ray.init( start, end );
-
-		if ( !pl || !pl->alive( ) || pl->dormant( ) )
+	inline void clip_trace_to_players_fast( player_t* pl, const vec3_t& start, const vec3_t& end, uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
+		if ( !pl )
 			return;
 
-		if ( filter && !filter->should_hit_ent( pl, mask ) )
-			return;
+		const vec3_t mins = pl->mins ( );
+		const vec3_t maxs = pl->maxs ( );
 
-		cs::i::trace->clip_ray_to_entity( ray, mask_shot_hull | contents_hitbox, reinterpret_cast < entity_t* > ( pl ), &trace );
+		vec3_t dir ( end - start );
+		dir.normalize ( );
 
-		if ( trace.m_fraction < tr->m_fraction )
-			*tr = trace;
+		const vec3_t center = ( maxs + mins ) / 2;
+		const vec3_t pos ( center + pl->origin ( ) );
+
+		vec3_t to = pos - start;
+		const float range_along = dir.dot_product ( to );
+
+		float range;
+		if ( range_along < 0.f ) {
+			range = -to.length ( );
+		}
+		else if ( range_along > dir.length ( ) ) {
+			range = -( pos - end ).length ( );
+		}
+		else {
+			auto ray ( pos - ( dir * range_along + start ) );
+			range = ray.length ( );
+		}
+
+		if ( range <= 60.0f ) {
+			ray_t ray;
+			ray.init ( start, end );
+
+			trace_t trace;
+			cs::i::trace->clip_ray_to_entity ( ray, mask_shot_hull | contents_hitbox, pl, &trace );
+
+			if ( tr->m_fraction > trace.m_fraction )
+				*tr = trace;
+		}
 	}
 
-	__forceinline bool classname_is( player_t* entity, const char* class_name ) {
+	inline bool classname_is( player_t* entity, const char* class_name ) {
 		return !std::strcmp( entity->client_class( )->m_network_name, class_name );
 	}
 
-	__forceinline bool is_breakable ( player_t* ent ) {
+	inline bool is_breakable ( player_t* ent ) {
 		/* XREF: "func_breakable_surf" */
 		static auto _is_breakable = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 84 C0 75 A1" ) ).resolve_rip();
 
-		bool        ret;
+		bool ret;
 		client_class_t* cc;
 		const char* name;
 		char* takedmg, old_takedmg;
@@ -92,7 +114,7 @@ namespace autowall {
 		...
 		*/
 
-		static size_t m_takedamage_offset { *( size_t* ) ( _is_breakable.get<uintptr_t> ( ) + 38 ) };
+		static auto m_takedamage_offset = _is_breakable.add ( 38 ).deref ( ).get<uint32_t> ( );
 
 		// skip null ents and the world ent.
 		if ( !ent || !ent->idx ( ) )
@@ -105,17 +127,21 @@ namespace autowall {
 		// get clientclass.
 		cc = ent->client_class ( );
 
-		if ( cc ) {
+		if ( cc && cc->m_network_name ) {
 			// get clientclass network name.
 			name = cc->m_network_name;
 
+			const auto name_len = strlen ( name );
+
 			// CBreakableSurface, CBaseDoor, ...
-			if ( name [ 1 ] != 'F'
-				|| name [ 4 ] != 'c'
-				|| name [ 5 ] != 'B'
-				|| name [ 9 ] != 'h' ) {
+			if ( name_len > 16 && name [ 1 ] == 'B' && name [ 9 ] == 'e' && name [ 10 ] == 'S' && name [ 16 ] == 'e' )
 				*takedmg = 2;
-			}
+
+			else if ( name_len > 5 && name [ 1 ] != 'B' && name [ 5 ] != 'D' )
+				*takedmg = 2;
+
+			else if ( name_len > 9 && name [ 1 ] != 'F' && name [ 4 ] != 'c' && name [ 5 ] != 'B' && name [ 9 ] != 'h' ) // CFuncBrush
+				*takedmg = 2;
 		}
 
 		ret = _is_breakable.get<bool ( __thiscall* )( player_t* )> ( )(ent);
@@ -124,7 +150,7 @@ namespace autowall {
 		return ret;
 	}
 
-	__forceinline bool trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
+	inline bool trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
 		vec3_t end;
 		float dist = 0.0f;
 		int first_contents = 0;
@@ -180,7 +206,7 @@ namespace autowall {
 		return false;
 	}
 
-	__forceinline bool hbp( player_t* entity, player_t* dst_entity, weapon_info_t* wpn_data, fire_bullet_data_t& data ) {
+	inline bool hbp( player_t* entity, player_t* dst_entity, weapon_info_t* wpn_data, fire_bullet_data_t& data ) {
 		if ( !entity->valid( ) || !wpn_data )
 			return false;
 
@@ -246,7 +272,7 @@ namespace autowall {
 		return true;
 	}
 
-	__forceinline bool is_armored( player_t* player, int armor, int hitgroup ) {
+	inline bool is_armored( player_t* player, int armor, int hitgroup ) {
 		if ( !player )
 			return false;
 
@@ -270,7 +296,7 @@ namespace autowall {
 		return result;
 	}
 
-	__forceinline bool simulate_fire_bullet( player_t* entity, player_t* dst_entity, fire_bullet_data_t& data, int hitgroup, vec3_t end_pos ) {
+	inline bool simulate_fire_bullet( player_t* entity, player_t* dst_entity, fire_bullet_data_t& data, int hitgroup, vec3_t end_pos ) {
 		if ( !entity->valid( ) || !dst_entity->valid( ) || !entity->weapon( ) )
 			return false;
 
@@ -298,7 +324,8 @@ namespace autowall {
 				ray_t ray;
 				ray.init( data.src, end );
 				cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
-				clip_trace_to_players_fast( dst_entity, data.src, end + data.direction * 40.0f, 0x4600400B, &data.filter, &data.enter_trace );
+
+				clip_trace_to_players_fast( dst_entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 
 				if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
 					autowall::scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
@@ -327,7 +354,7 @@ namespace autowall {
 		return false;
 	}
 
-	__forceinline int hitbox_to_hitgroup( int hitbox ) {
+	inline int hitbox_to_hitgroup( int hitbox ) {
 		int result = 0; // eax
 
 		switch ( hitbox ) {
@@ -360,7 +387,7 @@ namespace autowall {
 		return result;
 	}
 
-	__forceinline float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox, vec3_t* impact_out = nullptr, int* hitgroup_out = nullptr ) {
+	inline float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox, vec3_t* impact_out = nullptr, int* hitgroup_out = nullptr ) {
 		if ( !entity->valid( ) )
 			return 0.0f;
 
@@ -394,7 +421,7 @@ namespace autowall {
 		return 0.0f;
 	}
 
-	__forceinline bool trace_ray( const vec3_t& min, const vec3_t& max, const matrix3x4_t& mat, float r, const vec3_t& src, const vec3_t& dst ) {
+	inline bool trace_ray( const vec3_t& min, const vec3_t& max, const matrix3x4_t& mat, float r, const vec3_t& src, const vec3_t& dst ) {
 		static auto vector_rotate = [ ] ( const vec3_t& in1, const matrix3x4_t& in2, vec3_t& out ) {
 			out [ 0 ] = in1 [ 0 ] * in2 [ 0 ][ 0 ] + in1 [ 1 ] * in2 [ 1 ][ 0 ] + in1 [ 2 ] * in2 [ 2 ][ 0 ];
 			out [ 1 ] = in1 [ 0 ] * in2 [ 0 ][ 1 ] + in1 [ 1 ] * in2 [ 1 ][ 1 ] + in1 [ 2 ] * in2 [ 2 ][ 1 ];

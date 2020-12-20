@@ -9,10 +9,10 @@
 
 std::unordered_map<std::string, void*> font_list {};
 
-void render::create_font ( const uint8_t* data, size_t data_size, const std::string& family_name, float size, const uint16_t* ranges ) {
+void render::create_font ( const uint8_t* data, size_t data_size, std::string_view family_name, float size, const uint16_t* ranges ) {
 	ImGuiIO& io = ImGui::GetIO ( );
 
-	font_list[ family_name ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, nullptr, ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
+	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, nullptr, ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
 }
 
 void render::screen_size ( float& width, float& height ) {
@@ -49,14 +49,18 @@ void render::line ( float x, float y, float x2, float y2, uint32_t color, float 
 void render::text ( float x, float y, std::string_view text, std::string_view font, uint32_t color, bool outline ) {
 	const auto draw_list = ImGui::GetWindowDrawList ( );
 
+	ImGui::PushFont ( reinterpret_cast< ImFont* >( font_list [ font.data ( ) ] ) );
+
 	if ( outline ) {
-		draw_list->AddText ( { round(x - 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
-		draw_list->AddText ( { round(x - 1.0f), round(y + 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		//draw_list->AddText ( { round(x - 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		//draw_list->AddText ( { round(x - 1.0f), round(y + 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
 		draw_list->AddText ( { round(x + 1.0f), round(y + 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
-		draw_list->AddText ( { round(x + 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
+		//draw_list->AddText ( { round(x + 1.0f), round(y - 1.0f) }, color & IM_COL32_A_MASK, text.data ( ) );
 	}
 
 	draw_list->AddText ( { round (x),round (y)}, color, text.data ( ) );
+
+	ImGui::PopFont ( );
 }
 
 void render::circle ( float x, float y, float radius, int segments, uint32_t color, bool outline ) {

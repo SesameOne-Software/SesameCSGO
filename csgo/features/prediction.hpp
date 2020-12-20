@@ -7,6 +7,7 @@ namespace features {
 		
 		int shift_tickbase ( );
 		void update( int stage );
+		void fix_viewmodel ( bool store = false );
 		void run( const std::function< void( ) >& fn );
 	}
 }

@@ -245,49 +245,21 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
 			}
 			else {
+				static matrix3x4_t matrix [ 128 ];
 
-				if ( visuals.backtrack_chams && e->vel ( ).length_2d ( ) > 10.0f && e != g::local && g::local->alive ( ) && !lagcomp::data::records [ e->idx ( ) ].empty ( ) ) {
+				if ( visuals.backtrack_chams && e != g::local && g::local->alive ( ) && lagcomp::get_render_record( e, matrix ) ) {
 					cs::i::render_view->set_alpha ( visuals.backtrack_chams_color.a * 255.0f );
 					cs::i::render_view->set_color ( visuals.backtrack_chams_color.r * 255.0f, visuals.backtrack_chams_color.g * 255.0f, visuals.backtrack_chams_color.b * 255.0f );
+
 					auto mat = visuals.chams_flat ? m_matflat : m_mat;
 					mat->set_material_var_flag ( 0x8000, visuals.backtrack_chams );
 					mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
-					cs::i::mdl_render->force_mat ( mat );
 
-					if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 0 )
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones1 );
-					else if ( features::ragebot::get_misses ( e->idx ( ) ).bad_resolve % 3 == 1 )
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones2 );
-					else
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, lagcomp::data::records [ e->idx ( ) ].back ( ).m_bones3 );
+					cs::i::mdl_render->force_mat ( mat );
+					hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, matrix );
 
 					cs::i::mdl_render->force_mat ( nullptr );
 				}
-
-				//if ( e != g::local && !anims::frames [ e->idx( ) ].empty( ) ) {
-				//	/* predicted lag chams */
-				//	csgo::i::render_view->set_alpha( 75 );
-				//	csgo::i::render_view->set_color( 0, 255, 0 );
-				//	auto mat = visuals.chams_flat ? m_matflat : m_mat;
-				//	mat->set_material_var_flag( 0x8000, true );
-				//	mat->set_material_var_flag( 0x1000, false );
-				//	csgo::i::mdl_render->force_mat( mat );
-				//	////
-				//	for ( auto& frame : anims::frames [ e->idx( ) ] ) {
-				//		/* only render predicted data */
-				//		//if ( frame.m_anim_update )
-				//		//	continue;
-////////
-				//		csgo::i::render_view->set_color( 255, 50, 50 );
-				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix1.data( ) );
-				//		csgo::i::render_view->set_color( 50, 255, 50 );
-				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix2.data( ) );
-				//		csgo::i::render_view->set_color( 50, 50, 255 );
-				//		hooks::old::draw_model_execute( csgo::i::mdl_render, nullptr, ctx, state, info, frame.m_matrix3.data( ) );
-				//	}
-				//	////
-				//	csgo::i::mdl_render->force_mat( nullptr );
-				//}
 
 				/* fake chams */
 				if ( e == g::local ) {

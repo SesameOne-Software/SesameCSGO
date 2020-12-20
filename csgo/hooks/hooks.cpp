@@ -33,7 +33,6 @@
 #include "should_skip_anim_frame.hpp"
 #include "write_usercmd_delta_to_buffer.hpp"
 #include "setup_bones.hpp"
-#include "run_command.hpp"
 #include "run_simulation.hpp"
 #include "build_transformations.hpp"
 #include "base_interpolate_part1.hpp"
@@ -72,12 +71,16 @@ void hooks::init( ) {
 
 	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
 
-	if ( clsm_numUsrCmdProcessTicksMax_clamp ) {
+	//if ( clsm_numUsrCmdProcessTicksMax_clamp ) {
 		unsigned long old_prot = 0;
 		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, PAGE_EXECUTE_READWRITE, &old_prot );
 		memset( clsm_numUsrCmdProcessTicksMax_clamp, 0x90, 3 );
 		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
-	}
+	//}
+
+		const auto cl_extrapolate = cs::i::cvar->find ( _ ( "cl_extrapolate" ) );
+		cl_extrapolate->no_callback ( );
+		cl_extrapolate->set_value(0);
 
 	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< void* >( );
 	const auto _frame_stage_notify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< void* >( );
@@ -91,7 +94,7 @@ void hooks::init( ) {
 	const auto _get_int = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
 	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
 	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
-	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 88 44 24 0B" ) ).resolve_rip( ).get< void* >( );
+	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "57 8B F9 8B 07 8B 80 ? ? ? ? FF D0 84 C0 75 02 5F C3" ) ).get< void* >( );
 	const auto _is_hltv = vfunc< void* >( cs::i::engine, N( 93 ) );
 	const auto _write_usercmd_delta_to_buffer = vfunc< void* >( cs::i::client, N( 24 ) );
 	const auto _list_leaves_in_box = vfunc< void* >( cs::i::engine->get_bsp_tree_query( ), N( 6 ) );
@@ -104,7 +107,7 @@ void hooks::init( ) {
 	const auto _modify_eye_pos = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 	const auto _setup_bones = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
 	const auto _run_command = vfunc<void*>( cs::i::pred, 19 );
-	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 08 53 8B 5D 10 56" ) ).get< void* >( );
+	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? A1 ? ? ? ? F3 0F 10 45 ? F3 0F 11 40" ) ).resolve_rip().get< void* >( );
 	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
 	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
@@ -151,8 +154,7 @@ void hooks::init( ) {
 	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
-	dbg_hook( _run_command, run_command, ( void** )&old::run_command );
-	//dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
+	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );

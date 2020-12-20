@@ -90,11 +90,9 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	float old_flashalpha;
 	float old_flashtime;
 
+	anims::run ( stage );
+
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
-		anims::run( stage );
-
-		features::prediction::update( stage );
-
 		if ( stage == 5 && g::local ) {
 			RUN_SAFE(
 				"animations::resolver::create_beams",
@@ -195,6 +193,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	old::frame_stage_notify( REG_OUT, stage );
 
+	anims::run_post_fsn ( stage );
+
+	features::prediction::update ( stage );
+
 	if ( stage == 5 && g::local && cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( g::local->alive( ) ) {
 			g::local->aim_punch( ) = old_aimpunch;
@@ -207,5 +209,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			"features::skinchanger::run",
 			features::skinchanger::run ( );
 		);
+
+		features::prediction::fix_viewmodel ( );
 	}
 }

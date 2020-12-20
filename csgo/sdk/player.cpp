@@ -48,7 +48,7 @@ float player_t::get_sequence_move_distance ( void* studio_hdr, int sequence ) {
 }
 
 int player_t::lookup_sequence ( const char* seq ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ), "55 8B EC 56 8B F1 83 BE ? ? ? ? ? 75 14 8B 46 04 8D 4E 04 FF 50 20 85 C0 74 07 8B CE E8 ? ? ? ? 8B B6 ? ? ? ? 85 F6 74 48 83 3E 00 74 43 8B CE E8 ? ? ? ? 84 C0 74 38 FF 75 08 8B CE E8" ).get<int ( __thiscall* )( player_t*, const char* )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ), "E8 ? ? ? ? 5E 83 F8 FF" ).resolve_rip().get<int ( __thiscall* )( player_t*, const char* )> ( );
 	return addr ( this, seq );
 }
 
@@ -146,7 +146,7 @@ vec3_t player_t::eyes( ) {
 	/* eye position */
 	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 168 ) ( this, pos );
 
-	if ( *reinterpret_cast< uint8_t* > ( uintptr_t ( this ) + 0x3AC8 ) && *reinterpret_cast< uint32_t** > ( uintptr_t ( this ) + 0x3914 ) )
+	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x3AC8 ) && animstate ( ) )
 		hooks::modify_eye_pos( animstate( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
 
 	return pos;

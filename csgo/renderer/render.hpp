@@ -7,8 +7,8 @@
 #include "../sdk/sdk.hpp"
 
 namespace render {
-	void create_font ( const uint8_t* data, size_t data_size, const std::string& family_name, float size, const uint16_t* ranges = nullptr );
-	inline void create_font ( const std::vector<uint8_t>& data, const std::string& family_name, float size, const uint16_t* ranges = nullptr ) {
+	void create_font ( const uint8_t* data, size_t data_size, std::string_view family_name, float size, const uint16_t* ranges = nullptr );
+	inline void create_font ( const std::vector<uint8_t>& data, std::string_view family_name, float size, const uint16_t* ranges = nullptr ) {
 		create_font ( data.data(), data.size(), family_name, size, ranges );
 	}
 	void screen_size ( float& width, float& height );

@@ -356,9 +356,6 @@
     <ClInclude Include="hooks\setup_bones.hpp">
       <Filter>Header Files\hooks</Filter>
     </ClInclude>
-    <ClInclude Include="hooks\run_command.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="sdk\beams.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -536,15 +533,6 @@
     <ClInclude Include="vpk\vpkparser.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vdf\vdf_parser.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="animations\logger.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="animations\anim_dump.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -688,9 +676,6 @@
     <ClCompile Include="hooks\setup_bones.cpp">
       <Filter>Source Files\hooks</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\run_command.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="menu\menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -764,12 +749,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="features\kit_parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="vdf\vdf_parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="animations\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

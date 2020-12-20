@@ -23,7 +23,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fd_key_mode" ) ].val.i;
 
-	if ( g::local && ( removals [ 5 ] ? true : !g::local->scoped( ) ) )
+	if ( g::local && ( removals [ 5 ] ? ( !g::local->weapon ( ) || ( g::local->weapon ( ) && g::local->weapon ( )->zoom_level ( ) <= 1 ) ) : !g::local->scoped ( ) ) )
 		*reinterpret_cast< float* > ( uintptr_t( setup ) + 176 ) = static_cast < float > ( fov );
 
 	auto get_ideal_dist = [ & ] ( float ideal_distance ) {
@@ -37,8 +37,11 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		ray_t ray;
 		trace_t trace;
 		trace_filter_t filter( g::local );
+
+		auto start = g::local->origin ( ) + g::local->view_offset ( );
+		auto end = start + direction * ideal_distance;
 		
-		cs::util_traceline( g::local->eyes( ), g::local->eyes( ) + ( direction * ideal_distance ), mask_playersolid, g::local, &trace );
+		cs::util_traceline( start, end, mask_solid & ~contents_monster, g::local, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};

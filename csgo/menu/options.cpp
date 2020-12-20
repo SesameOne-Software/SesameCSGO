@@ -473,6 +473,7 @@ void options::init( ) {
 	option::add_bool( _( "misc.movement.auto_forward" ), false );
 	option::add_bool( _( "misc.movement.auto_strafer" ), false );
 	option::add_bool( _( "misc.movement.omnidirectional_auto_strafer" ), false );
+	option::add_bool ( _ ( "misc.movement.accurate_move" ), false );
 	option::add_bool( _( "misc.effects.third_person" ), false );
 	option::add_float( _( "misc.effects.third_person_range" ), 0.0f );
 	option::add_int( _( "misc.effects.third_person_key" ), 0 );

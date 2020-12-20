@@ -9,9 +9,9 @@ bool __fastcall hooks::get_int ( REG ) {
 	if ( cl_extrapolate.GetBool() && !engine->IsPaused() ) <-----------------
 		context.EnableExtrapolation( true );
 	*/
-	static auto cl_extrapolate_ret = pattern::search( _( "client.dll" ), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* >( );
-	static auto hermite_fix_ret = pattern::search( _( "client.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< void* >( );
-	static auto cl_interpolate_ret = pattern::search( _( "client.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< void* >( );
+	//static auto cl_extrapolate_ret = pattern::search( _( "client.dll" ), _( "85 C0 74 22 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* >( );
+	//static auto hermite_fix_ret = pattern::search( _( "client.dll" ), _( "0F B6 15 ? ? ? ? 85 C0" ) ).get< void* >( );
+	//static auto cl_interpolate_ret = pattern::search( _( "client.dll" ), _( "85 C0 BF ? ? ? ? 0F 95 C3" ) ).get< void* >( );
 
 	if ( !ecx )
 		return old::get_int ( REG_OUT );

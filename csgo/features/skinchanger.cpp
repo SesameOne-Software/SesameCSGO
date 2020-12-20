@@ -34,7 +34,7 @@ void features::inventory::c_inventory::remove_item ( c_econ_item* econ_item ) {
 
 /* REF: "set item texture prefab"; second-to-last function call */
 features::inventory::c_inventory* features::inventory::get_local_inventory ( ) {
-	static auto local_inventory = pattern::search ( _("client.dll"),_( "8B 3D ? ? ? ? 85 FF 74 1A" )).add ( 2 ).deref ( ).get< c_inventory** > ( );
+	static auto local_inventory = pattern::search ( _("client.dll"),_( "8B 35 ? ? ? ? 8B 3D ? ? ? ? 85 F6 0F 84" )).add ( 2 ).deref ( ).get< c_inventory** > ( );
 	return *local_inventory;
 }
 

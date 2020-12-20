@@ -131,7 +131,7 @@ t cs::create_interface( const char* module, const char* iname ) {
 }
 
 bool cs::init( ) {
-	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? F3 0F 10 8F ? ? ? ? F3 0F 10 05 ? ? ? ? ? ? ? ? ? 0F 2F C1 0F 86" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
+	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 5E 8B 40 10" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );
 	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll" ), _( "VMaterialSystem080" ) );
 	i::mdl_info = create_interface< c_mdlinfo* >( _( "engine.dll" ), _( "VModelInfoClient004" ) );
@@ -150,7 +150,7 @@ bool cs::init( ) {
 	i::input = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? FF 60 60" ) ).add( 1 ).deref( ).get< c_input* >( );
 	i::cvar = create_interface< c_cvar* >( _( "vstdlib.dll" ), _( "VEngineCvar007" ) );
 	i::move_helper = **reinterpret_cast< c_move_helper*** >( pattern::search( _( "client.dll" ), _( "8B 0D ? ? ? ? 8B 45 ? 51 8B D4 89 02 8B 01" ) ).add( 2 ).get< std::uintptr_t >( ) );
-	i::client_state = **reinterpret_cast< c_clientstate*** >( reinterpret_cast< std::uintptr_t >( vfunc< void* >( i::engine, 12 ) ) + 16 );
+	i::client_state = pattern::search ( _ ( "engine.dll" ), _ ( "A1 ? ? ? ? 8B 88 ? ? ? ? 85 C9 75 07" ) ).add ( 1 ).deref ( ).deref ( ).get< c_clientstate* > ( );
 	i::beams = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 56 8B F1 B9 ? ? ? ? FF 50 08" ) ).add ( 1 ).deref ( ).get< c_view_render_beams* > ( );
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" ) ), _( "g_pMemAlloc" ) );
 	i::dev = pattern::search( _( "shaderapidx9.dll" ), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C" ) ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );

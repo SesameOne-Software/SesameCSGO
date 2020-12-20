@@ -513,7 +513,7 @@ bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, i
 	if ( !weapon || !weapon->data( ) )
 		return false;
 
-	weapon->update_accuracy( );
+	//weapon->update_accuracy( );
 
 	auto src = g::local->eyes( );
 
@@ -535,13 +535,17 @@ bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, i
 
 	/* check damage accuracy */
 	const auto spread_coeff = weap_spread * 0.5f * ( features::ragebot::active_config.dmg_accuracy / 100.0f );
-	const auto left_point = src + ( forward - right * spread_coeff ) * src.dist_to( point );
-	const auto right_point = src + ( forward + right * spread_coeff ) * src.dist_to( point );
+
+	const auto dist_to = src.dist_to ( point );
+
+	const auto left_point = src + ( forward - right * spread_coeff ) * dist_to;
+	const auto right_point = src + ( forward + right * spread_coeff ) * dist_to;
+
 	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
 	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
 
-	//dbg_print( _( "damage hitchance L: %d\n" ), dmg_left >= features::ragebot::active_config.min_dmg );
-	//dbg_print( _( "damage hitchance R: %d\n" ), dmg_right >= features::ragebot::active_config.min_dmg );
+	dbg_print( _( "damage hitchance L: %d\n" ), int(dmg_left >= features::ragebot::active_config.min_dmg) );
+	dbg_print( _( "damage hitchance R: %d\n" ), int(dmg_right >= features::ragebot::active_config.min_dmg ));
 
 	return dmg_left >= features::ragebot::active_config.min_dmg && dmg_right >= features::ragebot::active_config.min_dmg;
 }
@@ -1313,6 +1317,8 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 }
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, lagcomp::lag_record_t& rec_out, float& best_dmg ) {
+	constexpr int SIMILAR_RECORD_THRESHOLD = 3;
+
 	const auto recs = lagcomp::get( ent );
 	const auto shot = lagcomp::get_shot( ent );
 
@@ -1375,7 +1381,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 				highest_speed = speed2d;
 			}
 
-			const auto ang_diff = fabsf( cs::normalize( at_target_yaw - cs::normalize( rec.m_abs_yaw ) ) );
+			const auto ang_diff = fabsf( cs::normalize( at_target_yaw - cs::normalize( rec.m_ang.y ) ) );
 
 			if ( ang_diff > highest_sideways_amount && !rec.m_extrapolated ) {
 				ang_diff_rec = &rec;
@@ -1389,24 +1395,25 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 						//}
 		}
 
+		/* eliminate similar records */
 		if ( ang_diff_rec ) {
-			if ( speed_rec && abs( speed_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+			if ( speed_rec && abs( speed_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
 				speed_rec = nullptr;
 
-			if ( newest_rec && abs( newest_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+			if ( newest_rec && abs( newest_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
 				newest_rec = nullptr;
 
-			if ( oldest_rec && abs( oldest_rec->m_tick - ang_diff_rec->m_tick ) <= 3 )
+			if ( oldest_rec && abs( oldest_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
 				oldest_rec = nullptr;
 
 			best_recs.push_back( *ang_diff_rec );
 		}
 
 		if ( speed_rec ) {
-			if ( newest_rec && abs( newest_rec->m_tick - speed_rec->m_tick ) <= 3 )
+			if ( newest_rec && abs( newest_rec->m_tick - speed_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
 				newest_rec = nullptr;
 
-			if ( oldest_rec && abs( oldest_rec->m_tick - speed_rec->m_tick ) <= 3 )
+			if ( oldest_rec && abs( oldest_rec->m_tick - speed_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
 				oldest_rec = nullptr;
 
 			best_recs.push_back( *speed_rec );
@@ -1424,12 +1431,12 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	}
 
 	/* manually fix annoying airstuckers */
-	if ( fabsf( cs::i::globals->m_curtime - ent->simtime( ) ) > 0.5f && !anims::frames [ ent->idx ( ) ].empty() ) {
+	if ( !anims::frames [ ent->idx ( ) ].empty ( ) && abs( cs::i::globals->m_curtime - anims::frames [ ent->idx ( ) ].back().m_simtime ) > 0.33f ) {
 		lagcomp::lag_record_t rec;
 
 		if ( rec.store ( ent, ent->origin ( ), false ) ) {
-			rec.m_tick = cs::time2ticks ( cs::i::globals->m_curtime );
-			rec.m_simtime = cs::i::globals->m_curtime;
+			rec.m_tick = g::ucmd->m_tickcount;
+			rec.m_simtime = cs::ticks2time ( g::ucmd->m_tickcount );
 
 			best_recs.clear ( );
 			best_recs.push_back ( rec );

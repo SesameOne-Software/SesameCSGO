@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="animations\animation_system.cpp" />
-    <ClCompile Include="animations\logger.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="cjson\cJSON.c" />
     <ClCompile Include="features\antiaim.cpp" />
@@ -66,7 +65,6 @@
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
     <ClCompile Include="hooks\reset.cpp" />
-    <ClCompile Include="hooks\run_command.cpp" />
     <ClCompile Include="hooks\run_simulation.cpp" />
     <ClCompile Include="hooks\scene_end.cpp" />
     <ClCompile Include="hooks\send_datagram.cpp" />
@@ -93,13 +91,10 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="utils\miniz.c" />
     <ClCompile Include="utils\utils.cpp" />
-    <ClCompile Include="vdf\vdf_parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\animation_system.hpp" />
-    <ClInclude Include="animations\anim_dump.hpp" />
-    <ClInclude Include="animations\logger.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
@@ -160,7 +155,6 @@
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
     <ClInclude Include="hooks\reset.hpp" />
-    <ClInclude Include="hooks\run_command.hpp" />
     <ClInclude Include="hooks\run_simulation.hpp" />
     <ClInclude Include="hooks\scene_end.hpp" />
     <ClInclude Include="hooks\send_datagram.hpp" />
@@ -241,7 +235,6 @@
     <ClInclude Include="utils\registers.hpp" />
     <ClInclude Include="utils\utils.hpp" />
     <ClInclude Include="utils\vfunc.hpp" />
-    <ClInclude Include="vdf\vdf_parser.hpp" />
     <ClInclude Include="vpk\vpkparser.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -300,6 +293,7 @@
     <IncludePath>$(DXSDK_DIR)Include;oxui;sdk;$(IncludePath)</IncludePath>
     <LibraryPath>$(DXSDK_DIR)Lib\x86;$(LibraryPath)</LibraryPath>
     <TargetName>hack</TargetName>
+    <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(DXSDK_DIR)Include;oxui;sdk;$(IncludePath)</IncludePath>
@@ -343,16 +337,17 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>false</ControlFlowGuard>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
-      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointModel>Precise</FloatingPointModel>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
-      <SupportJustMyCode>true</SupportJustMyCode>
+      <SupportJustMyCode>false</SupportJustMyCode>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>
@@ -363,7 +358,7 @@
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
       <IgnoreEmbeddedIDL>false</IgnoreEmbeddedIDL>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

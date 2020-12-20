@@ -41,7 +41,7 @@ void fix_event_delay( ucmd_t* ucmd ) {
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	//if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & 1 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !csgo::is_valve_server( ) )
+	//if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & buttons_t::attack ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !cs::is_valve_server( ) )
 	//	g::send_packet = true;
 
 	last_attack = !!(ucmd->m_buttons & buttons_t::attack);
@@ -67,7 +67,16 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		return ret;
 
 	if ( ret )
-		cs::i::engine->set_viewangles( ucmd->m_angs );
+		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+
+	if ( cs::i::client_state->choked ( ) ) {
+		cs::i::pred->update (
+			cs::i::client_state->delta_tick ( ),
+			cs::i::client_state->delta_tick ( ) > 0,
+			cs::i::client_state->last_command_ack ( ),
+			cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
+		);
+	}
 
 	ducking = !!(ucmd->m_buttons & buttons_t::duck);
 	in_cm = true;
@@ -148,7 +157,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	//RUN_SAFE (
 		//	"animations::resolver::update",
-	animations::resolver::update( ucmd );
+	//animations::resolver::update( ucmd );
 	//);
 
 	//RUN_SAFE (

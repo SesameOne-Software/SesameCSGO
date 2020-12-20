@@ -37,9 +37,11 @@ namespace anims {
 	extern std::array< int, 65 > choked_commands;
     extern std::array< float, 65 > desync_sign;
     extern std::array< float, 65 > desync_sign1;
-    extern std::array< float, 65 > desync_sign2;
 	extern std::array< float, 65 > client_feet_playback_rate;
-	extern std::array< float, 65 > feet_playback_rate;
+    extern std::array< float, 65 > feet_playback_rate;
+    extern std::array< float, 65 > feet_playback_rate1;
+    extern std::array< float, 65 > feet_playback_rate_fast;
+    extern std::array< float, 65 > desync_sign_fast;
 	extern std::array< std::deque<std::array< animlayer_t, 13 >>, 65 > old_animlayers;
     extern std::array< matrix3x4_t, 128 > fake_matrix;
     extern std::array< matrix3x4_t, 128 > aim_matrix;
@@ -53,19 +55,18 @@ namespace anims {
     float angle_diff( float dst, float src );
     bool build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
     void interpolate( player_t* ent, bool should_interp );
-	float calc_feet_cycle ( player_t* ent );
-    float calc_feet_cycle_dumped ( player_t* ent );
     void calc_animlayers( player_t* ent );
 	void predict_animlayers ( player_t* ent );
     void calc_local_exclusive( float& ground_fraction_out, float& air_time_out );
 	void predict_animlayers ( player_t* ent );
     void calc_poses( player_t* ent );
     int predict_choke_sequence( player_t* ent );
-    void update( player_t* ent );
+    void update( player_t* ent, bool update_layers = false );
     void store_frame( player_t* ent, bool anim_update );
     void animate_player( player_t* ent );
     void animate_local( bool copy = false );
     void animate_fake( );
     void copy_data( player_t* ent );
-    void run( int stage );
+    void run ( int stage );
+    void run_post_fsn ( int stage );
 }

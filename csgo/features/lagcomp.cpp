@@ -52,6 +52,80 @@ const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get
 	return { data::shot_records [ pl->idx( ) ], data::shot_records [ pl->idx( ) ].m_pl };
 }
 
+bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
+	auto tick_valid_stripped = [ ] ( float t ) {
+		const auto nci = cs::i::engine->get_net_channel_info ( );
+
+		if ( !nci || !g::local )
+			return false;
+
+		const auto correct = std::clamp ( nci->get_latency ( 0 )
+			+ nci->get_latency ( 1 )
+			+ lerp ( ), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
+
+		return abs ( correct - ( cs::i::globals->m_curtime - t ) ) <= 0.2f;
+	};
+
+	const auto nci = cs::i::engine->get_net_channel_info ( );
+
+	auto idx = ent->idx ( );
+
+	if ( !idx || idx > cs::i::globals->m_max_clients )
+		return false;
+
+	auto& data = data::all_records [ idx ];
+
+	if ( data.empty ( ) )
+		return false;
+
+	const auto misses = ragebot::get_misses ( idx ).bad_resolve;
+
+	for ( int i = static_cast<int>(data.size ( )) - 1; i >= 0; i-- ) {
+		auto& it = data[i];
+
+		if ( tick_valid_stripped ( it.m_simtime ) ) {
+			if ( it.m_origin.dist_to ( ent->origin ( ) ) < 1.0f )
+				return false;
+
+			bool end = ( i - 1 ) <= 0;
+			vec3_t next = end ? ent->origin ( ) : data [ i - 1 ].m_origin;
+			float time_next = end ? ent->simtime ( ) : data [ i - 1 ].m_simtime;
+
+			float correct = nci->get_avg_latency ( 0 )+ nci->get_avg_latency ( 1 ) + lerp ( );
+			float time_delta = time_next - it.m_simtime;
+			float add = end ? 0.2f : time_delta;
+			float deadtime = it.m_simtime + correct + add;
+
+			float curtime = cs::i::globals->m_curtime;
+			float delta = deadtime - curtime;
+
+			float mul = 1.0f / add;
+
+			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp ( delta * mul, 0.0f, 1.0f );
+
+			static matrix3x4_t ret[128];
+
+			if ( misses % 3 == 0 )
+				memcpy ( ret, it.m_bones1, sizeof ( ret ) );
+			else if ( misses % 3 == 1 )
+				memcpy ( ret, it.m_bones2, sizeof ( ret ) );
+			else
+				memcpy ( ret, it.m_bones3, sizeof ( ret ) );
+
+			for ( auto& iter : ret )
+				iter.set_origin ( iter.origin ( ) - it.m_origin + lerp );
+
+			memcpy ( out,
+				ret,
+				sizeof ( ret ) );
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void features::lagcomp::lag_record_t::backtrack( ucmd_t* ucmd ) {
 	//if ( ragebot::active_config.fix_fakelag )
 	//dbg_print( "1: %d\n", ucmd->m_tickcount );
@@ -106,89 +180,8 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	if ( !pl->valid( ) || !pl->weapon( ) || pl->team( ) == g::local->team( ) )
 		return;
 
-	/* store simulated information seperately */
-	//if ( !data::all_records [ pl->idx ( ) ].empty( ) ) {
-	//	lag_record_t rec_simulated = data::all_records [ pl->idx ( ) ][ 0 ];
-	//
-	//	if ( extrapolate_record ( pl, rec_simulated, false ) )
-	//		data::extrapolated_records [ pl->idx ( ) ].push_front ( rec_simulated );
-	//}
-
-	///* interpolate between records */ {
-	//	const auto nci = csgo::i::engine->get_net_channel_info( );
-//
-	//	if ( nci && data::all_records [ pl->idx( ) ].size( ) >= 2 ) {
-	//		data::cham_records [ pl->idx( ) ] = data::all_records [ pl->idx( ) ].front( );
-//
-	//		/* finding last valid visible record */
-	//		auto visible_idx = 0;
-//
-	//		for ( auto i = 0; i < data::all_records [ pl->idx( ) ].size( ); i++ ) {
-	//			if ( data::all_records [ pl->idx( ) ][ i ].valid( ) )
-	//				visible_idx = i;
-	//		}
-//
-	//		if ( visible_idx && visible_idx + 1 < data::all_records [ pl->idx( ) ].size( ) ) {
-	//			const auto itp1 = &data::all_records [ pl->idx( ) ][ visible_idx ];
-	//			const auto it = &data::all_records [ pl->idx( ) ][ visible_idx + 1 ];
-//
-	//			data::cham_records [ pl->idx( ) ] = *it;
-//
-	//			const auto correct = nci->get_latency( 0 ) + nci->get_latency( 1 ) + lerp( ) - ( it->m_simtime - ( itp1 )->m_simtime );
-	//			const auto time_delta = ( itp1 )->m_simtime - it->m_simtime;
-	//			const auto add = time_delta;
-	//			const auto deadtime = it->m_simtime + correct + add;
-	//			const auto curtime = csgo::i::globals->m_curtime;
-	//			const auto delta = deadtime - curtime;
-	//			const auto mul = 1.0f / add;
-//
-	//			const auto lerp_fraction = std::clamp( delta * mul, 0.0f, 1.0f );
-//
-	//			static auto lerpf = [ ] ( float a, float b, float x ) {
-	//				return a + ( b - a ) * x;
-	//			};
-//
-	//			vec3_t lerp = vec3_t( lerpf( it->m_origin.x, ( itp1 )->m_origin.x, lerp_fraction ),
-	//				lerpf( it->m_origin.y, ( itp1 )->m_origin.y, lerp_fraction ),
-	//				lerpf( it->m_origin.z, ( itp1 )->m_origin.z, lerp_fraction ) );
-//
-	//			matrix3x4_t ret [ 128 ];
-//
-	//			/*if ( (it->m_bones1 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
-	//				memcpy( ret, it->m_bones1, sizeof( matrix3x4_t ) * 128 );
-//
-	//				for ( auto i = 0; i < 128; i++ ) {
-	//					const vec3_t matrix_delta = it->m_bones1 [ i ].origin( ) - it->m_origin;
-	//					it->m_bones1 [ i ].set_origin( matrix_delta + lerp );
-	//				}
-//
-	//				memcpy( &data::cham_records [ pl->idx( ) ].m_bones1, ret, sizeof( matrix3x4_t ) * 128 );
-	//			}
-//
-	//			/*if ( (it->m_bones2 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
-	//				memcpy( ret, it->m_bones2, sizeof( matrix3x4_t ) * 128 );
-//
-	//				for ( auto i = 0; i < 128; i++ ) {
-	//					const vec3_t matrix_delta = it->m_bones2 [ i ].origin( ) - it->m_origin;
-	//					it->m_bones2 [ i ].set_origin( matrix_delta + lerp );
-	//				}
-//
-	//				memcpy( &data::cham_records [ pl->idx( ) ].m_bones2, ret, sizeof( matrix3x4_t ) * 128 );
-	//			}
-//
-	//			/*if ( (it->m_bones3 [ 1 ].origin ( ) + it->m_origin + lerp ).dist_to ( pl->abs_origin ( ) ) >= 7.5f )*/ {
-	//				memcpy( ret, it->m_bones3, sizeof( matrix3x4_t ) * 128 );
-//
-	//				for ( auto i = 0; i < 128; i++ ) {
-	//					const vec3_t matrix_delta = it->m_bones3 [ i ].origin( ) - it->m_origin;
-	//					it->m_bones3 [ i ].set_origin( matrix_delta + lerp );
-	//				}
-//
-	//				memcpy( &data::cham_records [ pl->idx( ) ].m_bones3, ret, sizeof( matrix3x4_t ) * 128 );
-	//			}
-	//		}
-	//	}
-	//}
+	static std::array<float, 65> old_pitch { 0.0f };
+	static std::array<float, 65> old_simtimes { 0.0f };
 
 	/*
 		@CBRS Great, you won't shoot at bad records!
@@ -199,16 +192,6 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	lag_record_t rec;
 
 	if ( rec.store( pl, data::old_origins [ pl->idx( ) ], predicted ) ) {
-		///* simulate 1 tick of movement */ {
-		//	const auto backup_origin = rec.m_origin;
-		//
-		//	rec.extrapolate ( );
-		//
-		//	for ( auto& bone : rec.m_bones )
-		//		bone.set_origin ( bone.origin ( ) - backup_origin + rec.m_origin );
-		//}
-
-
 		/*
 			@CBRS Ok, so here's the thing: csgo only pops lag records when new player data has arrived, and thus we should only actually pop records in here.
 			additionally, they cast the "is it dead yet" to an integer, which means some pretty funky stuff happens
@@ -229,12 +212,12 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 		*/
 
 		if ( !predicted ) {
-			if ( std::fabsf( pl->angles( ).x ) < 50.0f /*&& pl->layers ( ) && pl->layers ( )[ 1 ].m_weight < 0.1f*/ ) {
-				//if ( animations::data::overlays [ pl->idx ( ) ][ 1 ].m_weight < 0.1f && pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) ) {
+			if ( pl->animstate ( ) && abs( pl->animstate ( )->m_pitch ) < 60.0f ) {
+				rec.m_priority = 1;
+
 				data::shot_records [ pl->idx( ) ] = rec;
 				data::shot_count [ pl->idx( ) ]++;
 				data::shot_records [ pl->idx( ) ].m_priority = 1;
-				//data::shot_records [ pl->idx ( ) ].m_simtime = pl->weapon ( )->last_shot_time ( );
 			}
 
 			data::all_records [ pl->idx( ) ].push_front( rec );
@@ -246,7 +229,10 @@ void features::lagcomp::cache( player_t* pl, bool predicted ) {
 	if ( !predicted )
 		data::old_origins [ pl->idx( ) ] = pl->origin( );
 
-	//pop( pl );
+	pop( pl );
+
+	old_pitch [ pl->idx ( ) ] = pl->angles ( ).x;
+	old_simtimes [ pl->idx ( ) ] = pl->simtime ( );
 }
 
 bool features::lagcomp::breaking_lc( player_t* pl ) {
