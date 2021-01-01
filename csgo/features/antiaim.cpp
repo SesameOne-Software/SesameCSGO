@@ -316,17 +316,26 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) {
 			aa::was_fd = true;
-			g::send_packet = cs::i::client_state->choked( ) >= choke_limit;
 
 			if ( cs::is_valve_server( ) ) {
-				if ( ducked_ticks <= 9 ) {
+				if ( !ducked_ticks ) {
 					ucmd->m_buttons |= buttons_t::duck;
 					g::send_packet = true;
 				}
-				else
-					ucmd->m_buttons = ( cs::i::client_state->choked( ) > 3 ) ? ( ucmd->m_buttons | buttons_t::duck ) : ( ucmd->m_buttons & ~buttons_t::duck );
+				else {
+					if ( cs::i::client_state->choked ( ) >= 7 )
+						g::send_packet = true; 
+					else
+						g::send_packet = false;
 
-				ducked_ticks++;
+					if( cs::i::client_state->choked ( ) >= 2 )
+						ucmd->m_buttons &= ~buttons_t::duck;
+					else
+						ucmd->m_buttons |= buttons_t::duck;
+				}
+
+				if ( g::local->crouch_amount ( ) == 1.0f )
+					ducked_ticks = 1;
 			}
 			else {
 				ucmd->m_buttons = ( cs::i::client_state->choked( ) > ( fd_mode == 0 ? 9 : 8 ) ) ? ( ucmd->m_buttons | buttons_t::duck ) : ( ucmd->m_buttons & ~buttons_t::duck );

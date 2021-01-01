@@ -14,17 +14,19 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 	auto call_original = [ & ] ( ) -> bool {
 		const auto backup_flags = *reinterpret_cast< int* >( uintptr_t ( pl ) + 0xe8 );
 
+		*reinterpret_cast< int* >( uintptr_t ( pl ) + 0xA30 ) = cs::i::globals->m_framecount;
+		*reinterpret_cast< int* >( uintptr_t ( pl ) + 0xA28 ) = 0;
 		*reinterpret_cast< int* >( uintptr_t ( pl ) + 0xA68 ) = 0;
+
 		*reinterpret_cast< int* >( uintptr_t ( pl ) + 0xE8 ) |= 8;
 
 		const auto backup_frametime = cs::i::globals->m_frametime;
-		const auto backup_framecount = cs::i::globals->m_framecount;
 
-		cs::i::globals->m_framecount = INT_MAX;
+		cs::i::globals->m_frametime = 666.0f;
 
 		const auto ret = old::setup_bones ( REG_OUT, out, max_bones, mask, curtime );
 
-		cs::i::globals->m_framecount = backup_framecount;
+		cs::i::globals->m_frametime = backup_frametime;
 
 		*reinterpret_cast< int* >( uintptr_t ( pl ) + 0xe8 ) = backup_flags;
 

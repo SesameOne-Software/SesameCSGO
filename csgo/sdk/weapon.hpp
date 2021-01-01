@@ -287,7 +287,7 @@ public:
 	NETVAR ( float, last_shot_time, "DT_WeaponCSBase->m_fLastShotTime" );
 	NETVAR ( int, sequence, "DT_BaseViewModel->m_nSequence" );
 	NETVAR ( bool, initialized, "DT_BaseAttributableItem->m_bInitialized" );
-	NETVAR ( int, zoom_level, "DT_BaseCombatWeapon->m_zoomLevel" );
+	NETVAR ( int, zoom_level, "DT_WeaponCSBaseGun->m_zoomLevel" );
 	NETVAR ( float, cycle, "DT_BaseAnimating->m_flCycle" );
 	NETVAR ( float, anim_time, "DT_BaseEntity->m_flAnimTime" );
 

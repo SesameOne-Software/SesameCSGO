@@ -168,7 +168,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 		&& !( ucmd->m_buttons & buttons_t::left )
 		&& !( ucmd->m_buttons & buttons_t::right )
 		&& !( ucmd->m_buttons & buttons_t::forward ) ) {
-		if ( g::local->vel ( ).length_2d ( ) > 12.0f ) {
+		if ( g::local->vel ( ).length_2d ( ) > 15.0f ) {
 			auto fwd = cs::angle_vec ( old_angs );
 			auto right = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 

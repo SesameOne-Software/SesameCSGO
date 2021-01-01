@@ -66,6 +66,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
 
+	anims::new_tick = true;
+
 	if ( ret )
 		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
@@ -256,8 +258,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
 	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -g::cvars::cl_sidespeed->get_float(), g::cvars::cl_sidespeed->get_float ( ) );
-
-	anims::new_tick = true;
 
 	in_cm = false;
 

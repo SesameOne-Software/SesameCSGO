@@ -735,7 +735,7 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 	}
 
 	/* resolve only if choking */
-	if ( anims::choked_commands [ idx ] ) {
+	//if ( anims::choked_commands [ idx ] ) {
 		auto desync_range = pl->desync_amount ( );
 	
 		if ( speed <= 0.1f || !( pl->flags ( ) & flags_t::on_ground ) ) {
@@ -752,10 +752,10 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 			yaw2 = cs::normalize ( anim_state->m_eye_yaw + desync_offset [ idx ] );
 			yaw3 = cs::normalize ( anim_state->m_eye_yaw + desync_offset [ idx ] );
 		}
-	}
-	else {
-		yaw1 = yaw2 = yaw3 = cs::normalize ( anim_state->m_abs_yaw );
-	}
+	//}
+	//else {
+	//	yaw1 = yaw2 = yaw3 = cs::normalize ( anim_state->m_abs_yaw );
+	//}
 
 	// remove this if statement later
 	// last_desync_offset [ idx ] = desync_offset [ idx ];

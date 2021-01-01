@@ -276,7 +276,7 @@ namespace lby {
 	extern bool in_update;
 }
 
-void anims::calc_animlayers( player_t* ent ) {
+void anims::calc_animlayers ( player_t* ent ) {
     auto state = ent->animstate( );
     auto layers = ent->layers( );
 
@@ -637,10 +637,12 @@ else {
 void anims::predict_animlayers ( player_t* ent ) {
 	memcpy ( latest_animlayers.data ( ), latest_animlayers1.data ( ), sizeof ( latest_animlayers ) );
 
-	latest_animlayers [ 6 ].m_cycle = feet_cycle;
-	latest_animlayers [ 6 ].m_sequence = feet_sequence;
-	latest_animlayers [ 6 ].m_weight = feet_weight;
-	latest_animlayers [ 6 ].m_playback_rate = playback_rate;
+	if ( !!(g::local->flags() & flags_t::on_ground) ) {
+		latest_animlayers [ 6 ].m_cycle = feet_cycle;
+		latest_animlayers [ 6 ].m_sequence = feet_sequence;
+		latest_animlayers [ 6 ].m_weight = feet_weight;
+		latest_animlayers [ 6 ].m_playback_rate = playback_rate;
+	}
 
 	/* JUMP LAYER */
 	latest_animlayers [ 4 ].m_playback_rate = 1.0f;
@@ -804,14 +806,17 @@ void anims::update( player_t* ent, bool update_layers ) {
 
     /* fix foot spin */
 	if ( state->m_last_clientside_anim_framecount == cs::i::globals->m_framecount )
-		state->m_last_clientside_anim_framecount -= 1;
+		state->m_last_clientside_anim_framecount--;
 
-	//if ( state->m_last_clientside_anim_update == cs::i::globals->m_curtime )
-	//	state->m_last_clientside_anim_update -= cs::ticks2time( 1 );
+	if ( state->m_last_clientside_anim_update == cs::i::globals->m_curtime )
+		state->m_last_clientside_anim_update -= cs::ticks2time( 1 );
 
     /* remove anim and bone interpolation */
     *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xf0 ) |= 8;
 	*reinterpret_cast< uint32_t* >( uintptr_t ( ent ) + 0xe8 ) |= 8;
+	
+	*reinterpret_cast< int* >( uintptr_t ( ent ) + 0xA30 ) = cs::i::globals->m_framecount;
+	*reinterpret_cast< int* >( uintptr_t ( ent ) + 0xA28 ) = 0;
 	*reinterpret_cast< int* >( uintptr_t ( ent ) + 0xA68 ) = 0;
 
 	if ( ent != g::local )
@@ -820,26 +825,29 @@ void anims::update( player_t* ent, bool update_layers ) {
 	std::array<animlayer_t, 13> backup_animlayers {};
 
 	auto set_anim_data = [ & ] ( ) { 
-		state->m_on_ground = !!( ent->flags ( ) & flags_t::on_ground );
 		state->m_duck_amount = ent->crouch_amount ( );
 		
 		if ( ent != g::local ) {
+			state->m_on_ground = !!( ent->flags ( ) & flags_t::on_ground );
+
 			state->m_pitch = ent->angles ( ).x;
 			state->m_eye_yaw = ent->angles ( ).y;
+
+			state->m_vel2d = { ent->vel ( ).x, ent->vel ( ).y };
+			state->m_up_vel = ent->vel ( ).z;
+			state->m_speed2d = ent->vel ( ).length_2d ( );
+
+			state->m_feet_cycle = ent->layers ( ) [ 6 ].m_cycle;
+			state->m_feet_yaw_rate = ent->layers ( ) [ 6 ].m_weight;
+			state->m_time_in_air = ent->layers ( ) [ 4 ].m_cycle;
 		}
 
-		state->m_vel2d = { ent->vel ( ).x, ent->vel ( ).y };
-		state->m_up_vel = ent->vel ( ).z;
-		state->m_speed2d = ent->vel ( ).length_2d ( );
-
-		state->m_feet_cycle = ent->layers ( ) [ 6 ].m_cycle;
-		state->m_feet_yaw_rate = ent->layers ( ) [ 6 ].m_weight;
-
-		if ( ent == g::local ) {
-			/* remove landing bob */
-			state->m_hit_ground = false;
-		}
+		if ( ent == g::local )
+			state->m_feet_yaw_rate = 0.0f;
 	};
+
+	/* recalculate animlayers */
+	ent->layers ( ) [ 12 ].m_weight = 0.0f;
 
     /* fix pitch and yaw */
 	if ( ent != g::local && !update_layers )
@@ -852,13 +860,12 @@ void anims::update( player_t* ent, bool update_layers ) {
 	ent->update ( );
 	ent->animate ( ) = false;
 
-	set_anim_data ( );
-
 	if ( ent != g::local && !update_layers )
 		memcpy ( ent->layers ( ), backup_animlayers.data ( ), sizeof ( backup_animlayers ) );
 
-	/* recalculate animlayers */
-	calc_animlayers ( ent );
+	ent->layers ( ) [ 12 ].m_weight = 0.0f;
+
+	set_anim_data ( );
 
     /* restore original information */
     *reinterpret_cast< uint32_t* >( uintptr_t( ent ) + 0xe8 ) = backup_eflags;
@@ -951,7 +958,7 @@ void anims::animate_player( player_t* ent ) {
 		while ( !old_animlayers [ ent->idx ( ) ].empty ( ) && old_animlayers [ ent->idx ( ) ].size ( ) > 3 )
 			old_animlayers [ ent->idx ( ) ].pop_front ( );
 
-		//ent->vel ( ) = ( ent->origin ( ) - data.last_origin ) / ( ent->simtime ( ) - data.last_update );
+	//	ent->vel ( ) = ( ent->origin ( ) - data.last_origin ) / ( ent->simtime ( ) - data.last_update );
     }
 
 	data.last_origin = ent->origin( );
@@ -1250,52 +1257,59 @@ void anims::animate_local( bool copy ) {
     if ( !state || !animlayers || !g::ucmd )
         return;
 
-	static int last_tick = 0;
+	static int last_tick = cs::i::globals->m_tickcount;
 	static int last_choked = 0;
     static float latest_abs_yaw = 0.0f;
     static std::array< float, 24 > latest_poses { 0.0f };
 
 	if ( !copy ) {
-		if( cs::i::client_state->choked ( ) )
-			last_choked = cs::i::client_state->choked ( );
+		if ( /*new_tick*/ last_tick != cs::i::globals->m_tickcount ) {
+			if ( cs::i::client_state->choked ( ) )
+				last_choked = cs::i::client_state->choked ( );
 
-		if ( g::send_packet ) {
-			predict_animlayers ( g::local );
-		}
+			calc_animlayers ( g::local );
 
-		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
-
-		state->m_last_clientside_anim_update_time_delta = cs::ticks2time(1);
-
-		animlayers [ 12 ].m_weight = 0.0f;
-
-		/* recreate what holdaim var does */
-		/* TODO: check if holdaim cvar is enaled */
-		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
-			if ( !!(g::ucmd->m_buttons & buttons_t::attack )) {
-				g::angles = g::ucmd->m_angs;
-				g::hold_aim = true;
+			if ( g::send_packet ) {
+				predict_animlayers ( g::local );
 			}
+
+			memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
+
+			state->m_last_clientside_anim_update_time_delta = cs::ticks2time ( 1 );
+
+			animlayers [ 12 ].m_weight = 0.0f;
+
+			/* recreate what holdaim var does */
+			/* TODO: check if holdaim cvar is enaled */
+			if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+				if ( !!( g::ucmd->m_buttons & buttons_t::attack ) ) {
+					g::angles = g::ucmd->m_angs;
+					g::hold_aim = true;
+				}
+			}
+			else {
+				g::hold_aim = false;
+			}
+
+			if ( !g::hold_aim ) {
+				g::angles = g::ucmd->m_angs;
+			}
+
+			update ( g::local );
+
+			if ( g::send_packet ) {
+				memcpy ( latest_poses.data ( ), g::local->poses ( ).data ( ), sizeof ( latest_poses ) );
+				latest_abs_yaw = state->m_abs_yaw;
+				g::hold_aim = false;
+			}
+
+			build_bones ( g::local, aim_matrix.data ( ), 256, vec3_t ( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin ( ), features::prediction::curtime ( ) );
+
+			animate_fake ( );
+
+			new_tick = false;
+			last_tick = cs::i::globals->m_tickcount;
 		}
-		else {
-			g::hold_aim = false;
-		}
-
-		if ( !g::hold_aim ) {
-			g::angles = g::ucmd->m_angs;
-		}
-
-		update ( g::local );
-
-		if ( g::send_packet ) {
-			memcpy ( latest_poses.data ( ), g::local->poses ( ).data ( ), sizeof ( latest_poses ) );
-			latest_abs_yaw = state->m_abs_yaw;
-			g::hold_aim = false;
-		}
-
-		build_bones ( g::local, aim_matrix.data ( ), 256, vec3_t ( 0.0f, latest_abs_yaw, 0.0f ), g::local->origin ( ), features::prediction::curtime ( ) );
-
-		animate_fake ( );
 	}
 	else {
 		memcpy ( animlayers, latest_animlayers.data ( ), sizeof ( latest_animlayers ) );
