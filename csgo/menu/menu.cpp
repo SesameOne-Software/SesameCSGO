@@ -132,6 +132,9 @@ float g_last_dpi = 0.0f;
 
 extern std::unordered_map<std::string, void*> font_list;
 
+void* segoe_ui_bytes =nullptr;
+size_t segoe_ui_size = 0;
+
 void gui::scale_dpi ( ) {
 	static bool first_scale = true;
 
@@ -188,14 +191,19 @@ void gui::scale_dpi ( ) {
 
 	//const ImWchar custom_font_ranges [ ] = { 0x20, 0xFFFF, 0 };
 
-	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
-	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_ui, g::resources::sesame_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	/* load segoe ui to memory */
+	if ( !segoe_ui_bytes )
+		segoe_ui_bytes = ImFileLoadToMemory ( _ ( "C:\\Windows\\Fonts\\segoeui.ttf" ), "rb", &segoe_ui_size, 0 );
+
+	//_("C:\\Windows\\Fonts\\segoeui.ttf")
+	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( segoe_ui_bytes, segoe_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( segoe_ui_bytes, segoe_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "dbg_font" ), 12.0f );
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "esp_font" ), 12.0f );
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "indicator_font" ), 32.0f );
-	render::create_font ( g::resources::sesame_ui, g::resources::sesame_ui_size, _ ( "watermark_font" ), 18.0f );
+	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "dbg_font" ), 12.0f );
+	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "esp_font" ), 12.0f );
+	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "indicator_font" ), 32.0f );
+	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "watermark_font" ), 18.0f );
 
 	ImGui::GetStyle ( ).AntiAliasedFill = ImGui::GetStyle ( ).AntiAliasedLines = true;
 
@@ -799,6 +807,9 @@ void gui::draw( ) {
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::SliderFloat ( _ ( "FOV" ), &options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( u8"%.1f°" ) );
 							ImGui::SliderFloat ( _ ( "Viewmodel FOV" ), &options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( u8"%.1f°" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset X" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_x" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset Y" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_y" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset Z" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_z" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
 							ImGui::SliderFloat ( _ ( "Aspect Ratio" ), &options::vars [ _ ( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
 							ImGui::PopItemWidth ( );
 

@@ -263,11 +263,10 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 
 				/* fake chams */
 				if ( e == g::local ) {
-					auto ref_matrix = anims::fake_matrix;
-					const auto backup_matrix = ref_matrix;
+					auto backup_matrix = anims::local::fake_matrix;
 
-					for ( auto& i : ref_matrix )
-						i.set_origin ( i.origin ( ) + ( visuals.desync_chams_fakelag ? old_origin : info.m_origin ) );
+					for ( auto& iter : backup_matrix )
+						iter.set_origin ( iter.origin ( ) + ( visuals.desync_chams_fakelag ? old_origin : info.m_origin ) );
 
 					if ( visuals.desync_chams ) {
 						cs::i::render_view->set_alpha ( visuals.desync_chams_color.a * 255.0f );
@@ -276,7 +275,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 						mat->set_material_var_flag ( 0x8000, false );
 						mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
 						cs::i::mdl_render->force_mat ( mat );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &ref_matrix );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, backup_matrix.data() );
 						cs::i::mdl_render->force_mat ( nullptr );
 					}
 
@@ -287,11 +286,9 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 						m_mat_glow->set_material_var_flag ( 0x8000, true );
 						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
 						cs::i::mdl_render->force_mat ( m_mat_glow );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &ref_matrix );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, backup_matrix.data ( ) );
 						cs::i::mdl_render->force_mat ( nullptr );
 					}
-
-					ref_matrix = backup_matrix;
 				}
 
 				if ( visuals.chams ) {

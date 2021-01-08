@@ -30,7 +30,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
     if ( exploits::shifted_command ( ) == current_command )
         localplayer->tick_base ( ) += exploits::shifted_tickbase ( );
 
-    anims::animate_local ( );
+    //anims::animate_local ( );
 
     features::prediction::fix_viewmodel ( true );
     //g_engine_pred.fix_compressed_netvars ( true );

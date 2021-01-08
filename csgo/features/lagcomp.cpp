@@ -136,7 +136,7 @@ void features::lagcomp::lag_record_t::backtrack( ucmd_t* ucmd ) {
 bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_origin, bool simulated ) {
 	m_pl = pl;
 
-	if ( !pl->layers( ) || !pl->bone_cache( ) || !pl->animstate( ) || !g::local || anims::frames [ pl->idx( ) ].empty( ) )
+	if ( !pl->layers( ) || !pl->bone_cache( ) || !pl->animstate( ) || !g::local )
 		return false;
 
 	m_priority = 0;
@@ -163,12 +163,12 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 		Oh also, cached bone data is a cutlvector and the length is set to the model's bonecount. it never changes, so you never have to store bone count (and you don't where many do, yay!)
 	*/
 
-	std::memcpy( m_layers, pl->layers( ), sizeof animlayer_t * 15 );
-	std::memcpy( m_bones1, anims::frames [ pl->idx( ) ].back( ).m_matrix1.data( ), sizeof matrix3x4_t * 128 );
-	std::memcpy( m_bones2, anims::frames [ pl->idx( ) ].back( ).m_matrix2.data( ), sizeof matrix3x4_t * 128 );
-	std::memcpy( m_bones3, anims::frames [ pl->idx( ) ].back( ).m_matrix3.data( ), sizeof matrix3x4_t * 128 );
-	std::memcpy( &m_state, pl->animstate( ), sizeof( animstate_t ) );
-	std::memcpy( m_poses, &pl->poses( ), sizeof( float ) * 24 );
+	std::memcpy( m_layers, pl->layers( ), sizeof( m_layers ) );
+	std::memcpy( m_bones1, anims::players::matricies [ pl->idx( ) ][0].data( ), sizeof ( m_bones1 ) );
+	std::memcpy( m_bones2, anims::players::matricies [ pl->idx( ) ][1].data( ), sizeof ( m_bones2 ) );
+	std::memcpy( m_bones3, anims::players::matricies [ pl->idx( ) ][2].data( ), sizeof ( m_bones3 ) );
+	std::memcpy( &m_state, pl->animstate( ), sizeof( m_state ) );
+	std::memcpy( m_poses, pl->poses( ).data(), sizeof( m_poses ) );
 
 	return true;
 }

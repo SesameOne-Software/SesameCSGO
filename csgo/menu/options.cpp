@@ -427,6 +427,9 @@ void options::init( ) {
 	option::add_list( _( "visuals.other.removals" ), 9 ); /* smoke, flash, scope, aimpunch, viewpunch, zoom, occlusion, killfeed decay, post processing */
 	option::add_float( _( "visuals.other.fov" ), 90.0f );
 	option::add_float( _( "visuals.other.viewmodel_fov" ), 68.0f );
+	option::add_float ( _ ( "visuals.other.viewmodel_offset_x" ), 1.0f );
+	option::add_float ( _ ( "visuals.other.viewmodel_offset_y" ), 1.0f );
+	option::add_float ( _ ( "visuals.other.viewmodel_offset_z" ), -1.0f );
 	option::add_float( _( "visuals.other.aspect_ratio" ), 1.0f );
 	option::add_bool( _( "visuals.other.bullet_tracers" ), false );
 	option::add_bool( _( "visuals.other.bullet_impacts" ), false );

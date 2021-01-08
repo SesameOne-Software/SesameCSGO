@@ -4,6 +4,7 @@
 #include "../animations/animation_system.hpp"
 
 #include "../features/lagcomp.hpp"
+#include "../features/ragebot.hpp"
 
 /* CREDITS CHAMBERS */
 
@@ -30,23 +31,12 @@ static void clear_shit ( int idx ) {
 		return;
 
 	/* anims */
-	anims::player_data [ idx ].spawn_times = 0.0f;
-	anims::player_data [ idx ].last_update = 0.0f;
-	anims::player_data [ idx ].last_origin = {};
-	anims::player_data [ idx ].old_origin = {};
-	anims::player_data [ idx ].last_velocity = {};
-	anims::player_data [ idx ].old_velocity = {};
+	anims::players::anim_times [ idx ] = anims::players::update_time [ idx ] = 0.0f;
+	anims::players::choked_commands [ idx ] = 0;
+	anims::players::updates_since_dormant [ idx ] = 0;
 
-	anims::choked_commands [ idx ] = 0;
-	anims::desync_sign [ idx ] = 0.0f;
-	anims::client_feet_playback_rate [ idx ] = 0.0f;
-	anims::feet_playback_rate [ idx ] = 0.0f;
-
-	if(!anims::old_animlayers [ idx ] .empty())
-		anims::old_animlayers [ idx ].clear ( );
-
-	if ( !anims::frames [ idx ].empty ( ) )
-	anims::frames [ idx ].clear ( );
+	features::ragebot::get_hits ( idx ) = 0;
+	features::ragebot::get_misses ( idx ) = { 0, 0, 0 };
 
 	/* lagcomp */
 	if ( !features::lagcomp::data::records [ idx ].empty ( ) )

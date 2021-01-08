@@ -55,8 +55,8 @@ void airstuck ( ucmd_t* ucmd ) {
 	static auto& airstuck_mode = options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i;
 
 	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) && !cs::is_valve_server() ) {
-		ucmd->m_tickcount = std::numeric_limits<int>::min ( );
-		ucmd->m_cmdnum = std::numeric_limits<int>::min ( );
+		ucmd->m_tickcount = std::numeric_limits<int>::max ( );
+		ucmd->m_cmdnum = std::numeric_limits<int>::max ( );
 	}
 }
 
@@ -65,8 +65,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
-
-	anims::new_tick = true;
 
 	if ( ret )
 		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
@@ -265,6 +263,27 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	airstuck ( ucmd );
 
 	exploits::run ( ucmd );
+
+	/* recreate what holdaim var does */
+			/* TODO: check if holdaim cvar is enaled */
+	/* part of anims */ {
+		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+			if ( !!( g::ucmd->m_buttons & buttons_t::attack ) ) {
+				g::angles = g::ucmd->m_angs;
+				g::hold_aim = true;
+			}
+		}
+		else {
+			g::hold_aim = false;
+		}
+
+		if ( !g::hold_aim ) {
+			g::angles = g::ucmd->m_angs;
+		}
+
+		if ( g::send_packet )
+			g::hold_aim = false;
+	}
 
 	return false;
 }

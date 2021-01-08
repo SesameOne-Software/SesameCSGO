@@ -16,6 +16,9 @@ decltype( &hooks::scene_end ) hooks::old::scene_end = nullptr;
 void __fastcall hooks::scene_end( REG ) {
 	old::scene_end( REG_OUT );
 	
+	if ( g::local && g::local->alive ( ) && g::send_packet )
+		features::chams::old_origin = g::local->origin ( );
+
 	/*
 	if ( !g::local || !g::local->alive( ) )
 		hit_matrix_rec.clear( );

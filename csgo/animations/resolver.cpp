@@ -748,7 +748,7 @@ void animations::resolver::resolve( player_t* pl, float& yaw1, float& yaw2, floa
 		}
 		else {
 			/* smoothed out */
-			yaw1 = cs::normalize ( anim_state->m_eye_yaw + ( last_desync_offset [ idx ] + desync_offset [ idx ] ) / 2.0f );
+			yaw1 = cs::normalize ( anim_state->m_eye_yaw + desync_offset [ idx ] );
 			yaw2 = cs::normalize ( anim_state->m_eye_yaw + desync_offset [ idx ] );
 			yaw3 = cs::normalize ( anim_state->m_eye_yaw + desync_offset [ idx ] );
 		}

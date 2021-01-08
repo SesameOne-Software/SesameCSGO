@@ -51,10 +51,8 @@ namespace g {
 	namespace resources {
 #include "base85.hpp"
 #include "resources/sesame_icons.hpp"
-#include "resources/sesame_ui.hpp"
 
 		inline uint8_t* sesame_icons;
-		inline uint8_t* sesame_ui;
 
 		void init ( );
 	}
@@ -86,6 +84,9 @@ namespace g {
 		inline cvar_t* sv_client_max_interp_ratio = nullptr;
 		inline cvar_t* sv_friction = nullptr;
 		inline cvar_t* sv_stopspeed = nullptr;
+		inline cvar_t* viewmodel_offset_x = nullptr;
+		inline cvar_t* viewmodel_offset_y = nullptr;
+		inline cvar_t* viewmodel_offset_z = nullptr;
 
 		void init ( );
 	}

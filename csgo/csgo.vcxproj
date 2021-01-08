@@ -188,7 +188,6 @@
     <ClInclude Include="renderer\truetype.hpp" />
     <ClInclude Include="renderer\utf8.h" />
     <ClInclude Include="resources\sesame_icons.hpp" />
-    <ClInclude Include="resources\sesame_ui.hpp" />
     <ClInclude Include="sdk\beams.hpp" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\cvar.hpp" />
@@ -340,7 +339,7 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>false</ControlFlowGuard>
-      <DebugInformationFormat>None</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
       <FloatingPointModel>Precise</FloatingPointModel>
@@ -358,7 +357,7 @@
       <DataExecutionPrevention>false</DataExecutionPrevention>
       <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
       <IgnoreEmbeddedIDL>false</IgnoreEmbeddedIDL>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

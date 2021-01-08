@@ -4,69 +4,44 @@
 #include "../sdk/sdk.hpp"
 
 namespace anims {
-    struct animation_frame_t {
-        std::array< animlayer_t, 13 > m_animlayers { {} };
-        std::array< float, 24 > m_poses1;
-        std::array< float, 24 > m_poses2;
-        std::array< float, 24 > m_poses3;
-        float m_simtime;
-        float m_old_simtime;
-        animstate_t m_animstate;
-        flags_t m_flags;
-        vec3_t m_velocity;
-        vec3_t m_origin;
+	namespace local {
+		inline float feet_yaw = 0.0f;
+		inline std::array<float, 24> poses { 0.0f };
+		inline std::array<animlayer_t, 13> anim_layers { {} };
+		inline std::array<matrix3x4_t, 128> fake_matrix { };
+		inline std::array<matrix3x4_t, 128> real_matrix { };
+		inline bool simulating_fake = false;
+	}
 
-        bool m_anim_update;
+	namespace players {
+		inline std::array<std::array<std::array<float, 24>, 3>, 65> poses { { {0.0f} } };
+		inline std::array<std::array<std::array<matrix3x4_t, 128>, 3>, 65> matricies { { {{}} } };
+		inline std::array<std::array<float, 3>, 65> resolved_feet_yaws { { {0.0f} } };
+		inline std::array<std::array<animlayer_t, 13>, 65> anim_layers { { {} } };
 
-        std::array< matrix3x4_t, 128 > m_matrix1 { };
-        std::array< matrix3x4_t, 128 > m_matrix2 { };
-        std::array< matrix3x4_t, 128 > m_matrix3 { };
+		inline std::array<vec3_t, 65> accelerations { {} };
+		inline std::array<vec3_t, 65> last_velocities { {} };
+		inline std::array<vec3_t, 65> last_origins { {} };
+		inline std::array<flags_t, 65> flags { {} };
+		inline std::array<flags_t, 65> last_flags { {} };
+		inline std::array<float, 65> anim_times { 0.0f };
+		inline std::array<float, 65> update_time { 0.0f };
+		inline std::array<int, 65> updates_since_dormant { 0 };
+		inline std::array<int, 65> choked_commands { 0 };
+	}
 
-        void store( player_t* ent, bool anim_update );
-    };
+	bool build_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time, std::array<float, 24>& poses );
 
-	struct player_data_t {
-		float spawn_times { 0.0f };
-		float last_update { 0.0f };
-		vec3_t last_origin { vec3_t ( ) };
-		vec3_t old_origin { vec3_t ( ) };
-		vec3_t last_velocity { vec3_t ( ) };
-		vec3_t old_velocity { vec3_t ( ) };
-	};
+	void manage_fake ( );
 
-	extern std::array< int, 65 > choked_commands;
-    extern std::array< float, 65 > desync_sign;
-    extern std::array< float, 65 > desync_sign1;
-	extern std::array< float, 65 > client_feet_playback_rate;
-    extern std::array< float, 65 > feet_playback_rate;
-    extern std::array< float, 65 > feet_playback_rate1;
-    extern std::array< float, 65 > feet_playback_rate_fast;
-    extern std::array< float, 65 > desync_sign_fast;
-	extern std::array< std::deque<std::array< animlayer_t, 13 >>, 65 > old_animlayers;
-    extern std::array< matrix3x4_t, 128 > fake_matrix;
-    extern std::array< matrix3x4_t, 128 > aim_matrix;
-    extern std::array< std::deque< animation_frame_t >, 65 > frames;
-    //extern std::map< std::string, std::array< std::deque< int >, 65 > > choke_sequences;
-	extern std::array< player_data_t, 65 > player_data;
-    extern bool new_tick;
+	void predict_movement ( player_t* ent, flags_t& old_flags, vec3_t& abs_origin, vec3_t& abs_vel, vec3_t& abs_accel );
+	void pre_update_callback ( animstate_t* anim_state );
+	void post_update_callback ( animstate_t* anim_state );
 
-    float angle_mod( float a );
-    float approach_angle( float target, float value, float speed );
-    float angle_diff( float dst, float src );
-    bool build_bones( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time );
-    void interpolate( player_t* ent, bool should_interp );
-    void calc_animlayers( player_t* ent );
-	void predict_animlayers ( player_t* ent );
-    void calc_local_exclusive( float& ground_fraction_out, float& air_time_out );
-	void predict_animlayers ( player_t* ent );
-    void calc_poses( player_t* ent );
-    int predict_choke_sequence( player_t* ent );
-    void update( player_t* ent, bool update_layers = false );
-    void store_frame( player_t* ent, bool anim_update );
-    void animate_player( player_t* ent );
-    void animate_local( bool copy = false );
-    void animate_fake( );
-    void copy_data( player_t* ent );
-    void run ( int stage );
-    void run_post_fsn ( int stage );
+	float angle_diff ( float dst, float src );
+	void calc_poses ( player_t* ent, std::array<float, 24>& poses, float feet_yaw );
+
+	void init ( );
+
+	void update ( int stage );
 }

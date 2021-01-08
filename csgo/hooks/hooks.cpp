@@ -130,6 +130,9 @@ void hooks::init( ) {
 		// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
 	};
 
+	/* hook broken animation code */
+	anims::init ( );
+
 	dbg_hook( _paint_traverse, paint_traverse, ( void** )&old::paint_traverse );
 	dbg_hook( _create_move, create_move, ( void** )&old::create_move );
 	dbg_hook( _frame_stage_notify, frame_stage_notify, ( void** )&old::frame_stage_notify );
@@ -143,7 +146,7 @@ void hooks::init( ) {
 	dbg_hook( _get_int, get_int, ( void** )&old::get_int );
 	dbg_hook( _override_view, override_view, ( void** )&old::override_view );
 	dbg_hook( _is_hltv, is_hltv, ( void** )&old::is_hltv );
-	dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
+	//dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
 	dbg_hook( _list_leaves_in_box, list_leaves_in_box, ( void** )&old::list_leaves_in_box );
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
 	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
@@ -156,7 +159,7 @@ void hooks::init( ) {
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 
 	event_handler = std::make_unique< c_event_handler >( );

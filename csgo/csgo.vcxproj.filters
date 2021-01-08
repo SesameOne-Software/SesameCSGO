@@ -470,9 +470,6 @@
     <ClInclude Include="resources\sesame_icons.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="resources\sesame_ui.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\stb_rect_pack.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -18,13 +18,14 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	using bone_lookup_fn = int( __thiscall* )( void*, const char* );
 	static auto lookup_bone = pattern::search( _( "client.dll" ), _( "55 8B EC 53 56 8B F1 57 83 BE ? ? ? ? ? 75" ) ).get<bone_lookup_fn>( );
 
-	if ( pl != g::local ) {
+	if ( pl != g::local || !pl->bone_cache ( ) ) {
 		old::modify_eye_pos( REG_OUT, pos );
 		return;
 	}
 
 	if ( anim_state->m_hit_ground || anim_state->m_duck_amount || !cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
-		auto bone_pos = anims::aim_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
+		//auto bone_pos = anims::aim_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
+		auto bone_pos = pl->bone_cache ( ) [ lookup_bone ( pl, "head_0" ) ].origin ( );
 
 		bone_pos.z += 1.7f;
 

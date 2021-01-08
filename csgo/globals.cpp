@@ -2,7 +2,6 @@
 
 #include "base85.hpp"
 #include "resources/sesame_icons.hpp"
-#include "resources/sesame_ui.hpp"
 
 #include "sdk/sdk.hpp"
 
@@ -21,7 +20,6 @@ PLoader_Info g::loader_data;
 
 void g::resources::init ( ) {
 	sesame_icons = ( uint8_t* ) sesame_icons_data;
-	sesame_ui = ( uint8_t* ) sesame_ui_data;
 }
 
 void g::cvars::init ( ) {
@@ -51,4 +49,7 @@ void g::cvars::init ( ) {
 	sv_client_max_interp_ratio = cs::i::cvar->find ( _ ( "sv_client_max_interp_ratio" ) );
 	sv_friction = cs::i::cvar->find ( _ ( "sv_friction" ) );
 	sv_stopspeed = cs::i::cvar->find ( _ ( "sv_stopspeed" ) );
+	viewmodel_offset_x = cs::i::cvar->find ( _ ( "viewmodel_offset_x" ) );
+	viewmodel_offset_y = cs::i::cvar->find ( _ ( "viewmodel_offset_y" ) );
+	viewmodel_offset_z = cs::i::cvar->find ( _ ( "viewmodel_offset_z" ) );
 }

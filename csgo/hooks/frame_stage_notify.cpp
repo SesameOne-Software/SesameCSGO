@@ -88,9 +88,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
 	float old_flashalpha;
-	float old_flashtime;
-
-	anims::run ( stage );
+	float old_flashtime;	
 
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( stage == 5 && g::local ) {
@@ -191,9 +189,9 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		}
 	}
 
-	old::frame_stage_notify( REG_OUT, stage );
+	anims::update ( stage );
 
-	anims::run_post_fsn ( stage );
+	old::frame_stage_notify( REG_OUT, stage );
 
 	features::prediction::update ( stage );
 

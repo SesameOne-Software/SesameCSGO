@@ -902,7 +902,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 				const auto pred_eyes = g::local->eyes ( ) + g::local->vel ( ) * autostop_time;
 
 				const auto ent_vel = at_target->vel ( );
-				const auto choke_time = cs::ticks2time ( anims::choked_commands [ at_target->idx ( ) ] );
+				const auto choke_time = cs::ticks2time ( anims::players::choked_commands [ at_target->idx ( ) ] );
 				const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( choke_time + autostop_time );
 				//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
 				const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset ( ) + ent_vel * ( choke_time + autostop_time );
@@ -1431,7 +1431,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 	}
 
 	/* manually fix annoying airstuckers */
-	if ( !anims::frames [ ent->idx ( ) ].empty ( ) && abs( cs::i::globals->m_curtime - anims::frames [ ent->idx ( ) ].back().m_simtime ) > 0.33f ) {
+	if ( abs( cs::i::globals->m_curtime - anims::players::anim_times [ ent->idx ( ) ] ) >= 0.5f ) {
 		lagcomp::lag_record_t rec;
 
 		if ( rec.store ( ent, ent->origin ( ), false ) ) {

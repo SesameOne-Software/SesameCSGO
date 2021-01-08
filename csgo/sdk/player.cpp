@@ -139,7 +139,7 @@ animstate_t* player_t::animstate( ) {
 }
 
 vec3_t player_t::eyes( ) {
-	//static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
+	static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 
 	vec3_t pos = vec3_t( 0.0f, 0.0f, 0.0f );
 
@@ -147,7 +147,8 @@ vec3_t player_t::eyes( ) {
 	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 168 ) ( this, pos );
 
 	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x3AC8 ) && animstate ( ) )
-		hooks::modify_eye_pos( animstate( ), nullptr, pos ); // reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
+		/*hooks::modify_eye_pos( animstate( ), nullptr, pos );*/
+		reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
 
 	return pos;
 }

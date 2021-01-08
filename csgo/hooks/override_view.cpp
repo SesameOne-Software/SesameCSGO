@@ -23,6 +23,22 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fd_key_mode" ) ].val.i;
 
+	static float ideal_range = 0.0f;
+
+	{
+		static auto& viewmodel_offset_x = options::vars [ _ ( "visuals.other.viewmodel_offset_x" ) ].val.f;
+		static auto& viewmodel_offset_y = options::vars [ _ ( "visuals.other.viewmodel_offset_y" ) ].val.f;
+		static auto& viewmodel_offset_z = options::vars [ _ ( "visuals.other.viewmodel_offset_z" ) ].val.f;
+
+		g::cvars::viewmodel_offset_x->no_callback ( );
+		g::cvars::viewmodel_offset_y->no_callback ( );
+		g::cvars::viewmodel_offset_z->no_callback ( );
+
+		g::cvars::viewmodel_offset_x->set_value ( viewmodel_offset_x );
+		g::cvars::viewmodel_offset_y->set_value ( viewmodel_offset_y );
+		g::cvars::viewmodel_offset_z->set_value ( viewmodel_offset_z );
+	}
+
 	if ( g::local && ( removals [ 5 ] ? ( !g::local->weapon ( ) || ( g::local->weapon ( ) && ( !g::local->scoped ( ) || g::local->weapon ( )->zoom_level ( ) <= 1 ) ) ) : !g::local->scoped ( ) ) )
 		*reinterpret_cast< float* > ( uintptr_t( setup ) + 176 ) = static_cast < float > ( fov );
 
@@ -46,20 +62,44 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
 
-	if ( third_person && utils::keybind_active( third_person_key, third_person_key_mode ) && g::local ) {
-		if ( g::local->alive( ) ) {
-			vec3_t ang;
-			cs::i::engine->get_viewangles( ang );
-			cs::i::input->m_camera_in_thirdperson = true;
-			cs::i::input->m_camera_offset = vec3_t( ang.x, ang.y, get_ideal_dist( third_person_range ) );
+	if ( g::local ) {
+		auto target_range = 0.0f;
+		auto collided_range = get_ideal_dist ( third_person_range );
+
+		if ( third_person && utils::keybind_active ( third_person_key, third_person_key_mode ) && g::local ) {
+			target_range = collided_range;
+		}
+
+		const auto val_before = ideal_range;
+
+		if( target_range - ideal_range != 0.0f)
+			ideal_range += copysign ( third_person_range * ( cs::i::globals->m_frametime * 5.0f ), target_range - ideal_range );
+
+		/* clamp range if we pass over limit within the frame */
+		if ( (val_before > target_range && ideal_range < target_range)
+			|| ( val_before < target_range && ideal_range > target_range ))
+			ideal_range = target_range;
+
+		ideal_range = std::clamp ( ideal_range, 0.0f, collided_range );
+
+		if ( ideal_range ) {
+			if ( g::local->alive ( ) ) {
+				vec3_t ang;
+				cs::i::engine->get_viewangles ( ang );
+				cs::i::input->m_camera_in_thirdperson = true;
+				cs::i::input->m_camera_offset = vec3_t ( ang.x, ang.y, ideal_range );
+			}
+			else {
+				cs::i::input->m_camera_in_thirdperson = false;
+				g::local->observer_mode ( ) = 5;
+			}
 		}
 		else {
 			cs::i::input->m_camera_in_thirdperson = false;
-			g::local->observer_mode( ) = 5;
+			
+			if( !g::local->alive() )
+				g::local->observer_mode ( ) = 4;
 		}
-	}
-	else {
-		cs::i::input->m_camera_in_thirdperson = false;
 	}
 
 	if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) && g::local && g::local->alive( ) )
