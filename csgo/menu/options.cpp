@@ -425,6 +425,15 @@ void options::init( ) {
 	add_player_visual_config( _( "teammates" ) );
 	/* other visuals */
 	option::add_list( _( "visuals.other.removals" ), 9 ); /* smoke, flash, scope, aimpunch, viewpunch, zoom, occlusion, killfeed decay, post processing */
+	option::add_bool ( _ ( "visuals.other.fog" ), true );
+	option::add_bool ( _ ( "visuals.other.bloom" ), true );
+	option::add_color ( _ ( "visuals.other.fog_color" ), { 0.694f, 0.78f, 0.761f, 1.0f } );
+	option::add_float ( _ ( "visuals.other.fog_distance" ), 6000.0f );
+	option::add_float ( _ ( "visuals.other.fog_density" ), 0.4f );
+	option::add_float ( _ ( "visuals.other.bloom_scale" ), 0.2f );
+	option::add_float ( _ ( "visuals.other.bloom_exponent" ), 2.5f );
+	option::add_float ( _ ( "visuals.other.bloom_saturation" ), 1.0f );
+
 	option::add_float( _( "visuals.other.fov" ), 90.0f );
 	option::add_float( _( "visuals.other.viewmodel_fov" ), 68.0f );
 	option::add_float ( _ ( "visuals.other.viewmodel_offset_x" ), 1.0f );

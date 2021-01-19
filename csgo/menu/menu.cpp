@@ -763,6 +763,16 @@ void gui::draw( ) {
 							ImGui::Text ( "World" );
 							ImGui::Separator ( );
 
+							ImGui::Checkbox ( _ ( "Fog" ), &options::vars [ _ ( "visuals.other.fog" ) ].val.b );
+							ImGui::SameLine ( );
+							ImGui::ColorEdit4 ( _ ( "##Fog Color" ), ( float* ) &options::vars [ _ ( "visuals.other.fog_color" ) ].val.c );
+							ImGui::SliderFloat ( _ ( "Fog Distance" ), &options::vars [ _ ( "visuals.other.fog_distance" ) ].val.f, 0.0f, 6000.0f, ( char* ) _ ( u8"%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Fog Density" ), &options::vars [ _ ( "visuals.other.fog_density" ) ].val.f, 0.0f, 1.0f, ( char* ) _ ( u8"x%.1f" ) );
+							ImGui::Checkbox ( _ ( "Bloom" ), &options::vars [ _ ( "visuals.other.bloom" ) ].val.b );
+							ImGui::SliderFloat ( _ ( "Bloom Scale" ), &options::vars [ _ ( "visuals.other.bloom_scale" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"x%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Bloom Exponent" ), &options::vars [ _ ( "visuals.other.bloom_exponent" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Bloom Saturation" ), &options::vars [ _ ( "visuals.other.bloom_saturation" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"x%.1f" ) );
+							
 							ImGui::Checkbox ( _ ( "Bomb ESP" ), &options::vars [ _ ( "visuals.other.bomb_esp" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bomb Timer" ), &options::vars [ _ ( "visuals.other.bomb_timer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bullet Tracers" ), &options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b );

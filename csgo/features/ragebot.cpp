@@ -6,6 +6,7 @@
 #include "prediction.hpp"
 #include "../animations/resolver.hpp"
 #include "../menu/options.hpp"
+#include "../animations/anims.hpp"
 
 #include "exploits.hpp"
 
@@ -544,8 +545,8 @@ bool features::ragebot::dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, i
 	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
 	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
 
-	dbg_print( _( "damage hitchance L: %d\n" ), int(dmg_left >= features::ragebot::active_config.min_dmg) );
-	dbg_print( _( "damage hitchance R: %d\n" ), int(dmg_right >= features::ragebot::active_config.min_dmg ));
+	//dbg_print( _( "damage hitchance L: %d\n" ), int(dmg_left >= features::ragebot::active_config.min_dmg) );
+	//dbg_print( _( "damage hitchance R: %d\n" ), int(dmg_right >= features::ragebot::active_config.min_dmg ));
 
 	return dmg_left >= features::ragebot::active_config.min_dmg && dmg_right >= features::ragebot::active_config.min_dmg;
 }
@@ -585,7 +586,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
 
-	static auto hits_hitbox = [ & ] ( const vec3_t& src, const vec3_t& dst, int hitbox ) -> bool {
+	auto hits_hitbox = [ & ] ( const vec3_t& src, const vec3_t& dst, int hitbox ) -> bool {
 		auto mdl = pl->mdl( );
 
 		if ( !mdl )
@@ -608,14 +609,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 		const auto misses = get_misses( pl->idx( ) ).bad_resolve;
 
-		matrix3x4_t* bone_matrix = nullptr;
-
-		if ( misses % 3 == 0 )
-			bone_matrix = rec.m_bones1;
-		else if ( misses % 3 == 1 )
-			bone_matrix = rec.m_bones2;
-		else
-			bone_matrix = rec.m_bones3;
+		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones [ misses % 3 ];
 
 		auto vmin = hb->m_bbmin;
 		auto vmax = hb->m_bbmax;
@@ -902,7 +896,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 				const auto pred_eyes = g::local->eyes ( ) + g::local->vel ( ) * autostop_time;
 
 				const auto ent_vel = at_target->vel ( );
-				const auto choke_time = cs::ticks2time ( anims::players::choked_commands [ at_target->idx ( ) ] );
+				const auto choke_time = anims::anim_info[at_target->idx()].empty() ? 0.0f : cs::ticks2time ( anims::anim_info [ at_target->idx ( ) ].front().m_choked_commands );
 				const auto ent_pred_origin = at_target->origin ( ) + ent_vel * ( choke_time + autostop_time );
 				//const auto ent_pred_eyes = ent_pred_origin + vec3_t ( 0.0f, 0.0f, 64.0f );
 				const auto ent_pred_eyes = at_target->origin ( ) + at_target->view_offset ( ) + ent_vel * ( choke_time + autostop_time );
@@ -926,7 +920,7 @@ void features::ragebot::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, v
 
 	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 255, best.m_hitbox, best.m_record );
 	auto should_aim = best.m_dmg && hc;
-
+	
 	if ( best.m_dmg && !hc && g::local->vel ( ).length_2d ( ) > 0.1f )
 		slow ( ucmd, old_smove, old_fmove);
 
@@ -1051,7 +1045,12 @@ bool features::ragebot::create_points( lagcomp::lag_record_t& rec, int i, std::d
 }
 
 bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& pos_out, float& rad_out, float& zrad_out ) {
-	auto mdl = rec.m_pl->mdl( );
+	auto pl = cs::i::ent_list->get<player_t*> ( rec.m_idx );
+
+	if ( !pl )
+		return false;
+
+	auto mdl = pl->mdl( );
 
 	if ( !mdl )
 		return false;
@@ -1071,19 +1070,12 @@ bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& p
 	if ( !hitbox )
 		return false;
 
-	matrix3x4_t* bone_matrix = nullptr;
+	const auto misses = get_misses( rec.m_idx ).bad_resolve;
 
-	const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve;
-
-	if ( misses % 3 == 0 )
-		bone_matrix = rec.m_bones1;
-	else if ( misses % 3 == 1 )
-		bone_matrix = rec.m_bones2;
-	else
-		bone_matrix = rec.m_bones3;
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones [ misses % 3 ];
 
 	vec3_t vmin, vmax;
-	VEC_TRANSFORM( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
+	VEC_TRANSFORM ( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
 	VEC_TRANSFORM( hitbox->m_bbmax, bone_matrix [ hitbox->m_bone ], vmax );
 
 	pos_out = ( vmin + vmax ) * 0.5f;
@@ -1101,6 +1093,11 @@ bool features::ragebot::get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& p
 }
 
 bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg ) {
+	auto pl = cs::i::ent_list->get<player_t*> ( rec.m_idx );
+
+	if ( !pl )
+		return false;
+
 	const auto weapon = g::local->weapon( );
 
 	if ( !weapon )
@@ -1125,9 +1122,9 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	auto right_dir = fwd.cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
 	auto left_dir = -right_dir;
-	auto dmg_center = autowall::dmg( g::local, rec.m_pl, src, eyes_max, 0 /* pretend player would be there */ );
-	auto dmg_left = autowall::dmg( g::local, rec.m_pl, src + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
-	auto dmg_right = autowall::dmg( g::local, rec.m_pl, src + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
+	auto dmg_center = autowall::dmg( g::local, pl, src, eyes_max, 0 /* pretend player would be there */ );
+	auto dmg_left = autowall::dmg( g::local, pl, src + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
+	auto dmg_right = autowall::dmg( g::local, pl, src + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
 
 	/* will we most likely not do damage at all? then let's cancel target selection altogether i guess */
 	if ( !dmg_center && !dmg_left && !dmg_right )
@@ -1170,11 +1167,11 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* force baim, literally removes head hitbox from hitscan  */
 	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
-	autowall::scale_dmg( rec.m_pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
+	autowall::scale_dmg( pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
 
 	if ( /*(get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses)
 		||*/ ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
-		|| ( active_config.baim_lethal && scaled_dmg > rec.m_pl->health( ) )
+		|| ( active_config.baim_lethal && scaled_dmg > pl->health( ) )
 		|| (( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) )) {
 		std::deque<int> new_hitboxes {};
 	
@@ -1187,7 +1184,7 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
 	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
-	const auto damage_scalar = exploits::has_shifted ? 1.0f : 1.0f;
+	const auto damage_scalar = ( exploits::is_ready ( ) || exploits::has_shifted ) ? 2.0f : 1.0f;
 	/* TODO: remove when doubletap fixed */
 
 	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;
@@ -1218,47 +1215,22 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 
 	/* use other matrix with same points, trying to find alignments in the two matricies */
 	/* shift over by 1 entry in our records */
-	matrix3x4_t* dmg_scan_matrix = nullptr;
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix = rec.m_aim_bones [ ( get_misses ( rec.m_idx ).bad_resolve + ( safe_point_active ? 1 : 0 ) ) % 3 ];
 
-	if ( safe_point_active ) {
-		const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve + 1;
+	const auto backup_origin = pl->origin( );
+	const auto backup_min = pl->mins( );
+	const auto backup_max = pl->maxs ( );
+	const auto backup_bones = pl->bone_cache ( );
 
-		if ( misses % 3 == 0 )
-			dmg_scan_matrix = rec.m_bones1;
-		else if ( misses % 3 == 1 )
-			dmg_scan_matrix = rec.m_bones2;
-		else
-			dmg_scan_matrix = rec.m_bones3;
-	}
-	else {
-		const auto misses = get_misses( rec.m_pl->idx( ) ).bad_resolve;
-
-		if ( misses % 3 == 0 )
-			dmg_scan_matrix = rec.m_bones1;
-		else if ( misses % 3 == 1 )
-			dmg_scan_matrix = rec.m_bones2;
-		else
-			dmg_scan_matrix = rec.m_bones3;
-	}
-
-	auto backup_abs_origin = rec.m_pl->abs_origin( );
-	const auto backup_origin = rec.m_pl->origin( );
-	const auto backup_min = rec.m_pl->mins( );
-	const auto backup_max = rec.m_pl->maxs( );
-
-	/* making this static might save a ton of repetitive allocation*/
-	const auto backup_bones = rec.m_pl->bone_cache ( );
-
-	/* set playter data required for autowall and hitscan to work */
-	rec.m_pl->mins( ) = rec.m_min;
-	rec.m_pl->maxs( ) = rec.m_max;
-	rec.m_pl->origin( ) = rec.m_origin;
-	//rec.m_pl->set_abs_origin( rec.m_origin );
-	rec.m_pl->bone_cache ( ) = dmg_scan_matrix;
+	/* set player data required for autowall and hitscan to work */
+	pl->mins( ) = rec.m_min;
+	pl->maxs( ) = rec.m_max;
+	pl->origin( ) = rec.m_origin;
+	pl->bone_cache ( ) = dmg_scan_matrix.data();
 
 	float best_dmg_tmp = 0.0f;
-	vec3_t best_pos;
-	int best_hitbox;
+	vec3_t best_pos = vec3_t(0.0f, 0.0f, 0.0f);
+	int best_hitbox = 0;
 
 	/* select best point on all hitboxes */
 	for ( auto& hitbox : hitboxes ) {
@@ -1276,7 +1248,7 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			const auto dmg = autowall::dmg( g::local, rec.m_pl, src, point, -1 ) * damage_scalar;
+			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) * damage_scalar;
 
 			if ( dmg > best_points_damage ) {
 				best_point = point;
@@ -1299,7 +1271,7 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 		//}
 	}
 
-	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) ) {
+	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > pl->health( ) ) ) {
 		/* save best data */
 		pos_out = best_pos;
 		hitbox_out = best_hitbox;
@@ -1307,11 +1279,10 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 	}
 
 	/* restore player data to what it was before so we dont fuck up anything */
-	rec.m_pl->mins( ) = backup_min;
-	rec.m_pl->maxs( ) = backup_max;
-	rec.m_pl->origin( ) = backup_origin;
-	//rec.m_pl->set_abs_origin( backup_abs_origin );
-	rec.m_pl->bone_cache ( ) = backup_bones;
+	pl->mins ( ) = backup_min;
+	pl->maxs ( ) = backup_max;
+	pl->origin ( ) = backup_origin;
+	pl->bone_cache ( ) = backup_bones;
 
 	return best_dmg_tmp > 0.0f;
 }
@@ -1319,128 +1290,83 @@ bool features::ragebot::hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, in
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, lagcomp::lag_record_t& rec_out, float& best_dmg ) {
 	constexpr int SIMILAR_RECORD_THRESHOLD = 3;
 
-	const auto recs = lagcomp::get( ent );
-	const auto shot = lagcomp::get_shot( ent );
-
-	if ( !ent->valid( ) )
+	if ( !ent->valid ( ) )
 		return;
+
+	const auto recs = lagcomp::get_records( ent );
+
+	if ( recs.empty() )
+		return;
+
+	const auto shot = lagcomp::get_shot( recs );
 
 	std::deque < lagcomp::lag_record_t > best_recs { };
 
-	///* prefer onshot */
-	if ( shot.second ) {
-		best_recs.push_back( shot.first );
-		//
-		float oldest_simtime = std::numeric_limits<float>::max ( );
-		//
-		lagcomp::lag_record_t* oldest_rec = nullptr;
-		//
-		if ( recs.second ) {
-			for ( auto& rec : recs.first ) {
-				if ( rec.m_simtime < oldest_simtime && !rec.m_extrapolated ) {
-					oldest_rec = &rec;
-					oldest_simtime = rec.m_simtime;
-				}
-			}
+	/* prefer onshot */
+	if ( shot ) {
+		best_recs.push_back( shot.value ( ) );
+
+		if ( !active_config.onshot_only ) {
+			if ( shot.value ( ) != recs.back ( ) )
+				best_recs.push_back ( recs.back ( ) );
 		}
-		//
-		if ( oldest_rec )
-			best_recs.push_back( *oldest_rec );
 	}
-	else if ( recs.second && !active_config.onshot_only ) {
-		float newest_simtime = 0.0f;
-		float newest_simulated_simtime = 0.0f;
-		float oldest_simtime = std::numeric_limits<float>::max ( );
+	else if ( !active_config.onshot_only ) {
 		float highest_speed = 0.0f;
 		float highest_sideways_amount = 0.0f;
 
-		//
-		lagcomp::lag_record_t* newest_rec = nullptr;
-		lagcomp::lag_record_t* oldest_rec = nullptr;
-		lagcomp::lag_record_t* simulated_rec = nullptr;
-		lagcomp::lag_record_t* speed_rec = nullptr;
-		lagcomp::lag_record_t* ang_diff_rec = nullptr;
+		const lagcomp::lag_record_t* newest_rec = &recs.front();
+		const lagcomp::lag_record_t* oldest_rec = &recs.back();
+		const lagcomp::lag_record_t* speed_rec = nullptr;
+		const lagcomp::lag_record_t* angdiff_rec = nullptr;
 
 		const auto at_target_yaw = cs::normalize( cs::calc_angle( g::local->eyes( ), ent->eyes( ) ).y );
-		//
-		for ( auto& rec : recs.first ) {
-			if ( rec.m_simtime < oldest_simtime && !rec.m_extrapolated ) {
-				oldest_rec = &rec;
-				oldest_simtime = rec.m_simtime;
-			}
-			//
-			if ( rec.m_simtime > newest_simtime && !rec.m_extrapolated ) {
-				newest_rec = &rec;
-				newest_simtime = rec.m_simtime;
-			}
 
+		for ( auto& rec : recs ) {
 			const auto speed2d = rec.m_vel.length_2d( );
 
-			if ( !!(rec.m_flags & flags_t::on_ground) && speed2d > highest_speed && !rec.m_extrapolated ) {
+			if ( !!(rec.m_flags & flags_t::on_ground) && speed2d > highest_speed ) {
 				speed_rec = &rec;
 				highest_speed = speed2d;
 			}
 
-			const auto ang_diff = fabsf( cs::normalize( at_target_yaw - cs::normalize( rec.m_ang.y ) ) );
+			const auto ang_diff = abs( cs::normalize( at_target_yaw - cs::normalize( rec.m_ang.y ) ) );
 
-			if ( ang_diff > highest_sideways_amount && !rec.m_extrapolated ) {
-				ang_diff_rec = &rec;
+			if ( ang_diff > highest_sideways_amount ) {
+				angdiff_rec = &rec;
 				highest_sideways_amount = ang_diff;
 			}
-			//
-						/* removed for now because lag prediction is causing inaccracies */
-						//if ( rec.m_simtime > newest_simulated_simtime && rec.m_extrapolated ) {
-						//	simulated_rec = &rec;
-						//	newest_simulated_simtime = rec.m_simtime;
-						//}
 		}
 
 		/* eliminate similar records */
-		if ( ang_diff_rec ) {
-			if ( speed_rec && abs( speed_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
+		if ( angdiff_rec ) {
+			if ( speed_rec && abs( cs::time2ticks( speed_rec->m_simtime ) - cs::time2ticks ( angdiff_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 				speed_rec = nullptr;
 
-			if ( newest_rec && abs( newest_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
+			if ( newest_rec && abs( cs::time2ticks ( newest_rec->m_simtime ) - cs::time2ticks ( angdiff_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 				newest_rec = nullptr;
 
-			if ( oldest_rec && abs( oldest_rec->m_tick - ang_diff_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
+			if ( oldest_rec && abs( cs::time2ticks ( oldest_rec->m_simtime ) - cs::time2ticks ( angdiff_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 				oldest_rec = nullptr;
 
-			best_recs.push_back( *ang_diff_rec );
+			best_recs.push_back( *angdiff_rec );
 		}
 
 		if ( speed_rec ) {
-			if ( newest_rec && abs( newest_rec->m_tick - speed_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
+			if ( newest_rec && abs( cs::time2ticks ( newest_rec->m_simtime) - cs::time2ticks ( speed_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 				newest_rec = nullptr;
 
-			if ( oldest_rec && abs( oldest_rec->m_tick - speed_rec->m_tick ) <= SIMILAR_RECORD_THRESHOLD )
+			if ( oldest_rec && abs( cs::time2ticks ( oldest_rec->m_simtime )- cs::time2ticks ( speed_rec->m_simtime )) <= SIMILAR_RECORD_THRESHOLD )
 				oldest_rec = nullptr;
 
 			best_recs.push_back( *speed_rec );
 		}
 
-		//
-		if ( newest_rec != oldest_rec && newest_rec )
+		if ( *newest_rec != *oldest_rec && newest_rec )
 			best_recs.push_back( *newest_rec );
-		//
+
 		if ( oldest_rec )
 			best_recs.push_back( *oldest_rec );
-		//
-		if ( simulated_rec )
-			best_recs.push_back( *simulated_rec );
-	}
-
-	/* manually fix annoying airstuckers */
-	if ( abs( cs::i::globals->m_curtime - anims::players::anim_times [ ent->idx ( ) ] ) >= 0.5f ) {
-		lagcomp::lag_record_t rec;
-
-		if ( rec.store ( ent, ent->origin ( ), false ) ) {
-			rec.m_tick = g::ucmd->m_tickcount;
-			rec.m_simtime = cs::ticks2time ( g::ucmd->m_tickcount );
-
-			best_recs.clear ( );
-			best_recs.push_back ( rec );
-		}
 	}
 
 	if ( best_recs.empty( ) )

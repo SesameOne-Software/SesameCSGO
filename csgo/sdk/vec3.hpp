@@ -15,7 +15,7 @@ public:
 		init( );
 	}
 
-	vec3_t( float x, float y, float z = 0.0f ) {
+	vec3_t ( float x, float y, float z = 0.0f ) {
 		this->x = x;
 		this->y = y;
 		this->z = z;

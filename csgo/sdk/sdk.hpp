@@ -89,12 +89,13 @@ namespace cs {
 	}
 
 	__forceinline float normalize( float ang ) {
-		ang = fmodf( ang, 360.0f );
+		if ( isnan ( ang ) || isinf ( ang ) )
+			ang = 0.0f;
 
-		if ( ang > 180.0f )
+		while ( ang > 180.0f )
 			ang -= 360.0f;
 
-		if ( ang < -180.0f )
+		while ( ang < -180.0f )
 			ang += 360.0f;
 
 		return ang;

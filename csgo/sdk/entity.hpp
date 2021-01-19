@@ -20,6 +20,33 @@ public:
 	NETVAR( std::uint32_t, model_scale, "DT_BaseAnimating->m_flModelScale" );
 	NETVAR( bool, did_smoke_effect, "DT_SmokeGrenadeProjectile->m_bDidSmokeEffect" );
 
+	NETVAR ( bool, use_auto_exposure_min, "DT_EnvTonemapController->m_bUseCustomAutoExposureMin" );
+	NETVAR ( bool, use_auto_exposure_max, "DT_EnvTonemapController->m_bUseCustomAutoExposureMax" );
+	NETVAR ( bool, use_bloom_scale, "DT_EnvTonemapController->m_bUseCustomBloomScale" );
+	NETVAR ( float, auto_exposure_min, "DT_EnvTonemapController->m_flCustomAutoExposureMin" );
+	NETVAR ( float, auto_exposure_max, "DT_EnvTonemapController->m_flCustomAutoExposureMax" );
+	NETVAR ( float, bloom_scale, "DT_EnvTonemapController->m_flCustomBloomScale" );
+	NETVAR ( float, bloom_scale_min, "DT_EnvTonemapController->m_flCustomBloomScaleMinimum" );
+	NETVAR ( float, bloom_exponent, "DT_EnvTonemapController->m_flBloomExponent" );
+	NETVAR ( float, bloom_saturation, "DT_EnvTonemapController->m_flBloomSaturation" );
+	NETVAR ( float, tonemap_percent_target, "DT_EnvTonemapController->m_flTonemapPercentTarget" );
+	NETVAR ( float, tonemap_percent_bright_pixels, "DT_EnvTonemapController->m_flTonemapPercentBrightPixels" );
+	NETVAR ( float, tonemap_min_avg_lum, "DT_EnvTonemapController->m_flTonemapMinAvgLum" );
+	NETVAR ( float, tonemap_rate, "DT_EnvTonemapController->m_flTonemapRate" );
+
+	NETVAR ( bool, fog_enable, "DT_FogController->m_fog.enable" );
+	NETVAR ( bool, fog_blend, "DT_FogController->m_fog.blend" );
+	NETVAR ( uint32_t, fog_color_primary, "DT_FogController->m_fog.colorPrimary" );
+	NETVAR ( uint32_t, fog_color_secondary, "DT_FogController->m_fog.colorSecondary" );
+	NETVAR ( float, fog_start, "DT_FogController->m_fog.start" );
+	NETVAR ( float, fog_end, "DT_FogController->m_fog.end" );
+	NETVAR ( float, fog_far_z, "DT_FogController->m_fog.farz" );
+	NETVAR ( float, fog_max_density, "DT_FogController->m_fog.maxdensity" );
+	NETVAR ( uint32_t, fog_color_primary_lerp_to, "DT_FogController->m_fog.colorPrimaryLerpTo" );
+	NETVAR ( uint32_t, fog_color_secondary_lerp_to, "DT_FogController->m_fog.colorSecondaryLerpTo" );
+	NETVAR ( float, fog_start_lerp_to, "DT_FogController->m_fog.startLerpTo" );
+	NETVAR ( float, fog_end_lerp_to, "DT_FogController->m_fog.endLerpTo" );
+
 	void draw( ) {
 		using drawmodel_fn = int( __thiscall* )( void*, int, std::uint8_t );
 		vfunc< drawmodel_fn >( renderable( ), 9 )( renderable( ), 1, 255 );

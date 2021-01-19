@@ -1,8 +1,9 @@
 #pragma once
 #include "../sdk/sdk.hpp"
 #include <deque>
+#include <optional>
 #include "../globals.hpp"
-#include "../animations/animation_system.hpp"
+#include "../animations/anims.hpp"
 #include "prediction.hpp"
 
 namespace features {
@@ -10,119 +11,52 @@ namespace features {
 		float lerp( );
 
 		struct lag_record_t {
-			player_t* m_pl;
-			int m_tick, m_priority;
+			int m_idx, m_priority;
 			flags_t m_flags;
-			float m_simtime, m_lby, m_abs_yaw, m_unresolved_abs;
-			bool m_lc, m_needs_matrix_construction, m_extrapolated;
-			vec3_t m_min, m_max, m_vel, m_origin, m_ang;
-			animlayer_t m_layers [ 15 ];
+			float m_simtime, m_lby;
+			bool m_lc;
+			vec3_t m_min, m_max, m_vel, m_origin, m_abs_origin, m_ang;
 			animstate_t m_state;
-			matrix3x4_t m_bones1 [ 128 ];
-			matrix3x4_t m_bones2 [ 128 ];
-			matrix3x4_t m_bones3 [ 128 ];
-			float m_poses [ 24 ];
-			int m_failed_resolves;
+			std::array< animlayer_t,13> m_layers;
+			std::array< std::array< matrix3x4_t, 128>, 3> m_aim_bones;
+			std::array< matrix3x4_t, 128> m_render_bones;
+			std::array< float,24> m_poses;
 
-			bool operator==( const lag_record_t& otr ) {
-				return m_tick == otr.m_tick;
+			bool operator==( const lag_record_t& otr ) const {
+				return cs::time2ticks( m_simtime ) == cs::time2ticks(otr.m_simtime);
 			}
 
-			bool store( player_t* pl, const vec3_t& last_origin, bool simulated = false );
+			bool store ( player_t* pl, const vec3_t& last_origin );
+			bool apply ( player_t* pl );
 
-			inline bool valid( bool use_tick = false ) {
+			inline bool valid( ) {
 				const auto nci = cs::i::engine->get_net_channel_info( );
 
 				if ( !nci || !g::local )
-					return false;
-
-				if ( m_simtime < int ( prediction::curtime ( ) - g::cvars::sv_maxunlag->get_float ( ) ) )
 					return false;
 
 				const auto correct = std::clamp ( nci->get_latency ( 0 )
 					+ nci->get_latency ( 1 )
 					+ lerp(), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
 
-				return abs ( correct - ( prediction::curtime() - m_simtime ) ) <= 0.2f;
+				return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - m_simtime ) ) <= 0.2f;
 			}
 
-			void backtrack( ucmd_t* ucmd );
-
-			inline void extrapolate( ) {
-				auto dst = m_origin + m_vel * cs::i::globals->m_ipt;
-
-				trace_t tr;
-				cs::util_tracehull( m_origin + vec3_t( 0.0f, 0.0f, 2.0f ), dst, m_min, m_max, 0x201400B, m_pl, &tr );
-				
-				m_flags &= ~flags_t::on_ground;
-				m_origin = dst;
-
-				if ( tr.did_hit( ) && tr.m_plane.m_normal.z > 0.7f ) {
-					m_origin = tr.m_endpos;
-					m_flags |= flags_t::on_ground;
-				}
+			inline void backtrack ( ucmd_t* ucmd ) {
+				ucmd->m_tickcount = cs::time2ticks ( m_simtime ) + cs::time2ticks ( lerp ( ) );
 			}
 		};
 
 		namespace data {
-			extern std::array< vec3_t, 65 > old_origins;
-			extern std::array< float, 65 > old_shots;
-			extern std::array< int, 65 > shot_count;
-			extern std::array< lag_record_t, 65 > interpolated_oldest;
-			extern std::array< std::deque< lag_record_t >, 65 > records;
-			extern std::array< std::deque< lag_record_t >, 65 > all_records;
-			extern std::array< lag_record_t, 65 > shot_records;
-			extern std::array< lag_record_t, 65 > cham_records;
-			extern std::array< std::deque< lag_record_t >, 65 > extrapolated_records;
+			inline std::array< vec3_t, 65 > old_origins;
+			inline std::array< int, 65 > shot_count;
+			inline std::array< std::deque< lag_record_t >, 65 > records;
+			inline std::array< std::deque< lag_record_t >, 65 > visual_records;
 		}
 
-		const std::pair< std::deque< lag_record_t >&, bool > get( player_t* pl );
-		const std::pair< std::deque< lag_record_t >&, bool > get_all( player_t* pl );
-		const std::pair< lag_record_t&, bool > get_extrapolated( player_t* pl );
-		const std::pair< lag_record_t&, bool > get_shot( player_t* pl );
-		bool get_render_record ( player_t* ent, matrix3x4_t* out ); // nave
-		void cache( player_t* pl, bool predicted );
-		bool breaking_lc( player_t* pl );
-		bool has_onshot( player_t* pl );
-
-		inline void pop( player_t* pl ) {
-			/*
-			@CBRs
-				this is bad. you should not pop from the main deque, but rather pop from a copy of it during create move - otherwise, you'll be popping off valid records that you may be able to shoot at if you were to modify
-				tickbase. basically, you can get ~14 more ticks of backtrack assuming you have desync on and you toggle on hide shots or doubletap.
-			*/
-
-			if ( !pl->valid( ) ) {
-				if ( !data::records [ pl->idx( ) ].empty( ) )
-					data::records [ pl->idx( ) ].clear( );
-
-				data::cham_records [ pl->idx( ) ].m_pl = nullptr;
-
-				if ( !data::all_records [ pl->idx( ) ].empty( ) )
-					data::all_records [ pl->idx( ) ].clear( );
-
-				data::shot_records [ pl->idx( ) ].m_pl = nullptr;
-
-				if ( !data::extrapolated_records [ pl->idx( ) ].empty( ) )
-					data::extrapolated_records [ pl->idx( ) ].clear( );
-
-				return;
-			}
-
-			while ( !data::records [ pl->idx( ) ].empty( ) && !data::records [ pl->idx( ) ].back( ).valid( ) )
-				data::records [ pl->idx( ) ].pop_back( );
-
-			while ( !data::all_records [ pl->idx( ) ].empty( ) && data::all_records [ pl->idx( ) ].size( ) > cs::time2ticks(0.5f) )
-				data::all_records [ pl->idx( ) ].pop_back( );
-
-			if ( !data::shot_records [ pl->idx( ) ].valid( ) )
-				data::shot_records [ pl->idx( ) ].m_pl = nullptr;
-
-			if ( !data::cham_records [ pl->idx( ) ].valid( ) )
-				data::cham_records [ pl->idx( ) ].m_pl = nullptr;
-
-			while ( !data::extrapolated_records [ pl->idx( ) ].empty( ) && !data::extrapolated_records [ pl->idx( ) ].back( ).valid( ) )
-				data::extrapolated_records [ pl->idx( ) ].pop_back( );
-		}
+		std::deque< lag_record_t > get_records( player_t* ent );
+		std::optional< lag_record_t > get_shot( const std::deque< lag_record_t >& valid_records );
+		bool get_render_record ( player_t* ent, std::array<matrix3x4_t, 128>& out );
+		bool cache( player_t* pl );
 	}
 }

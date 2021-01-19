@@ -2,11 +2,15 @@
 
 #include "../animations/resolver.hpp"
 
-#include "../animations/animation_system.hpp"
+#include "../animations/anims.hpp"
 #include "../features/exploits.hpp"
 #include "../features/prediction.hpp"
 
 decltype( &hooks::run_simulation ) hooks::old::run_simulation = nullptr;
+
+namespace lby {
+    extern bool in_update;
+}
 
 /* cbrs */
 void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, player_t* localplayer ) {
@@ -30,9 +34,12 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
     if ( exploits::shifted_command ( ) == current_command )
         localplayer->tick_base ( ) += exploits::shifted_tickbase ( );
 
-    //anims::animate_local ( );
+    static float last_tick = cs::time2ticks ( cs::i::globals->m_curtime );
+
+    if ( cs::time2ticks ( cs::i::globals->m_curtime ) != last_tick )
+        anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
+
+    last_tick = cs::time2ticks ( cs::i::globals->m_curtime );
 
     features::prediction::fix_viewmodel ( true );
-    //g_engine_pred.fix_compressed_netvars ( true );
-    //g_engine_pred.fix_viewmodel ( true );
 }

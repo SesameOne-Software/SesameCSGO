@@ -82,7 +82,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 
 		ideal_range = std::clamp ( ideal_range, 0.0f, collided_range );
 
-		if ( ideal_range ) {
+		if ( third_person && ideal_range ) {
 			if ( g::local->alive ( ) ) {
 				vec3_t ang;
 				cs::i::engine->get_viewangles ( ang );

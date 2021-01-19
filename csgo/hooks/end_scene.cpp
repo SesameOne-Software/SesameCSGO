@@ -119,7 +119,7 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 		RUN_SAFE (
 			"animations::resolver::render_impacts",
-			animations::resolver::render_impacts ( );
+			anims::resolver::render_impacts ( );
 		);
 
 		//features::ragebot::scan_points.draw( );

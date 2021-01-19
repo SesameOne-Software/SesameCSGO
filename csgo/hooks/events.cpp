@@ -20,14 +20,14 @@ hooks::c_event_handler::~c_event_handler ( ) {
 void process_hurt_ex ( event_t* event ) {
 	RUN_SAFE (
 		"animations::resolver::process_hurt",
-		animations::resolver::process_hurt ( event );
+		anims::resolver::process_hurt ( event );
 	);
 }
 
 void process_impact_ex ( event_t* event ) {
 	RUN_SAFE (
 		"animations::resolver::process_impact",
-		animations::resolver::process_impact ( event );
+		anims::resolver::process_impact ( event );
 	);
 }
 

@@ -98,20 +98,32 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 
 			switch ( orientation ) {
 			case features::esp_placement_left:
-				render::text ( box.Min.x - cur_offset_left - text_size.x, box.Min.y + cur_offset_left_height, as_str, _ ( "esp_font" ), clr, true );
-				cur_offset_left_height += text_size.y + 2;
+				render::gradient ( box.Min.x - cur_offset_left - text_size.x - 2.0f, box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, rgba ( 0, 0, 0, 33 ), clr, true );
+				render::gradient ( box.Min.x - cur_offset_left - text_size.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f, box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, clr, rgba ( 0, 0, 0, 33 ), true );
+				render::rect ( box.Min.x - cur_offset_left - text_size.x - 2.0f, box.Min.y + cur_offset_left_height - 2.0f, text_size.x + 4.0f, text_size.y + 3.0f, rgba ( 0, 0, 0, 72 ) );
+				render::text ( box.Min.x - cur_offset_left - text_size.x, box.Min.y + cur_offset_left_height, as_str, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
+				cur_offset_left_height += text_size.y + 6;
 				break;
 			case features::esp_placement_right:
-				render::text ( box.Min.x + cur_offset_right + box.Max.x, box.Min.y + cur_offset_right_height, as_str, _ ( "esp_font" ), clr, true );
-				cur_offset_right_height += text_size.y + 2;
+				render::gradient ( box.Min.x + cur_offset_right + box.Max.x - 2.0f, box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, rgba ( 0, 0, 0, 33 ), clr, true );
+				render::gradient ( box.Min.x + cur_offset_right + box.Max.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f, box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, clr, rgba ( 0, 0, 0, 33 ), true );
+				render::rect ( box.Min.x + cur_offset_right + box.Max.x - 2.0f, box.Min.y + cur_offset_right_height - 2.0f, text_size.x + 4.0f, text_size.y + 3.0f, rgba ( 0, 0, 0, 72 ) );
+				render::text ( box.Min.x + cur_offset_right + box.Max.x, box.Min.y + cur_offset_right_height, as_str, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
+				cur_offset_right_height += text_size.y + 6;
 				break;
 			case features::esp_placement_bottom:
-				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom, as_str, _ ( "esp_font" ), clr, true );
-				cur_offset_bottom += text_size.y + 2;
+				render::gradient ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f, box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, rgba ( 0, 0, 0, 33 ), clr, true );
+				render::gradient ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f, box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, clr, rgba ( 0, 0, 0, 33 ), true );
+				render::rect ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f, box.Min.y + box.Max.y + cur_offset_bottom - 2.0f, text_size.x + 4.0f, text_size.y + 3.0f, rgba ( 0, 0, 0, 72 ) );
+				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom, as_str, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
+				cur_offset_bottom += text_size.y + 6;
 				break;
 			case features::esp_placement_top:
-				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y - cur_offset_top - text_size.y, as_str, _ ( "esp_font" ), clr, true );
-				cur_offset_top += text_size.y + 2;
+				render::gradient ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f, box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, rgba ( 0, 0, 0, 33 ), clr, true );
+				render::gradient ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f, box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ), ( text_size.x + 4.0f ) * 0.5f, 2.0f, clr, rgba ( 0, 0, 0, 33 ), true );
+				render::rect ( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f, box.Min.y - cur_offset_top - text_size.y - 2.0f, text_size.x + 4.0f, text_size.y + 3.0f, rgba ( 0, 0, 0, 72 ) );
+				render::text ( box.Min.x + box.Max.x / 2 - text_size.x / 2, box.Min.y - cur_offset_top - text_size.y, as_str, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
+				cur_offset_top += text_size.y + 6;
 				break;
 			}
 		} break;
@@ -142,6 +154,7 @@ struct snd_info_t {
 	bool m_dry_mix;
 	bool m_speaker;
 	bool m_from_server;
+	bool m_unk;
 };
 
 struct snd_data_t {
@@ -179,7 +192,7 @@ void features::esp::handle_dynamic_updates( ) {
 		vec3_t end_pos = *sound.m_origin;
 
 		trace_t tr;
-		cs::util_tracehull( *sound.m_origin + vec3_t( 0.0f, 0.0f, 1.0f ), *sound.m_origin - vec3_t( 0.0f, 0.0f, 4096.0f ), pl->mins( ), pl->maxs( ), 0x201400B, pl, &tr );
+		cs::util_tracehull( *sound.m_origin + vec3_t( 0.0f, 0.0f, 1.0f ), *sound.m_origin - vec3_t( 0.0f, 0.0f, 4096.0f ), pl->mins( ), pl->maxs ( ), 0x201400B, pl, &tr );
 
 		if ( tr.did_hit( ) )
 			end_pos = tr.m_endpos;
@@ -217,6 +230,7 @@ void features::esp::render( ) {
 
 		if ( !e || !e->alive() ) {
 			esp_data [ i ].m_pl = nullptr;
+			esp_data [ i ].m_health = 100.0f;
 			continue;
 		}
 
@@ -235,6 +249,9 @@ void features::esp::render( ) {
 
 		min += e->abs_origin( );
 		max += e->abs_origin( );
+
+		if ( e->bone_cache ( ) )
+			max.z = e->bone_cache ( ) [ 8 ].origin ( ).z + 12.0f;
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
@@ -293,6 +310,9 @@ void features::esp::render( ) {
 		esp_data [ e->idx( ) ].m_box.bottom = bottom;
 		esp_data [ e->idx( ) ].m_box.top = top;
 		esp_data [ e->idx( ) ].m_dormant = e->dormant( );
+		const auto clamped_health = std::clamp ( static_cast< float >( e->health ( ) ), 0.0f, 100.0f );
+		esp_data [ e->idx ( ) ].m_health += ( clamped_health - esp_data [ e->idx ( ) ].m_health) * 1.7f * cs::i::globals->m_frametime;
+		esp_data [ e->idx ( ) ].m_health = std::clamp ( esp_data [ e->idx ( ) ].m_health, clamped_health, 100.0f );
 
 		if ( !e->dormant( ) ) {
 			esp_data [ e->idx( ) ].m_pos = e->abs_origin( );
@@ -359,7 +379,7 @@ void features::esp::render( ) {
 			ImVec4 esp_rect { left, top, right - left, bottom - top };
 
 			if ( visuals.health_bar )
-				draw_esp_widget( esp_rect, visuals.health_bar_color, esp_type_bar, visuals.value_text, visuals.health_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->health( ), 100.0 );
+				draw_esp_widget( esp_rect, visuals.health_bar_color, esp_type_bar, visuals.value_text, visuals.health_bar_placement, esp_data [ e->idx( ) ].m_dormant, esp_data [ e->idx ( ) ].m_health, 100.0 );
 
 			if ( visuals.ammo_bar && e->weapon( ) && e->weapon( )->data( ) && e->weapon( )->ammo( ) != -1 )
 				draw_esp_widget( esp_rect, visuals.ammo_bar_color, esp_type_bar, visuals.value_text, visuals.ammo_bar_placement, esp_data [ e->idx( ) ].m_dormant, e->weapon( )->ammo( ), e->weapon( )->data( )->m_max_clip );

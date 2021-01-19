@@ -304,8 +304,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( !( g::local->flags( ) & flags_t::on_ground ) )
 			max_lag = std::clamp< int >( max_lag, 1, g::cvars::sv_maxusrcmdprocessticks->get_int() - 1 );
 
-		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
+		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && !cs::is_valve_server ( ) )
 			max_lag = 14;
+
+		if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) )
+			max_lag = cs::is_valve_server ( ) ? 8 : 16;
 
 		g::send_packet = cs::i::client_state->choked( ) >= max_lag;
 
@@ -375,7 +378,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		};
 
 		if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
-			if ( fakewalk ) {
+			if ( fakewalk && !cs::is_valve_server ( ) ) {
 				force_standing_antiaim = true;
 
 				if ( cs::i::client_state->choked( ) > 7 )

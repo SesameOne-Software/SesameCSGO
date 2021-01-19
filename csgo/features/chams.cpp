@@ -15,7 +15,7 @@ material_t* m_mat = nullptr,
 * m_matflat_wireframe = nullptr,
 * m_mat_glow;
 
-animations::resolver::hit_matrix_rec_t cur_hit_matrix_rec;
+anims::resolver::hit_matrix_rec_t cur_hit_matrix_rec;
 vec3_t features::chams::old_origin;
 bool features::chams::in_model = false;
 
@@ -182,7 +182,7 @@ void update_mats( const features::visual_config_t& visuals, const options::optio
 std::array < mdlrender_info_t, 65 > mdl_render_info;
 long long refresh_time = 0;
 
-extern std::deque< animations::resolver::hit_matrix_rec_t > hit_matrix_rec;
+extern std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec;
 
 void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_info_t& info, matrix3x4_t* bone_to_world ) {
 	if ( !m_mat )
@@ -245,7 +245,7 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
 			}
 			else {
-				static matrix3x4_t matrix [ 128 ];
+				static std::array< matrix3x4_t, 128> matrix {};
 
 				if ( visuals.backtrack_chams && e != g::local && g::local->alive ( ) && lagcomp::get_render_record( e, matrix ) ) {
 					cs::i::render_view->set_alpha ( visuals.backtrack_chams_color.a * 255.0f );
@@ -256,14 +256,14 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 					mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
 
 					cs::i::mdl_render->force_mat ( mat );
-					hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, matrix );
+					hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, matrix.data() );
 
 					cs::i::mdl_render->force_mat ( nullptr );
 				}
 
 				/* fake chams */
 				if ( e == g::local ) {
-					auto backup_matrix = anims::local::fake_matrix;
+					auto backup_matrix = anims::fake_matrix;
 
 					for ( auto& iter : backup_matrix )
 						iter.set_origin ( iter.origin ( ) + ( visuals.desync_chams_fakelag ? old_origin : info.m_origin ) );
@@ -292,6 +292,33 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				}
 
 				if ( visuals.chams ) {
+					/* resolver chams */
+					/*if ( e != g::local && g::local ) {
+						cs::i::render_view->set_alpha ( 255 );
+						cs::i::render_view->set_color ( 255, 0, 0 );
+						m_mat->set_material_var_flag ( 0x8000, true );
+						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( m_mat );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix1 [ e->idx ( ) ].data ( ) );
+						cs::i::mdl_render->force_mat ( nullptr );
+
+						cs::i::render_view->set_alpha ( 255 );
+						cs::i::render_view->set_color ( 0, 255, 0 );
+						m_mat->set_material_var_flag ( 0x8000, true );
+						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( m_mat );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix2 [ e->idx ( ) ].data ( ) );
+						cs::i::mdl_render->force_mat ( nullptr );
+
+						cs::i::render_view->set_alpha ( 255 );
+						cs::i::render_view->set_color ( 0, 0, 255 );
+						m_mat->set_material_var_flag ( 0x8000, true );
+						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( m_mat );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix3 [ e->idx ( ) ].data ( ) );
+						cs::i::mdl_render->force_mat ( nullptr );
+					}*/
+
 					/* occluded */
 					if ( e == g::local ? false : visuals.chams_xqz ) {
 						cs::i::render_view->set_alpha ( visuals.chams_xqz_color.a * 255.0f );

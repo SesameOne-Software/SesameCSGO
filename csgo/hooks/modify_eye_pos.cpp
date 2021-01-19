@@ -1,7 +1,7 @@
 ﻿#include "modify_eye_pos.hpp"
 #include "../globals.hpp"
 
-#include "../animations/animation_system.hpp"
+#include "../animations/anims.hpp"
 
 #undef min
 #undef max
@@ -24,8 +24,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	}
 
 	if ( anim_state->m_hit_ground || anim_state->m_duck_amount || !cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
-		//auto bone_pos = anims::aim_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
-		auto bone_pos = pl->bone_cache ( ) [ lookup_bone ( pl, "head_0" ) ].origin ( );
+		auto bone_pos = anims::real_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
 
 		bone_pos.z += 1.7f;
 

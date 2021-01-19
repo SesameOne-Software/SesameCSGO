@@ -54,43 +54,14 @@ namespace autowall {
 	}
 
 	inline void clip_trace_to_players_fast( player_t* pl, const vec3_t& start, const vec3_t& end, uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
-		if ( !pl )
-			return;
+		trace_t temp_tr;
+		
+		ray_t ray;
+		ray.init ( start, end );
+		cs::i::trace->clip_ray_to_entity ( ray, mask | contents_hitbox, pl, &temp_tr );
 
-		const vec3_t mins = pl->mins ( );
-		const vec3_t maxs = pl->maxs ( );
-
-		vec3_t dir ( end - start );
-		dir.normalize ( );
-
-		const vec3_t center = ( maxs + mins ) / 2;
-		const vec3_t pos ( center + pl->origin ( ) );
-
-		vec3_t to = pos - start;
-		const float range_along = dir.dot_product ( to );
-
-		float range;
-		if ( range_along < 0.f ) {
-			range = -to.length ( );
-		}
-		else if ( range_along > dir.length ( ) ) {
-			range = -( pos - end ).length ( );
-		}
-		else {
-			auto ray ( pos - ( dir * range_along + start ) );
-			range = ray.length ( );
-		}
-
-		if ( range <= 60.0f ) {
-			ray_t ray;
-			ray.init ( start, end );
-
-			trace_t trace;
-			cs::i::trace->clip_ray_to_entity ( ray, mask_shot_hull | contents_hitbox, pl, &trace );
-
-			if ( tr->m_fraction > trace.m_fraction )
-				*tr = trace;
-		}
+		if ( temp_tr.m_fraction < tr->m_fraction )
+			*tr = temp_tr;
 	}
 
 	inline bool classname_is( player_t* entity, const char* class_name ) {
@@ -333,21 +304,22 @@ namespace autowall {
 				}
 
 				data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
-				data.current_damage *= weapon_data->m_range_modifier;
+				data.current_damage *= pow ( weapon_data->m_range_modifier, data.trace_length / 500.0f );
 
-				if ( data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player() && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && !g::cvars::mp_friendlyfire->get_bool() ) {
-					data.enter_trace.m_hitgroup = hitgroup;
-					data.current_damage = 0.0f;
-					return true;
-				}
+				if ( data.enter_trace.m_hit_entity
+					&& reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player() && hitgroup == -1
+					&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
+					if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
+						return false;
 
-				if ( data.enter_trace.m_hitgroup > 0 && data.enter_trace.m_hitgroup <= 9 && data.enter_trace.m_hit_entity && reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player ( ) && data.enter_trace.m_hit_entity == dst_entity && hitgroup == -1 ) {
-					autowall::scale_dmg( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
-					return true;
+					if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) != g::local->team ( ) ) {
+						autowall::scale_dmg ( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
+						return true;
+					}
 				}
 
 				if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
-					break;
+					return false;
 			}
 		}
 

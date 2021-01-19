@@ -1,7 +1,7 @@
 #pragma once
 #include "../sdk/sdk.hpp"
 
-#include "../animations/animation_system.hpp"
+#include "../animations/anims.hpp"
 
 #include "../features/lagcomp.hpp"
 #include "../features/ragebot.hpp"
@@ -31,9 +31,7 @@ static void clear_shit ( int idx ) {
 		return;
 
 	/* anims */
-	anims::players::anim_times [ idx ] = anims::players::update_time [ idx ] = 0.0f;
-	anims::players::choked_commands [ idx ] = 0;
-	anims::players::updates_since_dormant [ idx ] = 0;
+	anims::reset_data ( idx );
 
 	features::ragebot::get_hits ( idx ) = 0;
 	features::ragebot::get_misses ( idx ) = { 0, 0, 0 };
@@ -42,36 +40,30 @@ static void clear_shit ( int idx ) {
 	if ( !features::lagcomp::data::records [ idx ].empty ( ) )
 		features::lagcomp::data::records [ idx ].clear ( );
 
-	features::lagcomp::data::cham_records [ idx ].m_pl = nullptr;
+	if ( !features::lagcomp::data::visual_records [ idx ].empty ( ) )
+		features::lagcomp::data::visual_records [ idx ].clear ( );
 
-	if ( !features::lagcomp::data::all_records [ idx ].empty ( ) )
-		features::lagcomp::data::all_records [ idx ].clear ( );
-
-	features::lagcomp::data::shot_records [ idx ].m_pl = nullptr;
-
-	if ( !features::lagcomp::data::extrapolated_records [ idx ].empty ( ) )
-		features::lagcomp::data::extrapolated_records [ idx ].clear ( );
+	features::lagcomp::data::old_origins [ idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
+	features::lagcomp::data::shot_count [ idx ] = 0;
 
 	//dbg_print ( _("clear callback called!\n") );
 }
 
 void c_entity_listener_mgr::on_entity_created ( void* ent ) {
 	if ( ent ) {
-		auto pl = ( player_t* ) ent;
+		auto pl = reinterpret_cast< player_t* >( ent );
 
-		if ( pl->is_player ( ) ) {
+		if ( pl->is_player ( ) )
 			clear_shit ( pl->idx() );
-		}
 	}
 }
 
 void c_entity_listener_mgr::on_entity_deleted ( void* ent ) {
 	if ( ent ) {
-		auto pl = ( player_t* ) ent;
+		auto pl = reinterpret_cast<player_t*>(ent);
 
-		if ( pl->is_player ( ) ) {
+		if ( pl->is_player ( ) )
 			clear_shit ( pl->idx ( ) );
-		}
 	}
 }
 

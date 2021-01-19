@@ -1,7 +1,7 @@
 #pragma once
 #include "../sdk/sdk.hpp"
 
-namespace animations {
+namespace anims {
 	namespace resolver {
 		namespace rdata {
 			inline std::array< float, 65 > impact_dmg { 0.0f };
@@ -24,7 +24,7 @@ namespace animations {
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
-		void resolve( player_t* pl, float& yaw1, float& yaw2, float& yaw3 );
+		float resolve_yaw( player_t* pl );
 		void create_beams( );
 		void render_impacts( );
 	}

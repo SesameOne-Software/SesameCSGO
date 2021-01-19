@@ -6,7 +6,7 @@
 #include "../features/chams.hpp"
 #include "../features/glow.hpp"
 #include "../features/nade_prediction.hpp"
-#include "../animations/animation_system.hpp"
+#include "../animations/anims.hpp"
 #include "../animations/resolver.hpp"
 #include "../menu/options.hpp"
 #include "../features/prediction.hpp"
@@ -17,7 +17,7 @@
 #undef max
 
 void* find_hud_element( const char* name ) {
-	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? E8 ? ? ? ? 8B 5D 08" ) ).add( 1 ).deref( ).get< void* >( );
+	static auto hud = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 89 46 24" ) ).add( 1 ).deref( ).get< void* >( );
 	static auto find_hud_element_func = pattern::search( _( "client.dll" ), _( "55 8B EC 53 8B 5D 08 56 57 8B F9 33 F6 39 77 28" ) ).get< void* ( __thiscall* )( void*, const char* ) >( );
 	return ( void* )find_hud_element_func( hud, name );
 }
@@ -44,6 +44,35 @@ void run_preserve_death_notices( ) {
 			if ( clear_death_notices )
 				clear_death_notices( reinterpret_cast< void* > ( uintptr_t( death_notice ) - 20 ) );
 	}
+}
+
+void run_radar_esp ( ) {
+	const auto radar_hud = find_hud_element ( _ ( "CCSGO_HudRadar" ) );
+
+	if ( !radar_hud )
+		return;
+
+	struct radar_player_t {
+		vec3_t pos; //0x0000
+		vec3_t angle; //0x000C
+		vec3_t spotted_map_angle_related; //0x0018
+		uint32_t tab_related; //0x0024
+		PAD ( 12 );
+		float spotted_time; //0x0034
+		float spotted_fraction; //0x0038
+		float time; //0x003C
+		PAD ( 4 );
+		int player_index; //0x0044
+		int entity_index; //0x0048
+		char pad_0x004C [ 0x4 ]; //0x004C
+		int health; //0x0050
+		char name [ 32 ]; //0x785888
+		char pad_0x0074 [ 0x75 ]; //0x0074
+		bool spotted; //0x00E9
+		char pad_0x00EA [ 0x8A ]; //0x00EA
+	};
+
+	auto radar_players = ( radar_player_t* ) ( reinterpret_cast<uintptr_t>( radar_hud ) - 20 );
 }
 
 void set_aspect_ratio( ) {
@@ -94,7 +123,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		if ( stage == 5 && g::local ) {
 			RUN_SAFE(
 				"animations::resolver::create_beams",
-				animations::resolver::create_beams( );
+				anims::resolver::create_beams( );
 			);
 
 			//RUN_SAFE(
@@ -189,9 +218,11 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		}
 	}
 
-	anims::update ( stage );
+	anims::pre_fsn ( stage );
 
 	old::frame_stage_notify( REG_OUT, stage );
+
+	anims::fsn ( stage );
 
 	features::prediction::update ( stage );
 

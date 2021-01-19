@@ -71,9 +71,7 @@ namespace prediction_util {
 
 		cs::i::move->process_movement( local, movedata );
 		cs::i::pred->finish_move ( local, ucmd, movedata );
-		cs::i::move->finish_track_prediction_errors ( local );
-
-		cs::i::move_helper->set_host ( nullptr );
+		
 	}
 
 	void end( ucmd_t* ucmd ) {
@@ -82,7 +80,11 @@ namespace prediction_util {
 		if ( !cs::i::engine->is_in_game( ) || !ucmd || !local || !local->alive( ) )
 			return;
 
-		cs::i::globals->m_curtime = curtime;
+		cs::i::move->finish_track_prediction_errors ( local );
+		cs::i::move_helper->set_host ( nullptr );
+		cs::i::move->reset ( );
+
+		//cs::i::globals->m_curtime = curtime;
 		cs::i::globals->m_frametime = frametime;
 
 		*reinterpret_cast< uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3338 ) = 0;
@@ -90,8 +92,6 @@ namespace prediction_util {
 		*reinterpret_cast< int* >( prediction_player ) = 0;
 
 		cs::i::pred->m_in_prediction = in_pred;
-
-		cs::i::move->reset( );
 	}
 }
 

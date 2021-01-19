@@ -18,6 +18,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 	static auto& strafer = options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b;
 	static auto& directional = options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b;
 	static auto& accurate_move = options::vars [ _ ( "misc.movement.accurate_move" ) ].val.b;
+	static flags_t last_flags;
 
 	if ( !g::local->valid( )
 		|| g::local->movetype ( ) == movetypes_t::noclip
@@ -25,6 +26,8 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 		return;
 
 	if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
+		last_flags = g::local->flags ( );
+
 		if ( bhop && !!(ucmd->m_buttons & buttons_t::jump) )
 			ucmd->m_buttons &= ~buttons_t::jump /*IN_JUMP*/;
 
@@ -157,13 +160,14 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 				else
 					ucmd->m_smove = ucmd->m_cmdnum % 2 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
 
-				if ( auto_forward )
+				//if ( auto_forward )
 					ucmd->m_fmove = g::cvars::cl_forwardspeed->get_float ( );
 			}
 		}
 	}
 	else {
 	if ( accurate_move
+		&& !!( last_flags & flags_t::on_ground )
 		&& !( ucmd->m_buttons & buttons_t::back )
 		&& !( ucmd->m_buttons & buttons_t::left )
 		&& !( ucmd->m_buttons & buttons_t::right )
@@ -180,5 +184,7 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 			ucmd->m_buttons &= ~buttons_t::walk;
 		}
 	}
+
+	last_flags = g::local->flags ( );
 	}
 }

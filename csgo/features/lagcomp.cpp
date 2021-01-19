@@ -6,18 +6,7 @@
 #include "prediction.hpp"
 #include "../animations/resolver.hpp"
 #include "ragebot.hpp"
-
-namespace features::lagcomp::data {
-	std::array< int, 65 > shot_count { 0 };
-	std::array< vec3_t, 65 > old_origins;
-	std::array< float, 65 > old_shots;
-	std::array< features::lagcomp::lag_record_t, 65 > interpolated_oldest;
-	std::array< std::deque< features::lagcomp::lag_record_t >, 65 > records;
-	std::array< std::deque< features::lagcomp::lag_record_t >, 65 > all_records;
-	std::array< features::lagcomp::lag_record_t, 65 > cham_records;
-	std::array< features::lagcomp::lag_record_t, 65 > shot_records;
-	std::array< std::deque< features::lagcomp::lag_record_t >, 65 > extrapolated_records;
-}
+#include "../animations/anims.hpp"
 
 float features::lagcomp::lerp( ) {
 	auto ud_rate = static_cast<float>( g::cvars::cl_updaterate->get_int ( ) );
@@ -36,36 +25,7 @@ float features::lagcomp::lerp( ) {
 	return std::max<float> ( g::cvars::cl_interp->get_float ( ), ratio / ud_rate );
 };
 
-const std::pair< std::deque< features::lagcomp::lag_record_t >&, bool > features::lagcomp::get( player_t* pl ) {
-	return { data::records [ pl->idx( ) ], !data::records [ pl->idx( ) ].empty( ) };
-}
-
-const std::pair< std::deque< features::lagcomp::lag_record_t >&, bool > features::lagcomp::get_all( player_t* pl ) {
-	return { data::all_records [ pl->idx( ) ], !data::all_records [ pl->idx( ) ].empty( ) };
-}
-
-const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get_extrapolated( player_t* pl ) {
-	return { data::extrapolated_records [ pl->idx( ) ][ 0 ], !data::extrapolated_records [ pl->idx( ) ].empty( ) && data::extrapolated_records [ pl->idx( ) ][ 0 ].m_pl && !data::extrapolated_records [ pl->idx( ) ][ 0 ].m_needs_matrix_construction };
-}
-
-const std::pair< features::lagcomp::lag_record_t&, bool > features::lagcomp::get_shot( player_t* pl ) {
-	return { data::shot_records [ pl->idx( ) ], data::shot_records [ pl->idx( ) ].m_pl };
-}
-
-bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
-	auto tick_valid_stripped = [ ] ( float t ) {
-		const auto nci = cs::i::engine->get_net_channel_info ( );
-
-		if ( !nci || !g::local )
-			return false;
-
-		const auto correct = std::clamp ( nci->get_latency ( 0 )
-			+ nci->get_latency ( 1 )
-			+ lerp ( ), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
-
-		return abs ( correct - ( cs::i::globals->m_curtime - t ) ) <= 0.2f;
-	};
-
+bool features::lagcomp::get_render_record ( player_t* ent, std::array<matrix3x4_t, 128>& out ) {
 	const auto nci = cs::i::engine->get_net_channel_info ( );
 
 	auto idx = ent->idx ( );
@@ -73,7 +33,7 @@ bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
 	if ( !idx || idx > cs::i::globals->m_max_clients )
 		return false;
 
-	auto& data = data::all_records [ idx ];
+	auto& data = data::visual_records [ idx ];
 
 	if ( data.empty ( ) )
 		return false;
@@ -83,7 +43,7 @@ bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
 	for ( int i = static_cast<int>(data.size ( )) - 1; i >= 0; i-- ) {
 		auto& it = data[i];
 
-		if ( tick_valid_stripped ( it.m_simtime ) ) {
+		if ( it.valid() ) {
 			if ( it.m_origin.dist_to ( ent->origin ( ) ) < 1.0f )
 				return false;
 
@@ -96,28 +56,20 @@ bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
 			float add = end ? 0.2f : time_delta;
 			float deadtime = it.m_simtime + correct + add;
 
-			float curtime = cs::i::globals->m_curtime;
+			float curtime = cs::ticks2time ( g::local->tick_base ( ) );
 			float delta = deadtime - curtime;
 
 			float mul = 1.0f / add;
 
 			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp ( delta * mul, 0.0f, 1.0f );
 
-			static matrix3x4_t ret[128];
-
-			if ( misses % 3 == 0 )
-				memcpy ( ret, it.m_bones1, sizeof ( ret ) );
-			else if ( misses % 3 == 1 )
-				memcpy ( ret, it.m_bones2, sizeof ( ret ) );
-			else
-				memcpy ( ret, it.m_bones3, sizeof ( ret ) );
+			static std::array<matrix3x4_t, 128> ret {};
+			ret = it.m_render_bones;
 
 			for ( auto& iter : ret )
 				iter.set_origin ( iter.origin ( ) - it.m_origin + lerp );
 
-			memcpy ( out,
-				ret,
-				sizeof ( ret ) );
+			out = ret;
 
 			return true;
 		}
@@ -126,142 +78,102 @@ bool features::lagcomp::get_render_record ( player_t* ent, matrix3x4_t* out ) {
 	return false;
 }
 
-void features::lagcomp::lag_record_t::backtrack( ucmd_t* ucmd ) {
-	//if ( ragebot::active_config.fix_fakelag )
-	//dbg_print( "1: %d\n", ucmd->m_tickcount );
-	ucmd->m_tickcount = cs::time2ticks( m_simtime ) + cs::time2ticks( lerp( ) );
-	//dbg_print( "2: %d\n", ucmd->m_tickcount );
-}
-
-bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_origin, bool simulated ) {
-	m_pl = pl;
-
-	if ( !pl->layers( ) || !pl->bone_cache( ) || !pl->animstate( ) || !g::local )
+bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_origin ) {
+	if ( !pl->bone_cache( ) || !pl->animstate( ) || !g::local )
 		return false;
 
+	m_idx = pl->idx ( );
 	m_priority = 0;
-	m_extrapolated = simulated;
-	m_needs_matrix_construction = false;
-	m_tick = cs::time2ticks( pl->simtime( ) );
 	m_simtime = pl->simtime( );
 	m_flags = pl->flags( );
 	m_ang = pl->angles( );
+	m_abs_origin = pl->abs_origin ( );
 	m_origin = pl->origin( );
 	m_min = pl->mins( );
 	m_max = pl->maxs( );
 	m_vel = pl->vel( );
 	m_lc = pl->origin( ).dist_to_sqr( last_origin ) <= 4096.0f;
-	m_failed_resolves = features::ragebot::get_misses( pl->idx( ) ).bad_resolve;
 	m_lby = pl->lby( );
-	m_abs_yaw = pl->abs_angles( ).y;
-	m_unresolved_abs = pl->abs_angles( ).y;
-
-	/*
-	@CBRs
-		So here's something to think about. Besides all the storage you do for resolving & animation fixing stuff, in reality you only need to store 5 things.
-		Mins, Maxs, Origin, player time, and bone data
-		Oh also, cached bone data is a cutlvector and the length is set to the model's bonecount. it never changes, so you never have to store bone count (and you don't where many do, yay!)
-	*/
-
-	std::memcpy( m_layers, pl->layers( ), sizeof( m_layers ) );
-	std::memcpy( m_bones1, anims::players::matricies [ pl->idx( ) ][0].data( ), sizeof ( m_bones1 ) );
-	std::memcpy( m_bones2, anims::players::matricies [ pl->idx( ) ][1].data( ), sizeof ( m_bones2 ) );
-	std::memcpy( m_bones3, anims::players::matricies [ pl->idx( ) ][2].data( ), sizeof ( m_bones3 ) );
-	std::memcpy( &m_state, pl->animstate( ), sizeof( m_state ) );
-	std::memcpy( m_poses, pl->poses( ).data(), sizeof( m_poses ) );
+	m_state = *pl->animstate ( );
+	m_layers = pl->layers ( );
+	m_poses = pl->poses ( );
+	m_aim_bones = anims::aim_matricies [ pl->idx ( ) ];
+	memcpy ( m_render_bones.data ( ), pl->bone_cache ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 
 	return true;
 }
 
-void features::lagcomp::cache( player_t* pl, bool predicted ) {
-	if ( !pl->valid ( ) )
-		return;
+bool features::lagcomp::lag_record_t::apply ( player_t* pl ) {
+	if ( !pl->bone_cache ( ) || !pl->animstate ( ) || !g::local )
+		return false;
 
+	pl->flags ( ) = m_flags;
+	pl->angles ( ) = m_ang;
+	pl->set_abs_origin ( m_abs_origin );
+	pl->origin ( ) = m_origin;
+	pl->mins ( ) = m_min;
+	pl->maxs ( ) = m_max;
+	pl->vel ( ) = m_vel;
+	pl->lby ( ) = m_lby;
+	*pl->animstate ( ) = m_state;
+	pl->layers ( ) = m_layers;
+	pl->poses ( ) = m_poses;
+
+	return true;
+}
+
+std::deque< features::lagcomp::lag_record_t > features::lagcomp::get_records ( player_t* ent ) {
+	std::deque< features::lagcomp::lag_record_t > ret {};
+
+	for ( auto& rec : data::records [ ent->idx ( ) ] )
+		if ( rec.valid ( ) )
+			ret.push_back ( rec );
+
+	return ret;
+}
+
+std::optional< features::lagcomp::lag_record_t > features::lagcomp::get_shot ( const std::deque< features::lagcomp::lag_record_t >& valid_records ) {
+	for ( auto& rec : valid_records )
+		if ( rec.m_priority == 1 )
+			return rec;
+
+	return std::nullopt;
+}
+
+bool features::lagcomp::cache( player_t* pl ) {
 	if ( !pl->valid( ) || !pl->weapon( ) || pl->team( ) == g::local->team( ) )
-		return;
+		return false;
+	
+	const auto idx = pl->idx ( );
 
-	static std::array<float, 65> old_pitch { 0.0f };
-	static std::array<float, 65> old_simtimes { 0.0f };
+	if( anims::anim_info [ idx ].empty ( ) )
+		return false;
 
-	/*
-		@CBRS Great, you won't shoot at bad records!
-	*/
-	/*if ( pl->simtime( ) <= pl->old_simtime( ) )
-		return;*/
+	static lag_record_t rec {};
 
-	lag_record_t rec;
-
-	if ( rec.store( pl, data::old_origins [ pl->idx( ) ], predicted ) ) {
-		/*
-			@CBRS Ok, so here's the thing: csgo only pops lag records when new player data has arrived, and thus we should only actually pop records in here.
-			additionally, they cast the "is it dead yet" to an integer, which means some pretty funky stuff happens
-
-			if the record arrived @ time 15.19, then technically all records between time 14-15.19 are stored on the server
-			but if it arrives at 15.21, then only between 15-15.21 are stored. whack, right?
-
-			anyways, here's some code for popping records correctly.
-
-			static auto max_unlag = cs::cvars->find_var( "sv_maxunlag" );
-			int dead_time = player->sim( ) - max_unlag->get_float( );
-			while ( track.size( ) > 1 ) {	//	technically this isn't proper, but it's so there's always a record for me to shoot @
-				if ( track.back( ).sim >= dead_time )
-					break;
-
-				track.pop_back( );
-			}
-		*/
-
-		if ( !predicted ) {
-			if ( pl->animstate ( ) && abs( pl->animstate ( )->m_pitch ) < 60.0f ) {
-				rec.m_priority = 1;
-
-				data::shot_records [ pl->idx( ) ] = rec;
-				data::shot_count [ pl->idx( ) ]++;
-				data::shot_records [ pl->idx( ) ].m_priority = 1;
-			}
-
-			data::all_records [ pl->idx( ) ].push_front( rec );
+	if ( rec.store( pl, data::old_origins [ idx ] ) ) {
+		/* mark as onshot */
+		if ( anims::anim_info [ idx ].front ( ).m_shot ) {
+			rec.m_priority = 1;
+			data::shot_count [ idx ]++;
 		}
 
-		data::records [ pl->idx( ) ].push_front( rec );
+		data::records [ idx ].push_front ( rec );
+		data::visual_records [ idx ].push_front ( rec );
 	}
+	
+	data::old_origins [ idx ] = pl->origin( );
 
-	if ( !predicted )
-		data::old_origins [ pl->idx( ) ] = pl->origin( );
+	while ( !data::visual_records [ idx ].empty ( ) && abs ( cs::ticks2time ( g::local->tick_base ( ) ) - data::visual_records [ idx ].back ( ).m_simtime ) > 0.5f )
+		data::visual_records [ idx ].pop_back ( );
 
-	pop( pl );
+	/* pop off dead records */
+	const int dead_time = pl->simtime ( ) - g::cvars::sv_maxunlag->get_float ( );
 
-	old_pitch [ pl->idx ( ) ] = pl->angles ( ).x;
-	old_simtimes [ pl->idx ( ) ] = pl->simtime ( );
-}
+	while ( data::records [ idx ].size ( ) > 1 ) {
+		if ( data::records [ idx ].back ( ).m_simtime >= dead_time )
+			break;
 
-bool features::lagcomp::breaking_lc( player_t* pl ) {
-	if ( !pl->valid( ) )
-		return false;
-
-	/*
-	@CBRs
-		walk every event in the deque (this is a big reason why we need to pop correctly) and check if the origin difference .lengthsqr is > 64^2
-		if so, we can't backtrack
-		so therefore, we have to shoot at where the server last set their bones up, otherwise we miss.
-		technically, extrapolation works. but if ur smart and the player has low ping, then just only shoot soon after receiving data - aka, their data is correct because
-		the server won't have received another batch of clcmsgmove packets
-	*/
-
-	const auto& recs = get( pl );
-
-	if ( !recs.second )
-		return false;
-
-	return !recs.first.front( ).m_lc;
-}
-
-bool features::lagcomp::has_onshot( player_t* pl ) {
-	if ( !pl->valid( ) )
-		return false;
-
-	//if ( data::shot_records [ pl->idx ( ) ].m_pl )
-	//	dbg_print ( "HAS ONSHOT\n" );
-
-	return data::shot_records [ pl->idx( ) ].m_pl;
+		data::records [ idx ].pop_back ( );
+	}
 }

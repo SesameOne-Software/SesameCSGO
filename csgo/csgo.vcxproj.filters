@@ -386,9 +386,6 @@
     <ClInclude Include="plusaes.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="animations\animation_system.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="features\legitbot.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -528,6 +525,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vpk\vpkparser.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\update_clientside_animations.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="animations\anims.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -682,9 +685,6 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="animations\animation_system.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="features\legitbot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -746,6 +746,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="features\kit_parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\update_clientside_animations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\anims.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

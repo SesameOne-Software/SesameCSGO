@@ -62,12 +62,11 @@ void airstuck ( ucmd_t* ucmd ) {
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
+	
+	cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
-
-	if ( ret )
-		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
 	if ( cs::i::client_state->choked ( ) ) {
 		cs::i::pred->update (
@@ -163,13 +162,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	//RUN_SAFE (
 	//	"features::prediction::run",
 	features::prediction::run( [ & ] ( ) {
-		cs::for_each_player( [ ] ( player_t* pl ) {
-			//RUN_SAFE (
-			//	"features::lagcomp::pop",
-			features::lagcomp::pop( pl );
-			//);
-			} );
-
 		features::antiaim::simulate_lby( );
 		ducking = !!(ucmd->m_buttons & buttons_t::duck);
 

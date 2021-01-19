@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="animations\animation_system.cpp" />
+    <ClCompile Include="animations\anims.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="cjson\cJSON.c" />
     <ClCompile Include="features\antiaim.cpp" />
@@ -71,6 +71,7 @@
     <ClCompile Include="hooks\send_net_msg.cpp" />
     <ClCompile Include="hooks\setup_bones.cpp" />
     <ClCompile Include="hooks\should_skip_anim_frame.cpp" />
+    <ClCompile Include="hooks\update_clientside_animations.cpp" />
     <ClCompile Include="hooks\wnd_proc.cpp" />
     <ClCompile Include="hooks\write_usercmd_delta_to_buffer.cpp" />
     <ClCompile Include="imgui\gui.cpp" />
@@ -94,7 +95,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
-    <ClInclude Include="animations\animation_system.hpp" />
+    <ClInclude Include="animations\anims.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
@@ -161,6 +162,7 @@
     <ClInclude Include="hooks\send_net_msg.hpp" />
     <ClInclude Include="hooks\setup_bones.hpp" />
     <ClInclude Include="hooks\should_skip_anim_frame.hpp" />
+    <ClInclude Include="hooks\update_clientside_animations.hpp" />
     <ClInclude Include="hooks\wnd_proc.hpp" />
     <ClInclude Include="hooks\write_usercmd_delta_to_buffer.hpp" />
     <ClInclude Include="icons\generated_font\sesame_icons.hpp" />
