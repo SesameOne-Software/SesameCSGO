@@ -38,6 +38,7 @@
 #include "base_interpolate_part1.hpp"
 #include "cl_fireevents.hpp"
 #include "update_clientside_animations.hpp"
+#include "netmsg_tick.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -57,11 +58,12 @@
 std::unique_ptr< c_entity_listener_mgr > ent_listener;
 
 void hooks::init( ) {
-	g::resources::init ( );
+	CLEAR_START
+		VM_SHARK_BLACK_START
 
+	g::resources::init ( );
 	/* initialize cheat config */
 	gui::init( );
-	erase::erase_func( gui::init );
 
 	features::skinchanger::init ( );
 
@@ -113,6 +115,7 @@ void hooks::init( ) {
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
 	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
 	const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
+	const auto _netmsg_tick = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 53 56 8B F1 8B 0D ? ? ? ? 57" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -161,10 +164,12 @@ void hooks::init( ) {
 	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
+	dbg_hook ( _netmsg_tick, netmsg_tick, ( void** ) &old::netmsg_tick );
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
 	ent_listener->add ( );
 
-	END_FUNC
+	VM_SHARK_BLACK_END
+		CLEAR_END
 }

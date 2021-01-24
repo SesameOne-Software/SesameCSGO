@@ -61,12 +61,23 @@ void airstuck ( ucmd_t* ucmd ) {
 }
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
-	auto ret = old::create_move( REG_OUT, sampletime, ucmd );
-	
+	cs::i::engine->set_viewangles ( ucmd->m_angs );
 	cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
-	if ( !ucmd || !ucmd->m_cmdnum )
-		return ret;
+	if ( !ucmd || !ucmd->m_cmdnum ) {
+		return old::create_move ( REG_OUT, sampletime, ucmd );
+	}
+
+	features::lagcomp::old_curtime = cs::i::globals->m_curtime;
+
+	ducking = !!(ucmd->m_buttons & buttons_t::duck);
+	in_cm = true;
+
+	utils::update_key_toggles( );
+
+	/* recharge if we need, and return */
+	if ( exploits::recharge ( ucmd ) )
+			return false;
 
 	if ( cs::i::client_state->choked ( ) ) {
 		cs::i::pred->update (
@@ -76,15 +87,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
 		);
 	}
-
-	ducking = !!(ucmd->m_buttons & buttons_t::duck);
-	in_cm = true;
-
-	utils::update_key_toggles( );
-
-	/* recharge if we need, and return */
-	if ( exploits::recharge ( ucmd ) )
-		return false;
 
 	//RUN_SAFE (
 	//	"features::ragebot::get_weapon_config",
@@ -219,24 +221,22 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::forward : buttons_t::back );
 			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::forward : buttons_t::back );
 		}
-
+		
 		if ( ucmd->m_smove ) {
 			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::right : buttons_t::left );
 			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::right : buttons_t::left );
 		}
 
-		/* slide to opposite side (anti-toeaim) */
-		/*
-		if ( ucmd->m_fmove ) {
-			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? 16 : 8 );
-			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? 16 : 8 );
-		}
-
-		if ( ucmd->m_smove ) {
-			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? 512 : 1024 );
-			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? 512 : 1024 );
-		}
-		*/
+		///* slide to opposite side (anti-toeaim) */
+		//if ( ucmd->m_fmove ) {
+		//	ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
+		//	ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
+		//}
+		//
+		//if ( ucmd->m_smove ) {
+		//	ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
+		//	ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
+		//}
 	}
 
 	features::ragebot::tickbase_controller( ucmd );

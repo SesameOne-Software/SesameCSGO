@@ -237,8 +237,8 @@ public:
 		return client_class ( ) && client_class ( )->m_class_id == 40;
 	}
 
-	std::array< animlayer_t, 13 >& layers( ) {
-		return *reinterpret_cast< std::array< animlayer_t, 13 >* >( reinterpret_cast<uintptr_t>(this) + 0x2980 );
+	animlayer_t* layers( ) {
+		return *reinterpret_cast< animlayer_t** >( reinterpret_cast<uintptr_t>(this) + 0x2980 );
 	}
 
 	std::array< float, 24 >& poses( ) {

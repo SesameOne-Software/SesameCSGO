@@ -23,6 +23,7 @@ LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
 	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:
 	case WM_XBUTTONDOWN: case WM_XBUTTONDBLCLK: {
+		MUTATE_START
 		int button = 0;
 		if ( uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONDBLCLK ) { button = 0; }
 		if ( uMsg == WM_RBUTTONDOWN || uMsg == WM_RBUTTONDBLCLK ) { button = 1; }
@@ -30,12 +31,14 @@ LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 		if ( uMsg == WM_XBUTTONDOWN || uMsg == WM_XBUTTONDBLCLK ) { button = ( GET_XBUTTON_WPARAM ( wParam ) == XBUTTON1 ) ? 3 : 4; }
 		mouse_down [ button ] = true;
 		skip_mouse_input_processing = true;
+		MUTATE_END
 		break;
 	}
 	case WM_LBUTTONUP:
 	case WM_RBUTTONUP:
 	case WM_MBUTTONUP:
 	case WM_XBUTTONUP: {
+		MUTATE_START
 		int button = 0;
 		if ( uMsg == WM_LBUTTONUP ) { button = 0; }
 		if ( uMsg == WM_RBUTTONUP ) { button = 1; }
@@ -43,6 +46,7 @@ LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 		if ( uMsg == WM_XBUTTONUP ) { button = ( GET_XBUTTON_WPARAM ( wParam ) == XBUTTON1 ) ? 3 : 4; }
 		mouse_down [ button ] = false;
 		skip_mouse_input_processing = true;
+		MUTATE_END
 		break;
 	}
 	case WM_KEYDOWN:
@@ -59,10 +63,13 @@ LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 		break;
 	}
 
+	MUTATE_START
 	ImGui_ImplWin32_WndProcHandler ( hWnd, uMsg, wParam, lParam );
-
+	MUTATE_END
 	if ( gui::opened && ( ( skip_mouse_input_processing || wParam <= VK_XBUTTON2 ) || ( uMsg == WM_MOUSEWHEEL ) ) )
 		return true;
 
+	MUTATE_START
 	return CallWindowProcA ( old::wnd_proc, hWnd, uMsg, wParam, lParam );
+	MUTATE_END
 }

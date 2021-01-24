@@ -5140,8 +5140,8 @@ bool ImGui::ColorPicker4( const char* label, float col [ 4 ], ImGuiColorEditFlag
         flags |= ImGuiColorEditFlags_NoSmallPreview;
 
     // Context menu: display and store options.
-    if ( !( flags & ImGuiColorEditFlags_NoOptions ) )
-        ColorPickerOptionsPopup( col, flags );
+    //if ( !( flags & ImGuiColorEditFlags_NoOptions ) )
+     //   ColorPickerOptionsPopup( col, flags );
 
     // Read stored options
     if ( !( flags & ImGuiColorEditFlags__PickerMask ) )

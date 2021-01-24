@@ -533,6 +533,12 @@
     <ClInclude Include="animations\anims.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resources\sesame_ui.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\netmsg_tick.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -752,6 +758,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="animations\anims.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\netmsg_tick.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

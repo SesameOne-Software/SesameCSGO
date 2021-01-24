@@ -152,7 +152,7 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 		auto detonate = detonated( g::local->weapon( ), time, trace );
 
 		//	emplace nade point
-		const auto nade_record = nade_record_t( start, pos, trace.m_fraction != 1.0f, true, trace.m_plane.m_normal, detonate, prediction::curtime( ) + time * 2.0f, nade_radius );
+		const auto nade_record = nade_record_t( start, pos, trace.m_fraction != 1.0f, true, trace.m_plane.m_normal, detonate, cs::i::globals->m_curtime + time * 2.0f, nade_radius );
 
 		cur_nade_track.push_back( nade_record );
 		cur_nade_track_renderable.at( index++ ) = nade_record;
@@ -276,7 +276,7 @@ void features::nade_prediction::draw( ) {
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
 		const auto dormant_time = grenade_path_fade_time;
-		return static_cast< int >( ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( prediction::curtime( ) - time ), 0.0f, dormant_time ) ) : std::fabsf( prediction::curtime( ) - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
+		return static_cast< int >( ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( cs::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf( prediction::curtime( ) - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
 
 	auto cur_track = 0;

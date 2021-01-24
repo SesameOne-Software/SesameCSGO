@@ -34,10 +34,10 @@ void ImGui::custom::TextOutlined( const ImVec2& pos, ImU32 color, const char* te
     const auto window = GetCurrentWindow( );
     const auto draw_list = window->DrawList;
 
-    draw_list->AddText( ImVec2( pos.x - 1.0f, pos.y - 1.0f ), color & IM_COL32_A_MASK, text );
-    draw_list->AddText( ImVec2( pos.x - 1.0f, pos.y + 1.0f ), color & IM_COL32_A_MASK, text );
+   // draw_list->AddText( ImVec2( pos.x - 1.0f, pos.y - 1.0f ), color & IM_COL32_A_MASK, text );
+    //draw_list->AddText( ImVec2( pos.x - 1.0f, pos.y + 1.0f ), color & IM_COL32_A_MASK, text );
     draw_list->AddText( ImVec2( pos.x + 1.0f, pos.y + 1.0f ), color & IM_COL32_A_MASK, text );
-    draw_list->AddText( ImVec2( pos.x + 1.0f, pos.y - 1.0f ), color & IM_COL32_A_MASK, text );
+    //draw_list->AddText( ImVec2( pos.x + 1.0f, pos.y - 1.0f ), color & IM_COL32_A_MASK, text );
 
     draw_list->AddText( pos, color, text );
 }

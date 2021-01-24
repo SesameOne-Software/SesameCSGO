@@ -9,10 +9,10 @@
 
 std::unordered_map<std::string, void*> font_list {};
 
-void render::create_font ( const uint8_t* data, size_t data_size, std::string_view family_name, float size, const uint16_t* ranges ) {
+void render::create_font ( const uint8_t* data, size_t data_size, std::string_view family_name, float size, const uint16_t* ranges, void* font_config ) {
 	ImGuiIO& io = ImGui::GetIO ( );
 
-	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, nullptr, ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
+	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, reinterpret_cast< ImFontConfig *>( font_config), ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
 }
 
 void render::screen_size ( float& width, float& height ) {

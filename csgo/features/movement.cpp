@@ -12,7 +12,7 @@ enum e_strafe_dirs {
 	qd_back
 };
 
-void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
+void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {	
 	static auto& bhop = options::vars [ _ ( "misc.movement.bhop" ) ].val.b;
 	static auto& auto_forward = options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b;
 	static auto& strafer = options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b;
@@ -20,10 +20,11 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 	static auto& accurate_move = options::vars [ _ ( "misc.movement.accurate_move" ) ].val.b;
 	static flags_t last_flags;
 
-	if ( !g::local->valid( )
+	if ( !g::local->valid ( )
 		|| g::local->movetype ( ) == movetypes_t::noclip
-		|| g::local->movetype( ) == movetypes_t::ladder )
-		return;
+		|| g::local->movetype ( ) == movetypes_t::ladder ) {
+			return;
+	}
 
 	if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
 		last_flags = g::local->flags ( );

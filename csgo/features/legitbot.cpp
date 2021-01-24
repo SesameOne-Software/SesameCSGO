@@ -11,11 +11,11 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
     static auto& triggerbot_key_mode = options::vars [ _( "legitbot.triggerbot_key_mode" ) ].val.i;
     static auto& triggerbot_hitboxes = options::vars [ _( "legitbot.triggerbot_hitboxes" ) ].val.l;
 
-    if ( !triggerbot_enabled || !utils::keybind_active( triggerbot_key, triggerbot_key_mode ) )
-        return;
+    if ( !triggerbot_enabled || !utils::keybind_active ( triggerbot_key, triggerbot_key_mode ) )
+            return;
 
-    if ( !g::local->weapon( ) || !g::local->weapon( )->data( ) )
-        return;
+    if ( !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
+            return;
 
     const auto eyes = g::local->eyes( );
 

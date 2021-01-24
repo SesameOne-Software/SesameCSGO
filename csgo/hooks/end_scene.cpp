@@ -1,4 +1,4 @@
-﻿#include "end_scene.hpp"
+#include "end_scene.hpp"
 #include "../globals.hpp"
 #include "../menu/menu.hpp"
 
@@ -29,9 +29,10 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 	static auto ret = _ReturnAddress( );
 
-	if ( ret != _ReturnAddress( ) )
+	if ( ret != _ReturnAddress ( ) )
 		return old::end_scene( REG_OUT, device );
 
+	MUTATE_START
 	D3DVIEWPORT9 d3d_viewport;
 	device->GetViewport ( &d3d_viewport );
 
@@ -128,12 +129,12 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 			float w, h;
 			render::screen_size ( w, h );
 
-			const auto crosshair_gap = 0.0296f * static_cast< float > ( h );
+			const auto crosshair_gap = 0.025f * static_cast< float > ( h );
 
-			render::gradient ( w / 2, h / 2 + crosshair_gap, 1, h / 2.5f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
-			render::gradient ( w / 2, h / 2 - crosshair_gap, 1, -h / 2.5f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
-			render::gradient ( w / 2 + crosshair_gap, h / 2, h / 2.5f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
-			render::gradient ( w / 2 - crosshair_gap, h / 2, -h / 2.5f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
+			render::gradient ( w / 2, h / 2 + crosshair_gap, 1, h / 3.3f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2, h / 2 - crosshair_gap, 1, -h / 3.3f, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), false );
+			render::gradient ( w / 2 + crosshair_gap, h / 2, h / 3.3f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
+			render::gradient ( w / 2 - crosshair_gap, h / 2, -h / 3.3f, 1, rgba ( 255, 251, 237, 150 ), rgba ( 255, 251, 237, 0 ), true );
 		}
 
 		RUN_SAFE (
@@ -158,7 +159,7 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 		"menu::draw",
 		gui::draw( );
 	);
-	
+
 	ImGui::EndFrame ( );
 	ImGui::Render ( );
 
@@ -177,6 +178,8 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	pixel_state->Release ( );
 
 	//truetype::end ( );
+
+	MUTATE_END
 
 	return old::end_scene( REG_OUT, device );
 }

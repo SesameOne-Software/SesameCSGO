@@ -119,16 +119,19 @@ bool create_materials( ) {
 		return mat;
 	};
 
+	//CLEAR_START
 	m_mat = create_mat( false, false, false, false );
 	m_matflat = create_mat( false, true, false, false );
 	m_mat_wireframe = create_mat( false, false, true, false );
 	m_matflat_wireframe = create_mat( false, true, true, false );
 	m_mat_glow = create_mat( false, false, true, true );
+	//CLEAR_END
 
 	return true;
 }
 
 void update_mats( const features::visual_config_t& visuals, const options::option::colorf& clr ) {
+	MUTATE_START
 	// XREF: Function DrawSpriteModel client.dll
 	auto set_vec = [ ] ( void* var, float x, float y, float z ) {
 		vfunc< void( __thiscall* )( void*, float, float, float ) >( var, 11 )( var, x, y, z );
@@ -177,6 +180,8 @@ void update_mats( const features::visual_config_t& visuals, const options::optio
 		set_vec( rimlight_exponent, 0.0f, 1.0f, 1.0f + ( 14.0f - clr.a * 14.0f ) );
 		set_vec( envmap, clr.r, clr.g, clr.b );
 	}
+
+	MUTATE_END
 }
 
 std::array < mdlrender_info_t, 65 > mdl_render_info;
@@ -292,33 +297,6 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				}
 
 				if ( visuals.chams ) {
-					/* resolver chams */
-					/*if ( e != g::local && g::local ) {
-						cs::i::render_view->set_alpha ( 255 );
-						cs::i::render_view->set_color ( 255, 0, 0 );
-						m_mat->set_material_var_flag ( 0x8000, true );
-						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
-						cs::i::mdl_render->force_mat ( m_mat );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix1 [ e->idx ( ) ].data ( ) );
-						cs::i::mdl_render->force_mat ( nullptr );
-
-						cs::i::render_view->set_alpha ( 255 );
-						cs::i::render_view->set_color ( 0, 255, 0 );
-						m_mat->set_material_var_flag ( 0x8000, true );
-						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
-						cs::i::mdl_render->force_mat ( m_mat );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix2 [ e->idx ( ) ].data ( ) );
-						cs::i::mdl_render->force_mat ( nullptr );
-
-						cs::i::render_view->set_alpha ( 255 );
-						cs::i::render_view->set_color ( 0, 0, 255 );
-						m_mat->set_material_var_flag ( 0x8000, true );
-						m_mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
-						cs::i::mdl_render->force_mat ( m_mat );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::aim_matrix3 [ e->idx ( ) ].data ( ) );
-						cs::i::mdl_render->force_mat ( nullptr );
-					}*/
-
 					/* occluded */
 					if ( e == g::local ? false : visuals.chams_xqz ) {
 						cs::i::render_view->set_alpha ( visuals.chams_xqz_color.a * 255.0f );

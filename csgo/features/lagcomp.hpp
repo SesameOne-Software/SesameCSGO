@@ -8,6 +8,8 @@
 
 namespace features {
 	namespace lagcomp {
+		inline float old_curtime = 0.0f;
+
 		float lerp( );
 
 		struct lag_record_t {
@@ -35,15 +37,16 @@ namespace features {
 				if ( !nci || !g::local )
 					return false;
 
-				const auto correct = std::clamp ( nci->get_latency ( 0 )
-					+ nci->get_latency ( 1 )
-					+ lerp(), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
+				if ( m_simtime < int ( cs::i::globals->m_curtime - g::cvars::sv_maxunlag->get_float ( ) ) )
+					return false;
 
-				return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - m_simtime ) ) <= 0.2f;
+				const auto correct = std::clamp ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp ( ), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
+
+				return abs ( correct - ( cs::i::globals->m_curtime - m_simtime ) ) <= 0.2f;
 			}
 
 			inline void backtrack ( ucmd_t* ucmd ) {
-				ucmd->m_tickcount = cs::time2ticks ( m_simtime ) + cs::time2ticks ( lerp ( ) );
+				ucmd->m_tickcount = cs::time2ticks ( m_simtime + lerp ( ) );
 			}
 		};
 

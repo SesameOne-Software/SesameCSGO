@@ -50,7 +50,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 		const auto sval = std::to_string ( static_cast< int >( value ) );
 
 		vec3_t text_size;
-		render::text_size ( sval, _ ( "dbg_font" ), text_size );
+		render::text_size ( sval, _ ( "esp_font" ), text_size );
 
 		const auto fraction = std::clamp ( value / max, 0.0, 1.0 );
 		const auto calc_height = fraction * box.Max.y;
@@ -61,7 +61,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x - cur_offset_left - 5, box.Min.y, 5, box.Max.y, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_left += 7;
 			break;
 		case features::esp_placement_right:
@@ -69,7 +69,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x + box.Max.x + cur_offset_right, box.Min.y, 5, box.Max.y, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2, box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2, sval, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_right += 7;
 			break;
 		case features::esp_placement_bottom:
@@ -77,7 +77,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x, box.Min.y + box.Max.y + cur_offset_bottom, box.Max.x, 5, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_bottom += 7;
 			break;
 		case features::esp_placement_top:
@@ -85,7 +85,7 @@ void draw_esp_widget( const ImRect& box, const options::option::colorf& widget_c
 			render::outline ( box.Min.x, box.Min.y - cur_offset_top - 5, box.Max.x, 5, clr1 );
 
 			if ( show_value )
-				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "dbg_font" ), rgba ( 255, 255, 255, 255 ), true );
+				render::text ( box.Min.x + 1 + static_cast< float >( box.Max.x )* fraction + 1 - text_size.x / 2, box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2, sval, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
 			cur_offset_top += 7;
 			break;
 		}
@@ -199,7 +199,7 @@ void features::esp::handle_dynamic_updates( ) {
 
 		esp_data [ pl->idx( ) ].m_pos = end_pos;
 		esp_data [ pl->idx( ) ].m_dormant = true;
-		esp_data [ pl->idx( ) ].m_last_seen = prediction::curtime( );
+		esp_data [ pl->idx( ) ].m_last_seen = cs::i::globals->m_curtime;
 
 		//dbg_print( _( "sound\n" ) );
 	}
@@ -318,9 +318,9 @@ void features::esp::render( ) {
 			esp_data [ e->idx( ) ].m_pos = e->abs_origin( );
 
 			if ( esp_data [ e->idx( ) ].m_first_seen == 0.0f )
-				esp_data [ e->idx( ) ].m_first_seen = prediction::curtime( );
+				esp_data [ e->idx( ) ].m_first_seen = cs::i::globals->m_curtime;
 
-			esp_data [ e->idx( ) ].m_last_seen = prediction::curtime( );
+			esp_data [ e->idx( ) ].m_last_seen = cs::i::globals->m_curtime;
 
 			if ( e && e->weapon( ) && e->weapon( )->data( ) ) {
 				std::string hud_name = e->weapon( )->data( )->m_weapon_name;
@@ -349,7 +349,7 @@ void features::esp::render( ) {
 
 		auto dormant_time = std::max< float >( 9.0f/*esp_fade_time*/, 0.1f );
 
-		if ( esp_data [ e->idx( ) ].m_pl && std::fabsf( prediction::curtime( ) - esp_data [ e->idx( ) ].m_last_seen ) < dormant_time ) {
+		if ( esp_data [ e->idx( ) ].m_pl && std::fabsf( cs::i::globals->m_curtime - esp_data [ e->idx( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
 				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( prediction::curtime( ) - time ), 0.0f, dormant_time ) ) : std::fabsf( prediction::curtime( ) - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
 			};

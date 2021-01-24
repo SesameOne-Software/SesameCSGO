@@ -18,6 +18,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		return false;
 
 	if ( pl == g::local ) {
+		MUTATE_START
 		static auto& options = options::vars [ _( "visuals.local.options" ) ].val.l;
 		static auto& health_bar_placement = options::vars [ _( "visuals.local.health_bar_location" ) ].val.i;
 		static auto& desync_bar_placement = options::vars [ _( "visuals.local.desync_bar_location" ) ].val.i;
@@ -80,11 +81,13 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.chams_color = chams_color;
 		out.desync_chams_color = desync_chams_color;
 		out.desync_rimlight_color = desync_rimlight_overlay_color;
+		MUTATE_END
 
 		return true;
 	}
 
 	if ( g::local->team( ) != pl->team( ) ) {
+		MUTATE_START
 		static auto& options = options::vars [ _( "visuals.enemies.options" ) ].val.l;
 		static auto& health_bar_placement = options::vars [ _( "visuals.enemies.health_bar_location" ) ].val.i;
 		static auto& desync_bar_placement = options::vars [ _( "visuals.enemies.desync_bar_location" ) ].val.i;
@@ -142,10 +145,12 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.name_color = name_color;
 		out.weapon_color = weapon_color;
 		out.chams_color = chams_color;
+		MUTATE_END
 
 		return true;
 	}
 
+	MUTATE_START
 	static auto& options = options::vars [ _( "visuals.teammates.options" ) ].val.l;
 	static auto& health_bar_placement = options::vars [ _( "visuals.teammates.health_bar_location" ) ].val.i;
 	static auto& desync_bar_placement = options::vars [ _( "visuals.teammates.desync_bar_location" ) ].val.i;
@@ -201,6 +206,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.name_color = name_color;
 	out.weapon_color = weapon_color;
 	out.chams_color = chams_color;
+	MUTATE_END
 
 	return true;
 }

@@ -259,6 +259,15 @@ void features::skinchanger::run ( ) {
 		if ( !new_econ_skin_data )
 			continue;
 
+		const auto item_definition_index = weapon->item_definition_index ( );
+		const auto econ_item_definition_index = new_econ_skin_data->item_definition_index ( );
+
+		if ( !(item_definition_index == weapons_t::knife_t
+			|| item_definition_index == weapons_t::knife_ct
+			|| ( item_definition_index >= weapons_t::knife_bayonet && item_definition_index <= weapons_t::knife_skeleton ))
+			&& item_definition_index != new_econ_skin_data->item_definition_index ( ) )
+			continue;
+
 		const auto id = new_econ_skin_data->item_id ( );
 
 		*reinterpret_cast< uint64_t* >( reinterpret_cast< uintptr_t >( &weapon->item_id_high ( ) ) - sizeof( uint64_t ) ) = id;
@@ -266,11 +275,9 @@ void features::skinchanger::run ( ) {
 		weapon->item_id_high ( ) = id >> 32;
 		weapon->account ( ) = player_info.m_xuid_low;
 
-		const auto item_definition_index = weapon->item_definition_index ( );
-
 		/* do extra stuff if it's a knife */
 		if ( item_definition_index == weapons_t::knife_t || item_definition_index == weapons_t::knife_ct || ( item_definition_index >= weapons_t::knife_bayonet && item_definition_index <= weapons_t::knife_skeleton ) ) {
-			weapon->item_definition_index ( ) = new_econ_skin_data->item_definition_index ( );
+			weapon->item_definition_index ( ) = econ_item_definition_index;
 			
 			const auto new_econ_item_definition = new_econ_item_view->static_data ( );
 
@@ -296,7 +303,7 @@ void features::skinchanger::run ( ) {
 					/* replace knife animations with different ones right after update */
 					if ( last_sequence != view_mdl->sequence ( ) )
 						/* grab animations from non-default knife with same animation sequences */
-						last_sequence = view_mdl->sequence ( ) = remap_sequence ( weapons_t::knife_bayonet, new_econ_skin_data->item_definition_index ( ), view_mdl->sequence ( ) );
+						last_sequence = view_mdl->sequence ( ) = remap_sequence ( weapons_t::knife_bayonet, econ_item_definition_index, view_mdl->sequence ( ) );
 				}
 			}
 		}
@@ -460,4 +467,51 @@ void features::skinchanger::init ( ) {
 	/* dump skin icons */
 
 	/* add items in skin config to inventory */
+}
+
+void features::skinchanger::process_death ( event_t* event ) {
+	if ( !event || !g::local )
+		return;
+
+	const auto weapon = g::local->weapon ( );
+
+	if ( !weapon )
+		return;
+
+	const auto attacker = event->get_int ( _("attacker") );
+
+	if ( !attacker || cs::i::engine->get_player_for_userid ( attacker ) != cs::i::engine->get_local_player ( ) )
+		return;
+
+	const auto weapon_name = event->get_string ( _("weapon"));
+
+	if (!weapon_name || !strstr( weapon_name, _("knife")))
+		return;
+
+	const auto inventory = inventory::get_local_inventory ( );
+
+	if ( !inventory )
+		return;
+
+	const auto econ_item_view = weapon->econ_item ( );
+
+	if ( !econ_item_view )
+		return;
+
+	const auto econ_item_definition = econ_item_view->static_data ( );
+
+	if ( !econ_item_definition )
+		return;
+
+	const auto new_econ_item_view = inventory->item_in_loadout ( g::local->team ( ), econ_item_definition->equipped_position ( ) );
+
+	if ( !new_econ_item_view )
+		return;
+
+	auto static_data = new_econ_item_view->static_data ( );
+	
+	if ( !static_data )
+		return;
+
+	event->set_string ( _("weapon"), static_data->icon_name() );
 }

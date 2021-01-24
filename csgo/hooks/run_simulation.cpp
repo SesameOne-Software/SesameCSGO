@@ -14,19 +14,24 @@ namespace lby {
 
 /* cbrs */
 void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, player_t* localplayer ) {
-    if ( !localplayer || localplayer != g::local || !g::local )
-        return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
+        if ( !localplayer || localplayer != g::local || !g::local ) {
+                return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
+    }
+       
 
     if ( cmd->m_tickcount == INT_MAX ) {
+        MUTATE_START
         cmd->m_hasbeenpredicted = true;
         localplayer->tick_base ( )++;
+        MUTATE_END
         return;
     }
 
+    MUTATE_START
     if ( exploits::shifted_command ( ) == current_command )
         localplayer->tick_base ( ) -= exploits::shifted_tickbase ( );
 
-    auto curtime = cs::i::globals->m_curtime = cs::ticks2time( localplayer->tick_base ( ) ); 
+    auto curtime = cs::ticks2time( localplayer->tick_base ( ) ); 
     __asm movss xmm2, curtime
 
     old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
@@ -34,12 +39,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
     if ( exploits::shifted_command ( ) == current_command )
         localplayer->tick_base ( ) += exploits::shifted_tickbase ( );
 
-    static float last_tick = cs::time2ticks ( cs::i::globals->m_curtime );
-
-    if ( cs::time2ticks ( cs::i::globals->m_curtime ) != last_tick )
-        anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
-
-    last_tick = cs::time2ticks ( cs::i::globals->m_curtime );
-
+    anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
     features::prediction::fix_viewmodel ( true );
+    MUTATE_END
 }

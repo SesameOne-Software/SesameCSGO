@@ -21,7 +21,12 @@
 
 #include "../features/skinchanger.hpp"
 
+#include "../resources/sesame_ui.hpp"
+
 extern std::string last_config_user;
+
+extern uint64_t current_plist_player;
+extern uint64_t player_to_steal_tag_from;
 
 bool upload_to_cloud = false;
 std::mutex gui::gui_mutex;
@@ -37,7 +42,7 @@ bool download_config_code = false;
 
 cJSON* cloud_config_list = nullptr;
 
-bool gui::opened = false;
+bool gui::opened = true;
 bool open_button_pressed = false;
 
 enum tabs_t {
@@ -130,16 +135,121 @@ ImFont* gui_icons_font = nullptr;
 
 float g_last_dpi = 0.0f;
 
-extern std::unordered_map<std::string, void*> font_list;
+namespace stb {
+	static unsigned int stb_decompress_length ( const unsigned char* input ) {
+		return ( input [ 8 ] << 24 ) + ( input [ 9 ] << 16 ) + ( input [ 10 ] << 8 ) + input [ 11 ];
+	}
 
-void* segoe_ui_bytes =nullptr;
-size_t segoe_ui_size = 0;
+	static unsigned char* stb__barrier_out_e, * stb__barrier_out_b;
+	static const unsigned char* stb__barrier_in_b;
+	static unsigned char* stb__dout;
+	static void stb__match ( const unsigned char* data, unsigned int length ) {
+		// INVERSE of memmove... write each byte before copying the next...
+		IM_ASSERT ( stb__dout + length <= stb__barrier_out_e );
+		if ( stb__dout + length > stb__barrier_out_e ) { stb__dout += length; return; }
+		if ( data < stb__barrier_out_b ) { stb__dout = stb__barrier_out_e + 1; return; }
+		while ( length-- ) *stb__dout++ = *data++;
+	}
+
+	static void stb__lit ( const unsigned char* data, unsigned int length ) {
+		IM_ASSERT ( stb__dout + length <= stb__barrier_out_e );
+		if ( stb__dout + length > stb__barrier_out_e ) { stb__dout += length; return; }
+		if ( data < stb__barrier_in_b ) { stb__dout = stb__barrier_out_e + 1; return; }
+		memcpy ( stb__dout, data, length );
+		stb__dout += length;
+	}
+
+#define stb__in2(x)   ((i[x] << 8) + i[(x)+1])
+#define stb__in3(x)   ((i[x] << 16) + stb__in2((x)+1))
+#define stb__in4(x)   ((i[x] << 24) + stb__in3((x)+1))
+
+	static const unsigned char* stb_decompress_token ( const unsigned char* i ) {
+		if ( *i >= 0x20 ) { // use fewer if's for cases that expand small
+			if ( *i >= 0x80 )       stb__match ( stb__dout - i [ 1 ] - 1, i [ 0 ] - 0x80 + 1 ), i += 2;
+			else if ( *i >= 0x40 )  stb__match ( stb__dout - ( stb__in2 ( 0 ) - 0x4000 + 1 ), i [ 2 ] + 1 ), i += 3;
+			else /* *i >= 0x20 */ stb__lit ( i + 1, i [ 0 ] - 0x20 + 1 ), i += 1 + ( i [ 0 ] - 0x20 + 1 );
+		}
+		else { // more ifs for cases that expand large, since overhead is amortized
+			if ( *i >= 0x18 )       stb__match ( stb__dout - ( stb__in3 ( 0 ) - 0x180000 + 1 ), i [ 3 ] + 1 ), i += 4;
+			else if ( *i >= 0x10 )  stb__match ( stb__dout - ( stb__in3 ( 0 ) - 0x100000 + 1 ), stb__in2 ( 3 ) + 1 ), i += 5;
+			else if ( *i >= 0x08 )  stb__lit ( i + 2, stb__in2 ( 0 ) - 0x0800 + 1 ), i += 2 + ( stb__in2 ( 0 ) - 0x0800 + 1 );
+			else if ( *i == 0x07 )  stb__lit ( i + 3, stb__in2 ( 1 ) + 1 ), i += 3 + ( stb__in2 ( 1 ) + 1 );
+			else if ( *i == 0x06 )  stb__match ( stb__dout - ( stb__in3 ( 1 ) + 1 ), i [ 4 ] + 1 ), i += 5;
+			else if ( *i == 0x04 )  stb__match ( stb__dout - ( stb__in3 ( 1 ) + 1 ), stb__in2 ( 4 ) + 1 ), i += 6;
+		}
+		return i;
+	}
+
+	static unsigned int stb_adler32 ( unsigned int adler32, unsigned char* buffer, unsigned int buflen ) {
+		const unsigned long ADLER_MOD = 65521;
+		unsigned long s1 = adler32 & 0xffff, s2 = adler32 >> 16;
+		unsigned long blocklen = buflen % 5552;
+
+		unsigned long i;
+		while ( buflen ) {
+			for ( i = 0; i + 7 < blocklen; i += 8 ) {
+				s1 += buffer [ 0 ], s2 += s1;
+				s1 += buffer [ 1 ], s2 += s1;
+				s1 += buffer [ 2 ], s2 += s1;
+				s1 += buffer [ 3 ], s2 += s1;
+				s1 += buffer [ 4 ], s2 += s1;
+				s1 += buffer [ 5 ], s2 += s1;
+				s1 += buffer [ 6 ], s2 += s1;
+				s1 += buffer [ 7 ], s2 += s1;
+
+				buffer += 8;
+			}
+
+			for ( ; i < blocklen; ++i )
+				s1 += *buffer++, s2 += s1;
+
+			s1 %= ADLER_MOD, s2 %= ADLER_MOD;
+			buflen -= blocklen;
+			blocklen = 5552;
+		}
+		return ( unsigned int ) ( s2 << 16 ) + ( unsigned int ) s1;
+	}
+
+	static unsigned int stb_decompress ( unsigned char* output, const unsigned char* i, unsigned int /*length*/ ) {
+		if ( stb__in4 ( 0 ) != 0x57bC0000 ) return 0;
+		if ( stb__in4 ( 4 ) != 0 )          return 0; // error! stream is > 4GB
+		const unsigned int olen = stb_decompress_length ( i );
+		stb__barrier_in_b = i;
+		stb__barrier_out_e = output + olen;
+		stb__barrier_out_b = output;
+		i += 16;
+
+		stb__dout = output;
+		for ( ;;) {
+			const unsigned char* old_i = i;
+			i = stb_decompress_token ( i );
+			if ( i == old_i ) {
+				if ( *i == 0x05 && i [ 1 ] == 0xfa ) {
+					IM_ASSERT ( stb__dout == output + olen );
+					if ( stb__dout != output + olen ) return 0;
+					if ( stb_adler32 ( 1, output, olen ) != ( unsigned int ) stb__in4 ( 2 ) )
+						return 0;
+					return olen;
+				}
+				else {
+					IM_ASSERT ( 0 ); /* NOTREACHED */
+					return 0;
+				}
+			}
+			IM_ASSERT ( stb__dout <= output + olen );
+			if ( stb__dout > output + olen )
+				return 0;
+		}
+	}
+}
 
 void gui::scale_dpi ( ) {
 	static bool first_scale = true;
 
 	if ( g_last_dpi == options::vars [ _ ( "gui.dpi" ) ].val.f )
 		return;
+
+	VM_SHARK_BLACK_START
 
 	if ( !first_scale ) {
 		ImGui_ImplWin32_Shutdown ( );
@@ -150,7 +260,7 @@ void gui::scale_dpi ( ) {
 	first_scale = false;
 
 	// Setup Dear ImGui context
-	IMGUI_CHECKVERSION ( );
+	//IMGUI_CHECKVERSION ( );
 	ImGui::CreateContext ( );
 	ImGuiIO& io = ImGui::GetIO ( );
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -164,52 +274,46 @@ void gui::scale_dpi ( ) {
 	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ) );
 	ImGui_ImplDX9_Init ( cs::i::dev );
 
-	const ImWchar custom_font_ranges [ ] = {
-		0x0020, 0x00FF, // Basic Latin + Latin Supplement
-		0x2000, 0x206F, // General Punctuation
-		0x3000, 0x30FF, // CJK Symbols and Punctuations, Hiragana, Katakana
-		0x31F0, 0x31FF, // Katakana Phonetic Extensions
-		0xFF00, 0xFFEF, // Half-width characters
-		0x4e00, 0x9FAF, // CJK Ideograms
-		0x3131, 0x3163, // Korean alphabets
-		0xAC00, 0xD7A3, // Korean characters
-		0x0400, 0x052F, // Cyrillic + Cyrillic Supplement
-		0x2DE0, 0x2DFF, // Cyrillic Extended-A
-		0xA640, 0xA69F, // Cyrillic Extended-B
-		0x2010, 0x205E, // Punctuations
-		0x0E00, 0x0E7F, // Thai
-		// Vietnamese
-		0x0102, 0x0103,
-		0x0110, 0x0111,
-		0x0128, 0x0129,
-		0x0168, 0x0169,
-		0x01A0, 0x01A1,
-		0x01AF, 0x01B0,
-		0x1EA0, 0x1EF9,
-		0
-	};
+	static const ImWchar custom_font_ranges_all [ ] = { 0x20, 0xFFFF, 0 };
 
-	//const ImWchar custom_font_ranges [ ] = { 0x20, 0xFFFF, 0 };
+	static unsigned int buf_decompressed_size = 0;
+	static unsigned char* buf_decompressed_data = nullptr;
 
-	/* load segoe ui to memory */
-	if ( !segoe_ui_bytes )
-		segoe_ui_bytes = ImFileLoadToMemory ( _ ( "C:\\Windows\\Fonts\\segoeui.ttf" ), "rb", &segoe_ui_size, 0 );
+	if ( !buf_decompressed_size ) {
+		buf_decompressed_size = stb::stb_decompress_length ( ( const unsigned char* ) sesame_ui_compressed_data );
+		buf_decompressed_data = ( unsigned char* ) IM_ALLOC ( buf_decompressed_size );
+		stb::stb_decompress ( buf_decompressed_data, ( const unsigned char* ) sesame_ui_compressed_data, ( unsigned int ) sesame_ui_compressed_size );
+	}
 
+	auto font_cfg = ImFontConfig ( );
+
+	font_cfg.FontDataOwnedByAtlas = false;
+	font_cfg.OversampleH = 2;
+	font_cfg.PixelSnapH = false;
+	//io.Fonts->Build ( );
+	
 	//_("C:\\Windows\\Fonts\\segoeui.ttf")
-	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( segoe_ui_bytes, segoe_ui_size, 15.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
-	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( segoe_ui_bytes, segoe_ui_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	font_cfg.RasterizerMultiply = 1.00f;
+	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 13.5f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
+	font_cfg.RasterizerMultiply = 1.1f;
+	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	font_cfg.RasterizerMultiply = 1.00f;
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 
-	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "dbg_font" ), 12.0f );
-	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "esp_font" ), 12.0f );
-	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "indicator_font" ), 32.0f );
-	render::create_font ( reinterpret_cast<const uint8_t*>( segoe_ui_bytes ), segoe_ui_size, _ ( "watermark_font" ), 18.0f );
+	font_cfg.RasterizerMultiply = 1.25f;
+	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "dbg_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "esp_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
+	font_cfg.RasterizerMultiply = 1.00f;
+	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "indicator_font" ), 32.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "watermark_font" ), 18.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 
 	ImGui::GetStyle ( ).AntiAliasedFill = ImGui::GetStyle ( ).AntiAliasedLines = true;
 
 	ImGui::GetStyle ( ).ScaleAllSizes ( options::vars [ _ ( "gui.dpi" ) ].val.f );
 
 	g_last_dpi = options::vars [ _ ( "gui.dpi" ) ].val.f;
+
+	VM_SHARK_BLACK_END
 }
 
 void gui::init( ) {
@@ -223,24 +327,19 @@ void gui::init( ) {
 	/* initialize cheat config */
 	options::init( );
 
-	erase::erase_func ( options::init );
-	erase::erase_func ( options::add_antiaim_config );
-	erase::erase_func ( options::add_player_visual_config );
-	erase::erase_func ( options::add_weapon_config );
-
 	scale_dpi ( );
 
 	gui_mutex.lock ( );
 	load_cfg_list ( );
 	gui_mutex.unlock ( );
-
-	END_FUNC
 }
 
 char selected_config [ 128 ] = "default";
 std::vector< std::string > configs { };
 
 void gui::load_cfg_list( ) {
+	VM_SHARK_BLACK_START
+
 	char appdata [ MAX_PATH ];
 
 	if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
@@ -261,9 +360,13 @@ void gui::load_cfg_list( ) {
 			configs.push_back( sanitized );
 		}
 	}
+
+	VM_SHARK_BLACK_END
 }
 
 void gui::weapon_controls( const std::string& weapon_name ) {
+	VM_TIGER_BLACK_START
+	//MUTATE_START
 	const auto ragebot_weapon = _( "ragebot." ) + weapon_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Weapon Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -324,9 +427,14 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+
+	//MUTATE_END
+		VM_TIGER_BLACK_END
 }
 
 void gui::antiaim_controls( const std::string& antiaim_name ) {
+	VM_TIGER_BLACK_START
+	//MUTATE_START
 	const auto antiaim_config = _( "antiaim." ) + antiaim_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Antiaim" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -344,16 +452,16 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		ImGui::Combo( _( "Base Pitch" ), &options::vars [ antiaim_config + _( "pitch" ) ].val.i, pitches.data(), pitches.size() );
 		ImGui::PopItemWidth ( );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderFloat( _( "Yaw Offset" ), &options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, (char*)_( u8"%.1f°" ) );
+		ImGui::SliderFloat( _( "Yaw Offset" ), &options::vars [ antiaim_config + _( "yaw_offset" ) ].val.f, -180.0f, 180.0f, _( "%.1f°" ) );
 		ImGui::PopItemWidth ( );
 
 		static std::vector<const char*> base_yaws { "Relative", "Absolute", "At Target", "Auto Direction" };
 		ImGui::PushItemWidth ( -1.0f );
 		ImGui::Combo ( _( "Base Yaw" ), &options::vars [ antiaim_config + _( "base_yaw" ) ].val.i, base_yaws.data(), base_yaws.size());
-		ImGui::SliderFloat( _( "Auto Direction Amount" ), &options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"%.1f°" ) );
+		ImGui::SliderFloat( _( "Auto Direction Amount" ), &options::vars [ antiaim_config + _( "auto_direction_amount" ) ].val.f, -180.0f, 180.0f, _( "%.1f°" ) );
 		ImGui::SliderFloat( _( "Auto Direction Range" ), &options::vars [ antiaim_config + _( "auto_direction_range" ) ].val.f, 0.0f, 100.0f, _( "%.1f units" ) );
-		ImGui::SliderFloat( _( "Jitter Range" ), &options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"%.1f°" ) );
-		ImGui::SliderFloat( _( "Rotation Range" ), &options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, ( char* ) _( u8"%.1f°" ) );
+		ImGui::SliderFloat( _( "Jitter Range" ), &options::vars [ antiaim_config + _( "jitter_range" ) ].val.f, -180.0f, 180.0f, _( "%.1f°" ) );
+		ImGui::SliderFloat( _( "Rotation Range" ), &options::vars [ antiaim_config + _( "rotation_range" ) ].val.f, -180.0f, 180.0f, _( "%.1f°" ) );
 		ImGui::SliderFloat( _( "Rotation Speed" ), &options::vars [ antiaim_config + _( "rotation_speed" ) ].val.f, 0.0f, 2.0f, _( "%.1f Hz" ) );
 		ImGui::PopItemWidth ( );
 
@@ -374,8 +482,8 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		ImGui::Checkbox( _( "Anti Bruteforce" ), &options::vars [ antiaim_config + _( "anti_bruteforce" ) ].val.b );
 		ImGui::Checkbox( _( "Anti Freestanding Prediction" ), &options::vars [ antiaim_config + _( "anti_freestand_prediction" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderFloat( _( "Desync Range" ), &options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, ( char* ) _( u8"%.1f°" ) );
-		ImGui::SliderFloat( _( "Desync Range Inverted" ), &options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f, ( char* ) _( u8"%.1f°" ) );
+		ImGui::SliderFloat( _( "Desync Range" ), &options::vars [ antiaim_config + _( "desync_range" ) ].val.f, 0.0f, 60.0f, _( "%.1f°" ) );
+		ImGui::SliderFloat( _( "Desync Range Inverted" ), &options::vars [ antiaim_config + _( "desync_range_inverted" ) ].val.f, 0.0f, 60.0f,  _( "%.1f°" ) );
 		ImGui::PopItemWidth ( );
 
 		if ( antiaim_name == _( "standing" ) ) {
@@ -391,9 +499,13 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+	//MUTATE_END
+		VM_TIGER_BLACK_END
 }
 
 void gui::player_visuals_controls( const std::string& visual_name ) {
+	VM_TIGER_BLACK_START
+	//MUTATE_START
 	const auto visuals_config = _( "visuals." ) + visual_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Player Visuals" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -518,6 +630,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+
+	//MUTATE_END
+		VM_TIGER_BLACK_END
 }
 
 void gui::draw( ) {
@@ -535,15 +650,16 @@ void gui::draw( ) {
 	if ( opened ) {
 		ImGui::PushFont ( gui_ui_font );
 
-		if ( ImGui::custom::Begin ( SESAME_VERSION, &opened, gui_small_font ) ) {			
+		if ( ImGui::custom::Begin (_( SESAME_VERSION), &opened, gui_small_font ) ) {
+			VM_TIGER_BLACK_START
 			/* main menu objects */
 			if ( ImGui::custom::BeginTabs ( &current_tab_idx, gui_icons_font ) ) {
-				ImGui::custom::AddTab ( "A" );
-				ImGui::custom::AddTab ( "B" );
-				ImGui::custom::AddTab ( "C" );
-				ImGui::custom::AddTab ( "D" );
-				ImGui::custom::AddTab ( "E" );
-				ImGui::custom::AddTab ( "F" );
+				ImGui::custom::AddTab ( _("A"));
+				ImGui::custom::AddTab ( _("B"));
+				ImGui::custom::AddTab ( _("C"));
+				ImGui::custom::AddTab ( _("D"));
+				ImGui::custom::AddTab ( _("E"));
+				ImGui::custom::AddTab ( _("F"));
 
 				ImGui::custom::EndTabs ( );
 			}
@@ -551,7 +667,7 @@ void gui::draw( ) {
 			/* confirm config save (overwrite) popup */
 			ImGui::SetNextWindowPos ( ImVec2 ( ImGui::GetWindowPos ( ).x + ImGui::GetWindowSize ( ).x * 0.5f, ImGui::GetWindowPos ( ).y + ImGui::GetWindowSize ( ).y * 0.5f ), ImGuiCond_Always, ImVec2 ( 0.5f, 0.5f ) );
 
-			if ( ImGui::BeginPopupModal ( "Save Config##popup", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
+			if ( ImGui::BeginPopupModal ( _("Save Config##popup"), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
 				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), "There already is a config with the same name in this location.\nAre you sure you want to overwrite the config?" );
 
 				if ( ImGui::Button ( "Confirm", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
@@ -585,9 +701,10 @@ void gui::draw( ) {
 			}
 
 			bool open_save_modal = false;
-
+			VM_TIGER_BLACK_END
 			switch ( current_tab_idx ) {
 				case tab_legit: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "General", "General ragebot and accuracy settings", [ & ] ( ) {
 					} );
 
@@ -642,8 +759,10 @@ void gui::draw( ) {
 					} );
 					ImGui::custom::AddSubtab ( "Scout", "Scout class configuration", [ & ] ( ) {
 					} );
+					VM_TIGER_BLACK_END
 				} break;
 				case tab_rage: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "General", "General ragebot and accuracy settings", [ & ] ( ) {
 						ImGui::BeginChildFrame ( ImGui::GetID ( "General Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
 							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General Settings" ).x * 0.5f );
@@ -703,9 +822,10 @@ void gui::draw( ) {
 					ImGui::custom::AddSubtab ( "Scout", "Scout class configuration", [ & ] ( ) {
 						weapon_controls ( _ ( "scout" ) );
 					} );
-
+					VM_TIGER_BLACK_END
 				} break;
 				case tab_antiaim: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "Air", "In air antiaim settings", [ & ] ( ) {
 						antiaim_controls ( _ ( "air" ) );
 					} );
@@ -746,8 +866,10 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
+					VM_TIGER_BLACK_END
 				} break;
 				case tab_visuals: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "Local Player", "Visuals used on local player", [ & ] ( ) {
 						player_visuals_controls ( _ ( "local" ) );
 					} );
@@ -766,12 +888,12 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Fog" ), &options::vars [ _ ( "visuals.other.fog" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Fog Color" ), ( float* ) &options::vars [ _ ( "visuals.other.fog_color" ) ].val.c );
-							ImGui::SliderFloat ( _ ( "Fog Distance" ), &options::vars [ _ ( "visuals.other.fog_distance" ) ].val.f, 0.0f, 6000.0f, ( char* ) _ ( u8"%.1f units" ) );
-							ImGui::SliderFloat ( _ ( "Fog Density" ), &options::vars [ _ ( "visuals.other.fog_density" ) ].val.f, 0.0f, 1.0f, ( char* ) _ ( u8"x%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Fog Distance" ), &options::vars [ _ ( "visuals.other.fog_distance" ) ].val.f, 0.0f, 6000.0f, _ ( "%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Fog Density" ), &options::vars [ _ ( "visuals.other.fog_density" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
 							ImGui::Checkbox ( _ ( "Bloom" ), &options::vars [ _ ( "visuals.other.bloom" ) ].val.b );
-							ImGui::SliderFloat ( _ ( "Bloom Scale" ), &options::vars [ _ ( "visuals.other.bloom_scale" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"x%.1f" ) );
-							ImGui::SliderFloat ( _ ( "Bloom Exponent" ), &options::vars [ _ ( "visuals.other.bloom_exponent" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"%.1f" ) );
-							ImGui::SliderFloat ( _ ( "Bloom Saturation" ), &options::vars [ _ ( "visuals.other.bloom_saturation" ) ].val.f, 0.0f, 10.0f, ( char* ) _ ( u8"x%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Bloom Scale" ), &options::vars [ _ ( "visuals.other.bloom_scale" ) ].val.f, 0.0f, 10.0f, _ ( "x%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Bloom Exponent" ), &options::vars [ _ ( "visuals.other.bloom_exponent" ) ].val.f, 0.0f, 10.0f,  _ ( "%.1f" ) );
+							ImGui::SliderFloat ( _ ( "Bloom Saturation" ), &options::vars [ _ ( "visuals.other.bloom_saturation" ) ].val.f, 0.0f, 10.0f,  _ ( "x%.1f" ) );
 							
 							ImGui::Checkbox ( _ ( "Bomb ESP" ), &options::vars [ _ ( "visuals.other.bomb_esp" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bomb Timer" ), &options::vars [ _ ( "visuals.other.bomb_timer" ) ].val.b );
@@ -815,11 +937,11 @@ void gui::draw( ) {
 
 							ImGui::MultiCombo ( _ ( "Removals" ), options::vars [ _ ( "visuals.other.removals" ) ].val.l, removals.data ( ), removals.size ( ) );
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::SliderFloat ( _ ( "FOV" ), &options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( u8"%.1f°" ) );
-							ImGui::SliderFloat ( _ ( "Viewmodel FOV" ), &options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( u8"%.1f°" ) );
-							ImGui::SliderFloat ( _ ( "Viewmodel Offset X" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_x" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
-							ImGui::SliderFloat ( _ ( "Viewmodel Offset Y" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_y" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
-							ImGui::SliderFloat ( _ ( "Viewmodel Offset Z" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_z" ) ].val.f, -10.0f, 10.0f, ( char* ) _ ( u8"%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "FOV" ), &options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( "%.1f°" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel FOV" ), &options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _ ( "%.1f°" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset X" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_x" ) ].val.f, -10.0f, 10.0f, _ ( "%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset Y" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_y" ) ].val.f, -10.0f, 10.0f, _ ( "%.1f units" ) );
+							ImGui::SliderFloat ( _ ( "Viewmodel Offset Z" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_z" ) ].val.f, -10.0f, 10.0f, _ ( "%.1f units" ) );
 							ImGui::SliderFloat ( _ ( "Aspect Ratio" ), &options::vars [ _ ( "visuals.other.aspect_ratio" ) ].val.f, 0.1f, 2.0f );
 							ImGui::PopItemWidth ( );
 
@@ -863,8 +985,10 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
+					VM_TIGER_BLACK_END
 				} break;
 				case tab_skins: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "Inventory Changer", "Add items to your inventory (Including custom skins!)", [ & ] ( ) {
 						if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
 							if ( ImGui::custom::InventoryButton ( _ ( "Add Item" ) ) ) {
@@ -975,8 +1099,10 @@ void gui::draw( ) {
 					ImGui::custom::AddSubtab ( "Model Changer", "Replace game models with your own", [ & ] ( ) {
 
 					} );
+					VM_TIGER_BLACK_END
 				} break;
 				case tab_misc: {
+					VM_TIGER_BLACK_START
 					ImGui::custom::AddSubtab ( "Movement", "Movement related cheats", [ & ] ( ) {
 						ImGui::BeginChildFrame ( ImGui::GetID ( "General" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
 							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General" ).x * 0.5f );
@@ -1024,7 +1150,43 @@ void gui::draw( ) {
 						}
 					} );
 					ImGui::custom::AddSubtab ( "Player List", "Whitelist, clantag stealer, and bodyaim priority", [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( "Players" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Players" ).x * 0.5f );
+							ImGui::Text ( "Players" );
+							ImGui::Separator ( );
 
+							for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+								const auto ent = cs::i::ent_list->get<player_t*> ( i);
+
+								if ( !ent || !ent->is_player ( ) )
+									continue;
+
+								player_info_t player_info { };
+								
+								if ( !cs::i::engine->get_player_info ( i, &player_info ) || player_info.m_fake_player )
+									continue;
+
+								if ( ImGui::Button ( player_info.m_name, ImVec2 ( -1.0f, 0.0f ) ) )
+									current_plist_player = player_info.m_steam_id;
+							}
+
+							ImGui::EndChildFrame ( );
+						}
+
+						ImGui::SameLine ( );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( "Player Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Player Actions" ).x * 0.5f );
+							ImGui::Text ( "Player Actions" );
+							ImGui::Separator ( );
+
+							if ( current_plist_player ) {
+								if ( ImGui::Button ( !player_to_steal_tag_from ? _ ( "Steal Clantag" ) : _ ( "Stop Stealing Clantag" ), ImVec2 ( -1.0f, 0.0f ) ) )
+									player_to_steal_tag_from = ( player_to_steal_tag_from ? 0 : current_plist_player );
+							}
+
+							ImGui::EndChildFrame ( );
+						}
 					} );
 					ImGui::custom::AddSubtab ( "Cheat", "Cheat settings and panic button", [ & ] ( ) {
 						ImGui::BeginChildFrame ( ImGui::GetID ( "Menu" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -1256,6 +1418,7 @@ void gui::draw( ) {
 					ImGui::custom::AddSubtab ( "Scripts", "Script manager", [ & ] ( ) {
 
 					} );
+					VM_TIGER_BLACK_END
 				} break;
 			}
 
@@ -1283,9 +1446,8 @@ void gui::draw( ) {
 			//	ImGui::Image ( reinterpret_cast< void* >( tex ), ImVec2 ( 20.0f, 20.0f ) );
 			//	tex->Release ( );
 			//}
-
 			if ( open_save_modal )
-				ImGui::OpenPopup ( "Save Config##popup" );
+				ImGui::OpenPopup (_( "Save Config##popup") );
 
 			ImGui::custom::End ( );
 		}
@@ -1295,10 +1457,13 @@ void gui::draw( ) {
 }
 
 void gui::watermark::draw( ) {
-
+	VM_TIGER_BLACK_START
+		VM_TIGER_BLACK_END
 }
 
 void gui::keybinds::draw( ) {
+	VM_TIGER_BLACK_START
+	//MUTATE_START
 	std::vector< std::string > entries {
 
 	};
@@ -1384,7 +1549,7 @@ void gui::keybinds::draw( ) {
 
 	if ( keybind_list && ImGui::Begin( _( "Keybinds" ), &keybind_list, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize ) ) {
 		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Keybinds" ).x * 0.5f );
-		ImGui::Text ( "Keybinds" );
+		ImGui::Text ( _("Keybinds" ));
 		ImGui::Separator ( );
 
 		if ( !entries.empty( ) ) {
@@ -1394,4 +1559,5 @@ void gui::keybinds::draw( ) {
 
 		ImGui::End( );
 	}
+	VM_TIGER_BLACK_END
 }

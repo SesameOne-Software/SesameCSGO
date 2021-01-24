@@ -2,7 +2,9 @@
 #include <windows.h>
 #include <memory>
 
-#define SESAME_VERSION "Sesame v3.2.0"
+#include <ThemidaSDK/Include/C/ThemidaSDK.h>
+
+#define SESAME_VERSION "Sesame v4.0.0"
 
 template < typename type >
 constexpr uint32_t rgba ( type r, type g, type b, type a ) {
@@ -47,6 +49,7 @@ namespace g {
 	extern bool can_fire_revolver;
 	extern round_t round;
 	extern PLoader_Info loader_data;
+	inline uint32_t server_tick = 0;
 
 	namespace resources {
 #include "base85.hpp"

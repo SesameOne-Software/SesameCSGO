@@ -109,6 +109,7 @@ int find_freestand_side( player_t* pl, float range ) {
 int ducked_ticks = 0;
 
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
+	VM_TIGER_BLACK_START
 	/* toggle */
 	auto air = options::vars [ _( "antiaim.air.enabled" ) ].val.b;
 	auto move = options::vars [ _( "antiaim.moving.enabled" ) ].val.b;
@@ -427,7 +428,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		|| ( g::local->weapon( )->data( )->m_type == weapon_type_t::knife && !!( ucmd->m_buttons & buttons_t::attack2 ) )
 		//|| g::local->weapon( )->data( )->m_type == 0
 		|| g::round == round_t::starting ) {
-		antiaiming = false;
+		antiaiming = false;	
 		return;
 	}
 
@@ -482,6 +483,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 	};
 
+	VM_TIGER_BLACK_END
+
 	/* manage antiaim */ {
 		if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
 			if ( air ) {
@@ -507,6 +510,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					case 3: ucmd->m_angs.x = 0.0f; break;
 				}
 
+				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_air ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_air );
 
@@ -540,7 +544,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					else
 						desync_amnt *= desync_amount_inverted_air / 60.0f;
 
-					ucmd->m_angs.y += ( ( ( desync_side_air ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * std::fabsf( desync_amnt * 0.5f );
+					ucmd->m_angs.y += ( ( ( desync_side_air ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * abs( desync_amnt / 120.0f ) * 0.5f;
 				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_air : jitter_amount_air;
@@ -549,6 +553,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
 
 				antiaiming = true;
+				VM_TIGER_BLACK_END
 			}
 			else {
 				antiaiming = false;
@@ -578,6 +583,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					case 3: ucmd->m_angs.x = 0.0f; break;
 				}
 
+				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_slow_walk ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_slow_walk );
 
@@ -611,7 +617,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					else
 						desync_amnt *= desync_amount_inverted_slow_walk / 60.0f;
 
-					ucmd->m_angs.y += ( ( ( desync_side_slow_walk ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * std::fabsf( desync_amnt * 0.5f );
+					ucmd->m_angs.y += ( ( ( desync_side_slow_walk ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * abs ( desync_amnt / 120.0f ) * 0.5f;
 				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_slow_walk : jitter_amount_slow_walk;
@@ -620,6 +626,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
 
 				antiaiming = true;
+				VM_TIGER_BLACK_END
 			}
 			else if ( move ) {
 				process_base_yaw( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
@@ -644,6 +651,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					case 3: ucmd->m_angs.x = 0.0f; break;
 				}
 
+				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_move ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_move );
 
@@ -677,7 +685,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					else
 						desync_amnt *= desync_amount_inverted_move / 60.0f;
 
-					ucmd->m_angs.y += ( ( ( desync_side_move ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * std::fabsf( desync_amnt * 0.5f );
+					ucmd->m_angs.y += ( ( ( desync_side_move ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * abs ( desync_amnt / 120.0f ) * 0.5f;
 				}
 
 				ucmd->m_angs.y += aa::flip ? -jitter_amount_move : jitter_amount_move;
@@ -686,6 +694,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
 
 				antiaiming = true;
+				VM_TIGER_BLACK_END
 			}
 			else {
 				antiaiming = false;
@@ -714,6 +723,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				case 3: ucmd->m_angs.x = 0.0f; break;
 			}
 
+			VM_TIGER_BLACK_START
 			if ( target_player && anti_freestand_prediction_stand ) {
 				const auto desync_side = find_freestand_side( target_player, auto_direction_range_stand );
 
@@ -723,7 +733,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 			if ( anti_bruteforce_stand && target_player )
 				desync_amnt = ( lagcomp::data::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
-
+			VM_TIGER_BLACK_END
 			if ( desync_stand ) {
 				auto selected_desync_type = 0;
 
@@ -734,6 +744,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				switch ( selected_desync_type ) {
 					case 0: /* real around fake */ {
+						VM_TIGER_BLACK_START
 						static float last_update_time = cs::i::globals->m_curtime;
 
 						/* micro movements */
@@ -764,8 +775,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 							ucmd->m_angs.y += desync_side_stand ? -desync_amnt : desync_amnt;
 						}
+						VM_TIGER_BLACK_END
 					}break;
 					case 1: /* fake real around */ {
+						VM_TIGER_BLACK_START
 						if ( jitter_stand ) {
 							/* go 180 from update location to trigger 979 activity */
 							if ( lby::in_update || !g::send_packet ) {
@@ -789,25 +802,30 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 								ucmd->m_angs.y += copysignf( fabsf( desync_amnt ) * 110.0f, desync_side_stand ? -desync_amnt : desync_amnt );
 							}
 						}
+						VM_TIGER_BLACK_END
 					}break;
 				}
 
+				VM_TIGER_BLACK_START
 				if ( center_real_stand ) {
 					if ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f )
 						desync_amnt *= desync_amount_stand / 30.0f;
 					else
 						desync_amnt *= desync_amount_inverted_stand / 30.0f;
 
-					ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * std::fabsf( desync_amnt * 0.5f );
+					ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * abs ( desync_amnt / 120.0f ) * 0.5f;
 				}
+				VM_TIGER_BLACK_END
 			}
 
+			VM_TIGER_BLACK_START
 			ucmd->m_angs.y += aa::flip ? -jitter_amount_stand : jitter_amount_stand;
 
 			if ( rotation_range_stand )
 				ucmd->m_angs.y += std::fmodf( cs::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
 
 			antiaiming = true;
+			VM_TIGER_BLACK_END
 		}
 		else {
 			antiaiming = false;

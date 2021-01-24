@@ -131,6 +131,9 @@ t cs::create_interface( const char* module, const char* iname ) {
 }
 
 bool cs::init( ) {
+	CLEAR_START
+		VM_SHARK_BLACK_START
+
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 5E 8B 40 10" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );
 	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll" ), _( "VMaterialSystem080" ) );
@@ -157,7 +160,7 @@ bool cs::init( ) {
 
 	g::cvars::init ( );
 
-	END_FUNC
-
+	VM_SHARK_BLACK_END
+		CLEAR_END
 	return true;
 }

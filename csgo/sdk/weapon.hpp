@@ -141,6 +141,10 @@ public:
 		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x1C );
 	}
 
+	const char* icon_name ( ) {
+		return *reinterpret_cast< const char** >( reinterpret_cast< uintptr_t >( this ) + 0x198 );
+	}
+
 	const char* mdl_name ( ) {
 		return *reinterpret_cast< const char** >( reinterpret_cast< uintptr_t >(this) + 0x94 );
 	}

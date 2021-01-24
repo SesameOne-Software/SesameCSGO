@@ -38,12 +38,15 @@ bool features::lagcomp::get_render_record ( player_t* ent, std::array<matrix3x4_
 	if ( data.empty ( ) )
 		return false;
 
-	const auto misses = ragebot::get_misses ( idx ).bad_resolve;
+	auto time_valid_no_deadtime = [ & ] ( float t ) {
+		const auto correct = std::clamp ( nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp ( ), 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
+		return abs ( correct - ( cs::i::globals->m_curtime - t ) ) <= 0.2f;
+	};
 
 	for ( int i = static_cast<int>(data.size ( )) - 1; i >= 0; i-- ) {
 		auto& it = data[i];
 
-		if ( it.valid() ) {
+		if ( time_valid_no_deadtime(it.m_simtime) ) {
 			if ( it.m_origin.dist_to ( ent->origin ( ) ) < 1.0f )
 				return false;
 
@@ -51,19 +54,19 @@ bool features::lagcomp::get_render_record ( player_t* ent, std::array<matrix3x4_
 			vec3_t next = end ? ent->origin ( ) : data [ i - 1 ].m_origin;
 			float time_next = end ? ent->simtime ( ) : data [ i - 1 ].m_simtime;
 
-			float correct = nci->get_avg_latency ( 0 )+ nci->get_avg_latency ( 1 ) + lerp ( );
+			float correct = nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp ( );
 			float time_delta = time_next - it.m_simtime;
 			float add = end ? 0.2f : time_delta;
 			float deadtime = it.m_simtime + correct + add;
 
-			float curtime = cs::ticks2time ( g::local->tick_base ( ) );
+			float curtime = cs::i::globals->m_curtime;
 			float delta = deadtime - curtime;
 
 			float mul = 1.0f / add;
 
 			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp ( delta * mul, 0.0f, 1.0f );
 
-			static std::array<matrix3x4_t, 128> ret {};
+			static auto ret = it.m_render_bones;
 			ret = it.m_render_bones;
 
 			for ( auto& iter : ret )
@@ -79,7 +82,7 @@ bool features::lagcomp::get_render_record ( player_t* ent, std::array<matrix3x4_
 }
 
 bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_origin ) {
-	if ( !pl->bone_cache( ) || !pl->animstate( ) || !g::local )
+	if ( !pl->bone_cache( ) || !pl->layers ( ) || !pl->animstate( ) || !g::local )
 		return false;
 
 	m_idx = pl->idx ( );
@@ -95,7 +98,7 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 	m_lc = pl->origin( ).dist_to_sqr( last_origin ) <= 4096.0f;
 	m_lby = pl->lby( );
 	m_state = *pl->animstate ( );
-	m_layers = pl->layers ( );
+	memcpy ( m_layers.data(), pl->layers ( ), sizeof( m_layers ) );
 	m_poses = pl->poses ( );
 	m_aim_bones = anims::aim_matricies [ pl->idx ( ) ];
 	memcpy ( m_render_bones.data ( ), pl->bone_cache ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
@@ -104,7 +107,7 @@ bool features::lagcomp::lag_record_t::store( player_t* pl, const vec3_t& last_or
 }
 
 bool features::lagcomp::lag_record_t::apply ( player_t* pl ) {
-	if ( !pl->bone_cache ( ) || !pl->animstate ( ) || !g::local )
+	if ( !pl->bone_cache ( ) || !pl->layers ( ) || !pl->animstate ( ) || !g::local )
 		return false;
 
 	pl->flags ( ) = m_flags;
@@ -116,7 +119,7 @@ bool features::lagcomp::lag_record_t::apply ( player_t* pl ) {
 	pl->vel ( ) = m_vel;
 	pl->lby ( ) = m_lby;
 	*pl->animstate ( ) = m_state;
-	pl->layers ( ) = m_layers;
+	memcpy ( pl->layers ( ), m_layers.data ( ), sizeof ( m_layers ) );
 	pl->poses ( ) = m_poses;
 
 	return true;
@@ -141,7 +144,9 @@ std::optional< features::lagcomp::lag_record_t > features::lagcomp::get_shot ( c
 }
 
 bool features::lagcomp::cache( player_t* pl ) {
-	if ( !pl->valid( ) || !pl->weapon( ) || pl->team( ) == g::local->team( ) )
+	const auto nci = cs::i::engine->get_net_channel_info ( );
+
+	if ( !nci || !pl->valid( ) || !pl->weapon( ) || pl->team( ) == g::local->team( ) )
 		return false;
 	
 	const auto idx = pl->idx ( );
@@ -164,16 +169,18 @@ bool features::lagcomp::cache( player_t* pl ) {
 	
 	data::old_origins [ idx ] = pl->origin( );
 
-	while ( !data::visual_records [ idx ].empty ( ) && abs ( cs::ticks2time ( g::local->tick_base ( ) ) - data::visual_records [ idx ].back ( ).m_simtime ) > 0.5f )
+	while ( !data::visual_records [ idx ].empty ( ) && abs ( rec.m_simtime - data::visual_records [ idx ].back ( ).m_simtime ) > 1.0f )
 		data::visual_records [ idx ].pop_back ( );
 
 	/* pop off dead records */
-	const int dead_time = pl->simtime ( ) - g::cvars::sv_maxunlag->get_float ( );
-
-	while ( data::records [ idx ].size ( ) > 1 ) {
-		if ( data::records [ idx ].back ( ).m_simtime >= dead_time )
-			break;
-
+	while ( !data::records [ idx ].empty ( ) && abs ( rec.m_simtime - data::records [ idx ].back ( ).m_simtime ) > nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + g::cvars::sv_maxunlag->get_float ( ) )
 		data::records [ idx ].pop_back ( );
-	}
+	//const int dead_time = pl->simtime ( ) - g::cvars::sv_maxunlag->get_float ( );
+	//
+	//while ( !data::records [ idx ].empty ( ) ) {
+	//	if ( data::records [ idx ].back ( ).m_simtime >= dead_time )
+	//		break;
+	//
+	//	data::records [ idx ].pop_back ( );
+	//}
 }

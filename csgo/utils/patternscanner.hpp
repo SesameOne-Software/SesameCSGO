@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <psapi.h>
 #include "../security/security_handler.hpp"
+#include "../globals.hpp"
 
 #define in_range( x, a, b ) ( x >= a && x <= b )
 #define get_bits( x ) ( in_range( ( x & ( ~0x20 ) ), 'A', 'F' ) ? ( ( x & ( ~0x20 ) ) - 'A' + 0xA ) : ( in_range( x, '0', '9' ) ? x - '0' : 0 ) )
@@ -38,6 +39,8 @@ public:
 	}
 
 	static pattern search( const char* mod, const char* pat ) {
+		MUTATE_START
+
 		auto pat1 = const_cast< char* >( pat );
 		auto range_start = reinterpret_cast< std::uintptr_t >( LI_FN( GetModuleHandleA )( mod ) );
 
@@ -47,17 +50,19 @@ public:
 		auto end = range_start + mi.SizeOfImage;
 
 		std::uintptr_t first_match = 0;
-
+		MUTATE_END
 		for ( std::uintptr_t current_address = range_start; current_address < end; current_address++ ) {
-			if ( !*pat1 )
-				return pattern( first_match );
+			if ( !*pat1 ) {
+				return pattern ( first_match );
+			}
 
-			if ( *reinterpret_cast< std::uint8_t* >( pat1 ) == '\?' || *reinterpret_cast< std::uint8_t* >( current_address ) == get_byte( pat1 ) ) {
+			if ( *reinterpret_cast< std::uint8_t* >( pat1 ) == '\?' || *reinterpret_cast< std::uint8_t* >( current_address ) == get_byte ( pat1 ) ) {
 				if ( !first_match )
 					first_match = current_address;
 
-				if ( !pat1 [ 2 ] )
-					return pattern( first_match );
+				if ( !pat1 [ 2 ] ) {
+						return pattern ( first_match );
+				}
 
 				if ( *reinterpret_cast< std::uint16_t* >( pat1 ) == '\?\?' || *reinterpret_cast< std::uint8_t* >( pat1 ) != '\?' )
 					pat1 += 3;

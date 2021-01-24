@@ -279,5 +279,6 @@ namespace features {
 		void update_equipped ( );
 		void run ( );
 		void init ( );
+		void process_death ( event_t* event );
 	}
 }

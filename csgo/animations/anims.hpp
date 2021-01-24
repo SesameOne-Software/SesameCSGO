@@ -24,7 +24,7 @@ namespace anims {
 			m_simtime = ent->simtime ( );
 			m_old_simtime = ent->old_simtime ( );
 			m_choked_commands = std::clamp ( cs::time2ticks ( ent->simtime ( ) - ent->old_simtime ( ) ) - 1, 0, g::cvars::sv_maxusrcmdprocessticks->get_int() );
-			m_anim_layers = ent->layers ( );
+			memcpy ( m_anim_layers.data ( ), ent->layers ( ), sizeof ( m_anim_layers ) );
 			m_poses = ent->poses ( );
 			m_vel = ent->vel ( );
 			m_abs_angles = vec3_t( 0.0f, ent->animstate ( )->m_abs_yaw, 0.0f );

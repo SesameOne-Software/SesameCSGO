@@ -53,8 +53,5 @@ namespace options {
 
 	void save ( const std::unordered_map< std::string, option >& options, const std::string& path );
 	void load ( std::unordered_map< std::string, option >& options, const std::string& path );
-	void add_weapon_config ( const std::string& weapon_category );
-	void add_antiaim_config ( const std::string& antiaim_category );
-	void add_player_visual_config ( const std::string& player_category );
 	void init ( );
 }

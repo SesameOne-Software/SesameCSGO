@@ -224,7 +224,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	anims::fsn ( stage );
 
-	features::prediction::update ( stage );
+	//features::prediction::update ( stage );
 
 	if ( stage == 5 && g::local && cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( g::local->alive( ) ) {

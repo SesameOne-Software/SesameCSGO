@@ -3,7 +3,10 @@
 
 #include "../animations/resolver.hpp"
 
+#include "../features/skinchanger.hpp"
+
 hooks::c_event_handler::c_event_handler ( ) {
+	cs::i::events->add_listener ( this, _ ( "player_death" ), false );
 	cs::i::events->add_listener ( this, _ ( "weapon_fire" ), false );
 	cs::i::events->add_listener ( this, _ ( "player_say" ), false );
 	cs::i::events->add_listener ( this, _ ( "player_hurt" ), false );
@@ -34,12 +37,16 @@ void process_impact_ex ( event_t* event ) {
 void hooks::c_event_handler::fire_game_event ( event_t* event ) {
 	if ( !event || !g::local )
 		return;
+	MUTATE_START
 
 	//if ( !strcmp( event->get_name( ), _( "weapon_fire" ) ) )
 	//	features::lagcomp::cache_shot( event );
 
+		if ( !strcmp ( event->get_name ( ), _ ( "player_death" ) ) )
+			/* translator::translate( ); */;
+
 	if ( !strcmp ( event->get_name ( ), _ ( "player_say" ) ) )
-		/* translator::translate( ); */;
+		features::skinchanger::process_death(event);
 
 	if ( !strcmp ( event->get_name ( ), _ ( "player_hurt" ) ) )
 		process_hurt_ex ( event );
@@ -55,6 +62,7 @@ void hooks::c_event_handler::fire_game_event ( event_t* event ) {
 
 	if ( !strcmp ( event->get_name ( ), _ ( "round_end" ) ) )
 		g::round = round_t::ending;
+	MUTATE_END
 }
 
 int hooks::c_event_handler::get_event_debug_id ( ) {

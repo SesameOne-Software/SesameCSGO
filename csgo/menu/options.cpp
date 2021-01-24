@@ -254,7 +254,7 @@ void options::load( std::unordered_map< std::string, option >& options, const st
 	}
 }
 
-void options::add_weapon_config( const std::string& weapon_category ) {
+__forceinline void add_weapon_config( const std::string& weapon_category ) {
 	using namespace options;
 
 	const std::string prefix = _( "ragebot." ) + weapon_category + _( "." );
@@ -281,11 +281,9 @@ void options::add_weapon_config( const std::string& weapon_category ) {
 	option::add_float( prefix + _( "head_pointscale" ), 0.0f );
 	option::add_float( prefix + _( "body_pointscale" ), 0.0f );
 	option::add_list( prefix + _( "hitboxes" ), 7 ); /* head, neck, chest, pelvis, arms, legs, feet */
-
-	END_FUNC
 }
 
-void options::add_antiaim_config( const std::string& antiaim_category ) {
+__forceinline void add_antiaim_config( const std::string& antiaim_category ) {
 	using namespace options;
 
 	const std::string prefix = _( "antiaim." ) + antiaim_category + _( "." );
@@ -308,11 +306,9 @@ void options::add_antiaim_config( const std::string& antiaim_category ) {
 	option::add_bool( prefix + _( "center_real" ), false );
 	option::add_bool( prefix + _( "anti_bruteforce" ), false );
 	option::add_bool( prefix + _( "anti_freestand_prediction" ), false );
-
-	END_FUNC
 }
 
-void options::add_player_visual_config( const std::string& player_category ) {
+__forceinline void add_player_visual_config( const std::string& player_category ) {
 	using namespace options;
 
 	const std::string prefix = _( "visuals." ) + player_category + _( "." );
@@ -347,11 +343,11 @@ void options::add_player_visual_config( const std::string& player_category ) {
 	option::add_color( prefix + _( "desync_bar_color" ), { 0.53f, 0.61f, 1.0f, 0.35f } );
 	option::add_color( prefix + _( "name_color" ), { 0.99f, 1.0f, 0.99f, 0.72f } );
 	option::add_color( prefix + _( "weapon_color" ), { 0.99f, 1.0f, 0.99f, 0.72f } );
-
-	END_FUNC
 }
 
 void options::init( ) {
+	CLEAR_START
+		VM_SHARK_BLACK_START
 	/* options should be structered in the following format: */
 	/* TAB.GROUP.OPTION */
 
@@ -500,6 +496,6 @@ void options::init( ) {
 	option::add_float( _( "gui.dpi" ), 1.0f );
 
 	option::add_float ( _ ( "debug.desync_amount" ), 0.0f );
-
-	END_FUNC
+	VM_SHARK_BLACK_END
+		CLEAR_END
 }
