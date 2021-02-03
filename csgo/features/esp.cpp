@@ -205,7 +205,8 @@ void features::esp::handle_dynamic_updates( ) {
 	}
 }
 
-extern std::array< animlayer_t, 13 > latest_animlayers;
+extern std::array< animlayer_t, 13> last_anim_layers_queued;
+extern vec3_t test_velocity;
 
 void features::esp::render( ) {
 	if ( !g::local )
@@ -351,7 +352,7 @@ void features::esp::render( ) {
 
 		if ( esp_data [ e->idx( ) ].m_pl && std::fabsf( cs::i::globals->m_curtime - esp_data [ e->idx( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
-				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( prediction::curtime( ) - time ), 0.0f, dormant_time ) ) : std::fabsf( prediction::curtime( ) - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
+				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( cs::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf( cs::i::globals->m_curtime - time ), std::max< float >( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
 			};
 
 			if ( !esp_data [ e->idx( ) ].m_dormant )
@@ -399,8 +400,8 @@ void features::esp::render( ) {
 			//
 			//const auto delta = anims::angle_diff ( cs::normalize( e->angles ( ).y ), cs::normalize( cs::vec_angle ( e->vel ( ) ).y ) );
 			//
-			//if ( std::isfinite<float> ( delta ) )
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "angle_diff : " ) + std::to_string ( delta ) );
+			//if ( e == g::local && test_velocity.is_valid() )
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "speed : " ) + std::to_string ( test_velocity.length_2d() ) );
 		}
 	}
 }

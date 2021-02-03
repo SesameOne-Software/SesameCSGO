@@ -13,6 +13,7 @@ void render::create_font ( const uint8_t* data, size_t data_size, std::string_vi
 	ImGuiIO& io = ImGui::GetIO ( );
 
 	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, reinterpret_cast< ImFontConfig *>( font_config), ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
+	reinterpret_cast<ImFont*>( font_list [ family_name.data ( ) ] )->SetFallbackChar ( '?' );
 }
 
 void render::screen_size ( float& width, float& height ) {
@@ -67,7 +68,7 @@ void render::circle ( float x, float y, float radius, int segments, uint32_t col
 	if(!outline )
 		ImGui::GetWindowDrawList ( )->AddCircleFilled ( { round (x),round (y) }, radius, color, segments );
 	else
-		ImGui::GetWindowDrawList ( )->AddCircle ( { round (x),(y) }, radius, color, segments );
+		ImGui::GetWindowDrawList ( )->AddCircle ( { round (x),(y) }, radius, color, segments, 2.5f );
 }
 
 void render::polygon ( const std::vector< vec3_t >& verticies, uint32_t color, bool outline, float thickness ) {

@@ -1,6 +1,5 @@
 ﻿#include "other_visuals.hpp"
 #include "../globals.hpp"
-#include "lagcomp.hpp"
 #include <deque>
 #include <mutex>
 #include "../menu/options.hpp"

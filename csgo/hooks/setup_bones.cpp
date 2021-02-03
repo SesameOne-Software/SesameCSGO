@@ -15,6 +15,12 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 	const auto pl = reinterpret_cast< player_t* > ( uintptr_t ( ecx ) - 4 );
 	
 	if ( pl && pl->is_player ( ) && pl->idx ( ) > 0 && pl->idx ( ) <= cs::i::globals->m_max_clients ) {
+		/*if ( pl != g::local && !anims::anim_info [ pl->idx ( ) ].empty ( ) ) {
+			const auto& matrix = anims::anim_info [ pl->idx ( ) ].front ( ).m_aim_bones [ features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ];
+			memcpy ( out ? out : pl->bone_cache ( ), matrix.data ( ), sizeof ( matrix3x4_t ) * ( out ? max_bones : pl->bone_count ( ) ) );
+			return true;
+		}*/
+
 		const auto backup_flags2 = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 );
 
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xA30 ) = 0;
@@ -32,6 +38,15 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		//pl->writeable_bones ( ) = 0;
 		//pl->inval_bone_cache ( );
 
+		auto& info = anims::anim_info [ pl->idx ( ) ];
+
+		if ( !info.empty ( ) ) {
+			auto& first = info.front ( );
+
+			pl->set_abs_angles ( first.m_abs_angles );
+			pl->poses ( ) = first.m_poses;
+		}
+
 		const auto ret = old::setup_bones ( REG_OUT, out, max_bones, mask, curtime );
 
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) &= ~8;
@@ -39,20 +54,25 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		cs::i::globals->m_frametime = backup_frametime;
 		cs::i::globals->m_framecount = backup_framecount;
 
-		if ( pl == g::local ) {
-			return ret;
-		}
-		else {
-			//if(!out && !pl->bone_cache ( ) )
-			//	return call_original ( );
-
-			memcpy ( out ? out : pl->bone_cache ( ), anims::aim_matricies [ pl->idx ( ) ][ features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ].data ( ), sizeof ( matrix3x4_t ) * ( out ? max_bones : pl->bone_count ( ) ) );
-
-			return ret;
-		}
+		//if ( pl != g::local && !anims::anim_info[pl->idx()].empty() ) {
+		//	const auto& matrix = anims::anim_info [ pl->idx ( ) ].front().m_aim_bones[ features::ragebot::get_misses ( pl->idx ( ) ).bad_resolve % 3 ];
+		//
+		//	memcpy ( out ? out : pl->bone_cache ( ), matrix.data(), sizeof ( matrix3x4_t ) * ( out ? max_bones : pl->bone_count ( ) ) );
+		//}
 	
 		return ret;
 	}
+
+	/*if ( pl && pl->is_player ( ) && pl->idx ( ) > 0 && pl->idx ( ) <= cs::i::globals->m_max_clients && pl != g::local ) {
+		auto& info = anims::anim_info [ pl->idx ( ) ];
+
+		if ( !info.empty ( ) ) {
+			auto& first = info.front ( );
+
+			pl->set_abs_angles ( first.m_abs_angles );
+			pl->poses ( ) = first.m_poses;
+		}
+	}*/
 
 	return old::setup_bones( REG_OUT, out, max_bones, mask, curtime );
 }

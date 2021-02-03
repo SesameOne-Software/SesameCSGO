@@ -39,7 +39,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
     if ( exploits::shifted_command ( ) == current_command )
         localplayer->tick_base ( ) += exploits::shifted_tickbase ( );
 
-    anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
+    anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles, false );
     features::prediction::fix_viewmodel ( true );
     MUTATE_END
 }

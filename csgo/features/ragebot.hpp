@@ -1,7 +1,7 @@
 #pragma once
 #include <mutex>
 #include "../sdk/sdk.hpp"
-#include "lagcomp.hpp"
+#include "../animations/anims.hpp"
 #include "../renderer/render.hpp"
 
 namespace features {
@@ -68,7 +68,7 @@ namespace features {
 		};
 
 		void get_weapon_config( weapon_config_t& const config );
-		lagcomp::lag_record_t& get_lag_rec( int pl );
+		anims::anim_info_t& get_lag_rec( int pl );
 		int& get_target_idx( );
 		player_t*& get_target( );
 		misses_t& get_misses( int pl );
@@ -116,9 +116,9 @@ namespace features {
 		extern c_scan_points scan_points;
 
 		bool dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox );
-		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, lagcomp::lag_record_t& rec );
-		void pack ( ucmd_t* ucmd, int ticks, bool teleport );
+		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec );
 		void slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove );
+		void run_meleebot ( ucmd_t* ucmd );
 		void run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs );
 		void tickbase_controller( ucmd_t* ucmd );
 		bool can_shoot( );
@@ -142,9 +142,9 @@ namespace features {
 
 		ENUM_BITMASK ( multipoint_mode_t );
 
-		bool hitscan( lagcomp::lag_record_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg );
-		bool create_points( lagcomp::lag_record_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );
-		bool get_hitbox( lagcomp::lag_record_t& rec, int i, vec3_t& pos_out, float& rad_out, float& zrad_out );
-		void idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, lagcomp::lag_record_t& rec_out, float& best_dmg );
+		bool hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg );
+		bool create_points( player_t* ent, anims::anim_info_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );
+		bool get_hitbox( player_t* ent, anims::anim_info_t& rec, int i, vec3_t& pos_out, float& rad_out, float& zrad_out );
+		void idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg );
 	}
 }

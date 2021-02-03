@@ -18,13 +18,11 @@ namespace prediction_util {
 
 	void start( ucmd_t* ucmd ) {
 		VM_TIGER_BLACK_START
-		auto local = cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
-
-		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
+		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
 				return;
 
 		if ( !movedata )
-			movedata = std::malloc( 256 ); // 182
+			movedata = malloc ( 256 );
 
 		if ( !prediction_player || !prediction_seed ) {
 			prediction_seed = pattern::search( _( "client.dll" ), _( "8B 47 40 A3" ) ).add( 4 ).deref( ).get< std::uintptr_t >( );
@@ -35,43 +33,68 @@ namespace prediction_util {
 		in_pred = cs::i::pred->m_in_prediction;
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
-		*reinterpret_cast< uintptr_t* >( prediction_player ) = reinterpret_cast< uintptr_t >( local );
-		*reinterpret_cast< ucmd_t** >( std::uintptr_t( local ) + 0x3338 ) = ucmd;
+		*reinterpret_cast< uintptr_t* >( prediction_player ) = reinterpret_cast< uintptr_t >( g::local );
 
-		flags = local->flags( );
-		velocity = local->vel( );
+		*reinterpret_cast< uint32_t* >( std::uintptr_t ( g::local ) + 0x3338 ) = reinterpret_cast< uintptr_t >( ucmd );
+		*reinterpret_cast< ucmd_t* >( std::uintptr_t ( g::local ) + 0x3288 ) = *ucmd;
+
+		flags = g::local->flags( );
+		velocity = g::local->vel( );
 
 		curtime = cs::i::globals->m_curtime;
 		frametime = cs::i::globals->m_frametime;
 		tickcount = cs::i::globals->m_tickcount;
 
-		cs::i::globals->m_curtime = predicted_curtime = cs::ticks2time( local->tick_base( ) );
+		cs::i::globals->m_curtime = predicted_curtime = cs::ticks2time( g::local->tick_base( ) );
 		cs::i::globals->m_frametime = cs::i::pred->m_engine_paused ? 0.0f : cs::i::globals->m_ipt;
+		cs::i::globals->m_tickcount = g::local->tick_base ( );
 
+		cs::i::pred->m_is_first_time_predicted = false;
 		cs::i::pred->m_in_prediction = true;
 
-		if ( ucmd->m_impulse )
-			*reinterpret_cast< uint8_t* >( std::uintptr_t( local ) + 0x31FC ) = ucmd->m_impulse;
-		
-		ucmd->m_buttons |= *reinterpret_cast< buttons_t* >( uintptr_t( local ) + 0x3334 );
-		ucmd->m_buttons &= ~*reinterpret_cast< buttons_t* >( uintptr_t( local ) + 0x3330 );
-		
-		const auto v16 = ucmd->m_buttons;
-		const auto unk02 = reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F8 );
-		const auto v17 = v16 ^ *unk02;
-		
-		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31EC ) = *unk02;
-		*unk02 = v16;
-		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F0 ) = v16 & v17;
-		*reinterpret_cast< buttons_t* >( std::uintptr_t( local ) + 0x31F4 ) = v17 & ~v16;
+		if ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 52 ) )
+			*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + 0x31FC ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 52 );
 
-		cs::i::move_helper->set_host ( local );
-		cs::i::move->start_track_prediction_errors ( local );
-		
-		cs::i::pred->setup_move( local, ucmd, cs::i::move_helper, movedata );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3334 );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3330 );
 
-		cs::i::move->process_movement( local, movedata );
-		cs::i::pred->finish_move ( local, ucmd, movedata );	
+		const auto v16 = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 48 );
+		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31EC ) = *( uint32_t* ) ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F8 ) = v16;
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;
+
+		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
+
+		// copy angles from command to player
+		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+
+		// run prethink
+		if ( g::local->physics_run_think ( 0 ) )
+			g::local->pre_think ( );
+
+		// run think
+		auto& next_think = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 252 );
+
+		if ( next_think > 0 && next_think <= g::local->tick_base ( ) ) {
+			next_think = -1;
+			g::local->think ( );
+		}
+
+		// set host player
+		cs::i::move_helper->set_host ( g::local );
+
+		// setup move
+		cs::i::pred->setup_move ( g::local, ucmd, cs::i::move_helper, movedata );
+		cs::i::move->process_movement ( g::local, movedata );
+
+		// finish move
+		cs::i::pred->finish_move ( g::local, ucmd, movedata );
+		//cs::i::move_helper->process_impacts ( );
+
+		// run post think
+		//g::local->post_think ( );
 		VM_TIGER_BLACK_END
 	}
 
@@ -82,18 +105,20 @@ namespace prediction_util {
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
 				return;
 
-		cs::i::move->finish_track_prediction_errors ( local );
 		cs::i::move_helper->set_host ( nullptr );
-		cs::i::move->reset ( );
 
 		cs::i::globals->m_curtime = curtime;
 		cs::i::globals->m_frametime = frametime;
+		cs::i::globals->m_tickcount = tickcount;
 
 		*reinterpret_cast< uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3338 ) = 0;
 		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;
 
+		cs::i::pred->m_is_first_time_predicted = first_time_pred;
 		cs::i::pred->m_in_prediction = in_pred;
+
+		cs::i::move->reset ( );
 		VM_TIGER_BLACK_END
 	}
 }

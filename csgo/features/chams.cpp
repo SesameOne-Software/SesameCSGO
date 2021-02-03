@@ -2,7 +2,7 @@
 #include "../menu/menu.hpp"
 #include "../hooks/draw_model_execute.hpp"
 #include "../globals.hpp"
-#include "lagcomp.hpp"
+#include "../animations/anims.hpp"
 #include "glow.hpp"
 #include "../animations/resolver.hpp"
 #include "other_visuals.hpp"
@@ -250,9 +250,9 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 				hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
 			}
 			else {
-				static std::array< matrix3x4_t, 128> matrix {};
+				std::array< matrix3x4_t, 128> matrix {};
 
-				if ( visuals.backtrack_chams && e != g::local && g::local->alive ( ) && lagcomp::get_render_record( e, matrix ) ) {
+				if ( visuals.backtrack_chams && e != g::local && g::local->alive ( ) && anims::get_lagcomp_bones( e, matrix ) ) {
 					cs::i::render_view->set_alpha ( visuals.backtrack_chams_color.a * 255.0f );
 					cs::i::render_view->set_color ( visuals.backtrack_chams_color.r * 255.0f, visuals.backtrack_chams_color.g * 255.0f, visuals.backtrack_chams_color.b * 255.0f );
 

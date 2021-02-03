@@ -121,13 +121,15 @@ namespace autowall {
 		return ret;
 	}
 
-	inline bool trace_to_exit( trace_t* tr, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
+	inline bool trace_to_exit( trace_t* tr, player_t* src_entity, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
 		vec3_t end;
 		float dist = 0.0f;
 		int first_contents = 0;
 
 		while ( dist <= 90.0f ) {
+			// GHETTO OPTIMIZATION
 			dist += 4.0f;
+			//dist += 6.0f;
 			start = start + dir * dist;
 
 			const auto point_contents = cs::i::trace->get_point_contents( start, mask_shot_hull | contents_hitbox, nullptr );
@@ -137,15 +139,10 @@ namespace autowall {
 
 			end = start - ( dir * 4.0f );
 
-			ray_t ray;
-			ray.init( start, end );
-			cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, nullptr, exit_tr );
+			cs::util_traceline ( start, end, mask_shot_hull | contents_hitbox, src_entity, exit_tr );
 
 			if ( exit_tr->m_startsolid && exit_tr->m_surface.m_flags & surf_hitbox ) {
-				ray_t ray;
-				ray.init( start, end );
-				trace_filter_t filter( exit_tr->m_hit_entity );
-				cs::i::trace->trace_ray( ray, mask_shot_hull, nullptr, exit_tr );
+				cs::util_traceline ( start, end, mask_shot_hull, exit_tr->m_hit_entity, exit_tr );
 
 				if ( exit_tr->did_hit( ) && !exit_tr->m_startsolid ) {
 					start = exit_tr->m_endpos;
@@ -198,7 +195,7 @@ namespace autowall {
 		if ( data.penetrate_count <= 0 || wpn_data->m_penetration <= 0.0f )
 			return false;
 
-		if ( !trace_to_exit( &data.enter_trace, dst_entity, data.enter_trace.m_endpos, data.direction, &trace_exit ) ) {
+		if ( !trace_to_exit( &data.enter_trace, entity, dst_entity, data.enter_trace.m_endpos, data.direction, &trace_exit ) ) {
 			if ( !( cs::i::trace->get_point_contents( data.enter_trace.m_endpos, 0x600400B, nullptr ) & 0x600400B ) )
 				return false;
 		}
@@ -277,37 +274,39 @@ namespace autowall {
 			return false;
 
 		//auto trace_len = weapon_data->m_range;
-		auto trace_len = ( hitgroup != -1 ) ? data.src.dist_to( end_pos ) : weapon_data->m_range;
+		const auto max_ray_dist = data.src.dist_to ( end_pos );
+		auto trace_len = ( hitgroup != -1 ) ? max_ray_dist : weapon_data->m_range;
 		auto enter_surface_data = cs::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
 		auto enter_surface_penetration_modifier = enter_surface_data->m_game.m_penetration_modifier;
 
 		data.penetrate_count = 4;
 		data.trace_length = 0.0f;
-
 		data.current_damage = ( float )weapon_data->m_dmg;
 
-		if ( data.penetrate_count > 0 ) {
 			while ( data.current_damage > 1.0f ) {
 				data.trace_length_remaining = trace_len - data.trace_length;
 
 				auto end = data.direction * data.trace_length_remaining + data.src;
 
-				ray_t ray;
-				ray.init( data.src, end );
-				cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
-
-				clip_trace_to_players_fast( dst_entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
+				cs::util_traceline ( data.src, end, mask_shot_hull | contents_hitbox, entity, &data.enter_trace );
+				clip_trace_to_players_fast ( dst_entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 
 				if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
 					autowall::scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
 					return true;
 				}
 
+				//if ( data.enter_trace.m_endpos.dist_to( data.src ) >= max_ray_dist && hitgroup == -1 ) {
+				//	autowall::scale_dmg ( dst_entity, weapon_data, hitgroup, data.current_damage );
+				//	return true;
+				//}
+
 				data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
 				data.current_damage *= pow ( weapon_data->m_range_modifier, data.trace_length / 500.0f );
 
 				if ( data.enter_trace.m_hit_entity
-					&& reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->is_player() && hitgroup == -1
+					&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3)
+					&& hitgroup == -1
 					&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
 					if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
 						return false;
@@ -321,7 +320,6 @@ namespace autowall {
 				if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
 					return false;
 			}
-		}
 
 		return false;
 	}

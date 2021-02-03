@@ -30,7 +30,6 @@
     <ClCompile Include="features\exploits.cpp" />
     <ClCompile Include="features\glow.cpp" />
     <ClCompile Include="features\kit_parser.cpp" />
-    <ClCompile Include="features\lagcomp.cpp" />
     <ClCompile Include="features\legitbot.cpp" />
     <ClCompile Include="features\movement.cpp" />
     <ClCompile Include="features\nade_prediction.cpp" />
@@ -85,6 +84,7 @@
     <ClCompile Include="menu\menu.cpp" />
     <ClCompile Include="menu\options.cpp" />
     <ClCompile Include="renderer\render.cpp" />
+    <ClCompile Include="scripting\js_api.cpp" />
     <ClCompile Include="sdk\netvar.cpp" />
     <ClCompile Include="sdk\player.cpp" />
     <ClCompile Include="sdk\sdk.cpp" />
@@ -93,6 +93,7 @@
     <ClCompile Include="tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="utils\miniz.c" />
     <ClCompile Include="utils\utils.cpp" />
+    <ClCompile Include="v7\v7.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
@@ -110,7 +111,6 @@
     <ClInclude Include="features\exploits.hpp" />
     <ClInclude Include="features\glow.hpp" />
     <ClInclude Include="features\kit_parser.hpp" />
-    <ClInclude Include="features\lagcomp.hpp" />
     <ClInclude Include="features\legitbot.hpp" />
     <ClInclude Include="features\movement.hpp" />
     <ClInclude Include="features\nade_prediction.hpp" />
@@ -193,6 +193,7 @@
     <ClInclude Include="renderer\utf8.h" />
     <ClInclude Include="resources\sesame_icons.hpp" />
     <ClInclude Include="resources\sesame_ui.hpp" />
+    <ClInclude Include="scripting\js_api.hpp" />
     <ClInclude Include="sdk\beams.hpp" />
     <ClInclude Include="sdk\client.hpp" />
     <ClInclude Include="sdk\cvar.hpp" />
@@ -239,6 +240,7 @@
     <ClInclude Include="utils\registers.hpp" />
     <ClInclude Include="utils\utils.hpp" />
     <ClInclude Include="utils\vfunc.hpp" />
+    <ClInclude Include="v7\v7.h" />
     <ClInclude Include="vpk\vpkparser.hpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

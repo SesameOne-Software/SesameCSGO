@@ -24,7 +24,7 @@ namespace anims {
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
-		float resolve_yaw( player_t* pl );
+		float resolve_yaw( player_t* pl, bool update );
 		void create_beams( );
 		void render_impacts( );
 	}

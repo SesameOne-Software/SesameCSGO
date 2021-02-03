@@ -263,7 +263,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 	/* reset anti-bruteforce when new round starts */
 	if ( g::round == round_t::starting )
-		for ( auto& shot_count : lagcomp::data::shot_count )
+		for ( auto& shot_count : anims::shot_count )
 			shot_count = 0;
 
 	/* manage fakelag */
@@ -519,7 +519,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( anti_bruteforce_air && target_player )
-					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
+					desync_amnt = ( anims::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
 				if ( desync_air && jitter_air && !g::send_packet ) {
 					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
@@ -592,7 +592,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( anti_bruteforce_slow_walk && target_player )
-					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
+					desync_amnt = ( anims::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
 				if ( desync_slow_walk && jitter_slow_walk && !g::send_packet ) {
 					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
@@ -660,7 +660,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 
 				if ( anti_bruteforce_move && target_player )
-					desync_amnt = ( lagcomp::data::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
+					desync_amnt = ( anims::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 
 				if ( desync_move && jitter_move && !g::send_packet ) {
 					if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
@@ -732,7 +732,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 
 			if ( anti_bruteforce_stand && target_player )
-				desync_amnt = ( lagcomp::data::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
+				desync_amnt = ( anims::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
 			VM_TIGER_BLACK_END
 			if ( desync_stand ) {
 				auto selected_desync_type = 0;

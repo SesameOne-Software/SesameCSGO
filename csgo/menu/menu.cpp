@@ -23,6 +23,8 @@
 
 #include "../resources/sesame_ui.hpp"
 
+#include "../scripting/js_api.hpp"
+
 extern std::string last_config_user;
 
 extern uint64_t current_plist_player;
@@ -42,7 +44,7 @@ bool download_config_code = false;
 
 cJSON* cloud_config_list = nullptr;
 
-bool gui::opened = true;
+bool gui::opened = false;
 bool open_button_pressed = false;
 
 enum tabs_t {
@@ -263,8 +265,10 @@ void gui::scale_dpi ( ) {
 	//IMGUI_CHECKVERSION ( );
 	ImGui::CreateContext ( );
 	ImGuiIO& io = ImGui::GetIO ( );
+	//io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.MouseDrawCursor = false;
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsSesame ( );
@@ -293,22 +297,25 @@ void gui::scale_dpi ( ) {
 	//io.Fonts->Build ( );
 	
 	//_("C:\\Windows\\Fonts\\segoeui.ttf")
-	font_cfg.RasterizerMultiply = 1.00f;
-	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 13.5f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
 	font_cfg.RasterizerMultiply = 1.1f;
+	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 13.5f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
+	gui_ui_font->SetFallbackChar ( '?' );
+	font_cfg.RasterizerMultiply = 1.2f;
 	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, io.Fonts->GetGlyphRangesCyrillic ( ) );
-	font_cfg.RasterizerMultiply = 1.00f;
+	gui_small_font->SetFallbackChar ( '?' );
+	font_cfg.RasterizerMultiply = 1.0f;
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
+	gui_icons_font->SetFallbackChar ( '?' );
 
 	font_cfg.RasterizerMultiply = 1.25f;
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "dbg_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "esp_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
-	font_cfg.RasterizerMultiply = 1.00f;
+	font_cfg.RasterizerMultiply = 1.0f;
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "indicator_font" ), 32.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "watermark_font" ), 18.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 
 	ImGui::GetStyle ( ).AntiAliasedFill = ImGui::GetStyle ( ).AntiAliasedLines = true;
-
+	
 	ImGui::GetStyle ( ).ScaleAllSizes ( options::vars [ _ ( "gui.dpi" ) ].val.f );
 
 	g_last_dpi = options::vars [ _ ( "gui.dpi" ) ].val.f;
@@ -335,7 +342,9 @@ void gui::init( ) {
 }
 
 char selected_config [ 128 ] = "default";
+char selected_script [ 128 ] = "";
 std::vector< std::string > configs { };
+std::vector< std::string > scripts { };
 
 void gui::load_cfg_list( ) {
 	VM_SHARK_BLACK_START
@@ -343,8 +352,9 @@ void gui::load_cfg_list( ) {
 	char appdata [ MAX_PATH ];
 
 	if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
-		LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame" ) ).c_str( ), nullptr );
-		LI_FN( CreateDirectoryA )( ( std::string( appdata ) + _( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
 	}
 
 	auto sanitize_name = [ ] ( const std::string& dir ) {
@@ -352,12 +362,26 @@ void gui::load_cfg_list( ) {
 		return dir.substr( N( 0 ), dot );
 	};
 
-	configs.clear( );
+	if ( !configs.empty() )
+		configs.clear ( );
 
 	for ( const auto& dir : std::filesystem::recursive_directory_iterator( std::string( appdata ) + _( "\\sesame\\configs" ) ) ) {
 		if ( dir.exists( ) && dir.is_regular_file( ) && dir.path( ).extension( ).string( ) == _( ".xml" ) ) {
 			const auto sanitized = sanitize_name( dir.path( ).filename( ).string( ) );
 			configs.push_back( sanitized );
+		}
+	}
+
+	js_api::init ( );
+
+	if ( !scripts.empty ( ) )
+		scripts.clear ( );
+
+	for ( const auto& dir : std::filesystem::recursive_directory_iterator ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ) ) {
+		if ( dir.exists ( ) && dir.is_regular_file ( ) && dir.path ( ).extension ( ).string ( ) == _ ( ".js" ) ) {
+			const auto sanitized = sanitize_name ( dir.path ( ).filename ( ).string ( ) );
+			scripts.push_back ( sanitized );
+			js_api::load_script ( dir.path ( ).filename ( ).string ( ).c_str() );
 		}
 	}
 
@@ -668,14 +692,15 @@ void gui::draw( ) {
 			ImGui::SetNextWindowPos ( ImVec2 ( ImGui::GetWindowPos ( ).x + ImGui::GetWindowSize ( ).x * 0.5f, ImGui::GetWindowPos ( ).y + ImGui::GetWindowSize ( ).y * 0.5f ), ImGuiCond_Always, ImVec2 ( 0.5f, 0.5f ) );
 
 			if ( ImGui::BeginPopupModal ( _("Save Config##popup"), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
-				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), "There already is a config with the same name in this location.\nAre you sure you want to overwrite the config?" );
+				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _("There already is a config with the same name in this location.\nAre you sure you want to overwrite the config?" ));
 
-				if ( ImGui::Button ( "Confirm", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+				if ( ImGui::Button ( _("Confirm"), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
 					char appdata [ MAX_PATH ];
 
 					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
 					}
 
 					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
@@ -700,7 +725,81 @@ void gui::draw( ) {
 				ImGui::EndPopup ( );
 			}
 
+			ImGui::SetNextWindowPos ( ImVec2 ( ImGui::GetWindowPos ( ).x + ImGui::GetWindowSize ( ).x * 0.5f, ImGui::GetWindowPos ( ).y + ImGui::GetWindowSize ( ).y * 0.5f ), ImGuiCond_Always, ImVec2 ( 0.5f, 0.5f ) );
+
+			if ( ImGui::BeginPopupModal ( _ ( "Delete Config##popup" ), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
+				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _ ( "Are you sure you want to delete the config?" ) );
+
+				if ( ImGui::Button ( _ ( "Confirm" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					char appdata [ MAX_PATH ];
+
+					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
+					}
+
+					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
+
+					std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
+
+					gui_mutex.lock ( );
+					load_cfg_list ( );
+					gui_mutex.unlock ( );
+
+					cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::SameLine ( );
+
+				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::EndPopup ( );
+			}
+
+			ImGui::SetNextWindowPos ( ImVec2 ( ImGui::GetWindowPos ( ).x + ImGui::GetWindowSize ( ).x * 0.5f, ImGui::GetWindowPos ( ).y + ImGui::GetWindowSize ( ).y * 0.5f ), ImGuiCond_Always, ImVec2 ( 0.5f, 0.5f ) );
+
+			if ( ImGui::BeginPopupModal ( _ ( "Delete Script##popup" ), nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings ) ) {
+				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _ ( "Are you sure you want to delete the script?" ) );
+
+				if ( ImGui::Button ( _ ( "Confirm" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					char appdata [ MAX_PATH ];
+
+					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
+					}
+
+					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
+
+					std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
+
+					gui_mutex.lock ( );
+					load_cfg_list ( );
+					gui_mutex.unlock ( );
+
+					cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::SameLine ( );
+
+				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+					ImGui::CloseCurrentPopup ( );
+				}
+
+				ImGui::EndPopup ( );
+			}
+
 			bool open_save_modal = false;
+			bool open_delete_modal = false;
+			bool open_delete_script_modal = false;
 			VM_TIGER_BLACK_END
 			switch ( current_tab_idx ) {
 				case tab_legit: {
@@ -1264,8 +1363,9 @@ void gui::draw( ) {
 								char appdata [ MAX_PATH ];
 
 								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
 								}
 
 								auto file_exists = [ ] ( const std::string& path ) {
@@ -1293,8 +1393,9 @@ void gui::draw( ) {
 								char appdata [ MAX_PATH ];
 
 								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
 								}
 
 								options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
@@ -1306,17 +1407,30 @@ void gui::draw( ) {
 								char appdata [ MAX_PATH ];
 
 								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).data ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).data ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
 								}
 
-								std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
+								auto file_exists = [ ] ( const std::string& path ) {
+									std::ifstream file ( path );
+									return file.good ( );
+								};
 
-								gui_mutex.lock ( );
-								load_cfg_list ( );
-								gui_mutex.unlock ( );
+								const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
 
-								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								if ( file_exists ( file ) ) {
+									open_delete_modal = true;
+								}
+								else {
+									std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
+
+									gui_mutex.lock ( );
+									load_cfg_list ( );
+									gui_mutex.unlock ( );
+
+									cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								}
 							}
 
 							if ( ImGui::Button ( _ ( "Refresh List" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
@@ -1326,97 +1440,83 @@ void gui::draw( ) {
 								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 
-							ImGui::PushItemWidth ( -1.0f );
-							ImGui::InputText ( _ ( "Config Description" ), config_description, 128 );
-							static std::vector<const char*> access_perms { "Public" ,  "Private" , "Unlisted" };
-							ImGui::Combo ( _ ( "Config Access" ), &config_access, access_perms.data(),access_perms.size() );
-							ImGui::PopItemWidth();
-							
-							if ( ImGui::Button ( _ ( "Upload To Cloud" ), ImVec2( -1.0f, 0.0f ) ) )
-								upload_to_cloud = true;
+							//ImGui::PushItemWidth ( -1.0f );
+							//ImGui::InputText ( _ ( "Config Description" ), config_description, 128 );
+							//static std::vector<const char*> access_perms { "Public" ,  "Private" , "Unlisted" };
+							//ImGui::Combo ( _ ( "Config Access" ), &config_access, access_perms.data(),access_perms.size() );
+							//ImGui::PopItemWidth();
+							//
+							//if ( ImGui::Button ( _ ( "Upload To Cloud" ), ImVec2( -1.0f, 0.0f ) ) )
+							//	upload_to_cloud = true;
 
 							ImGui::EndChildFrame ( );
 						}
 					} );
 
-					ImGui::custom::AddSubtab ( "Cloud Configuration", "Access and share configs via the cloud", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Cloud Configs" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Cloud Configs" ).x * 0.5f );
-							ImGui::Text ( "Cloud Configs" );
+					ImGui::custom::AddSubtab ( "Scripts", "Script manager", [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( "Scripts" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Scripts" ).x * 0.5f );
+							ImGui::Text ( "Scripts" );
 							ImGui::Separator ( );
 
-							gui_mutex.lock ( );
-							const auto loading_list = last_config_user != config_user;
-							gui_mutex.unlock ( );
-
-							/* loading new config list */
-							if ( loading_list ) {
-								ImGui::Text ( _ ( "Loading..." ) );
-							}
-							else if ( cloud_config_list ) {
-								cJSON* iter = nullptr;
-
-								cJSON_ArrayForEach ( iter, cloud_config_list ) {
-									const auto config_id = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "config_id" ) );
-									const auto config_code = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "config_code" ) );
-									const auto description = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "description" ) );
-									const auto creation_date = cJSON_GetObjectItemCaseSensitive ( iter, _ ( "creation_date" ) );
-
-									if ( !cJSON_IsNumber ( config_id ) )
-										continue;
-
-									if ( !cJSON_IsString ( creation_date ) || !creation_date->valuestring )
-										continue;
-
-									if ( !cJSON_IsString ( config_code ) || !config_code->valuestring )
-										continue;
-
-									if ( !cJSON_IsString ( description ) || !description->valuestring )
-										continue;
-
-									if ( ImGui::Button ( iter->string, ImVec2 ( -1.0f, 0.0f ) ) ) {
-										gui_mutex.lock ( );
-										strcpy_s ( ::gui::config_code, config_code->valuestring );
-										gui_mutex.unlock ( );
-									}
-								}
+							for ( const auto& script : scripts ) {
+								if ( ImGui::Button ( script.data ( ), ImVec2 ( -1.0f, 0.0f ) ) )
+									strcpy_s ( selected_script, script.c_str ( ) );
 							}
 
 							ImGui::EndChildFrame ( );
 						}
 
 						ImGui::SameLine ( );
-						
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Cloud Config Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Cloud Config Actions" ).x * 0.5f );
-							ImGui::Text ( "Cloud Config Actions" );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( "Script Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Script Actions" ).x * 0.5f );
+							ImGui::Text ( "Script Actions" );
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::InputText ( _ ( "Search By User" ), config_user, 128 );
+							ImGui::InputText ( _ ( "Script Name" ), selected_script, sizeof ( selected_script ) );
 							ImGui::PopItemWidth ( );
 
-							if ( ImGui::Button ( _ ( "My Configs" ), ImVec2 ( -1.0f, 0.0f ) ) )
-								strcpy_s ( config_user, g_username.c_str() );
-							
-							gui_mutex.lock ( );
-							ImGui::PushItemWidth ( -1.0f );
-							ImGui::InputText ( _ ( "Config Code" ), config_code, 128 );
-							ImGui::PopItemWidth ( );
-							gui_mutex.unlock ( );
-							
-							if ( ImGui::Button ( _ ( "Download Config" ), ImVec2( -1.0f, 0.0f ) ) ) {
-								gui_mutex.lock ( );
-								download_config_code = true;
-								gui_mutex.unlock ( );
+							if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+								char appdata [ MAX_PATH ];
+
+								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
+								}
+
+								auto file_exists = [ ] ( const std::string& path ) {
+									std::ifstream file ( path );
+									return file.good ( );
+								};
+
+								const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
+
+								if ( file_exists ( file ) ) {
+									open_delete_script_modal = true;
+								}
+								else {
+									std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
+
+									gui_mutex.lock ( );
+									load_cfg_list ( );
+									gui_mutex.unlock ( );
+
+									cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+								}
 							}
-						
+
+							if ( ImGui::Button ( _ ( "Reload Scripts" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+								gui_mutex.lock ( );
+								load_cfg_list ( );
+								gui_mutex.unlock ( );
+								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+							}
+
 							ImGui::EndChildFrame ( );
 						}
-					} );
-
-					ImGui::custom::AddSubtab ( "Scripts", "Script manager", [ & ] ( ) {
-
 					} );
 					VM_TIGER_BLACK_END
 				} break;
@@ -1448,6 +1548,12 @@ void gui::draw( ) {
 			//}
 			if ( open_save_modal )
 				ImGui::OpenPopup (_( "Save Config##popup") );
+
+			if ( open_delete_modal )
+				ImGui::OpenPopup ( _ ( "Delete Config##popup" ) );
+
+			if ( open_delete_script_modal )
+				ImGui::OpenPopup ( _ ( "Delete Script##popup" ) );
 
 			ImGui::custom::End ( );
 		}

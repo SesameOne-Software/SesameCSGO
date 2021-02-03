@@ -3,7 +3,6 @@
 
 #include "../animations/anims.hpp"
 
-#include "../features/lagcomp.hpp"
 #include "../features/ragebot.hpp"
 
 /* CREDITS CHAMBERS */
@@ -35,16 +34,6 @@ static void clear_shit ( int idx ) {
 
 	features::ragebot::get_hits ( idx ) = 0;
 	features::ragebot::get_misses ( idx ) = { 0, 0, 0 };
-
-	/* lagcomp */
-	if ( !features::lagcomp::data::records [ idx ].empty ( ) )
-		features::lagcomp::data::records [ idx ].clear ( );
-
-	if ( !features::lagcomp::data::visual_records [ idx ].empty ( ) )
-		features::lagcomp::data::visual_records [ idx ].clear ( );
-
-	features::lagcomp::data::old_origins [ idx ] = vec3_t ( 0.0f, 0.0f, 0.0f );
-	features::lagcomp::data::shot_count [ idx ] = 0;
 
 	//dbg_print ( _("clear callback called!\n") );
 }

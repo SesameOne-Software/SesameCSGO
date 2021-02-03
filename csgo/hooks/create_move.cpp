@@ -14,6 +14,7 @@
 #include "../features/autowall.hpp"
 #include "../features/autopeek.hpp"
 #include "../features/exploits.hpp"
+#include "../features/prediction.hpp"
 
 #include "../animations/resolver.hpp"
 
@@ -37,7 +38,7 @@ void fix_event_delay( ucmd_t* ucmd ) {
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fd_key_mode" ) ].val.i;
 
 	/* choke packets if requested */
-	if ( !!(ucmd->m_buttons & buttons_t::attack) && g::local && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !cs::is_valve_server( ) )
+	if ( !!(ucmd->m_buttons & buttons_t::attack) && g::local && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
@@ -61,14 +62,13 @@ void airstuck ( ucmd_t* ucmd ) {
 }
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
+	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
+
 	cs::i::engine->set_viewangles ( ucmd->m_angs );
 	cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
-	if ( !ucmd || !ucmd->m_cmdnum ) {
-		return old::create_move ( REG_OUT, sampletime, ucmd );
-	}
-
-	features::lagcomp::old_curtime = cs::i::globals->m_curtime;
+	if ( !ucmd || !ucmd->m_cmdnum )
+		return ret;
 
 	ducking = !!(ucmd->m_buttons & buttons_t::duck);
 	in_cm = true;
@@ -77,7 +77,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	/* recharge if we need, and return */
 	if ( exploits::recharge ( ucmd ) )
-			return false;
+		return false;
 
 	if ( cs::i::client_state->choked ( ) ) {
 		cs::i::pred->update (
@@ -93,9 +93,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	features::ragebot::get_weapon_config( features::ragebot::active_config );
 	//);
 
-	if ( !g::local || !g::local->alive( ) ) {
+	if ( !g::local || !g::local->alive( ) )
 		g::cock_ticks = 0;
-	}
 
 	security_handler::update( );
 
@@ -188,9 +187,9 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	fix_event_delay( ucmd );
 
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( ucmd->m_buttons & buttons_t::attack ) ) {
-		if ( cs::time2ticks( features::prediction::curtime() ) > g::cock_ticks ) {
+		if ( g::local->tick_base ( ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~buttons_t::attack;
-			g::cock_ticks = cs::time2ticks( features::prediction::curtime ( ) + 0.25f ) - 1;
+			g::cock_ticks = cs::time2ticks( cs::ticks2time ( g::local->tick_base ( ) ) + 0.25f ) - 1;
 			g::can_fire_revolver = true;
 		}
 		else {
@@ -217,6 +216,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	/* fix anti-aim slide */ {
+
 		if ( ucmd->m_fmove ) {
 			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::forward : buttons_t::back );
 			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::forward : buttons_t::back );

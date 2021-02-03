@@ -251,9 +251,6 @@
     <ClInclude Include="features\clantag.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
-    <ClInclude Include="features\lagcomp.hpp">
-      <Filter>Header Files\features</Filter>
-    </ClInclude>
     <ClInclude Include="features\glow.hpp">
       <Filter>Header Files\features</Filter>
     </ClInclude>
@@ -539,6 +536,12 @@
     <ClInclude Include="hooks\netmsg_tick.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="v7\v7.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="scripting\js_api.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -584,9 +587,6 @@
       <Filter>Source Files\security</Filter>
     </ClCompile>
     <ClCompile Include="features\clantag.cpp">
-      <Filter>Source Files\features</Filter>
-    </ClCompile>
-    <ClCompile Include="features\lagcomp.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
     <ClCompile Include="features\glow.cpp">
@@ -761,6 +761,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\netmsg_tick.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="v7\v7.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="scripting\js_api.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
