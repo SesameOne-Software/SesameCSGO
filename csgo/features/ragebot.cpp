@@ -611,9 +611,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		if ( !hb )
 			return false;
 
-		const auto misses = get_misses( pl->idx( ) ).bad_resolve;
-
-		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones [ misses % 3 ];
+		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones;
 
 		auto vmin = hb->m_bbmin;
 		auto vmax = hb->m_bbmax;
@@ -832,9 +830,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		if ( !hitbox )
 			return;
 
-		const auto misses = get_misses ( pl->idx ( ) ).bad_resolve;
-
-		const std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones [ misses % 3 ];
+		const std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
 
 		auto vmin = hitbox->m_bbmin;
 		auto vmax = hitbox->m_bbmax;
@@ -878,7 +874,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 	if ( !features::ragebot::active_config.silent )
 		cs::i::engine->set_viewangles ( best_ang );
 
-	ucmd->m_tickcount = cs::time2ticks ( best_rec.m_simtime );
+	ucmd->m_tickcount = cs::time2ticks ( best_rec.m_simtime ) + cs::time2ticks( anims::lerp_time ( ) );
 
 	get_target_pos ( best_pl->idx ( ) ) = best_point;
 	get_target ( ) = best_pl;
@@ -1082,7 +1078,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		if ( !active_config.silent )
 			cs::i::engine->set_viewangles( ang );
 
-		ucmd->m_tickcount = cs::time2ticks ( best.m_record.m_simtime );
+		ucmd->m_tickcount = cs::time2ticks ( best.m_record.m_simtime ) + cs::time2ticks ( anims::lerp_time ( ) );
 
 		get_target_pos( best.m_ent->idx( ) ) = best.m_point;
 		get_target( ) = best.m_ent;
@@ -1208,9 +1204,7 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, int 
 	if ( !hitbox )
 		return false;
 
-	const auto misses = get_misses( ent->idx() ).bad_resolve;
-
-	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones [ misses % 3 ];
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
 
 	vec3_t vmin, vmax;
 	VEC_TRANSFORM ( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
@@ -1355,16 +1349,17 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* use other matrix with same points, trying to find alignments in the two matricies */
 	/* shift over by 1 entry in our records */
-	std::array< matrix3x4_t, 128>& dmg_scan_matrix = rec.m_aim_bones [ ( get_misses ( ent->idx() ).bad_resolve + ( safe_point_active ? 1 : 0 ) ) % 3 ];
+	// SAFE POINT BONE MATRIX DOESN'T WORK RIGHT NOW
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix = rec.m_aim_bones;
 
 	const auto backup_origin = pl->origin ( );
-	//auto backup_abs_origin = pl->abs_origin ( );
+	auto backup_abs_origin = pl->abs_origin ( );
 	const auto backup_bone_cache = pl->bone_cache ( );
 	const auto backup_mins = pl->mins ( );
 	const auto backup_maxs = pl->maxs ( );
 
 	pl->origin ( ) = rec.m_origin;
-	//pl->set_abs_origin ( rec.m_origin );
+	pl->set_abs_origin ( rec.m_origin );
 	pl->bone_cache ( ) = dmg_scan_matrix.data();
 	pl->mins ( ) = rec.m_mins;
 	pl->maxs ( ) = rec.m_maxs;
@@ -1422,7 +1417,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* restore player data to what it was before so we dont mess up anything */
 	pl->origin ( ) = backup_origin;
-	//pl->set_abs_origin ( backup_abs_origin );
+	pl->set_abs_origin ( backup_abs_origin );
 	pl->bone_cache ( ) = backup_bone_cache;
 	pl->mins ( ) = backup_mins;
 	pl->maxs ( ) = backup_maxs;

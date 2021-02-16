@@ -66,14 +66,14 @@ void anims::resolver::process_impact ( event_t* event ) {
 		const auto vec_max = shot_pos + towards * g::local->weapon ( )->data ( )->m_range;
 
 		const auto backup_origin = target->origin ( );
-		//auto backup_abs_origin = target->abs_origin ( );
+		auto backup_abs_origin = target->abs_origin ( );
 		const auto backup_bone_cache = target->bone_cache ( );
 		const auto backup_mins = target->mins ( );
 		const auto backup_maxs = target->maxs ( );
 
 		target->origin ( ) = target_rec.m_origin;
-		//target->set_abs_origin ( target_rec.m_origin );
-		target->bone_cache ( ) = target_rec.m_aim_bones [ features::ragebot::get_misses ( target->idx ( ) ).bad_resolve % 3 ].data ( );
+		target->set_abs_origin ( target_rec.m_origin );
+		target->bone_cache ( ) = target_rec.m_aim_bones.data();
 		target->mins ( ) = target_rec.m_mins;
 		target->maxs ( ) = target_rec.m_maxs;
 
@@ -83,7 +83,7 @@ void anims::resolver::process_impact ( event_t* event ) {
 		const auto dmg = autowall::dmg ( g::local, target, shot_pos, vec_max, -1, &impact_out );
 
 		target->origin ( ) = backup_origin;
-		//target->set_abs_origin ( backup_abs_origin );
+		target->set_abs_origin ( backup_abs_origin );
 		target->bone_cache ( ) = backup_bone_cache;
 		target->mins ( ) = backup_mins;
 		target->maxs ( ) = backup_maxs;
@@ -117,13 +117,8 @@ void anims::resolver::process_hurt ( event_t* event ) {
 	case 1: cs::i::engine->client_cmd_unrestricted ( _ ( "play buttons\\arena_switch_press_02" ) ); break;
 	case 2: cs::i::engine->client_cmd_unrestricted ( _ ( "play player\\pl_fallpain3" ) ); break;
 	case 3: cs::i::engine->client_cmd_unrestricted ( _ ( "play weapons\\awp\\awp_boltback" ) ); break;
-	case 4: cs::i::engine->client_cmd_unrestricted ( _ ( "play player\\neck_snap_01" ) ); break;
-	case 5: cs::i::engine->client_cmd_unrestricted ( _ ( "play weapons\\flashbang\\grenade_hit1" ) ); break;
-	case 6: cs::i::engine->client_cmd_unrestricted ( _ ( "play physics\\glass\\glass_impact_bullet4" ) ); break;
-	case 7: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_bell ), nullptr, SND_MEMORY | SND_ASYNC ); break;
-	case 8: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_cod ), nullptr, SND_MEMORY | SND_ASYNC ); break;
-	case 9: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_rattle ), nullptr, SND_MEMORY | SND_ASYNC ); break;
-	case 10: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_ramune ), nullptr, SND_MEMORY | SND_ASYNC ); break;
+	case 4: cs::i::engine->client_cmd_unrestricted ( _ ( "play weapons\\flashbang\\grenade_hit1" ) ); break;
+	case 5: LI_FN ( PlaySoundA ) ( reinterpret_cast < const char* > ( hitsound_sesame ), nullptr, SND_MEMORY | SND_ASYNC ); break;
 	default: break;
 	}
 
@@ -207,7 +202,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 	else if ( rdata::wrong_hitbox [ pl_idx ] ) {
 		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
 
-		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones [ features::ragebot::get_misses ( pl_idx ).bad_resolve % 3 ].data ( ), sizeof matrix3x4_t * 128 );
+		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data(), sizeof matrix3x4_t * 128 );
 
 		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos ( pl_idx ), std::to_string ( rdata::player_dmg [ pl_idx ] ), cs::i::globals->m_curtime, true, rgba ( 161, 66, 245, 150 ) } );
 
@@ -280,7 +275,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 	else if ( rdata::player_hurt [ pl_idx ] ) {
 		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
 
-		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones [ features::ragebot::get_misses ( pl_idx ).bad_resolve % 3 ].data ( ), sizeof matrix3x4_t * 128 );
+		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data ( ), sizeof matrix3x4_t * 128 );
 
 		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos ( pl_idx ), std::to_string ( rdata::player_dmg [ pl_idx ] ), cs::i::globals->m_curtime, true, rgba ( 161, 66, 245, 150 ) } );
 
@@ -515,35 +510,68 @@ void anims::resolver::render_impacts ( ) {
 	}
 }
 
+__forceinline float angle_diff ( float dst, float src ) {
+	auto delta = fmodf ( dst - src, 360.0f );
+
+	if ( dst > src ) {
+		if ( delta >= 180.0f )
+			delta -= 360.0f;
+	}
+	else {
+		if ( delta <= -180.0f )
+			delta += 360.0f;
+	}
+
+	return delta;
+}
+
+std::array<std::array<std::pair<float, float>, 3>, 65> all_resolved_layers { { } };
+std::array<std::array<float, 3>, 65> resolved_layers { { 0.0f } };
+
 float anims::resolver::resolve_yaw ( player_t* pl, bool update ) {
 	VM_TIGER_BLACK_START
 	static auto& resolver = options::vars [ _ ( "ragebot.resolve_desync" ) ].val.b;
 
 	security_handler::update ( );
 
+	static std::array<std::array<animlayer_t, 13>, 65> old_old_old_anim_layers { {} };
+	static std::array<std::array<animlayer_t, 13>, 65> old_old_anim_layers { {} };
 	static std::array<std::array<animlayer_t, 13>, 65> old_anim_layers { {} };
 	static std::array<animstate_t, 65> old_anim_state { };
 	static std::array< float, 65 > old_simtime { 0.0f };
 	static std::array< vec3_t, 65 > old_vel { vec3_t ( 0.0f, 0.0f ,0.0f ) };
 	static std::array< bool, 65 > old_not_walking { false };
 	static std::array < float, 65 > fake_ground_fraction { 0.0f };
+	static std::array< float, 65 > desync_offset_timer { 0.0f };
+	static std::array< float, 65 > base_offset { 0.0f };
 
 	const auto anim_state = pl->animstate ( );
 	const auto anim_layers = pl->layers ( );
 
-	if ( !anim_state || !anim_layers ) {
+	if ( !anim_state || !anim_layers )
 		return std::numeric_limits<float>::max ( );
-	}
+
+	auto speed = pl->vel ( ).length_2d ( );
+
+	//if ( anim_layers [ 6 ].m_weight < 1.0f )
+	//	speed = anim_layers [ 6 ].m_weight * (( ( pl->weapon ( ) && pl->weapon ( )->data ( ) ) ? std::max ( pl->weapon ( )->data ( )->m_max_speed, 0.001f ) : 260.0f ) * 0.52f);
 
 	const auto idx = pl->idx ( );
 
 	if ( !resolver || g::local->team ( ) == pl->team ( ) ) {
+		//if ( update ) {
 		if ( update ) {
-			memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+			old_old_old_anim_layers [ idx ] = old_old_anim_layers [ idx ];
+			old_old_anim_layers [ idx ] = old_anim_layers [ idx ];
+		}
+
+		memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+
 			old_anim_state [ idx ] = *anim_state;
 			old_simtime [ idx ] = pl->simtime ( );
 			old_vel [ idx ] = pl->vel ( );
-		}
+			desync_offset_timer [ idx ] = 0.0f;
+		//}
 
 		return std::numeric_limits<float>::max ( );
 	}
@@ -553,26 +581,33 @@ float anims::resolver::resolve_yaw ( player_t* pl, bool update ) {
 
 	/* bot check */
 	if ( pl_info.m_fake_player ) {
+		//if ( update ) {
 		if ( update ) {
-			memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+			old_old_old_anim_layers [ idx ] = old_old_anim_layers [ idx ];
+			old_old_anim_layers [ idx ] = old_anim_layers [ idx ];
+		}
+
+		memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+
 			old_anim_state [ idx ] = *anim_state;
 			old_simtime [ idx ] = pl->simtime ( );
 			old_vel [ idx ] = pl->vel ( );
-		}
+			desync_offset_timer [ idx ] = 0.0f;
+		//}
 
 		return std::numeric_limits<float>::max ( );
 	}
 
-	if ( pl->desync_amount ( ) <= 38.0f )
-		features::ragebot::get_misses ( idx ).bad_resolve = 0;
+	//if ( pl->desync_amount ( ) <= 38.0f && !!( pl->flags ( ) & flags_t::on_ground ) )
+	//	features::ragebot::get_misses ( idx ).bad_resolve = 0;
 
-	static std::array< float, 65 > last_shot_time { 0.0f };
+	static std::array< float, 65 > last_pitch_time { 0.0f };
 	const auto shooting = pl->weapon ( ) && ( pl->weapon ( )->last_shot_time ( ) > pl->old_simtime ( ) && pl->weapon ( )->last_shot_time ( ) <= pl->simtime ( ) );
 
-	if ( shooting )
-		last_shot_time [ idx ] = cs::i::globals->m_curtime;
+	if ( abs( anim_state->m_pitch ) >= 70.0f )
+		last_pitch_time [ idx ] = cs::i::globals->m_curtime;
 
-	if ( update ) {
+	if ( !!( pl->flags ( ) & flags_t::on_ground ) && update ) {
 		auto calc_ground_fraction = [ & ] ( float speed_2d ) {
 			constexpr auto CS_PLAYER_SPEED_DUCK_MODIFIER = 0.340f;
 			constexpr auto CS_PLAYER_SPEED_WALK_MODIFIER = 0.520f;
@@ -593,35 +628,54 @@ float anims::resolver::resolve_yaw ( player_t* pl, bool update ) {
 			return fake_ground_fraction [ idx ];
 		};
 
-		calc_ground_fraction ( pl->vel ( ).length_2d ( ) );
+		//calc_ground_fraction ( speed );
 
-		// TEMP
-		//const auto delta_ticks = cs::time2ticks ( pl->simtime ( ) - pl->old_simtime ( ) );
-		//
-		//for ( auto i = 0; i < delta_ticks; i++ ) {
-		//	const auto simulated_vel = old_vel [ idx ] + ( pl->vel ( ) - old_vel [ idx ] ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-		//	calc_ground_fraction ( simulated_vel.length_2d ( ) );
-		//}
+		const auto delta_ticks = cs::time2ticks ( pl->simtime ( ) - pl->old_simtime ( ) );
+		
+		for ( auto i = 0; i < delta_ticks; i++ ) {
+			const auto simulated_vel = old_vel [ idx ] + ( pl->vel ( ) - old_vel [ idx ] ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
+			calc_ground_fraction ( speed );
+		}
 	}
 
 	const auto predicted_ground_fraction = fake_ground_fraction [ idx ];
 
 	/* simulate movement and predict ground fraction during choked commands */
-	if ( abs ( anim_state->m_pitch ) < 60.0f /*shooting*/ ) {
-		if ( shooting ) {
+	/* pitch up */
+	if ( abs ( anim_state->m_pitch ) < 70.0f ) {
+		/* e press check */
+		if ( abs ( last_pitch_time [ idx ] - cs::i::globals->m_curtime ) < 1.0f ) {
+			//if ( update ) {
 			if ( update ) {
-				memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+				old_old_old_anim_layers [ idx ] = old_old_anim_layers [ idx ];
+				old_old_anim_layers [ idx ] = old_anim_layers [ idx ];
+			}
+
+			memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
 				old_anim_state [ idx ] = *anim_state;
 				old_simtime [ idx ] = pl->simtime ( );
 				old_vel [ idx ] = pl->vel ( );
-			}
+			//}
 
 			if ( last_recorded_resolve [ idx ] == std::numeric_limits<float>::max ( ) )
 					return 0.0f;
 				
 			return copysign ( pl->desync_amount(), cs::normalize ( last_recorded_resolve [ idx ] ) - cs::normalize ( anim_state->m_eye_yaw ) );
 		}
-		else {
+		/* check if player has legit aa */
+		else if ( abs ( cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) - cs::normalize ( anim_state->m_abs_yaw ) ) ) < 60.0f ) {
+			//if ( update ) {
+			if ( update ) {
+				old_old_old_anim_layers [ idx ] = old_old_anim_layers [ idx ];
+				old_old_anim_layers [ idx ] = old_anim_layers [ idx ];
+			}
+
+			memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+			old_anim_state [ idx ] = *anim_state;
+			old_simtime [ idx ] = pl->simtime ( );
+			old_vel [ idx ] = pl->vel ( );
+			//}
+
 			return 0.0f;
 		}
 	}
@@ -633,107 +687,154 @@ float anims::resolver::resolve_yaw ( player_t* pl, bool update ) {
 	static std::array< float, 65 > desync_offset { 0.0f };
 	static std::array< float, 65 > desync_offset_lby { 0.0f };
 
-	const auto speed = pl->vel ( ).length_2d ( );
-
 	if ( !!( pl->flags ( ) & flags_t::on_ground ) && update ) {
 		/* predict angle from animlayers */
 		const auto max_desync = pl->desync_amount ( );
 
-		if ( anim_layers [ 6 ].m_weight == 0.0f ) {
+		if ( speed <= 1.1f ) {
 			const auto delta_yaw = cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) - cs::normalize ( anim_state->m_abs_yaw ) );
 
-			desync_offset_lby [ idx ] = copysign (
-				max_desync,
-				( abs ( delta_yaw ) > 35.0f ) ? delta_yaw : desync_offset [ idx ]
-			);
+			if ( abs( delta_yaw ) > 60.0f ) {
+				desync_offset [ idx ] = copysign(1.0f, delta_yaw );
+				desync_offset_timer [ idx ] = cs::i::globals->m_curtime;
+			}
 		}
-		else if ( abs( anim_layers [ 6 ].m_weight * 1000.0f - old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) <= 1.0f ) {
-			auto calc_playback_rate = [ & ] (
-				float ground_fraction,
-				float offset
-				) -> float {
-				static std::array<animlayer_t, 13> backup_anim_layers {};
-				static animstate_t backup_anim_state {};
-				static std::array<float, 24> backup_poses {};
+		
+		//if ( anim_layers [ 6 ].m_weight > 0.0f
+		//	&& ( ( int ( anim_layers [ 6 ].m_weight * 1000.0f ) == int ( old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) /* make sure enemy isn't spamming side / forward move buttons */ )
+		//		|| ( abs( int ( anim_layers [ 6 ].m_weight * 1000.0f ) - int ( old_anim_layers [ idx ][ 6 ].m_weight * 10000.0f ) ) <= 5
+		//			|| abs( int ( anim_layers [ 6 ].m_weight * 10000.0f ) - int ( old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) ) <= 5 ) /* check if enemy has desync jitter */) ) {
 
-				memcpy ( backup_anim_layers.data ( ), anim_layers, sizeof ( backup_anim_layers ) );
-				backup_anim_state = *anim_state;
-				backup_poses = pl->poses ( );
+		/*
+		if ( anim_layers [ 6 ].m_weight > 0.0f
+			&& ( int ( anim_layers [ 6 ].m_weight * 1000.0f ) - int ( old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) <= 2
+				|| (abs(int ( anim_layers [ 6 ].m_weight * 1000.0f ) - int ( old_old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f )) <= 4
+					&& abs(int ( old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) - int ( old_old_old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f ) ) <= 4 )) ) {
+		*/
 
-				anim_state->m_feet_yaw
-					= anim_state->m_abs_yaw
-					= cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) + offset );
+		/*
+		if ( anim_layers [ 6 ].m_weight > 0.0f
+			&& ( int ( anim_layers [ 6 ].m_weight * 1000.0f ) == int ( old_anim_layers [ idx ][ 6 ].m_weight * 1000.0f )
+				|| ( ( anim_layers [ 6 ].m_playback_rate < old_anim_layers [ idx ][ 6 ].m_playback_rate
+					&& old_anim_layers [ idx ][ 6 ].m_playback_rate > old_old_anim_layers [ idx ][ 6 ].m_playback_rate ) 
+					|| ( anim_layers [ 6 ].m_playback_rate > old_anim_layers [ idx ][ 6 ].m_playback_rate
+						&& old_anim_layers [ idx ][ 6 ].m_playback_rate < old_old_anim_layers [ idx ][ 6 ].m_playback_rate )
+					|| ( old_old_anim_layers [idx][ 6 ].m_playback_rate < old_anim_layers [ idx ][ 6 ].m_playback_rate
+						&& old_old_anim_layers [ idx ][ 6 ].m_playback_rate > old_old_old_anim_layers [ idx ][ 6 ].m_playback_rate ) ) ) ) 
+		*/
 
-				anim_state->m_move_yaw_pose.set_value ( pl, std::clamp ( cs::normalize ( cs::normalize ( cs::rad2deg ( atan2 ( -pl->vel ( ).y, -pl->vel ( ).x ) ) ) - cs::normalize ( anim_state->m_abs_yaw ) ), -180.0f, 180.0f ) / 360.0f + 0.5f );
-				anim_state->m_body_yaw_pose.set_value ( pl, std::clamp ( cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) - cs::normalize ( anim_state->m_abs_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f );
+		auto calc_playback_rate = [ & ] (
+			float ground_fraction,
+			float offset
+			) -> float {
+			static std::array<float, 24> backup_poses {};
 
-				//    get the sequence used in the calc
-				char dest [ 64 ] { '\0' };
-				sprintf_s ( dest, "move_%s", pl->animstate ( )->get_weapon_move_animation ( ) );
+			backup_poses = pl->poses ( );
 
-				int seq = pl->lookup_sequence ( dest );
+			const auto feet_yaw = cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) + offset );
 
-				if ( seq == -1 )
-					seq = pl->lookup_sequence ( _ ( "move" ) );
+			pl->poses ( ) [ 3 ] = speed / ( ( ( pl->weapon ( ) && pl->weapon ( )->data ( ) ) ? std::max ( pl->weapon ( )->data ( )->m_max_speed, 0.001f ) : 260.0f ) * 0.52f );
+			pl->poses ( ) [ 7 ] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize ( cs::rad2deg ( atan2 ( -pl->vel ( ).y, -pl->vel ( ).x ) ) ), feet_yaw ) ), -180.0f, 180.0f ) / 360.0f + 0.5f;
+			pl->poses ( ) [ 9 ] = ( 1.0f - ground_fraction ) * ( 1.0f - pl->crouch_amount ( ) );
+			pl->poses ( ) [ 10 ] = ground_fraction * ( 1.0f - pl->crouch_amount ( ) );
+			pl->poses ( ) [ 11 ] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize ( anim_state->m_eye_yaw ), feet_yaw ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
 
-				//    cycle rate
-				float flMoveCycleRate = 0;
+			//    get the sequence used in the calc
+			char dest [ 64 ] { '\0' };
+			sprintf_s ( dest, "move_%s", pl->animstate ( )->get_weapon_move_animation ( ) );
 
-				if ( speed ) {
-					flMoveCycleRate = pl->get_sequence_cycle_rate_server ( seq );
-					float flSequenceGroundSpeed = std::max ( pl->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( reinterpret_cast< uintptr_t > ( pl ) + 0x294C ), seq ) / ( 1.0f / flMoveCycleRate ), 0.001f );
-					flMoveCycleRate *= speed / flSequenceGroundSpeed;
-					flMoveCycleRate *= std::lerp ( 1.0f, 0.85f, ground_fraction );
+			int seq = pl->lookup_sequence ( dest );
+
+			if ( seq == -1 )
+				seq = pl->lookup_sequence ( _ ( "move" ) );
+
+			//    cycle rate
+			float flMoveCycleRate = 0;
+
+			if ( speed ) {
+				flMoveCycleRate = pl->get_sequence_cycle_rate_server ( seq );
+				float flSequenceGroundSpeed = std::max ( pl->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( reinterpret_cast< uintptr_t > ( pl ) + 0x294C ), seq ) / ( 1.0f / flMoveCycleRate ), 0.001f );
+				flMoveCycleRate *= speed / flSequenceGroundSpeed;
+				flMoveCycleRate *= std::lerp ( 1.0f, 0.85f, ground_fraction );
+			}
+
+			float flLocalCycleIncrement = flMoveCycleRate * cs::ticks2time ( 1 );
+
+			pl->poses ( ) = backup_poses;
+
+			return flLocalCycleIncrement;
+		};
+
+		int i = 0;
+		for ( float offset = -1.0f; offset <= 1.0f; offset += 0.5f ) {
+			const auto predicted_playback_rate = calc_playback_rate ( predicted_ground_fraction, offset * max_desync );
+
+			if ( predicted_playback_rate > 0.0f )
+				all_resolved_layers [ idx ][ i ] = { offset, predicted_playback_rate };
+
+			i++;
+		}
+
+		if ( anim_layers [ 6 ].m_weight > 0.0f ) {
+			auto closest_delta_rate = std::numeric_limits<float>::max();
+
+			for ( auto& rate : all_resolved_layers [ idx ] ) {
+				const auto delta_rate = abs ( anim_layers [ 6 ].m_playback_rate - rate.second );
+
+				if ( delta_rate < closest_delta_rate ) {
+					desync_offset [ idx ] = rate.first;
+					closest_delta_rate = delta_rate;
 				}
-
-				float flLocalCycleIncrement = flMoveCycleRate * cs::ticks2time ( 1 );
-
-				*anim_state = backup_anim_state;
-				memcpy ( anim_layers, backup_anim_layers.data ( ), sizeof ( backup_anim_layers ) );
-				pl->poses ( ) = backup_poses;
-
-				return flLocalCycleIncrement;
-			};
-
-			static std::array<float, 5> simulated_playback_rates { 0.0f };
-
-			simulated_playback_rates [ 0 ] = calc_playback_rate ( predicted_ground_fraction, -1.0f * max_desync );
-			simulated_playback_rates [ 1 ] = calc_playback_rate ( predicted_ground_fraction, -0.5f * max_desync );
-			simulated_playback_rates [ 2 ] = calc_playback_rate ( predicted_ground_fraction, 0.0f * max_desync );
-			simulated_playback_rates [ 3 ] = calc_playback_rate ( predicted_ground_fraction, 0.5f * max_desync );
-			simulated_playback_rates [ 4 ] = calc_playback_rate ( predicted_ground_fraction, 1.0f * max_desync );
-
-			float base_offset = -1.0f;
-			float closest_playback_rate = std::numeric_limits<float>::max ( );
-
-			for ( auto& playback_rate : simulated_playback_rates ) {
-				const auto playback_delta = abs ( anim_layers [ 6 ].m_playback_rate - playback_rate );
-
-				if ( playback_delta < closest_playback_rate && base_offset != 0.5f ) {
-					desync_offset [ idx ] = base_offset * max_desync;
-					closest_playback_rate = playback_delta;
-				}
-
-				base_offset += 0.5f;
 			}
 		}
 	}
 
+	//if ( update ) {
+	if ( update ) {
+		old_old_old_anim_layers [ idx ] = old_old_anim_layers [ idx ];
+		old_old_anim_layers [ idx ] = old_anim_layers [ idx ];
+	}
+
+	memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
+	old_anim_state [ idx ] = *anim_state;
+	old_simtime [ idx ] = pl->simtime ( );
+	old_vel [ idx ] = pl->vel ( );
+	//}
+
+	/* resolved yaw offset */
 	float yaw_offset = 0.0f;
 
-	if ( anim_layers [ 6 ].m_weight == 0.0f || !( pl->flags ( ) & flags_t::on_ground ) )
-		yaw_offset = desync_offset_lby [ idx ];
-	else
-		yaw_offset = desync_offset [ idx ];
+	/* start of resolver */
+	const auto src = g::local->eyes ( );
+	auto eyes_max = pl->origin() + vec3_t ( 0.0f, 0.0f, 64.0f );
+	auto fwd = eyes_max - src;
+	fwd.normalize ( );
+
+	if ( !fwd.is_valid ( ) )
+		return std::numeric_limits<float>::max ( );
+
+	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+	auto left_dir = -right_dir;
+	auto dmg_left = autowall::dmg ( g::local, pl, src + left_dir * 20.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 /* pretend player would be there */ );
+	auto dmg_right = autowall::dmg ( g::local, pl, src + right_dir * 20.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 /* pretend player would be there */ );
+
+	const auto max_desync = pl->desync_amount ( );
+
+	if ( !features::ragebot::get_misses ( idx ).bad_resolve ) {
+		if ( ( ( dmg_left && !dmg_right ) || ( !dmg_left && dmg_right ) ) )
+			base_offset [ idx ] = ( dmg_left > dmg_right ) ? -1.0f : 1.0f;
+		else
+			base_offset [ idx ] = desync_offset [ idx ];
+	}
+
+	if ( base_offset [ idx ] == 0.0f )
+		yaw_offset = ( features::ragebot::get_misses ( idx ).bad_resolve % 2 ) ? -max_desync : max_desync;
+	else if ( base_offset [ idx ] == -1.0f )
+		yaw_offset = ( features::ragebot::get_misses ( idx ).bad_resolve % 2 ) ? -max_desync * 0.5f : -max_desync;
+	else if ( base_offset [ idx ] == -0.5f )
+		yaw_offset = ( features::ragebot::get_misses ( idx ).bad_resolve % 2 ) ? max_desync : -max_desync * 0.5f;
 
 	last_recorded_resolve [ idx ] = cs::normalize ( anim_state->m_eye_yaw + yaw_offset );
-
-	if ( update ) {
-		memcpy ( old_anim_layers [ idx ].data ( ), anim_layers, sizeof ( old_anim_layers [ idx ] ) );
-		old_anim_state [ idx ] = *anim_state;
-		old_simtime [ idx ] = pl->simtime ( );
-		old_vel [ idx ] = pl->vel ( );
-	}
 
 	rdata::queued_hit [ idx ] = false;
 	

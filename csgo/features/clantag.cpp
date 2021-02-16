@@ -61,7 +61,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 		return;
 	}
 
-	auto iter = static_cast< int >( cs::i::globals->m_curtime * 4.0f );
+	auto iter = static_cast< int >( cs::ticks2time(g::local->tick_base()) * 4.0f );
 	const std::string tag = clantag_text;
 
 	VM_TIGER_BLACK_END

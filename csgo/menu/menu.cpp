@@ -295,14 +295,16 @@ void gui::scale_dpi ( ) {
 	font_cfg.OversampleH = 2;
 	font_cfg.PixelSnapH = false;
 	//io.Fonts->Build ( );
-	
+
 	//_("C:\\Windows\\Fonts\\segoeui.ttf")
 	font_cfg.RasterizerMultiply = 1.1f;
 	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 13.5f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
 	gui_ui_font->SetFallbackChar ( '?' );
+
 	font_cfg.RasterizerMultiply = 1.2f;
 	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, io.Fonts->GetGlyphRangesCyrillic ( ) );
 	gui_small_font->SetFallbackChar ( '?' );
+
 	font_cfg.RasterizerMultiply = 1.0f;
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 	gui_icons_font->SetFallbackChar ( '?' );
@@ -310,6 +312,13 @@ void gui::scale_dpi ( ) {
 	font_cfg.RasterizerMultiply = 1.25f;
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "dbg_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "esp_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
+
+	/* emojis */
+	//font_cfg.MergeMode = true;
+	//static const ImWchar segoe_ui_emoji_ranges [ ] = { 0x2002, 0x3299, 0 };
+	//io.Fonts->AddFontFromFileTTF ( _ ( "‪C:\\Windows\\Fonts\\seguiemj.ttf" ), 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, segoe_ui_emoji_ranges );
+	//font_cfg.MergeMode = false;
+
 	font_cfg.RasterizerMultiply = 1.0f;
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "indicator_font" ), 32.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "watermark_font" ), 18.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
@@ -562,6 +571,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Value Text",
 			"Name Tag",
 			"Weapon Name",
+			"Fakeduck Flag",
+			"Reloading Flag",
+			"Fatal Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.local.options" ) ].val.l, visual_options.data(), visual_options.size() );
@@ -582,6 +594,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Value Text" ,
 			"Name Tag" ,
 			"Weapon Name" ,
+			"Fakeduck Flag",
+			"Reloading Flag",
+			"Fatal Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.enemies.options" ) ].val.l , visual_options .data(), visual_options .size());
@@ -600,6 +615,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Value Text" ,
 			"Name Tag" ,
 			"Weapon Name" ,
+			"Fakeduck Flag",
+			"Reloading Flag",
+			"Fatal Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.teammates.options" ) ].val.l , visual_options .data(), visual_options .size());
@@ -613,6 +631,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 		ImGui::Combo( _( "Value Text Location" ), &options::vars [ visuals_config + _( "value_text_location" ) ].val.i, element_locations.data(), element_locations.size() );
 		ImGui::Combo( _( "Name Tag Location" ), &options::vars [ visuals_config + _( "nametag_location" ) ].val.i, element_locations.data(), element_locations.size() );
 		ImGui::Combo( _( "Weapon Name Location" ), &options::vars [ visuals_config + _( "weapon_name_location" ) ].val.i, element_locations.data(), element_locations.size() );
+		ImGui::Combo ( _ ( "Fakeduck Flag Location" ), &options::vars [ visuals_config + _ ( "fakeduck_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
+		ImGui::Combo ( _ ( "Reloading Flag Location" ), &options::vars [ visuals_config + _ ( "reloading_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
+		ImGui::Combo ( _ ( "Fatal Flag Location" ), &options::vars [ visuals_config + _ ( "fatal_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
 		ImGui::SliderFloat( _( "Chams Reflectivity" ), &options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::SliderFloat( _( "Chams Phong" ), &options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
@@ -651,6 +672,9 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 		ImGui::ColorEdit4( _( "Desync Bar Color" ), ( float* ) &options::vars [ visuals_config + _( "desync_bar_color" ) ].val.c );
 		ImGui::ColorEdit4( _( "Name Tag Color" ), ( float* ) &options::vars [ visuals_config + _( "name_color" ) ].val.c );
 		ImGui::ColorEdit4( _( "Weapon Name Color" ), ( float* ) &options::vars [ visuals_config + _( "weapon_color" ) ].val.c );
+		ImGui::ColorEdit4 ( _ ( "Fakeduck Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "fakeduck_color" ) ].val.c );
+		ImGui::ColorEdit4 ( _ ( "Reloading Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "reloading_color" ) ].val.c );
+		ImGui::ColorEdit4 ( _ ( "Fatal Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "fatal_color" ) ].val.c );
 
 		ImGui::EndChildFrame( );
 	}
@@ -1075,7 +1099,7 @@ void gui::draw( ) {
 							//ImGui::ColorEdit4( _( "Accent Color" ), &options::vars [ _( "visuals.other.accent_color" ) ].val.c );
 							//ImGui::ColorEdit4( _( "Secondary Accent Color" ), &options::vars [ _( "visuals.other.secondary_accent_color" ) ].val.c );
 							//ImGui::ColorEdit4( _( "Logo Color" ), &options::vars [ _( "visuals.other.logo_color" ) ].val.c );
-							static std::vector<const char*> hitsounds { "None", "Arena Switch", "Fall Pain" ,  "Bolt" ,  "Neck Snap" ,  "Flashbang" , "Glass" , "Bell",  "COD" , "Rattle" ,  "Sesame"  };
+							static std::vector<const char*> hitsounds { "None", "Arena Switch", "Fall Pain" , "Bolt Back" , "Grenade" , "Sesame"  };
 
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::Combo ( _ ( "Hit Sound" ), &options::vars [ _ ( "visuals.other.hit_sound" ) ].val.i, hitsounds.data ( ), hitsounds.size ( ) );

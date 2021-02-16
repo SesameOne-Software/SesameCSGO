@@ -18,6 +18,11 @@ void __fastcall hooks::paint_traverse( REG, int ipanel, bool force_repaint, bool
 
 	old::paint_traverse( REG_OUT, ipanel, force_repaint, allow_force );
 
+	static auto zoom_sensitivity_ratio_mouse = cs::i::cvar->find ( _ ( "zoom_sensitivity_ratio_mouse" ) );
+
+	/* fix zoom sensitivity */
+	zoom_sensitivity_ratio_mouse->set_value ( 0.0f );
+
 	*override_post_processing_disable = g::local && g::local->scoped( ) && removals [ 2 ];
 
 	if ( removals [ 8 ] )

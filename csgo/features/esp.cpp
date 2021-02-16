@@ -14,6 +14,9 @@
 #include "../imgui/imgui_impl_win32.h"
 #include "../imgui/imgui_internal.h"
 
+#undef min
+#undef max
+
 float box_alpha = 0.0f;
 
 std::array< std::deque< std::pair< vec3_t, bool > >, 65 > features::esp::ps_points;
@@ -208,6 +211,8 @@ void features::esp::handle_dynamic_updates( ) {
 extern std::array< animlayer_t, 13> last_anim_layers_queued;
 extern vec3_t test_velocity;
 
+extern std::array<std::array<float, 3>, 65> resolved_layers;
+
 void features::esp::render( ) {
 	if ( !g::local )
 		return;
@@ -253,6 +258,9 @@ void features::esp::render( ) {
 
 		if ( e->bone_cache ( ) )
 			max.z = e->bone_cache ( ) [ 8 ].origin ( ).z + 12.0f;
+
+		if ( e->bone_cache ( ) && ( e->abs_origin ( ) + vec3_t( 0.0f, 0.0f, e->maxs ( ).z ) ).dist_to ( vec3_t( e->abs_origin ( ).x, e->abs_origin ( ).y, e->bone_cache ( ) [ 8 ].origin ( ).z ) ) > 20.0f )
+			max.z = e->abs_origin ( ).z + e->maxs ( ).z;
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
@@ -394,14 +402,38 @@ void features::esp::render( ) {
 			if ( visuals.weapon_name )
 				draw_esp_widget( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, visuals.weapon_name_placement, esp_data [ e->idx( ) ].m_dormant, 0.0, 0.0, esp_data [ e->idx( ) ].m_weapon_name );
 
+			if ( visuals.fakeduck_flag && esp_data [ e->idx ( ) ].m_fakeducking )
+				draw_esp_widget ( esp_rect, visuals.fakeduck_color, esp_type_text, visuals.value_text, visuals.fakeduck_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _("FD") );
+
+			if ( visuals.reloading_flag && esp_data [ e->idx ( ) ].m_reloading )
+				draw_esp_widget ( esp_rect, visuals.reloading_color, esp_type_text, visuals.value_text, visuals.reloading_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Reload" ) );
+
+			if ( visuals.fatal_flag && esp_data [ e->idx ( ) ].m_fatal )
+				draw_esp_widget ( esp_rect, visuals.fatal_color, esp_type_text, visuals.value_text, visuals.fatal_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Fatal" ) );
+
 			/* DEBUGGING STUFF */
-			//if ( std::isfinite<float> ( anims::feet_playback_rate [ e->idx ( ) ] ) )
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::feet_playback_rate [ e->idx ( ) ] ) );
+			//if ( !anims::anim_info [ e->idx ( ) ].empty ( ) ) {
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "weight : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_weight ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "cycle : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_cycle ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_playback_rate ) );
 			//
-			//const auto delta = anims::angle_diff ( cs::normalize( e->angles ( ).y ), cs::normalize( cs::vec_angle ( e->vel ( ) ).y ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate - : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 0 ] ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate 0 : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 1 ] ) );
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate + : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 2 ] ) );
+			//}
+
+			//const auto src = g::local->eyes ( );
+			//auto eyes_max = e->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f );
+			//auto fwd = eyes_max - src;
+			//fwd.normalize ( );
 			//
-			//if ( e == g::local && test_velocity.is_valid() )
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "speed : " ) + std::to_string ( test_velocity.length_2d() ) );
+			//if ( fwd.is_valid ( ) ) {
+			//	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+			//	auto left_dir = -right_dir;
+			//
+			//	render::cube ( eyes_max + fwd * 30.0f + right_dir * 10.0f, 3.0f, rgba ( 255, 0, 0, 255 ), 1.0f );
+			//	render::cube ( eyes_max + fwd * 30.0f + left_dir * 10.0f, 3.0f, rgba ( 255, 0, 0, 255 ), 1.0f );
+			//}
 		}
 	}
 }

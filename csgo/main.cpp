@@ -30,6 +30,8 @@
 #include "../imgui/imgui_impl_win32.h"
 #include "../imgui/imgui_internal.h"
 
+#include "hitsounds.h"
+
 uint64_t anti_patch::g_text_section_hash;
 uintptr_t anti_patch::g_text_section, anti_patch::g_text_section_size;
 //anti_patch::s_header_data anti_patch::g_header_data;

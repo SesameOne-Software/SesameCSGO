@@ -29,6 +29,9 @@ namespace features {
 		bool value_text;
 		bool nametag;
 		bool weapon_name;
+		bool fakeduck_flag;
+		bool reloading_flag;
+		bool fatal_flag;
 
 		int health_bar_placement;
 		int ammo_bar_placement;
@@ -36,6 +39,9 @@ namespace features {
 		int value_text_placement;
 		int nametag_placement;
 		int weapon_name_placement;
+		int fakeduck_flag_placement;
+		int reloading_flag_placement;
+		int fatal_flag_placement;
 
 		float reflectivity;
 		float phong;
@@ -54,6 +60,9 @@ namespace features {
 		options::option::colorf weapon_color;
 		options::option::colorf desync_chams_color;
 		options::option::colorf desync_rimlight_color;
+		options::option::colorf fakeduck_color;
+		options::option::colorf reloading_color;
+		options::option::colorf fatal_color;
 	};
 
 	bool get_visuals ( player_t* pl, visual_config_t& out );

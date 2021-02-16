@@ -270,7 +270,7 @@ namespace cs {
 
 	__forceinline bool is_valve_server( ) {
 		static auto cs_game_rules = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 74 38" ) ).add( 1 ).deref( ).get< void* >( );
-		return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x75 );
+		return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x7C );
 	}
 
 	__forceinline std::string get_weapon_name ( weapons_t idx ) {

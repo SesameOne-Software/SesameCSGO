@@ -232,6 +232,25 @@ void features::chams::drawmodelexecute( void* ctx, void* state, const mdlrender_
 			hooks::old::draw_model_execute( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
 		}
 		else if ( e->is_player ( ) || features::chams::in_model ) {
+			/* TEMP flag pred chams */
+			/*if ( !anims::predicted_anim_info [ e->idx ( ) ].empty() ) {
+				cs::i::render_view->set_alpha ( 255 );
+				cs::i::render_view->set_color ( 255, 0, 0 );
+				// mat->set_material_var_flag( 268435456, false );
+
+				bool found = false;
+				auto envmap = m_mat_glow->find_var ( _ ( "$envmaptint" ), &found );
+				set_vec ( envmap, 1.0f, 0.0f, 0.0f );
+
+				auto rimlight_exponent = m_mat_glow->find_var ( _ ( "$envmapfresnelminmaxexp" ), &found );
+				set_vec ( rimlight_exponent, 0.0f, 1.0f, 20.0f );
+
+				m_mat_glow->set_material_var_flag ( 0x8000, visuals.backtrack_chams );
+				m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+				cs::i::mdl_render->force_mat ( m_mat_glow );
+				hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::predicted_anim_info [ e->idx ( ) ].front ( ).m_aim_bones[0].data() );
+			}*/
+
 			/* hit matrix chams */
 			if ( features::chams::in_model ) {
 				bool found = false;

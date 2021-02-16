@@ -229,7 +229,7 @@ namespace anim_util {
 		start = origin;
 		end = start + vel * cs::ticks2time ( 1 );
 
-		cs::util_tracehull ( start, end, ent->mins(), ent->maxs(), contents_solid, ent, &trace );
+		cs::util_tracehull ( start, end, ent->mins(), ent->maxs(), mask_playersolid, ent, &trace );
 
 		if ( trace.m_fraction != 1.0f ) {
 			for ( auto i = 0; i < 2; ++i ) {
@@ -243,7 +243,7 @@ namespace anim_util {
 				start = trace.m_endpos;
 				end = start + ( vel * ( cs::ticks2time ( 1 ) * ( 1.0f - trace.m_fraction ) ) );
 
-				cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), contents_solid, ent, &trace );
+				cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), mask_playersolid, ent, &trace );
 
 				if ( trace.m_fraction == 1.0f )
 					break;
@@ -253,7 +253,7 @@ namespace anim_util {
 		start = end = origin = trace.m_endpos;
 		end.z -= 2.0f;
 
-		cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), contents_solid, ent, &trace );
+		cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), mask_playersolid, ent, &trace );
 
 		old_flags &= ~flags_t::on_ground;
 
@@ -279,7 +279,7 @@ bool anims::get_lagcomp_bones ( player_t* ent, std::array<matrix3x4_t, 128>& out
 
 	auto time_valid_no_deadtime = [ & ] ( float t ) {
 		const auto correct = std::clamp ( nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp, 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
-		return abs ( correct - ( cs::i::globals->m_curtime - (t - lerp ) ) ) <= 0.2f;
+		return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - t ) ) <= 0.2f;
 	};
 
 	for ( int i = static_cast< int >( data.size ( ) ) - 1; i >= 0; i-- ) {
@@ -291,14 +291,14 @@ bool anims::get_lagcomp_bones ( player_t* ent, std::array<matrix3x4_t, 128>& out
 
 			bool end = ( i - 1 ) <= 0;
 			vec3_t next = end ? ent->origin ( ) : data [ i - 1 ].m_origin;
-			float time_next = end ? ent->simtime ( ) : ( data [ i - 1 ].m_simtime - lerp );
+			float time_next = end ? ent->simtime ( ) : data [ i - 1 ].m_simtime;
 
 			float correct = nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp;
-			float time_delta = time_next - (it.m_simtime - lerp );
+			float time_delta = time_next - it.m_simtime;
 			float add = end ? 0.2f : time_delta;
-			float deadtime = (it.m_simtime - lerp) + correct + add;
+			float deadtime = it.m_simtime + correct + add;
 
-			float delta = deadtime - cs::i::globals->m_curtime;
+			float delta = deadtime - cs::ticks2time( g::local->tick_base ( ) );
 
 			float mul = 1.0f / add;
 
@@ -400,129 +400,103 @@ std::array< animlayer_t, 13> last_anim_layers {};
 float last_local_feet_yaw;
 std::array<float, 24> last_local_poses;
 
-bool anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
+void anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
 	const auto idx = ent->idx ( );
+	const auto anim_layers = ent->layers ( );
+	const auto& records = anim_info [ idx ];
 
-	static std::array< bool, 65 > old_not_walking { false };
-	static std::array < float, 65 > fake_ground_fraction { 0.0f };
+	if ( !!( ent->flags ( ) & flags_t::on_ground ) && vel.length_2d() > 0.0f && !anim_layers[6].m_weight )
+		vel.zero();
 
-	auto calc_ground_fraction = [ & ] ( float speed_2d ) {
-		if ( old_not_walking [ idx ] )
-			fake_ground_fraction [ idx ] -= cs::ticks2time ( 1 ) * 2.0f;
-		else
-			fake_ground_fraction [ idx ] += cs::ticks2time ( 1 ) * 2.0f;
+	if ( !records.size ( ) )
+		return;
 
-		if ( speed_2d > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && old_not_walking [ idx ] )
-			old_not_walking [ idx ] = false;
-		else if ( speed_2d < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && !old_not_walking [ idx ] )
-			old_not_walking [ idx ] = true;
+	const auto previous_record = records.front ( );
 
-		fake_ground_fraction [ idx ] = std::clamp< float > ( fake_ground_fraction [ idx ], 0.0f, 1.0f );
-	};
+	auto was_in_air = !!( ent->flags ( ) & flags_t::on_ground ) && !!( previous_record.m_flags & flags_t::on_ground );
 
-	const auto delta_ticks = anim_info [ idx ].empty ( ) ? 0 : ( anim_info [ idx ].back ( ).m_choked_commands + 1 );
+	auto time_difference = std::max ( cs::ticks2time(1), ent->simtime ( ) - previous_record.m_simtime );
+	auto origin_delta = ent->origin ( ) - previous_record.m_origin;
 
-	if ( anim_info [ idx ].empty ( ) || !ent->weapon ( ) || !ent->weapon ( )->data ( ) ) {
-		vel = ent->vel ( );
+	auto animation_speed = 0.0f;
 
-		/* update ground fraction predictions */
-		for ( auto i = 0; i < delta_ticks; i++ ) {
-			const auto simulated_vel = anim_info [ idx ].back ( ).m_vel + ( vel - anim_info [ idx ].back ( ).m_vel ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-			calc_ground_fraction ( simulated_vel.length_2d ( ) );
+	if ( origin_delta.is_zero ( ) || cs::time2ticks ( time_difference ) <= 0 )
+		return;
+
+	vel = origin_delta * ( 1.0f / time_difference );
+
+	if ( !!( ent->flags ( ) & flags_t::on_ground ) && anim_layers [ 11 ].m_weight > 0.0f && anim_layers [ 11 ].m_weight < 1.0f && anim_layers [ 11 ].m_cycle > previous_record.m_anim_layers [ 11 ].m_cycle ) {
+		auto weapon = ent->weapon ( );
+
+		if ( weapon ) {
+			auto max_speed = 260.0f;
+			auto weapon_info = weapon->data ( );
+
+			if ( weapon_info )
+				max_speed = ent->scoped ( ) ? weapon_info->m_max_speed_alt : weapon_info->m_max_speed;
+
+			auto modifier = 0.35f * ( 1.0f - anim_layers [ 11 ].m_weight );
+
+			if ( modifier > 0.0f && modifier < 1.0f )
+				animation_speed = max_speed * ( modifier + 0.55f );
 		}
-
-		return false;
 	}
 
-	/* if they are in air, there's nothing much we can do about it */
-	/* we don't have any kind of direction to predict off of, so lets just wait for velocity var to update */
-	if (!(ent->flags() & flags_t::on_ground) || ent->vel ( ) == vec3_t ( 0.0f, 0.0f, 0.0f ) ) {
-		vel = ent->vel();
+	if ( animation_speed > 0.0f ) {
+		animation_speed /= vel.length_2d ( );
 
-		/* update ground fraction predictions */
-		for ( auto i = 0; i < delta_ticks; i++ ) {
-			const auto simulated_vel = anim_info [ idx ].back ( ).m_vel + ( vel - anim_info [ idx ].back ( ).m_vel ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-			calc_ground_fraction ( simulated_vel.length_2d ( ) );
+		vel.x *= animation_speed;
+		vel.y *= animation_speed;
+	}
+
+	if ( records.size ( ) >= 2 && time_difference > cs::ticks2time ( 1 ) ) {
+		auto previous_velocity = ( previous_record.m_origin - records [ 1 ].m_origin ) * ( 1.0f / time_difference );
+
+		if ( !previous_velocity.is_zero ( ) && !was_in_air ) {
+			auto current_direction = cs::normalize ( cs::rad2deg ( atan2 ( vel.y, vel.x ) ) );
+			auto previous_direction = cs::normalize ( cs::rad2deg ( atan2 ( previous_velocity.y, previous_velocity.x ) ) );
+
+			auto average_direction = current_direction - previous_direction;
+			average_direction = cs::deg2rad ( cs::normalize ( current_direction + average_direction * 0.5f ) );
+
+			auto direction_cos = cos ( average_direction );
+			auto dirrection_sin = sin ( average_direction );
+
+			auto velocity_speed = vel.length_2d ( );
+
+			vel.x = direction_cos * velocity_speed;
+			vel.y = dirrection_sin * velocity_speed;
 		}
-
-		return true;
 	}
 
-	/* standing still? */
-	if ( !ent->layers ( ) [ 6 ].m_weight || !ent->layers ( ) [ 6 ].m_playback_rate ) {
-		vel = vec3_t ( 0.0f, 0.0f, 0.0f );
-
-		/* update ground fraction predictions */
-		for ( auto i = 0; i < delta_ticks; i++ ) {
-			const auto simulated_vel = anim_info [ idx ].back ( ).m_vel + ( vel - anim_info [ idx ].back ( ).m_vel ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-			calc_ground_fraction ( simulated_vel.length_2d ( ) );
-		}
-
-		return true;
+	if ( !( ent->flags ( ) & flags_t::on_ground ) ) {
+		auto fixed_timing = std::clamp ( time_difference, cs::ticks2time ( 1 ), 1.0f );
+		vel.z -= g::cvars::sv_gravity->get_float ( ) * fixed_timing * 0.5f;
 	}
-
-	/* predicting velocity when below or @ walking speed (acceptably accurate) */
-	//if ( ent->layers ( ) [ 6 ].m_weight < 1.0f ) {
-	//	const auto max_vel = ent->scoped ( ) ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed;
-	//	const auto estimated_vel = ent->vel ( ).normalized ( ) * ( ( max_vel * CS_PLAYER_SPEED_WALK_MODIFIER ) * ent->layers ( ) [ 6 ].m_weight );
-	//
-	//	/* update ground fraction predictions */
-	//	for ( auto i = 0; i < delta_ticks; i++ ) {
-	//		const auto simulated_vel = anim_info [ idx ].back ( ).m_vel + ( estimated_vel - anim_info [ idx ].back ( ).m_vel ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-	//		calc_ground_fraction ( simulated_vel.length_2d ( ) );
-	//	}
-	//
-	//	vel = estimated_vel;
-	//
-	//	return true;
-	//}
-
-	/* have to predict ground fraction to get a better estimate at higher velocities */
-	char dest [ 64 ] { '\0' };
-	sprintf_s ( dest, _("move_%s"), ent->animstate ( )->get_weapon_move_animation ( ) );
-
-	int seq = ent->lookup_sequence ( dest );
-
-	if ( seq == -1 )
-		seq = ent->lookup_sequence ( _ ( "move" ) );
-
-	const auto weapon_move_cycle_rate = ent->get_sequence_cycle_rate_server ( seq );
-	const auto flSequenceGroundSpeed = std::max ( ent->get_sequence_move_distance ( *reinterpret_cast< studiohdr_t** >( reinterpret_cast< uintptr_t > ( ent ) + 0x294C ), seq ) / ( 1.0f / weapon_move_cycle_rate ), 0.001f );	
-	const auto flMoveCycleRate = ent->layers ( ) [ 6 ].m_playback_rate / cs::ticks2time ( 1 );
-	const auto flMoveCycleRate_old = flMoveCycleRate / std::lerp ( 1.0f, 0.85f, fake_ground_fraction [ idx ] );
-	const auto m_flVelocityLengthXY = ( flMoveCycleRate_old / weapon_move_cycle_rate ) * flSequenceGroundSpeed;
-
-	const auto estimated_vel = ent->vel ( ).normalized ( ) * std::clamp( m_flVelocityLengthXY, 0.0f, ent->scoped ( ) ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed );
-
-	/* update ground fraction predictions */
-	for ( auto i = 0; i < delta_ticks; i++ ) {
-		const auto simulated_vel = anim_info [ idx ].back ( ).m_vel + ( estimated_vel - anim_info [ idx ].back ( ).m_vel ) * ( static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
-		calc_ground_fraction ( simulated_vel.length_2d ( ) );
-	}
-
-	vel = estimated_vel;
-
-	return true;
+	else
+		vel.z = 0.0f;
 }
 
 void anims::process_networked_anims ( player_t* ent ) {
 	const auto idx = ent->idx ( );
 
-	static std::array<std::array< matrix3x4_t, 128 >, 3> aim_bones;
+	static std::array< matrix3x4_t, 128 > aim_bones;
+
+	/* fix velocity */
+	fix_velocity ( ent, ent->vel() );
+
 	update_anims ( ent, ent->angles(), true, &aim_bones );
 
 	/* store animation info */
 	auto data_tmp = anim_info_t ( ent, ent->abs_angles().y );
 
-	data_tmp.m_old_simtime += lerp_time ( );
-	data_tmp.m_simtime += lerp_time ( );
 	data_tmp.m_aim_bones = aim_bones;
 
 	anim_info [ idx ].push_front ( data_tmp );
 
-	const auto nci = cs::i::engine->get_net_channel_info ( );
-	while ( nci && !anim_info [ idx ].empty ( ) && abs ( ent->simtime() - anim_info [ idx ].back ( ).m_simtime ) > nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + g::cvars::sv_maxunlag->get_float ( ) + 0.2f + lerp_time ( ) )
-		anim_info [ idx ].pop_back ( );
+	//const auto nci = cs::i::engine->get_net_channel_info ( );
+	//while ( nci && !anim_info [ idx ].empty ( ) && abs ( ent->simtime() - anim_info [ idx ].back ( ).m_simtime ) > nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + g::cvars::sv_maxunlag->get_float ( ) + 0.2f + lerp_time ( ) )
+	//	anim_info [ idx ].pop_back ( );
 
 	if ( !predicted_anim_info [ idx ].empty ( ) )
 		predicted_anim_info [ idx ].clear ( );
@@ -536,7 +510,7 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 	const auto movement_weight = ent->layers ( ) [ 6 ].m_weight;
 
 	/* calculate instantaneous velocity to animate with */
-	if ( predicted_anim_info [ idx ].size ( ) == 1 && !!( predicted_anim_info [ idx ].front ( ).m_flags & flags_t::on_ground ) ) {
+	/*if ( predicted_anim_info [ idx ].size ( ) == 1 && !!( predicted_anim_info [ idx ].front ( ).m_flags & flags_t::on_ground ) ) {
 		if ( !movement_weight ) {
 			predicted_anim_info [ idx ].front ( ).m_vel.y = predicted_anim_info [ idx ].front ( ).m_vel.x = 0.0f;
 		}
@@ -545,9 +519,9 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 			const auto new_mag = ( max_vel * CS_PLAYER_SPEED_WALK_MODIFIER ) * movement_weight;
 			const auto unit_vec = predicted_anim_info [ idx ].front ( ).m_vel.normalized ( );
 			predicted_anim_info [ idx ].front ( ).m_vel.y = unit_vec.y * new_mag;
-			predicted_anim_info [ idx ].front ( ).m_vel.z = unit_vec.x * new_mag;
+			predicted_anim_info [ idx ].front ( ).m_vel.x = unit_vec.x * new_mag;
 		}
-	}
+	}*/
 
 	auto last_predicted_data = predicted_anim_info [ idx ].front ( );
 
@@ -559,17 +533,20 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 
 	/* predict new player average velocity (for calculating player movement) */
 	if ( anim_info [ idx ].size ( ) > 1 && ( !!( last_predicted_data.m_flags & flags_t::on_ground ) ? movement_weight : true ) ) {
-		const auto delta_ticks = anim_info [ idx ][ 0 ].m_choked_commands + 1;
-		const auto vel_dir = cs::normalize( cs::rad2deg ( atan2 ( anim_info [ idx ][ 0 ].m_vel.y, anim_info [ idx ][ 0 ].m_vel.x )));
-		const auto last_vel_dir = cs::normalize ( cs::rad2deg ( atan2 ( anim_info [ idx ][ 1 ].m_vel.y, anim_info [ idx ][ 1 ].m_vel.x )));
-		const auto last_angle_change = cs::normalize ( vel_dir - last_vel_dir ) / static_cast< float >( delta_ticks );
-		const auto last_vel_mag_change = ( anim_info [ idx ][ 0 ].m_vel.length_2d ( ) - anim_info [ idx ][ 1 ].m_vel.length_2d ( ) ) / static_cast< float >( delta_ticks );
+		//const auto delta_ticks = anim_info [ idx ][ 0 ].m_choked_commands + 1;
+		//const auto vel_dir = cs::normalize( cs::rad2deg ( atan2 ( anim_info [ idx ][ 0 ].m_vel.y, anim_info [ idx ][ 0 ].m_vel.x )));
+		//const auto last_vel_dir = cs::normalize ( cs::rad2deg ( atan2 ( anim_info [ idx ][ 1 ].m_vel.y, anim_info [ idx ][ 1 ].m_vel.x )));
+		//const auto last_angle_change = cs::normalize ( vel_dir - last_vel_dir ) / static_cast< float >( delta_ticks );
+		//const auto last_vel_mag_change = ( anim_info [ idx ][ 0 ].m_vel.length_2d ( ) - anim_info [ idx ][ 1 ].m_vel.length_2d ( ) ) / static_cast< float >( delta_ticks );
+		//
+		//const auto new_angle = cs::normalize( cs::normalize ( cs::rad2deg ( atan2 ( last_predicted_data.m_vel.y, last_predicted_data.m_vel.x ) ) ) + last_angle_change );
+		//const auto new_mag = last_predicted_data.m_vel.length_2d ( ) + last_vel_mag_change;
+		//
+		//last_predicted_data.m_vel.y = sin ( cs::deg2rad ( new_angle ) ) * new_mag;
+		//last_predicted_data.m_vel.x = cos ( cs::deg2rad ( new_angle ) ) * new_mag;
 
-		const auto new_angle = cs::normalize( cs::normalize ( cs::rad2deg ( atan2 ( last_predicted_data.m_vel.y, last_predicted_data.m_vel.x ) ) ) + last_angle_change );
-		const auto new_mag = last_predicted_data.m_vel.length_2d ( ) + last_vel_mag_change;
-
-		last_predicted_data.m_vel.y = sin ( cs::deg2rad ( new_angle ) ) * new_mag;
-		last_predicted_data.m_vel.x = cos ( cs::deg2rad ( new_angle ) ) * new_mag;
+		const auto delta_vel = (anim_info [ idx ][ 1 ].m_vel - anim_info [ idx ][ 0 ].m_vel) / static_cast<float>( anim_info [ idx ][ 0 ].m_choked_commands + 1 );
+		last_predicted_data.m_vel += vec3_t ( delta_vel.x, delta_vel.y, 0.0f );
 	}
 
 	if ( !movement_weight && !!( last_predicted_data.m_flags & flags_t::on_ground ) )
@@ -579,8 +556,8 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 	anim_util::predict_movement ( ent, last_predicted_data.m_flags, last_predicted_data.m_origin, last_predicted_data.m_vel );
 
 	/* update animations with simulated data */
-	last_predicted_data.m_simtime = ( last_update_time [ idx ] + cs::ticks2time ( 1 ) ) + lerp_time ( );
-	last_predicted_data.m_old_simtime = last_update_time [ idx ] + lerp_time ( );
+	last_predicted_data.m_simtime = last_update_time [ idx ] + cs::ticks2time ( 1 );
+	last_predicted_data.m_old_simtime = last_update_time [ idx ];
 	last_predicted_data.m_choked_commands = std::clamp ( cs::time2ticks ( ( last_update_time [ idx ] + cs::ticks2time ( 1 ) ) - ent->simtime ( ) ) - 1, 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) );
 
 	/* set important animstate vars */
@@ -592,6 +569,7 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 	/* backup current data */
 	const auto backup_data = anim_info_t ( ent, last_predicted_data.m_anim_state.m_abs_yaw );
 	const auto backup_abs_angles = ent->abs_angles ( ).y;
+	auto backup_abs_origin = ent->abs_origin ( );
 
 	/* set data to animate with */
 	ent->angles ( ) = last_predicted_data.m_angles;
@@ -603,11 +581,12 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 	memcpy ( ent->layers ( ), last_predicted_data.m_anim_layers.data ( ), sizeof ( last_predicted_data.m_anim_layers ) );
 	ent->poses ( ) = last_predicted_data.m_poses;
 	ent->vel ( ) = last_predicted_data.m_vel;
+	ent->set_abs_origin ( last_predicted_data.m_origin );
 	ent->set_abs_angles ( last_predicted_data.m_abs_angles );
 	*ent->animstate ( ) = last_predicted_data.m_anim_state;
 
 	/* animate player 1 tick */
-	update_anims ( ent, last_predicted_data.m_angles, resolve, &last_predicted_data.m_aim_bones /* update anim layers as well */ );
+	update_anims ( ent, last_predicted_data.m_angles, resolve, &last_predicted_data.m_aim_bones /* update anim layers as well */, true );
 
 	/* store output */
 	memcpy ( last_predicted_data.m_anim_layers.data ( ), ent->layers ( ), sizeof ( last_predicted_data.m_anim_layers ) );
@@ -626,6 +605,7 @@ void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
 	memcpy ( ent->layers ( ), backup_data.m_anim_layers.data ( ), sizeof ( backup_data.m_anim_layers ) );
 	ent->poses ( ) = backup_data.m_poses;
 	ent->vel ( ) = backup_data.m_vel;
+	ent->set_abs_origin ( backup_abs_origin );
 	ent->set_abs_angles ( vec3_t( 0.0f, backup_abs_angles, 0.0f ) );
 	*ent->animstate ( ) = backup_data.m_anim_state;
 
@@ -637,7 +617,7 @@ namespace lby {
 	extern bool in_update;
 }
 
-void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array<std::array< matrix3x4_t, 128 >, 3>* bones_out, bool update_anim_layers ) {
+void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array< matrix3x4_t, 128 >* bones_out, bool update_anim_layers ) {
 	VM_TIGER_BLACK_START
 	static auto& invalidate_bone_cache = **reinterpret_cast< bool** >( pattern::search ( _ ( "client.dll" ), _ ( "C6 05 ? ? ? ? ? 89 47 70" ) ).add ( 2 ).get<uint32_t> ( ) );
 	static auto invalidate_physics_recursive = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void ( __thiscall* )( player_t*, int )> ( );
@@ -665,9 +645,12 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 
 		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0xE8 ) &= ~0x1000;
 		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0x94 ) = ent->vel();
+
+		state->m_last_clientside_anim_update_time_delta = std::max ( 0.0f, ent->simtime ( ) - ent->old_simtime ( ) );
 	}
 	else {
-		//state->m_last_clientside_anim_update_time_delta = std::max ( 0.0f, cs::i::globals->m_curtime - state->m_last_clientside_anim_update );
+		cs::i::globals->m_frametime = cs::ticks2time ( 1 );
+		state->m_last_clientside_anim_update_time_delta = cs::ticks2time ( 1 );
 	}
 
 	state->m_last_clientside_anim_framecount = 0;
@@ -675,23 +658,32 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 
 	std::array<animlayer_t, 13> backup_animlayers;
 	
-	//if (!update_anim_layers )
+	if (!update_anim_layers )
 		memcpy ( backup_animlayers.data(), ent->layers ( ), sizeof( backup_animlayers ) );
-ent->layers ( ) [ 12 ].m_weight = 0.0f;
+
+	if ( ent == g::local ) {
+		ent->layers ( ) [ 3 ].m_weight = 0.0f;
+		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
+		ent->layers ( ) [ 12 ].m_weight = 0.0f;
+	}
 
 	ent->animate ( ) = true;
-	//ent->update ( );
 	state->update ( angles );
 	ent->animate ( ) = false;
-ent->layers ( ) [ 12 ].m_weight = 0.0f;
 
-	//if ( !update_anim_layers )
+	if ( ent == g::local ) {
+		ent->layers ( ) [ 3 ].m_weight = 0.0f;
+		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
+		ent->layers ( ) [ 12 ].m_weight = 0.0f;
+	}
+
+	if ( !update_anim_layers )
 		memcpy ( ent->layers ( ), backup_animlayers.data ( ), sizeof ( backup_animlayers ) );
 
+	cs::i::globals->m_frametime = backup_frametime;
+	cs::i::globals->m_curtime = backup_curtime;
+
 	if ( g::local && ent != g::local ) {
-		cs::i::globals->m_frametime = backup_frametime;
-		cs::i::globals->m_curtime = backup_curtime;
-		
 		auto yaw_offset = resolver::resolve_yaw ( ent, resolve );
 
 		if ( yaw_offset == std::numeric_limits<float>::max ( ) ) {
@@ -701,58 +693,26 @@ ent->layers ( ) [ 12 ].m_weight = 0.0f;
 			
 			const auto idx = ent->idx ( );
 
-			anim_util::build_bones ( ent, ( ( *bones_out ) [ 0 ] ).data ( ), 256, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), ent->simtime ( ), calc_poses );
-			
-			for ( auto& aim_mat : *bones_out )
-				aim_mat = ( *bones_out ) [ 0 ];
+			if ( !update_anim_layers )
+				anim_util::build_bones ( ent, bones_out->data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), ent->simtime ( ), calc_poses );
 
 			ent->poses ( ) = calc_poses;
 			ent->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
 		}
 		else {
-			auto resolved_angle1 = 0.0f;
-			auto resolved_angle2 = 0.0f;
-			auto resolved_angle3 = 0.0f;
+			const auto resolved_angle = cs::normalize ( cs::normalize( state->m_eye_yaw ) + yaw_offset );
 
-			if ( ent->layers ( ) [ 6 ].m_weight == 0.0f ) {
-				resolved_angle1 = cs::normalize ( state->m_eye_yaw + yaw_offset );
-				resolved_angle2 = cs::normalize ( state->m_eye_yaw + ( yaw_offset < 0.0f ? -yaw_offset * 0.5f : 0.0f ) );
-				resolved_angle3 = cs::normalize ( state->m_eye_yaw - ( yaw_offset < 0.0f ? 0.0f : -yaw_offset * 0.5f ) );
-			}
-			else {
-				resolved_angle1 = cs::normalize ( state->m_eye_yaw + yaw_offset );
-				resolved_angle2 = cs::normalize ( state->m_eye_yaw + 0.0f );
-				resolved_angle3 = cs::normalize ( state->m_eye_yaw - yaw_offset );
-			}
+			std::array<float, 24> resolved_poses {};
 
-			std::array<float, 24> resolved_poses1 {};
-			std::array<float, 24> resolved_poses2 {};
-			std::array<float, 24> resolved_poses3 {};
-
-			anim_util::calc_poses ( ent, resolved_poses1, resolved_angle1 );
-			anim_util::calc_poses ( ent, resolved_poses2, resolved_angle2 );
-			anim_util::calc_poses ( ent, resolved_poses3, resolved_angle3 );
+			anim_util::calc_poses ( ent, resolved_poses, resolved_angle );
 
 			const auto idx = ent->idx ( );
 
-			anim_util::build_bones ( ent, (( *bones_out ) [ 0 ]).data ( ), 256, vec3_t ( 0.0f, resolved_angle1, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses1 );
-			anim_util::build_bones ( ent, (( *bones_out ) [ 1 ]).data ( ), 256, vec3_t ( 0.0f, resolved_angle2, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses2 );
-			anim_util::build_bones ( ent, (( *bones_out ) [ 2 ]).data ( ), 256, vec3_t ( 0.0f, resolved_angle3, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses3 );
+			if ( !update_anim_layers )
+				anim_util::build_bones ( ent, bones_out->data(), 0x7FF00, vec3_t ( 0.0f, resolved_angle, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses );
 
-			const auto misses = features::ragebot::get_misses ( ent->idx ( ) ).bad_resolve;
-
-			if ( misses % 3 == 0 ) {
-				ent->poses ( ) = resolved_poses1;
-				ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle1, 0.0f ) );
-			}
-			else if ( misses % 3 == 1 ) {
-				ent->poses ( ) = resolved_poses2;
-				ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle2, 0.0f ) );
-			}
-			else {
-				ent->poses ( ) = resolved_poses3;
-				ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle3, 0.0f ) );
-			}
+			ent->poses ( ) = resolved_poses;
+			ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle, 0.0f ) );
 		}
 	}
 	else {
@@ -827,14 +787,18 @@ void anims::on_net_update_end ( int idx ) {
 		if ( g::local && ent->team ( ) != g::local->team ( ) )
 			predicted_anim_info [ idx ].push_front ( anim_info [ idx ].front ( ) );
 	}
-	else if ( g::local && ent->team ( ) != g::local->team ( ) && ent->simtime ( ) >= ent->old_simtime ( ) && !anim_info [ idx ].empty() /*&& !has_been_predicted [ idx ]*/ && !anim_info [ idx ].front ( ).m_shot ) {
+	else if ( g::local && ent->team ( ) != g::local->team ( ) && !anim_info [ idx ].empty() /*&& !has_been_predicted [ idx ] && !anim_info [ idx ].front ( ).m_shot*/ ) {
 		//for ( auto i = 0; i < max_processing_ticks; i++ )
-		//	process_predicted_anims ( ent, i < anim_info [ idx ].front ( ).m_choked_commands );
+		//	process_predicted_anims ( ent, true );
 	
-		process_predicted_anims ( ent, true );
+		process_predicted_anims ( ent, false );
 
 		has_been_predicted [ idx ] = true;
 	}
+	
+	const auto nci = cs::i::engine->get_net_channel_info ( );
+	while ( nci && !anim_info [ idx ].empty ( ) && anim_info [ idx ].back ( ).m_simtime < int ( cs::i::globals->m_curtime - g::cvars::sv_maxunlag->get_float ( ) ) )
+		anim_info [ idx ].pop_back ( );
 }
 
 void anims::on_render_start ( int idx ) {

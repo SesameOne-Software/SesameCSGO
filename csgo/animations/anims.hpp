@@ -40,7 +40,7 @@ namespace anims {
 		vec3_t m_vel;
 		vec3_t m_abs_angles;
 		animstate_t m_anim_state;
-		std::array<std::array< matrix3x4_t, 128 >, 3> m_aim_bones;
+		std::array< matrix3x4_t, 128 > m_aim_bones;
 		std::array< matrix3x4_t, 128 > m_render_bones;
 
 		inline bool valid ( ) {
@@ -50,13 +50,9 @@ namespace anims {
 				return false;
 
 			const auto lerp = lerp_time ( );
-
-			if ( m_simtime - lerp < int ( cs::ticks2time(g::local->tick_base()) - g::cvars::sv_maxunlag->get_float ( ) ))
-				return false;
-
 			const auto correct = std::clamp ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp, 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
 
-			return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - ( m_simtime - lerp ) ) ) <= 0.2f;
+			return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - m_simtime ) ) <= 0.2f;
 		}
 
 		anim_info_t ( ) {
@@ -64,7 +60,7 @@ namespace anims {
 		}
 
 		anim_info_t ( player_t* ent, float feet_yaw ) {
-			m_shot = ent->weapon ( ) && ( ent->weapon ( )->last_shot_time ( ) > ent->old_simtime ( ) && ent->weapon ( )->last_shot_time ( ) <= ent->simtime ( ) );
+			m_shot = ent->weapon ( ) && abs( ent->angles ( ).x ) < 70.0f;
 			m_predicted = false;
 			m_angles = ent->angles ( );
 			m_origin = ent->origin ( );
@@ -100,8 +96,8 @@ namespace anims {
 	void manage_fake ( );
 
 	void reset_data ( int idx );
-	void update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array<std::array< matrix3x4_t, 128 >, 3>* bones_out = nullptr, bool update_anim_layers = false );
-	bool fix_velocity ( player_t* ent, vec3_t& vel );
+	void update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array< matrix3x4_t, 128 >* bones_out = nullptr, bool update_anim_layers = false );
+	void fix_velocity ( player_t* ent, vec3_t& vel );
 	void process_networked_anims ( player_t* ent );
 	void process_predicted_anims ( player_t* ent, bool resolve );
 	void apply_anims ( player_t* ent );
@@ -121,10 +117,15 @@ namespace anims {
 	}
 
 	inline std::optional<anim_info_t> get_simulated_record ( player_t* ent ) {
+		return std::nullopt;
 		if ( !g::local || !ent->valid ( ) || predicted_anim_info [ ent->idx ( ) ].empty ( ) || anim_info [ ent->idx ( ) ].empty ( ) )
 			return std::nullopt;
 
-		return predicted_anim_info [ ent->idx ( ) ].front();
+		for ( auto& rec : predicted_anim_info [ ent->idx ( ) ] )
+			if ( rec.valid ( ) )
+				return rec;
+
+		return std::nullopt;
 	}
 
 	inline std::optional<anim_info_t> get_onshot ( const std::deque< anim_info_t >& recs ) {

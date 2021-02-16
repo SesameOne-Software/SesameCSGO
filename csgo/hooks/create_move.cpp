@@ -216,26 +216,27 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	/* fix anti-aim slide */ {
+		//if ( ( ucmd->m_cmdnum / 3 ) % 2 ) {
+			if ( ucmd->m_fmove ) {
+				ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::forward : buttons_t::back );
+				ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::forward : buttons_t::back );
+			}
 
-		if ( ucmd->m_fmove ) {
-			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::forward : buttons_t::back );
-			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::forward : buttons_t::back );
-		}
-		
-		if ( ucmd->m_smove ) {
-			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::right : buttons_t::left );
-			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::right : buttons_t::left );
-		}
-
-		///* slide to opposite side (anti-toeaim) */
-		//if ( ucmd->m_fmove ) {
-		//	ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
-		//	ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
+			if ( ucmd->m_smove ) {
+				ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::right : buttons_t::left );
+				ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::right : buttons_t::left );
+			}
 		//}
+		//else {
+		//	if ( ucmd->m_fmove ) {
+		//		ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
+		//		ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
+		//	}
 		//
-		//if ( ucmd->m_smove ) {
-		//	ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
-		//	ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
+		//	if ( ucmd->m_smove ) {
+		//		ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
+		//		ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
+		//	}
 		//}
 	}
 

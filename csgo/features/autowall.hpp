@@ -283,43 +283,38 @@ namespace autowall {
 		data.trace_length = 0.0f;
 		data.current_damage = ( float )weapon_data->m_dmg;
 
-			while ( data.current_damage > 1.0f ) {
-				data.trace_length_remaining = trace_len - data.trace_length;
+		while ( data.current_damage > 1.0f ) {
+			data.trace_length_remaining = trace_len - data.trace_length;
 
-				auto end = data.direction * data.trace_length_remaining + data.src;
+			auto end = data.direction * data.trace_length_remaining + data.src;
 
-				cs::util_traceline ( data.src, end, mask_shot_hull | contents_hitbox, entity, &data.enter_trace );
-				clip_trace_to_players_fast ( dst_entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
+			cs::util_traceline ( data.src, end, mask_shot_hull | contents_hitbox, entity, &data.enter_trace );
+			cs::util::clip_trace_to_players ( data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 
-				if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
-					autowall::scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
+			if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
+				autowall::scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );
+				return true;
+			}
+
+			data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
+			data.current_damage *= pow ( weapon_data->m_range_modifier, data.trace_length / 500.0f );
+
+			if ( data.enter_trace.m_hit_entity
+				&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3)
+				&& hitgroup == -1
+				&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
+				if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
+					return false;
+
+				if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) != g::local->team ( ) ) {
+					autowall::scale_dmg ( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
 					return true;
 				}
-
-				//if ( data.enter_trace.m_endpos.dist_to( data.src ) >= max_ray_dist && hitgroup == -1 ) {
-				//	autowall::scale_dmg ( dst_entity, weapon_data, hitgroup, data.current_damage );
-				//	return true;
-				//}
-
-				data.trace_length += data.enter_trace.m_fraction * data.trace_length_remaining;
-				data.current_damage *= pow ( weapon_data->m_range_modifier, data.trace_length / 500.0f );
-
-				if ( data.enter_trace.m_hit_entity
-					&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3)
-					&& hitgroup == -1
-					&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
-					if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
-						return false;
-
-					if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) != g::local->team ( ) ) {
-						autowall::scale_dmg ( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
-						return true;
-					}
-				}
-
-				if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
-					return false;
 			}
+
+			if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
+				return false;
+		}
 
 		return false;
 	}
