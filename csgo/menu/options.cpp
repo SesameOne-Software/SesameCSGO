@@ -394,6 +394,8 @@ void options::init( ) {
 	/* global antiaim */
 	option::add_int( _( "antiaim.fakeduck_mode" ), 0 ); /* normal, full */
 	option::add_bool( _( "antiaim.fakewalk" ), false );
+	option::add_bool( _( "antiaim.slide" ) , false );
+	option::add_bool( _( "antiaim.jittermove" ) , false );
 	option::add_float( _( "antiaim.slow_walk_speed" ), 0.0f );
 	option::add_int( _( "antiaim.slow_walk_key" ), 0 );
 	option::add_int( _( "antiaim.slow_walk_key_mode" ), 0 );

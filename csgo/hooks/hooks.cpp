@@ -39,6 +39,8 @@
 #include "cl_fireevents.hpp"
 #include "update_clientside_animations.hpp"
 #include "netmsg_tick.hpp"
+#include "process_interp_list.hpp"
+#include "run_command.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -81,10 +83,6 @@ void hooks::init( ) {
 		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
 	//}
 
-		const auto cl_extrapolate = cs::i::cvar->find ( _ ( "cl_extrapolate" ) );
-		cl_extrapolate->no_callback ( );
-		cl_extrapolate->set_value(0);
-
 	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< void* >( );
 	const auto _frame_stage_notify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< void* >( );
 	const auto _end_scene = vfunc< void* >( cs::i::dev, N( 42 ) );
@@ -114,8 +112,9 @@ void hooks::init( ) {
 	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
 	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
-	const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
+	//const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _netmsg_tick = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 53 56 8B F1 8B 0D ? ? ? ? 57" ) ).get< void* > ( );
+	const auto _process_interp_list = pattern::search( _("client.dll"), _("53 0F B7 1D ? ? ? ? 56") ).get< void* >( );
 
 	MH_Initialize( );
 
@@ -157,14 +156,18 @@ void hooks::init( ) {
 	dbg_hook( _send_net_msg, send_net_msg, ( void** )&old::send_net_msg );
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
 	//dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
-	//dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
+	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
-	dbg_hook ( _netmsg_tick, netmsg_tick, ( void** ) &old::netmsg_tick );
+	dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
+	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
+	dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
+
+	//56 8B F1 8B 8E ? ? ? ? 83 F9 FF 74 21
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );

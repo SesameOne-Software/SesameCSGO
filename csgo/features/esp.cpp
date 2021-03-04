@@ -253,14 +253,16 @@ void features::esp::render( ) {
 		vec3_t min = e->mins( );
 		vec3_t max = e->maxs( );
 
-		min += e->abs_origin( );
-		max += e->abs_origin( );
+		const auto best_origin = e->bone_cache( ) ? e->bone_cache( )[ 1 ].origin( ) : e->origin( );
+
+		min += best_origin;
+		max += best_origin;
 
 		if ( e->bone_cache ( ) )
 			max.z = e->bone_cache ( ) [ 8 ].origin ( ).z + 12.0f;
-
-		if ( e->bone_cache ( ) && ( e->abs_origin ( ) + vec3_t( 0.0f, 0.0f, e->maxs ( ).z ) ).dist_to ( vec3_t( e->abs_origin ( ).x, e->abs_origin ( ).y, e->bone_cache ( ) [ 8 ].origin ( ).z ) ) > 20.0f )
-			max.z = e->abs_origin ( ).z + e->maxs ( ).z;
+		
+		if ( e->bone_cache ( ) && e->crouch_amount() > 0.5f )
+			max.z = best_origin.z + e->maxs ( ).z;
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
@@ -319,12 +321,13 @@ void features::esp::render( ) {
 		esp_data [ e->idx( ) ].m_box.bottom = bottom;
 		esp_data [ e->idx( ) ].m_box.top = top;
 		esp_data [ e->idx( ) ].m_dormant = e->dormant( );
+
 		const auto clamped_health = std::clamp ( static_cast< float >( e->health ( ) ), 0.0f, 100.0f );
 		esp_data [ e->idx ( ) ].m_health += ( clamped_health - esp_data [ e->idx ( ) ].m_health) * 1.7f * cs::i::globals->m_frametime;
 		esp_data [ e->idx ( ) ].m_health = std::clamp ( esp_data [ e->idx ( ) ].m_health, clamped_health, 100.0f );
 
 		if ( !e->dormant( ) ) {
-			esp_data [ e->idx( ) ].m_pos = e->abs_origin( );
+			esp_data [ e->idx( ) ].m_pos = best_origin;
 
 			if ( esp_data [ e->idx( ) ].m_first_seen == 0.0f )
 				esp_data [ e->idx( ) ].m_first_seen = cs::i::globals->m_curtime;

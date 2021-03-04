@@ -13,7 +13,7 @@ bool __fastcall hooks::in_prediction( REG ) {
 		return old::in_prediction( REG_OUT );
 
 	if ( _ReturnAddress( ) == return_to_maintain_sequence_transitions && g::local->valid( ) )
-		return false;
+		return true;
 
 	if ( _ReturnAddress( ) == return_to_play_step_sound && hooks::prediction::disable_sounds )
 		return true;

@@ -542,6 +542,12 @@
     <ClInclude Include="scripting\js_api.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\process_interp_list.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\run_command.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -767,6 +773,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="scripting\js_api.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\process_interp_list.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\run_command.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -4,7 +4,7 @@
 
 #include <ThemidaSDK/Include/C/ThemidaSDK.h>
 
-#define SESAME_VERSION "Sesame v4.0.0"
+#define SESAME_VERSION "Sesame v4.0.2"
 
 template < typename type >
 constexpr uint32_t rgba ( type r, type g, type b, type a ) {

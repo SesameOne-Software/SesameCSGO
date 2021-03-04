@@ -90,6 +90,9 @@ void set_aspect_ratio( ) {
 
 decltype( &hooks::frame_stage_notify ) hooks::old::frame_stage_notify = nullptr;
 
+int last_ack_cmd = 0;
+float next_cmd_time = 0.0f;
+
 void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	//dbg_print ( fmt::format("stage: {}", stage).c_str());
 
@@ -117,9 +120,22 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
 	float old_flashalpha;
-	float old_flashtime;	
+	float old_flashtime;
 
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
+		if ( stage == 5 && g::local && cs::i::client_state && (last_ack_cmd != cs::i::client_state->last_command_ack( ) || next_cmd_time != cs::i::client_state->next_cmd_time( )) ) {
+			if ( features::prediction::vel_modifier != g::local->velocity_modifier( ) ) {
+				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+				features::prediction::vel_modifier = g::local->velocity_modifier( );
+			}
+			
+			if ( features::prediction::fix_netvars( cs::i::client_state->last_command_ack( ) , true ) );
+				//*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+		
+			last_ack_cmd = cs::i::client_state->last_command_ack( );
+			next_cmd_time = cs::i::client_state->next_cmd_time( );
+		}
+
 		if ( stage == 5 && g::local ) {
 			RUN_SAFE(
 				"animations::resolver::create_beams",

@@ -18,6 +18,8 @@ namespace prediction_util {
 
 	void start( ucmd_t* ucmd ) {
 		VM_TIGER_BLACK_START
+			features::prediction::in_prediction = true;
+
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
 				return;
 
@@ -100,6 +102,8 @@ namespace prediction_util {
 
 	void end( ucmd_t* ucmd ) {
 		VM_TIGER_BLACK_START
+			features::prediction::in_prediction = false;
+
 		auto local = cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
 
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
@@ -163,6 +167,18 @@ void features::prediction::fix_viewmodel ( bool store ) {
 		viewmodel->anim_time ( ) = viewmodel_anim_time;
 		viewmodel->cycle ( ) = viewmodel_cycle;
 	}
+}
+
+std::array< features::prediction::netvars_t , 150> cmd_netvars {};
+
+bool features::prediction::fix_netvars( int cmd, bool store ) {
+	if ( !g::local || !g::local->alive( ) )
+		return false;
+
+	if ( store )
+		return cmd_netvars[ cmd % cmd_netvars.size( ) ].store( g::local );
+
+	return cmd_netvars[ cmd % cmd_netvars.size( ) ].restore( g::local );
 }
 
 void features::prediction::run( const std::function< void( ) >& fn ) {

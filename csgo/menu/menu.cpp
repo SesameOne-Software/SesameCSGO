@@ -408,10 +408,12 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::Separator ( );
 
 		ImGui::Checkbox( _( "Inherit Default" ), &options::vars [ ragebot_weapon + _( "inherit_default" ) ].val.b );
-		ImGui::Checkbox( _( "Choke On Shot" ), &options::vars [ ragebot_weapon + _( "choke_onshot" ) ].val.b );
 		ImGui::Checkbox( _( "Silent Aim" ), &options::vars [ ragebot_weapon + _( "silent" ) ].val.b );
 		ImGui::Checkbox( _( "Auto Shoot" ), &options::vars [ ragebot_weapon + _( "auto_shoot" ) ].val.b );
-		ImGui::Checkbox( _( "Auto Scope" ), &options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
+
+		if ( weapon_name != _("pistol") )
+			ImGui::Checkbox( _( "Auto Scope" ), &options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
+
 		ImGui::Checkbox( _( "Auto Slow" ), &options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
 		ImGui::Checkbox ( _ ( "Doubletap Teleport" ), &options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
 		ImGui::Checkbox( _( "Doubletap" ), &options::vars [ ragebot_weapon + _( "dt_enabled" ) ].val.b );
@@ -968,11 +970,13 @@ void gui::draw( ) {
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
+							ImGui::Checkbox( _( "Slide on Run" ) , &options::vars[ _( "antiaim.slide" ) ].val.b );
+							ImGui::Checkbox( _( "Jitter on Run" ) , &options::vars[ _( "antiaim.jittermove" ) ].val.b );
 							ImGui::SliderFloat ( _ ( "Slow Walk Speed" ), &options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%%" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "Slow Walk Key" ), &options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i, &options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
-							ImGui::Checkbox ( _ ( "Fake Walk" ), &options::vars [ _ ( "antiaim.fakewalk" ) ].val.b );
+							ImGui::Checkbox ( _ ( "Slide on Slow Walk" ), &options::vars [ _ ( "antiaim.fakewalk" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Fake Duck" ), &options::vars [ _ ( "antiaim.fakeduck" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "Fake Duck Key" ), &options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i, &options::vars [ _ ( "antiaim.fakeduck_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );

@@ -64,7 +64,9 @@
     <ClCompile Include="hooks\netmsg_tick.cpp" />
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
+    <ClCompile Include="hooks\process_interp_list.cpp" />
     <ClCompile Include="hooks\reset.cpp" />
+    <ClCompile Include="hooks\run_command.cpp" />
     <ClCompile Include="hooks\run_simulation.cpp" />
     <ClCompile Include="hooks\scene_end.cpp" />
     <ClCompile Include="hooks\send_datagram.cpp" />
@@ -157,7 +159,9 @@
     <ClInclude Include="hooks\netmsg_tick.hpp" />
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
+    <ClInclude Include="hooks\process_interp_list.hpp" />
     <ClInclude Include="hooks\reset.hpp" />
+    <ClInclude Include="hooks\run_command.hpp" />
     <ClInclude Include="hooks\run_simulation.hpp" />
     <ClInclude Include="hooks\scene_end.hpp" />
     <ClInclude Include="hooks\send_datagram.hpp" />
@@ -296,10 +300,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>$(DXSDK_DIR)Include;oxui;sdk;C:\Users\Arche\Desktop\tools\Themida;$(IncludePath)</IncludePath>
-    <LibraryPath>$(DXSDK_DIR)Lib\x86;C:\Users\Arche\Desktop\tools\Themida\ThemidaSDK\Lib\COFF;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;oxui;sdk;D:\Tools\Themida;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;D:\Tools\Themida\ThemidaSDK\Lib\COFF;$(LibraryPath)</LibraryPath>
     <TargetName>hack</TargetName>
     <LinkIncremental>true</LinkIncremental>
+    <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(DXSDK_DIR)Include;oxui;sdk;$(IncludePath)</IncludePath>

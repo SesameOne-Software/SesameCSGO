@@ -41,7 +41,6 @@ namespace anims {
 		vec3_t m_abs_angles;
 		animstate_t m_anim_state;
 		std::array< matrix3x4_t, 128 > m_aim_bones;
-		std::array< matrix3x4_t, 128 > m_render_bones;
 
 		inline bool valid ( ) {
 			const auto nci = cs::i::engine->get_net_channel_info ( );
@@ -76,9 +75,6 @@ namespace anims {
 			m_vel = ent->vel ( );
 			m_abs_angles = vec3_t( 0.0f, feet_yaw, 0.0f );
 			m_anim_state = *ent->animstate ( );
-			
-			if ( ent->bone_cache ( ) )
-				memcpy ( m_render_bones.data ( ), ent->bone_cache ( ), sizeof ( matrix3x4_t ) * ent->bone_count() );
 		}
 	};
 
@@ -95,6 +91,7 @@ namespace anims {
 
 	void manage_fake ( );
 
+	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );
 	void reset_data ( int idx );
 	void update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array< matrix3x4_t, 128 >* bones_out = nullptr, bool update_anim_layers = false );
 	void fix_velocity ( player_t* ent, vec3_t& vel );

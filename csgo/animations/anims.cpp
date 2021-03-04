@@ -28,6 +28,104 @@ enum pose_param_t : int {
 	death_yaw
 };
 
+// credits cbrs
+bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses ) {
+	/* vfunc indices */
+	static auto standard_blending_rules_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? 8B 47 FC" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
+	static auto build_transformations_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? A1 ? ? ? ? B9 ? ? ? ? 8B 40 34 FF D0 85 C0 74 41" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
+	static auto update_ik_locks_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
+	static auto calculate_ik_locks_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50 FF B7 ? ? ? ? 8D 84 24 ? ? ? ? 50 8D 84 24 ? ? ? ? 50 E8 ? ? ? ? 8B 47 FC 8D 4F FC 8B 80" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
+
+	/* func sigs */
+	static auto init_iks = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ) ).get< void( __thiscall* )( void* , void* , vec3_t& , vec3_t& , float , int , int ) >( );
+	static auto update_targets = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ) ).get< void( __thiscall* )( void* , vec3_t* , void* , void* , uint8_t* ) >( );
+	static auto solve_dependencies = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ) ).get< void( __thiscall* )( void* , vec3_t* , void* , void* , uint8_t* ) >( );
+
+	/* offset sigs */
+	static auto iks_off = pattern::search( _( "client.dll" ) , _( "8D 47 FC 8B 8F" ) ).add( 5 ).deref( ).add( 4 ).get< uint32_t >( );
+	static auto effects_off = pattern::search( _( "client.dll" ) , _( "75 0D 8B 87" ) ).add( 4 ).deref( ).add( 4 ).get< uint32_t >( );
+
+	const auto backup_poses = target->poses( );
+
+	auto cstudio = *reinterpret_cast< void** >( uintptr_t( target ) + 0x294C );
+
+	if ( !cstudio )
+		return false;
+
+	target->poses( ) = poses;
+
+	//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
+	matrix3x4a_t used[ 128 ];
+
+	//	output shit
+	uint8_t bone_computed[ 0x100 ] = { 0 };
+
+	//	needs to be aligned
+	matrix3x4a_t base_matrix;
+
+	cs::angle_matrix( rotation , origin , base_matrix );
+
+	//	store shit
+	const auto old_bones = target->bones( );
+
+	auto iks = *reinterpret_cast< void** >( uintptr_t( target ) + iks_off );
+	*reinterpret_cast< int* >( uintptr_t( target ) + effects_off ) |= 8;
+
+	//	clear iks & re-create them
+	if ( iks ) {
+		if ( *( uint32_t* ) ( uintptr_t( iks ) + 0xFF0 ) > 0 ) {
+			int v1 = 0;
+			auto v62 = ( uint32_t* ) ( uintptr_t( iks ) + 0xD0 );
+
+			do {
+				*v62 = -9999;
+				v62 += 0x55;
+				++v1;
+			} while ( v1 < *( uint32_t* ) ( uintptr_t( iks ) + 0xFF0 ) );
+		}
+
+		init_iks( iks , cstudio , rotation , origin , time , cs::i::globals->m_framecount , 0x1000 );
+	}
+
+	static vec3_t pos[ 128 ];
+	memset( pos , 0 , sizeof( vec3_t[ 128 ] ) );
+
+	void* q = malloc( /* sizeof quaternion_t */ 48 * 128 );
+	memset( q , 0 , /* sizeof quaternion_t */ 48 * 128 );
+
+	//	set flags and bones
+	target->bones( ) = used;
+
+	//	build some shit
+	// IDX = 205 ( 2020.7.10 )
+	vfunc< void( __thiscall* )( player_t* , void* , vec3_t* , void* , float , uint32_t ) >( target , standard_blending_rules_vfunc_idx ) ( target , cstudio , pos , q , time , mask );
+
+	//	set iks
+	if ( iks ) {
+		vfunc< void( __thiscall* )( player_t* , float ) >( target , update_ik_locks_vfunc_idx ) ( target , time );
+		update_targets( iks , pos , q , target->bones( ) , bone_computed );
+		vfunc< void( __thiscall* )( player_t* , float ) >( target , calculate_ik_locks_vfunc_idx ) ( target , time );
+		solve_dependencies( iks , pos , q , target->bones( ) , bone_computed );
+	}
+
+	//	build the matrix
+	// IDX = 189 ( 2020.7.10 )
+	vfunc< void( __thiscall* )( player_t* , void* , vec3_t* , void* , matrix3x4a_t const& , uint32_t , void* ) >( target , build_transformations_vfunc_idx ) ( target , cstudio , pos , q , base_matrix , mask , bone_computed );
+
+	free( q );
+
+	//	restore flags and bones
+	*reinterpret_cast< int* >( uintptr_t( target ) + effects_off ) &= ~8;
+	target->bones( ) = old_bones;
+
+	//  and pop out our new matrix
+	memcpy( mat , used , sizeof( matrix3x4_t ) * 128 );
+
+	target->poses( ) = backup_poses;
+
+	return true;
+}
+
 namespace anim_util {
 	__forceinline float angle_diff ( float dst, float src ) {
 		auto delta = fmodf ( dst - src, 360.0f );
@@ -42,104 +140,6 @@ namespace anim_util {
 		}
 
 		return delta;
-	}
-
-	// credits cbrs
-	__forceinline bool build_bones ( player_t* target, matrix3x4_t* mat, int mask, vec3_t rotation, vec3_t origin, float time, std::array<float, 24>& poses ) {
-		/* vfunc indices */
-		static auto standard_blending_rules_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 47 FC" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-		static auto build_transformations_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? A1 ? ? ? ? B9 ? ? ? ? 8B 40 34 FF D0 85 C0 74 41" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-		static auto update_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-		static auto calculate_ik_locks_vfunc_idx = pattern::search ( _ ( "client.dll" ), _ ( "FF 90 ? ? ? ? 8B 8F ? ? ? ? 8D 84 24 ? ? ? ? 50 FF B7 ? ? ? ? 8D 84 24 ? ? ? ? 50 8D 84 24 ? ? ? ? 50 E8 ? ? ? ? 8B 47 FC 8D 4F FC 8B 80" ) ).add ( 2 ).deref ( ).get< uint32_t > ( ) / 4;
-
-		/* func sigs */
-		static auto init_iks = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ) ).get< void ( __thiscall* )( void*, void*, vec3_t&, vec3_t&, float, int, int ) > ( );
-		static auto update_targets = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
-		static auto solve_dependencies = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ) ).get< void ( __thiscall* )( void*, vec3_t*, void*, void*, uint8_t* ) > ( );
-
-		/* offset sigs */
-		static auto iks_off = pattern::search ( _ ( "client.dll" ), _ ( "8D 47 FC 8B 8F" ) ).add ( 5 ).deref ( ).add ( 4 ).get< uint32_t > ( );
-		static auto effects_off = pattern::search ( _ ( "client.dll" ), _ ( "75 0D 8B 87" ) ).add ( 4 ).deref ( ).add ( 4 ).get< uint32_t > ( );
-
-		const auto backup_poses = target->poses ( );
-
-		auto cstudio = *reinterpret_cast< void** >( uintptr_t ( target ) + 0x294C );
-
-		if ( !cstudio )
-			return false;
-
-		target->poses ( ) = poses;
-
-		//  we need an aligned matrix in the bone accessor, so do this :) bad performance cause memcpy but that's ok
-		matrix3x4a_t used [ 128 ];
-
-		//	output shit
-		uint8_t bone_computed [ 0x100 ] = { 0 };
-
-		//	needs to be aligned
-		matrix3x4a_t base_matrix;
-
-		cs::angle_matrix ( rotation, origin, base_matrix );
-
-		//	store shit
-		const auto old_bones = target->bones ( );
-
-		auto iks = *reinterpret_cast< void** >( uintptr_t ( target ) + iks_off );
-		*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) |= 8;
-
-		//	clear iks & re-create them
-		if ( iks ) {
-			if ( *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) > 0 ) {
-				int v1 = 0;
-				auto v62 = ( uint32_t* ) ( uintptr_t ( iks ) + 0xD0 );
-
-				do {
-					*v62 = -9999;
-					v62 += 0x55;
-					++v1;
-				} while ( v1 < *( uint32_t* ) ( uintptr_t ( iks ) + 0xFF0 ) );
-			}
-
-			init_iks ( iks, cstudio, rotation, origin, time, cs::i::globals->m_framecount, 0x1000 );
-		}
-
-		static vec3_t pos [ 128 ];
-		memset ( pos, 0, sizeof ( vec3_t [ 128 ] ) );
-
-		void* q = malloc ( /* sizeof quaternion_t */ 48 * 128 );
-		memset ( q, 0, /* sizeof quaternion_t */ 48 * 128 );
-
-		//	set flags and bones
-		target->bones ( ) = used;
-
-		//	build some shit
-		// IDX = 205 ( 2020.7.10 )
-		vfunc< void ( __thiscall* )( player_t*, void*, vec3_t*, void*, float, uint32_t ) > ( target, standard_blending_rules_vfunc_idx ) ( target, cstudio, pos, q, time, mask );
-
-		//	set iks
-		if ( iks ) {
-			vfunc< void ( __thiscall* )( player_t*, float ) > ( target, update_ik_locks_vfunc_idx ) ( target, time );
-			update_targets ( iks, pos, q, target->bones ( ), bone_computed );
-			vfunc< void ( __thiscall* )( player_t*, float ) > ( target, calculate_ik_locks_vfunc_idx ) ( target, time );
-			solve_dependencies ( iks, pos, q, target->bones ( ), bone_computed );
-		}
-
-		//	build the matrix
-		// IDX = 189 ( 2020.7.10 )
-		vfunc< void ( __thiscall* )( player_t*, void*, vec3_t*, void*, matrix3x4a_t const&, uint32_t, void* ) > ( target, build_transformations_vfunc_idx ) ( target, cstudio, pos, q, base_matrix, mask, bone_computed );
-
-		free ( q );
-
-		//	restore flags and bones
-		*reinterpret_cast< int* >( uintptr_t ( target ) + effects_off ) &= ~8;
-		target->bones ( ) = old_bones;
-
-		//  and pop out our new matrix
-		memcpy ( mat, used, sizeof ( matrix3x4_t ) * 128 );
-
-		target->poses ( ) = backup_poses;
-
-		return true;
 	}
 
 	float local_poses_airtime = 0.0f;
@@ -164,7 +164,7 @@ namespace anim_util {
 #define CS_PLAYER_SPEED_RUN 260.0f
 #define CS_PLAYER_SPEED_WALK_MODIFIER 0.52f
 
-		const auto speed_2d = ent->vel ( ).length_2d ( );
+		const auto speed_2d = ent->abs_vel( ).length_2d ( );
 
 		if ( local_walk_to_run_transition > 0.0f && local_walk_to_run_transition < 1.0f )
 		{
@@ -198,12 +198,14 @@ namespace anim_util {
 		/* copy existing poses*/
 		poses = ent->poses ( );
 
+		auto vel = ent == g::local ? ent->abs_vel( ) : ent->vel( );
+
 		/* calculate *some* new ones */
-		poses [ pose_param_t::speed ] = ent->vel().length_2d() / ( ( ( ent->weapon ( ) && ent->weapon ( )->data() ) ? std::max ( ent->weapon ( )->data ( )->m_max_speed, 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
+		poses [ pose_param_t::speed ] = vel.length_2d() / ( ( ( ent->weapon ( ) && ent->weapon ( )->data() ) ? std::max ( ent->weapon ( )->data ( )->m_max_speed, 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
 		poses [ pose_param_t::stand ] = 1.0f - ent->crouch_amount();
 
 		poses [ pose_param_t::body_yaw] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize ( ent->animstate ( )->m_eye_yaw ), cs::normalize ( feet_yaw ) ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
-		poses [ pose_param_t::move_yaw ] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize( cs::rad2deg ( atan2 ( -ent->vel ( ).y, -ent->vel ( ).x ) ) ), cs::normalize ( feet_yaw ) ) ), -180.0f, 180.0f ) / 360.0f + 0.5f;
+		poses [ pose_param_t::move_yaw ] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize( cs::rad2deg ( atan2 ( -vel.y, -vel.x ) ) ), cs::normalize ( feet_yaw ) ) ), -180.0f, 180.0f ) / 360.0f + 0.5f;
 		poses [ pose_param_t::lean_yaw ] = 0.0f;
 
 		const float recalc_air_time = ( ent->layers ( ) [ 4 ].m_cycle - 0.72f ) * 1.25f;
@@ -286,11 +288,11 @@ bool anims::get_lagcomp_bones ( player_t* ent, std::array<matrix3x4_t, 128>& out
 		auto& it = data [ i ];
 
 		if ( time_valid_no_deadtime ( it.m_simtime ) ) {
-			if ( it.m_origin.dist_to ( ent->origin ( ) ) < 1.0f )
+			if ( it.m_origin.dist_to ( ent->origin( ) ) < 1.0f )
 				return false;
 
 			bool end = ( i - 1 ) <= 0;
-			vec3_t next = end ? ent->origin ( ) : data [ i - 1 ].m_origin;
+			vec3_t next = end ? ent->origin( ) : data [ i - 1 ].m_origin;
 			float time_next = end ? ent->simtime ( ) : data [ i - 1 ].m_simtime;
 
 			float correct = nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp;
@@ -304,7 +306,7 @@ bool anims::get_lagcomp_bones ( player_t* ent, std::array<matrix3x4_t, 128>& out
 
 			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp ( delta * mul, 0.0f, 1.0f );
 
-			out = it.m_render_bones;
+			out = it.m_aim_bones;
 
 			for ( auto& iter : out )
 				iter.set_origin ( iter.origin ( ) - it.m_origin + lerp );
@@ -368,6 +370,11 @@ void anims::manage_fake ( ) {
 
 	fake_anim_state.m_last_clientside_anim_framecount = 0;
 	fake_anim_state.m_feet_yaw_rate = 0.0f;
+
+	fake_anim_state.m_hit_ground = false;
+	fake_anim_state.m_landing_duck_additive = 0.0f;
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( &fake_anim_state ) + 0x118 ) = 1.0f;
+
 	fake_anim_state.update ( g::angles );
 
 	g::local->abs_angles ( ).y = fake_anim_state.m_abs_yaw;
@@ -384,7 +391,7 @@ void anims::manage_fake ( ) {
 
 	poses [ pose_param_t::jump_fall ] = jump_fall;
 	
-	anim_util::build_bones ( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, poses );
+	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, poses );
 
 	memcpy ( g::local->layers ( ), networked_layers.data ( ), sizeof ( networked_layers ) );
 	g::local->poses ( ) = backup_poses;
@@ -643,18 +650,17 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 		cs::i::globals->m_frametime = cs::ticks2time ( 1 );
 		cs::i::globals->m_curtime = ent->simtime ( );
 
-		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0xE8 ) &= ~0x1000;
-		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0x94 ) = ent->vel();
+		state->m_last_clientside_anim_update = ent->old_simtime( );
 
-		state->m_last_clientside_anim_update_time_delta = std::max ( 0.0f, ent->simtime ( ) - ent->old_simtime ( ) );
+		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0xE8 ) &= ~0x1000;
+		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0x94 ) = ent->vel( );
 	}
 	else {
 		cs::i::globals->m_frametime = cs::ticks2time ( 1 );
-		state->m_last_clientside_anim_update_time_delta = cs::ticks2time ( 1 );
+		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
 	}
 
-	state->m_last_clientside_anim_framecount = 0;
-	state->m_feet_yaw_rate = 0.0f;
+	//state->m_weapon = state->m_last_weapon = ent->weapon( );
 
 	std::array<animlayer_t, 13> backup_animlayers;
 	
@@ -665,12 +671,31 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 		ent->layers ( ) [ 3 ].m_weight = 0.0f;
 		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
 		ent->layers ( ) [ 12 ].m_weight = 0.0f;
+
+		state->m_ground_fraction = anim_util::local_walk_to_run_transition;
 	}
 
+	state->m_last_clientside_anim_framecount = cs::i::globals->m_framecount - 1;
+	state->m_feet_yaw_rate = 0.0f;
+	state->m_weapon = state->m_last_weapon = ent->weapon( );
+
 	ent->animate ( ) = true;
-	state->update ( angles );
+	ent->update( );
 	ent->animate ( ) = false;
 
+	if ( ent != g::local ) {
+		invalidate_physics_recursive( ent , 2 );
+		invalidate_physics_recursive( ent , 8 );
+		invalidate_physics_recursive( ent , 32 );
+
+		state->m_ground_fraction = anim_util::local_walk_to_run_transition;
+	}
+
+	state->m_last_clientside_anim_framecount = 0;
+	state->m_feet_yaw_rate = 0.0f;
+	state->m_ground_fraction = 0.0f;
+	state->m_weapon = state->m_last_weapon = ent->weapon( );
+	
 	if ( ent == g::local ) {
 		ent->layers ( ) [ 3 ].m_weight = 0.0f;
 		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
@@ -694,7 +719,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 			const auto idx = ent->idx ( );
 
 			if ( !update_anim_layers )
-				anim_util::build_bones ( ent, bones_out->data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), ent->simtime ( ), calc_poses );
+				build_bones( ent, bones_out->data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), ent->simtime ( ), calc_poses );
 
 			ent->poses ( ) = calc_poses;
 			ent->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
@@ -709,7 +734,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 			const auto idx = ent->idx ( );
 
 			if ( !update_anim_layers )
-				anim_util::build_bones ( ent, bones_out->data(), 0x7FF00, vec3_t ( 0.0f, resolved_angle, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses );
+				build_bones( ent, bones_out->data(), 0x7FF00, vec3_t ( 0.0f, resolved_angle, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses );
 
 			ent->poses ( ) = resolved_poses;
 			ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle, 0.0f ) );
@@ -720,7 +745,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 		anim_util::update_local_poses ( ent );
 
 		/* dont update on local until we send packet */
-		if ( !cs::i::client_state->choked ( ) ) {
+		if ( g::send_packet ) {
 			memcpy ( last_anim_layers.data ( ), last_anim_layers_queued.data ( ), sizeof ( last_anim_layers ) );
 			last_local_feet_yaw = state->m_abs_yaw;
 			anim_util::calc_poses ( ent, last_local_poses, last_local_feet_yaw );
@@ -731,7 +756,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 
 		ent->set_abs_angles ( vec3_t ( 0.0f, last_local_feet_yaw, 0.0f ) );
 
-		if ( !cs::i::client_state->choked ( ) )
+		if ( g::send_packet )
 			manage_fake ( );
 	}
 	VM_TIGER_BLACK_END
@@ -762,7 +787,7 @@ void anims::on_net_update_end ( int idx ) {
 	if ( !ent || !ent->is_player ( ) || !ent->alive ( ) || ent->dormant ( ) || !ent->animstate ( ) )
 		return reset_data ( idx );
 
-	ent->animate ( ) = false;
+	//ent->animate ( ) = false;
 
 	if ( g::local && ent == g::local ) {
 		ent->layers ( ) [ 4 ].m_cycle = anim_util::local_poses_airtime;
@@ -797,7 +822,7 @@ void anims::on_net_update_end ( int idx ) {
 	}
 	
 	const auto nci = cs::i::engine->get_net_channel_info ( );
-	while ( nci && !anim_info [ idx ].empty ( ) && anim_info [ idx ].back ( ).m_simtime < int ( cs::i::globals->m_curtime - g::cvars::sv_maxunlag->get_float ( ) ) )
+	while ( nci && !anim_info [ idx ].empty ( ) && /*anim_info [ idx ].back ( ).m_simtime < int ( cs::i::globals->m_curtime - g::cvars::sv_maxunlag->get_float ( ) )*/ abs( anim_info[ idx ].back( ).m_simtime - cs::i::globals->m_curtime ) > 1.0f )
 		anim_info [ idx ].pop_back ( );
 }
 
@@ -807,13 +832,11 @@ void anims::on_render_start ( int idx ) {
 	if ( !ent || !ent->is_player ( ) || !ent->alive ( ) || ent->dormant ( ) || !ent->animstate ( ) )
 		return reset_data ( idx );
 
-	ent->animate ( ) = false;
+	//ent->animate ( ) = false;
 
 	apply_anims ( ent );
 
-	//static int tick_count = cs::i::globals->m_tickcount;
-	//if ( tick_count != cs::i::globals->m_tickcount && g::local && g::local->alive() && g::local->animstate ( ))
-	//	anim_util::build_bones ( g::local, real_matrix.data ( ), 0x7FF00 /* BONE_USED_BY_HITBOX */, vec3_t ( 0.0f, g::local->animstate ( )->m_abs_yaw, 0.0f ), g::local->origin ( ), cs::i::globals->m_curtime, g::local->poses() );
+	build_bones ( g::local, real_matrix.data ( ), 0x7FF00 /* BONE_USED_BY_HITBOX */, vec3_t ( 0.0f, g::local->animstate ( )->m_abs_yaw, 0.0f ), g::local->origin ( ), cs::i::globals->m_curtime, g::local->poses() );
 }
 
 void anims::pre_fsn ( int stage ) {

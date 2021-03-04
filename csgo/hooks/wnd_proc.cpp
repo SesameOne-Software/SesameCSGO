@@ -15,10 +15,6 @@ LRESULT hooks::wnd_proc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 	auto skip_mouse_input_processing = false;
 
 	switch ( uMsg ) {
-	case WM_SYSCOMMAND:
-		if ( ( wParam & 0xfff0 ) == SC_KEYMENU ) // Disable ALT application menu
-			return 0;
-		break;
 	case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK:
 	case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK:
 	case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK:

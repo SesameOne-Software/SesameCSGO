@@ -61,31 +61,35 @@ public:
 class c_clientstate {
 public:
 	net_channel_t* net_channel ( ) {
-		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< std::uintptr_t >( this ) + 0x9C );
+		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x9C );
 	}
 
-	std::uint32_t& choked( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D30 );
+	uint32_t& choked( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D30 );
 	}
 
-	std::uint32_t& last_command_ack( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D34 );
+	uint32_t& last_command_ack( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D34 );
 	}
 
-	std::uint32_t& last_outgoing_cmd( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D2C );
+	uint32_t& last_outgoing_cmd( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D2C );
 	}
 
-	std::uint32_t& server_tickcount( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x164 );
+	uint32_t& server_tickcount( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x164 );
 	}
 
-	std::uint32_t& delta_tick( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x174 );
+	uint32_t& delta_tick( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x174 );
 	}
 
-	std::uint32_t& out_seq_num( ) {
-		return *reinterpret_cast< std::uint32_t* >( reinterpret_cast< std::uintptr_t >( this ) + 0x4D24 );
+	float& next_cmd_time( ) {
+		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
+	}
+
+	uint32_t& out_seq_num( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D24 );
 	}
 };
 

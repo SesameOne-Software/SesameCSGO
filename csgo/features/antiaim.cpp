@@ -295,7 +295,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		/* amount of ticks to shift increased */
 		if ( final_shift_amount_max > last_final_shift_amount )
-			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
+			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, cs::time2ticks ( std::max<float>( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f, 0.100f ) ) );
 
 		last_final_shift_amount = final_shift_amount_max;
 
@@ -755,7 +755,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						static float last_update_time = cs::i::globals->m_curtime;
 
 						/* micro movements */
-						old_fmove += aa::move_flip ? -( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f ) : ( g::local->crouch_amount ( ) > 0.0f ? 3.0f : 3.0f );
+						const auto move_amount = g::local->crouch_amount( ) > 0.0f ? 3.0f : 1.1f;
+						
+						if ( !g::send_packet )
+							old_fmove += aa::move_flip ? -move_amount : move_amount;
 
 						//if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
 						//	old_fmove = copysignf ( 15.0f, old_fmove );
