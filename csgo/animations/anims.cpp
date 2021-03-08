@@ -605,7 +605,7 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		calc_poses( ent , to.m_poses[ side ] , new_abs_yaw );
 
 		if ( build_matrix )
-			build_bones( ent, to.m_aim_bones[side].data(), 256, vec3_t( 0.0f , new_abs_yaw , 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
+			build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , new_abs_yaw , 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
 
 		/* store new anim data */
 		to.m_anim_state[ side ] = *anim_state;
