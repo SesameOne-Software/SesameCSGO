@@ -127,8 +127,8 @@ void player_t::set_abs_vel( vec3_t& vel ) {
 	fn( this, vel );
 }
 
-void player_t::set_abs_origin( vec3_t& vec ) {
-	using set_abs_origin_fn = void( __thiscall* )( void*, vec3_t& );
+void player_t::set_abs_origin( const vec3_t& vec ) {
+	using set_abs_origin_fn = void( __thiscall* )( void*, const vec3_t& );
 	static auto fn = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 51 53 56 57 8B F1 E8 ? ? ? ? 8B 7D" ) ).get< set_abs_origin_fn >( );
 	fn( this, vec );
 }

@@ -25,7 +25,7 @@ class c_entity_listener_mgr : public c_entity_listener {
 	virtual void on_entity_deleted ( void* ent );
 };
 
-static void clear_shit ( int idx ) {
+static void clear_data ( int idx ) {
 	if ( !idx || idx > cs::i::globals->m_max_clients )
 		return;
 
@@ -42,8 +42,10 @@ void c_entity_listener_mgr::on_entity_created ( void* ent ) {
 	if ( ent ) {
 		auto pl = reinterpret_cast< player_t* >( ent );
 
-		if ( pl->is_player ( ) )
-			clear_shit ( pl->idx() );
+		const auto idx = pl->idx( );
+
+		if ( idx && idx <= cs::i::globals->m_max_clients )
+			clear_data( pl->idx() );
 	}
 }
 
@@ -51,8 +53,10 @@ void c_entity_listener_mgr::on_entity_deleted ( void* ent ) {
 	if ( ent ) {
 		auto pl = reinterpret_cast<player_t*>(ent);
 
-		if ( pl->is_player ( ) )
-			clear_shit ( pl->idx ( ) );
+		const auto idx = pl->idx( );
+
+		if ( idx && idx <= cs::i::globals->m_max_clients )
+			clear_data( idx );
 	}
 }
 

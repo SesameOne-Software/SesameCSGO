@@ -18,11 +18,6 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* ucmd, c_move_hel
 	if (!ent || !g::local || ent != g::local || !ucmd || !g::local->alive() )
 		return old::run_command( REG_OUT , ent , ucmd , move_helper );
 
-	//if ( in_cm ) {
-	//	backup_netvars.store( ent );
-	//	features::prediction::fix_netvars( cs::i::client_state->last_command_ack( ) - 1 );
-	//}
-
 	const auto backup_vel_mod = ent->velocity_modifier( );
 	
 	if ( in_cm && cs::i::client_state && ucmd->m_cmdnum == cs::i::client_state->last_command_ack( ) + 1 )
@@ -33,10 +28,6 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* ucmd, c_move_hel
 	if ( !in_cm )
 		ent->velocity_modifier( ) = backup_vel_mod;
 
-	//anims::update_anims( ent , lby::in_update ? g::sent_cmd.m_angs : g::angles , false );
-
-	//if ( in_cm )
-	//	backup_netvars.reapply( ent );
-	//else
-	//	features::prediction::fix_netvars( cs::i::client_state->last_command_ack( ) , true );
+	features::prediction::fix_netvars( g::local->tick_base() , true );
+	features::prediction::fix_viewmodel( true );
 }

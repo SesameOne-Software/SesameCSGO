@@ -58,29 +58,29 @@ bool cs::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	return false;
 }
 
-bool cs::render::world_to_screen( vec3_t& screen, vec3_t& origin ) {
-	const auto find_point = [ ] ( vec3_t& point, int screen_w, int screen_h, float deg ) {
+bool cs::render::world_to_screen( vec3_t& screen , vec3_t& origin ) {
+	const auto find_point = [ ] ( vec3_t& point , int screen_w , int screen_h , float deg ) {
 		const auto x2 = screen_w / 2.0f;
 		const auto y2 = screen_h / 2.0f;
 		const auto one = point.x - x2;
 		const auto two = point.y - y2;
-		const auto d = std::sqrt ( one * one + two * two );
+		const auto d = sqrt( one * one + two * two );
 		const auto r = deg / d;
 
 		point.x = r * point.x + ( 1.0f - r ) * x2;
 		point.y = r * point.y + ( 1.0f - r ) * y2;
 	};
 
-	const auto transform = screen_transform ( screen, origin );
+	int w , h;
+	cs::i::engine->get_screen_size( w , h );
 
-	int width, height;
-	cs::i::engine->get_screen_size ( width, height );
+	const bool transform = screen_transform( screen , origin );
 
-	screen.x = ( width * 0.5f ) + ( screen.x * width ) * 0.5f;
-	screen.y = ( height * 0.5f ) - ( screen.y * height ) * 0.5f;
+	screen.x = ( w * 0.5f ) + ( screen.x * w ) * 0.5f;
+	screen.y = ( h * 0.5f ) - ( screen.y * h ) * 0.5f;
 
-	if ( screen.x > width || screen.x < 0 || screen.y > height || screen.y < 0 || transform ) {
-		find_point ( screen, width, height, std::sqrt ( width * width + height * height ) );
+	if ( transform ) {
+		find_point( screen , w , h , sqrt( w * w + h * h ) );
 		return false;
 	}
 

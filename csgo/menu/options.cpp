@@ -431,6 +431,8 @@ void options::init( ) {
 	option::add_list( _( "visuals.other.removals" ), 9 ); /* smoke, flash, scope, aimpunch, viewpunch, zoom, occlusion, killfeed decay, post processing */
 	option::add_bool ( _ ( "visuals.other.fog" ), true );
 	option::add_bool ( _ ( "visuals.other.bloom" ), true );
+	option::add_bool( _( "visuals.other.blend" ) , true );
+	option::add_float( _( "visuals.other.blend_opacity" ) , 255.0f );
 	option::add_color ( _ ( "visuals.other.fog_color" ), { 0.694f, 0.78f, 0.761f, 1.0f } );
 	option::add_float ( _ ( "visuals.other.fog_distance" ), 6000.0f );
 	option::add_float ( _ ( "visuals.other.fog_density" ), 0.4f );

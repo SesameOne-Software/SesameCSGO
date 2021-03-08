@@ -350,7 +350,7 @@ public:
 	void update( );
 	vec3_t& abs_vel( );
 	void set_abs_vel( vec3_t& vel );
-	void set_abs_origin( vec3_t& vec );
+	void set_abs_origin( const vec3_t& vec );
 
 	vec3_t eyes( );
 	std::uint32_t& bone_count( );

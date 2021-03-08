@@ -175,10 +175,15 @@ bool features::prediction::fix_netvars( int cmd, bool store ) {
 	if ( !g::local || !g::local->alive( ) )
 		return false;
 
-	if ( store )
-		return cmd_netvars[ cmd % cmd_netvars.size( ) ].store( g::local );
+	auto& cur_rec = cmd_netvars[ cmd % cmd_netvars.size( ) ];
 
-	return cmd_netvars[ cmd % cmd_netvars.size( ) ].restore( g::local );
+	if ( store )
+		return cur_rec.store( g::local );
+
+	if ( g::local->tick_base( ) != cur_rec.m_tick_base )
+		return false;
+
+	return cur_rec.restore( g::local );
 }
 
 void features::prediction::run( const std::function< void( ) >& fn ) {

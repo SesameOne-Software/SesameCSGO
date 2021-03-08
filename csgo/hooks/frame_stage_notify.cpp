@@ -128,9 +128,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
 				features::prediction::vel_modifier = g::local->velocity_modifier( );
 			}
-			
-			if ( features::prediction::fix_netvars( cs::i::client_state->last_command_ack( ) , true ) );
-				//*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
 		
 			last_ack_cmd = cs::i::client_state->last_command_ack( );
 			next_cmd_time = cs::i::client_state->next_cmd_time( );
@@ -254,6 +251,9 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			"features::skinchanger::run",
 			features::skinchanger::run ( );
 		);
+
+		if ( g::local )
+			features::prediction::fix_netvars( g::local->tick_base( ) );
 
 		features::prediction::fix_viewmodel ( );
 	}

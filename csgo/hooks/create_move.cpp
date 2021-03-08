@@ -285,9 +285,9 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	exploits::run ( ucmd );
 
 	/* recreate what holdaim var does */
-	/* TODO: check if holdaim cvar is enaled */
+			/* TODO: check if holdaim cvar is enaled */
 	/* part of anims */ {
-		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool( ) ) {
 			if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
 				g::angles = ucmd->m_angs;
 				g::hold_aim = true;
@@ -298,15 +298,18 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		}
 
 		if ( !g::hold_aim ) {
-			g::angles = g::ucmd->m_angs;
+			g::angles = ucmd->m_angs;
 		}
 
 		if ( g::send_packet )
 			g::hold_aim = false;
 	}
 
+	if ( g::local )
+		anims::createmove_flags = g::local->flags( );
+
 	if ( g::local && g::local->alive( ) )
-		anims::update_anims( g::local , lby::in_update ? g::sent_cmd.m_angs : g::angles , false );
+		anims::update_anims( g::local , lby::in_update ? g::sent_cmd.m_angs : g::angles );
 
 	return false;
 }

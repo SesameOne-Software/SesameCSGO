@@ -1,6 +1,8 @@
 #pragma once
 #include "../sdk/sdk.hpp"
 
+#include "anims.hpp"
+
 namespace anims {
 	namespace resolver {
 		namespace rdata {
@@ -20,11 +22,11 @@ namespace anims {
 			float m_time;
 			uint32_t m_clr;
 		};
-
+		
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
-		float resolve_yaw( player_t* pl, bool update );
+		bool resolve_desync( player_t* ent, anim_info_t& rec );
 		void create_beams( );
 		void render_impacts( );
 	}

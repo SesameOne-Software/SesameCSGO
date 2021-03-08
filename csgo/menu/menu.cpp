@@ -12,6 +12,7 @@
 #include "../features/ragebot.hpp"
 #include "../utils/networking.hpp"
 #include "../cjson/cJSON.h"
+#include "../animations/resolver.hpp"
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_dx9.h"
@@ -329,6 +330,8 @@ void gui::scale_dpi ( ) {
 
 	g_last_dpi = options::vars [ _ ( "gui.dpi" ) ].val.f;
 
+	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+
 	VM_SHARK_BLACK_END
 }
 
@@ -401,7 +404,7 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 	VM_TIGER_BLACK_START
 	//MUTATE_START
 	const auto ragebot_weapon = _( "ragebot." ) + weapon_name + _( "." );
-
+	
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Weapon Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
 		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Weapon Settings" ).x * 0.5f );
 		ImGui::Text ( "Weapon Settings" );
@@ -830,7 +833,7 @@ void gui::draw( ) {
 			switch ( current_tab_idx ) {
 				case tab_legit: {
 					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "General", "General ragebot and accuracy settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( "General", "General legitbot and accuracy settings", [ & ] ( ) {
 					} );
 
 					ImGui::custom::AddSubtab ( "Default", "Default settings used for unconfigured weapons", [ & ] ( ) {
@@ -1064,6 +1067,8 @@ void gui::draw( ) {
 
 							ImGui::MultiCombo ( _ ( "Removals" ), options::vars [ _ ( "visuals.other.removals" ) ].val.l, removals.data ( ), removals.size ( ) );
 							ImGui::PushItemWidth ( -1.0f );
+							ImGui::Checkbox( _( "Modify Model Blend" ) , &options::vars[ _( "visuals.other.blend" ) ].val.b );
+							ImGui::SliderFloat( _( "Opacity" ) , &options::vars[ _( "visuals.other.blend_opacity" ) ].val.f , 0.f , 255.f , _( "%.1f" ) );
 							ImGui::SliderFloat ( _ ( "FOV" ), &options::vars [ _ ( "visuals.other.fov" ) ].val.f, 0.0f, 180.0f, ( char* ) _ ( "%.1f°" ) );
 							ImGui::SliderFloat ( _ ( "Viewmodel FOV" ), &options::vars [ _ ( "visuals.other.viewmodel_fov" ) ].val.f, 0.0f, 180.0f, _ ( "%.1f°" ) );
 							ImGui::SliderFloat ( _ ( "Viewmodel Offset X" ), &options::vars [ _ ( "visuals.other.viewmodel_offset_x" ) ].val.f, -10.0f, 10.0f, _ ( "%.1f units" ) );
@@ -1683,7 +1688,7 @@ void gui::keybinds::draw( ) {
 
 	if ( keybind_list && ImGui::Begin( _( "Keybinds" ), &keybind_list, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize ) ) {
 		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Keybinds" ).x * 0.5f );
-		ImGui::Text ( _("Keybinds" ));
+		ImGui::Text ( _("Keybinds" )); 
 		ImGui::Separator ( );
 
 		if ( !entries.empty( ) ) {

@@ -611,7 +611,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		if ( !hb )
 			return false;
 
-		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones;
+		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones[rec.m_side];
 
 		auto vmin = hb->m_bbmin;
 		auto vmax = hb->m_bbmax;
@@ -830,7 +830,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		if ( !hitbox )
 			return;
 
-		const std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
+		const std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones[ rec.m_side ];
 
 		auto vmin = hitbox->m_bbmin;
 		auto vmax = hitbox->m_bbmax;
@@ -1204,7 +1204,7 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, int 
 	if ( !hitbox )
 		return false;
 
-	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones[ rec.m_side ];
 
 	vec3_t vmin, vmax;
 	VEC_TRANSFORM ( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
@@ -1350,7 +1350,23 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	/* use other matrix with same points, trying to find alignments in the two matricies */
 	/* shift over by 1 entry in our records */
 	// SAFE POINT BONE MATRIX DOESN'T WORK RIGHT NOW
-	std::array< matrix3x4_t, 128>& dmg_scan_matrix = rec.m_aim_bones;
+	auto opposite_side_max = anims::desync_side_t::desync_middle;
+
+	switch ( rec.m_side ) {
+	case anims::desync_side_t::desync_left_max:
+	case anims::desync_side_t::desync_left_half:
+		opposite_side_max = anims::desync_side_t::desync_right_max;
+		break;
+	case anims::desync_side_t::desync_middle:
+		opposite_side_max = anims::desync_side_t::desync_left_max;
+		break;
+	case anims::desync_side_t::desync_right_max:
+	case anims::desync_side_t::desync_right_half:
+		opposite_side_max = anims::desync_side_t::desync_left_max;
+		break;
+	}
+
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix = safe_point_active ? rec.m_aim_bones[ opposite_side_max ] : rec.m_aim_bones[ rec.m_side ];
 
 	const auto backup_origin = pl->origin ( );
 	auto backup_abs_origin = pl->abs_origin ( );

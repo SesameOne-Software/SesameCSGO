@@ -41,6 +41,10 @@
 #include "netmsg_tick.hpp"
 #include "process_interp_list.hpp"
 #include "run_command.hpp"
+#include "accumulate_layers.hpp"
+#include "notify_on_layer_change_cycle.hpp"
+#include "notify_on_layer_change_weight.hpp"
+#include "is_connected.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -114,7 +118,11 @@ void hooks::init( ) {
 	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
 	//const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _netmsg_tick = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 53 56 8B F1 8B 0D ? ? ? ? 57" ) ).get< void* > ( );
-	const auto _process_interp_list = pattern::search( _("client.dll"), _("53 0F B7 1D ? ? ? ? 56") ).get< void* >( );
+	const auto _process_interp_list = pattern::search( _( "client.dll" ) , _( "53 0F B7 1D ? ? ? ? 56" ) ).get< void* >( );
+	const auto _accumulate_layers = pattern::search( _( "client.dll" ) , _( "55 8B EC 57 8B F9 8B 0D ? ? ? ? 8B 01 8B" ) ).get< void* >( );
+	const auto _notify_on_layer_change_cycle = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 98 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
+	const auto _notify_on_layer_change_weight = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 9C 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
+	const auto _is_connected = vfunc<void*>( cs::i::engine , N( 27 ) );
 
 	MH_Initialize( );
 
@@ -166,8 +174,10 @@ void hooks::init( ) {
 	dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-
-	//56 8B F1 8B 8E ? ? ? ? 83 F9 FF 74 21
+	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
+	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
+	dbg_hook( _is_connected , is_connected , ( void** ) &old::is_connected );
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );

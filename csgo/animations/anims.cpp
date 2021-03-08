@@ -3,30 +3,86 @@
 
 #include "../features/ragebot.hpp"
 
+#include "../menu/options.hpp"
+
 #undef max
 #undef min
 
-enum pose_param_t : int {
-	strafe_yaw = 0,
-	stand,
-	lean_yaw,
-	speed,
-	ladder_yaw,
-	ladder_speed,
-	jump_fall,
-	move_yaw,
-	move_blend_crouch,
-	move_blend_walk,
-	move_blend_run,
-	body_yaw,
-	body_pitch,
-	aim_blend_stand_idle,
-	aim_blend_stand_walk,
-	aim_blend_stand_run,
-	aim_blend_courch_idle,
-	aim_blend_crouch_walk,
-	death_yaw
-};
+float local_poses_airtime = 0.0f;
+float local_poses_ground_time = 0.0f;
+float local_walk_to_run_transition = 0.0f;
+int local_walk_to_run_transition_state = 0;
+bool local_running = false;
+
+std::array< animlayer_t , 13> last_anim_layers_queued {};
+std::array< animlayer_t , 13> last_anim_layers {};
+float last_local_feet_yaw;
+std::array<float , 24> last_local_poses;
+
+/* from valve sdk */
+constexpr auto CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED = 2.0f;
+constexpr auto CSGO_ANIM_ONGROUND_FUZZY_APPROACH = 8.0f;
+constexpr auto CSGO_ANIM_ONGROUND_FUZZY_APPROACH_CROUCH = 16.0f;
+constexpr auto CSGO_ANIM_LADDER_CLIMB_COVERAGE = 100.0f;
+constexpr auto CSGO_ANIM_RUN_ANIM_PLAYBACK_MULTIPLIER = 0.85f;
+constexpr auto ANIM_TRANSITION_WALK_TO_RUN = 0;
+constexpr auto ANIM_TRANSITION_RUN_TO_WALK = 1;
+constexpr auto CS_PLAYER_SPEED_RUN = 260.0f;
+constexpr auto CS_PLAYER_SPEED_WALK_MODIFIER = 0.52f;
+
+bool anims::get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out ) {
+	const auto nci = cs::i::engine->get_net_channel_info( );
+
+	auto idx = ent->idx( );
+
+	if ( !idx || idx > cs::i::globals->m_max_clients )
+		return false;
+
+	auto& data = anim_info[ idx ];
+
+	if ( data.empty( ) )
+		return false;
+
+	const auto lerp = lerp_time( );
+
+	auto time_valid_no_deadtime = [ & ] ( float t ) {
+		const auto correct = std::clamp( nci->get_avg_latency( 0 ) + nci->get_avg_latency( 1 ) + lerp , 0.0f , g::cvars::sv_maxunlag->get_float( ) );
+		return abs( correct - ( cs::i::globals->m_curtime - t ) ) <= 0.2f;
+	};
+
+	for ( int i = static_cast< int >( data.size( ) ) - 1; i >= 0; i-- ) {
+		auto& it = data[ i ];
+
+		if ( time_valid_no_deadtime( it.m_simtime ) ) {
+			if ( it.m_origin.dist_to( ent->abs_origin( ) ) < 1.0f )
+				return false;
+
+			bool end = ( i - 1 ) <= 0;
+			vec3_t next = end ? ent->abs_origin( ) : data[ i - 1 ].m_origin;
+			float time_next = end ? ent->simtime( ) : data[ i - 1 ].m_simtime;
+
+			float correct = nci->get_avg_latency( 0 ) + nci->get_avg_latency( 1 ) + lerp;
+			float time_delta = time_next - it.m_simtime;
+			float add = end ? 0.2f : time_delta;
+			float deadtime = it.m_simtime + correct + add;
+
+			float delta = deadtime - cs::i::globals->m_curtime;
+
+			float mul = 1.0f / add;
+
+			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp( delta * mul , 0.0f , 1.0f );
+
+			out = it.m_aim_bones[it.m_side];
+
+			for ( auto& iter : out )
+				iter.set_origin( iter.origin( ) - it.m_origin + lerp );
+
+			return true;
+		}
+	}
+
+	return false;
+}
 
 // credits cbrs
 bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses ) {
@@ -99,7 +155,7 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	//	build some shit
 	// IDX = 205 ( 2020.7.10 )
 	vfunc< void( __thiscall* )( player_t* , void* , vec3_t* , void* , float , uint32_t ) >( target , standard_blending_rules_vfunc_idx ) ( target , cstudio , pos , q , time , mask );
-
+	
 	//	set iks
 	if ( iks ) {
 		vfunc< void( __thiscall* )( player_t* , float ) >( target , update_ik_locks_vfunc_idx ) ( target , time );
@@ -126,204 +182,128 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	return true;
 }
 
-namespace anim_util {
-	__forceinline float angle_diff ( float dst, float src ) {
-		auto delta = fmodf ( dst - src, 360.0f );
+float anims::angle_diff( float dst , float src ) {
+	auto delta = fmodf( dst - src , 360.0f );
 
-		if ( dst > src ) {
-			if ( delta >= 180.0f )
-				delta -= 360.0f;
-		}
-		else {
-			if ( delta <= -180.0f )
-				delta += 360.0f;
-		}
-
-		return delta;
+	if ( dst > src ) {
+		if ( delta >= 180.0f )
+			delta -= 360.0f;
+	}
+	else {
+		if ( delta <= -180.0f )
+			delta += 360.0f;
 	}
 
-	float local_poses_airtime = 0.0f;
-	float local_poses_ground_time = 0.0f;
-	float local_walk_to_run_transition = 0.0f;
-	int local_walk_to_run_transition_state = 0;
-	bool local_running = false;
-	
-	__forceinline void update_local_poses ( player_t* ent ) {
-		if ( !!( ent->flags ( ) & flags_t::on_ground ) )
-			local_poses_ground_time = cs::i::globals->m_curtime;
+	return delta;
+}
 
-		local_poses_airtime = cs::i::globals->m_curtime - local_poses_ground_time;
+void anims::update_local_poses( player_t* ent ) {
+	if ( !!( createmove_flags & flags_t::on_ground ) )
+		local_poses_ground_time = cs::i::globals->m_curtime;
 
-#define CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED 2.0f
-#define CSGO_ANIM_ONGROUND_FUZZY_APPROACH 8.0f
-#define CSGO_ANIM_ONGROUND_FUZZY_APPROACH_CROUCH 16.0f
-#define CSGO_ANIM_LADDER_CLIMB_COVERAGE 100.0f
-#define CSGO_ANIM_RUN_ANIM_PLAYBACK_MULTIPLIER 0.85f
-#define ANIM_TRANSITION_WALK_TO_RUN 0
-#define ANIM_TRANSITION_RUN_TO_WALK 1
-#define CS_PLAYER_SPEED_RUN 260.0f
-#define CS_PLAYER_SPEED_WALK_MODIFIER 0.52f
+	local_poses_airtime = cs::i::globals->m_curtime - local_poses_ground_time;
 
-		const auto speed_2d = ent->abs_vel( ).length_2d ( );
+	const auto speed_2d = ent->abs_vel( ).length_2d( );
 
-		if ( local_walk_to_run_transition > 0.0f && local_walk_to_run_transition < 1.0f )
-		{
-			//currently transitioning between walk and run
-			if ( local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN )
-			{
-				local_walk_to_run_transition += ent->animstate ( )->m_last_clientside_anim_update_time_delta * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
-			}
-			else // m_bWalkToRunTransitionState == ANIM_TRANSITION_RUN_TO_WALK
-			{
-				local_walk_to_run_transition -= ent->animstate ( )->m_last_clientside_anim_update_time_delta * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
-			}
-			local_walk_to_run_transition = std::clamp ( local_walk_to_run_transition, 0.0f, 1.0f );
-		}
+	if ( local_walk_to_run_transition > 0.0f && local_walk_to_run_transition < 1.0f ) {
+		if ( local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN )
+			local_walk_to_run_transition += cs::ticks2time( 1 ) * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
+		else
+			local_walk_to_run_transition -= cs::ticks2time( 1 ) * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
 
-		if ( speed_2d > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_RUN_TO_WALK )
-		{
-			//crossed the walk to run threshold
-			local_walk_to_run_transition_state = ANIM_TRANSITION_WALK_TO_RUN;
-			local_walk_to_run_transition = std::max ( 0.01f, local_walk_to_run_transition );
-		}
-		else if ( speed_2d < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN )
-		{
-			//crossed the run to walk threshold
-			local_walk_to_run_transition_state = ANIM_TRANSITION_RUN_TO_WALK;
-			local_walk_to_run_transition = std::min ( 0.99f, local_walk_to_run_transition );
-		}
-	}
-	
-	__forceinline void calc_poses ( player_t* ent, std::array<float, 24>& poses, float feet_yaw ) {
-		/* copy existing poses*/
-		poses = ent->poses ( );
-
-		auto vel = ent == g::local ? ent->abs_vel( ) : ent->vel( );
-
-		/* calculate *some* new ones */
-		poses [ pose_param_t::speed ] = vel.length_2d() / ( ( ( ent->weapon ( ) && ent->weapon ( )->data() ) ? std::max ( ent->weapon ( )->data ( )->m_max_speed, 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
-		poses [ pose_param_t::stand ] = 1.0f - ent->crouch_amount();
-
-		poses [ pose_param_t::body_yaw] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize ( ent->animstate ( )->m_eye_yaw ), cs::normalize ( feet_yaw ) ) ), -60.0f, 60.0f ) / 120.0f + 0.5f;
-		poses [ pose_param_t::move_yaw ] = std::clamp ( cs::normalize ( angle_diff ( cs::normalize( cs::rad2deg ( atan2 ( -vel.y, -vel.x ) ) ), cs::normalize ( feet_yaw ) ) ), -180.0f, 180.0f ) / 360.0f + 0.5f;
-		poses [ pose_param_t::lean_yaw ] = 0.0f;
-
-		const float recalc_air_time = ( ent->layers ( ) [ 4 ].m_cycle - 0.72f ) * 1.25f;
-		const float clamped = recalc_air_time >= 0.0f ? std::min ( recalc_air_time, 1.0f ) : 0.0f;
-		float jump_fall = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
-
-		if ( jump_fall >= 0.0f )
-			jump_fall = std::min( jump_fall, 1.0f );
-
-		poses [ pose_param_t::jump_fall] = jump_fall;
-		poses [ pose_param_t::body_pitch ] = std::clamp ( cs::normalize ( ent->animstate ( )->m_pitch ), -90.0f, 90.0f ) / 180.0f + 0.5f;
-
-		poses [ pose_param_t::move_blend_crouch ] = ent->crouch_amount ( );
-		poses [ pose_param_t::move_blend_run ] = ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : ent->animstate ( )->m_ground_fraction ) * ( 1.0f - ent->crouch_amount ( ) );
-		poses [ pose_param_t::move_blend_walk ] = ( 1.0f - ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : ent->animstate ( )->m_ground_fraction ) ) * ( 1.0f - ent->crouch_amount ( ) );
+		local_walk_to_run_transition = std::clamp( local_walk_to_run_transition , 0.0f , 1.0f );
 	}
 
-	__forceinline void predict_movement ( player_t* ent, flags_t& old_flags, vec3_t& origin, vec3_t& vel ) {
-		vec3_t start, end, normal;
-		trace_t trace;
-		trace_filter_t filter;
-
-		start = origin;
-		end = start + vel * cs::ticks2time ( 1 );
-
-		cs::util_tracehull ( start, end, ent->mins(), ent->maxs(), mask_playersolid, ent, &trace );
-
-		if ( trace.m_fraction != 1.0f ) {
-			for ( auto i = 0; i < 2; ++i ) {
-				vel -= trace.m_plane.m_normal * vel.dot_product ( trace.m_plane.m_normal );
-
-				float adjust = vel.dot_product ( trace.m_plane.m_normal );
-
-				if ( adjust < 0.0f )
-					vel -= ( trace.m_plane.m_normal * adjust );
-
-				start = trace.m_endpos;
-				end = start + ( vel * ( cs::ticks2time ( 1 ) * ( 1.0f - trace.m_fraction ) ) );
-
-				cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), mask_playersolid, ent, &trace );
-
-				if ( trace.m_fraction == 1.0f )
-					break;
-			}
-		}
-
-		start = end = origin = trace.m_endpos;
-		end.z -= 2.0f;
-
-		cs::util_tracehull ( start, end, ent->mins ( ), ent->maxs ( ), mask_playersolid, ent, &trace );
-
-		old_flags &= ~flags_t::on_ground;
-
-		if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > 0.7f )
-			old_flags |= flags_t::on_ground;
+	if ( speed_2d > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_RUN_TO_WALK ) {
+		local_walk_to_run_transition_state = ANIM_TRANSITION_WALK_TO_RUN;
+		local_walk_to_run_transition = std::max( 0.01f , local_walk_to_run_transition );
+	}
+	else if ( speed_2d < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN ) {
+		local_walk_to_run_transition_state = ANIM_TRANSITION_RUN_TO_WALK;
+		local_walk_to_run_transition = std::min( 0.99f , local_walk_to_run_transition );
 	}
 }
 
-bool anims::get_lagcomp_bones ( player_t* ent, std::array<matrix3x4_t, 128>& out ) {
-	const auto nci = cs::i::engine->get_net_channel_info ( );
+void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float feet_yaw ) {
+	/* copy existing poses*/
+	poses = ent->poses( );
 
-	auto idx = ent->idx ( );
+	const auto anim_state = ent->animstate( );
+	const auto vel = ent == g::local ? ent->abs_vel( ) : ent->vel( );
 
-	if ( !idx || idx > cs::i::globals->m_max_clients )
-		return false;
+	/* calculate *some* new ones */
+	poses[ pose_param_t::speed ] = vel.length_2d( ) / ( ( ( ent->weapon( ) && ent->weapon( )->data( ) ) ? std::max( ent->weapon( )->data( )->m_max_speed , 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
+	poses[ pose_param_t::stand ] = 1.0f - ent->crouch_amount( );
 
-	auto& data = anim_info [ idx ];
+	poses[ pose_param_t::body_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( anim_state->m_eye_yaw ) , cs::normalize( feet_yaw ) ) ) , -60.0f , 60.0f ) / 120.0f + 0.5f;
+	poses[ pose_param_t::move_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( cs::rad2deg( atan2( -vel.y , -vel.x ) ) ) , cs::normalize( feet_yaw ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
+	poses[ pose_param_t::lean_yaw ] = 0.0f;
 
-	if ( data.empty ( ) )
-		return false;
+	const float recalc_air_time = ( ent->layers( )[ 4 ].m_cycle - 0.72f ) * 1.25f;
+	const float clamped = recalc_air_time >= 0.0f ? std::min( recalc_air_time , 1.0f ) : 0.0f;
+	float jump_fall = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
 
-	const auto lerp = lerp_time ( );
+	if ( jump_fall >= 0.0f )
+		jump_fall = std::min( jump_fall , 1.0f );
 
-	auto time_valid_no_deadtime = [ & ] ( float t ) {
-		const auto correct = std::clamp ( nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp, 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
-		return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - t ) ) <= 0.2f;
-	};
+	poses[ pose_param_t::jump_fall ] = jump_fall;
+	poses[ pose_param_t::body_pitch ] = std::clamp( cs::normalize( anim_state->m_pitch ) , -90.0f , 90.0f ) / 180.0f + 0.5f;
 
-	for ( int i = static_cast< int >( data.size ( ) ) - 1; i >= 0; i-- ) {
-		auto& it = data [ i ];
+	poses[ pose_param_t::move_blend_crouch ] = ent->crouch_amount( );
+	poses[ pose_param_t::move_blend_run ] = ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : anim_state->m_ground_fraction ) * ( 1.0f - ent->crouch_amount( ) );
+	poses[ pose_param_t::move_blend_walk ] = ( 1.0f - ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : anim_state->m_ground_fraction ) ) * ( 1.0f - ent->crouch_amount( ) );
+}
 
-		if ( time_valid_no_deadtime ( it.m_simtime ) ) {
-			if ( it.m_origin.dist_to ( ent->origin( ) ) < 1.0f )
-				return false;
+void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin , vec3_t& vel , flags_t& old_flags ) {
+	if ( !( flags & flags_t::on_ground ) )
+		vel.z -= g::cvars::sv_gravity->get_float( ) * cs::ticks2time(1);
+	else if ( !( old_flags & flags_t::on_ground ) )
+		vel.z = g::cvars::sv_jump_impulse->get_float( );
 
-			bool end = ( i - 1 ) <= 0;
-			vec3_t next = end ? ent->origin( ) : data [ i - 1 ].m_origin;
-			float time_next = end ? ent->simtime ( ) : data [ i - 1 ].m_simtime;
+	vec3_t start , end , normal;
+	trace_t trace;
+	trace_filter_t filter;
 
-			float correct = nci->get_avg_latency ( 0 ) + nci->get_avg_latency ( 1 ) + lerp;
-			float time_delta = time_next - it.m_simtime;
-			float add = end ? 0.2f : time_delta;
-			float deadtime = it.m_simtime + correct + add;
+	start = origin;
+	end = start + vel * cs::ticks2time( 1 );
 
-			float delta = deadtime - cs::ticks2time( g::local->tick_base ( ) );
+	cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
 
-			float mul = 1.0f / add;
+	if ( trace.m_fraction != 1.0f ) {
+		for ( auto i = 0; i < 2; ++i ) {
+			vel -= trace.m_plane.m_normal * vel.dot_product( trace.m_plane.m_normal );
 
-			vec3_t lerp = next + ( it.m_origin - next ) * std::clamp ( delta * mul, 0.0f, 1.0f );
+			float adjust = vel.dot_product( trace.m_plane.m_normal );
 
-			out = it.m_aim_bones;
+			if ( adjust < 0.0f )
+				vel -= ( trace.m_plane.m_normal * adjust );
 
-			for ( auto& iter : out )
-				iter.set_origin ( iter.origin ( ) - it.m_origin + lerp );
+			start = trace.m_endpos;
+			end = start + ( vel * ( cs::ticks2time( 1 ) * ( 1.0f - trace.m_fraction ) ) );
 
-			return true;
+			cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
+
+			if ( trace.m_fraction == 1.0f )
+				break;
 		}
 	}
 
-	return false;
+	start = end = origin = trace.m_endpos;
+	end.z -= 2.0f;
+
+	cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
+
+	old_flags = flags;
+
+	flags &= ~flags_t::on_ground;
+
+	if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > 0.7f )
+		flags |= flags_t::on_ground;
 }
 
 void anims::reset_data ( int idx ) {
 	if ( !anim_info [ idx ].empty ( ) )
 		anim_info [ idx ].clear ( );
-
-	if ( !predicted_anim_info [ idx ].empty ( ) )
-		predicted_anim_info [ idx ].clear ( );
 
 	auto ent = cs::i::ent_list->get<player_t*> ( idx );
 
@@ -331,6 +311,7 @@ void anims::reset_data ( int idx ) {
 		ent->animate ( ) = true;
 }
 
+/* works fine (not when standing? (need to update anims when standing still as well?(only updates on send?))) */
 void anims::manage_fake ( ) {
 	if ( !g::local )
 		return;
@@ -353,7 +334,6 @@ void anims::manage_fake ( ) {
 		spawn_time = g::local->spawn_time ( );
 	}
 
-	//if ( g::send_packet ) {
 	static float last_ground_time = cs::i::globals->m_curtime;
 
 	if ( !!( g::local->flags ( ) & flags_t::on_ground ) )
@@ -380,7 +360,7 @@ void anims::manage_fake ( ) {
 	g::local->abs_angles ( ).y = fake_anim_state.m_abs_yaw;
 
 	auto poses = g::local->poses ( );
-	anim_util::calc_poses ( g::local, poses, fake_anim_state.m_abs_yaw );
+	calc_poses ( g::local, poses, fake_anim_state.m_abs_yaw );
 
 	const float recalc_air_time = ( last_air_time - 0.72f ) * 1.25f;
 	const float clamped = recalc_air_time >= 0.0f ? std::min ( recalc_air_time, 1.0f ) : 0.0f;
@@ -399,13 +379,7 @@ void anims::manage_fake ( ) {
 
 	for ( auto& iter : fake_matrix )
 		iter.set_origin ( iter.origin ( ) - origin );
-	//}
 }
-
-std::array< animlayer_t, 13> last_anim_layers_queued {};
-std::array< animlayer_t, 13> last_anim_layers {};
-float last_local_feet_yaw;
-std::array<float, 24> last_local_poses;
 
 void anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
 	const auto idx = ent->idx ( );
@@ -432,7 +406,7 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
 
 	vel = origin_delta * ( 1.0f / time_difference );
 
-	if ( !!( ent->flags ( ) & flags_t::on_ground ) && anim_layers [ 11 ].m_weight > 0.0f && anim_layers [ 11 ].m_weight < 1.0f && anim_layers [ 11 ].m_cycle > previous_record.m_anim_layers [ 11 ].m_cycle ) {
+	if ( !!( ent->flags ( ) & flags_t::on_ground ) && anim_layers [ 11 ].m_weight > 0.0f && anim_layers [ 11 ].m_weight < 1.0f && anim_layers [ 11 ].m_cycle > previous_record.m_anim_layers [0][ 11 ].m_cycle ) {
 		auto weapon = ent->weapon ( );
 
 		if ( weapon ) {
@@ -484,160 +458,212 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
 		vel.z = 0.0f;
 }
 
-void anims::process_networked_anims ( player_t* ent ) {
-	const auto idx = ent->idx ( );
+void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& to ) {
+	const auto delta_ticks = cs::time2ticks( to.m_simtime - from.m_simtime );
 
-	static std::array< matrix3x4_t, 128 > aim_bones;
-
-	/* fix velocity */
-	fix_velocity ( ent, ent->vel() );
-
-	update_anims ( ent, ent->angles(), true, &aim_bones );
-
-	/* store animation info */
-	auto data_tmp = anim_info_t ( ent, ent->abs_angles().y );
-
-	data_tmp.m_aim_bones = aim_bones;
-
-	anim_info [ idx ].push_front ( data_tmp );
-
-	//const auto nci = cs::i::engine->get_net_channel_info ( );
-	//while ( nci && !anim_info [ idx ].empty ( ) && abs ( ent->simtime() - anim_info [ idx ].back ( ).m_simtime ) > nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + g::cvars::sv_maxunlag->get_float ( ) + 0.2f + lerp_time ( ) )
-	//	anim_info [ idx ].pop_back ( );
-
-	if ( !predicted_anim_info [ idx ].empty ( ) )
-		predicted_anim_info [ idx ].clear ( );
-
-	last_update_time [ idx ] = ent->simtime ( );
-	has_been_predicted [ idx ] = false;
-}
-
-void anims::process_predicted_anims ( player_t* ent, bool resolve ) {
-	const auto idx = ent->idx ( );
-	const auto movement_weight = ent->layers ( ) [ 6 ].m_weight;
-
-	/* calculate instantaneous velocity to animate with */
-	/*if ( predicted_anim_info [ idx ].size ( ) == 1 && !!( predicted_anim_info [ idx ].front ( ).m_flags & flags_t::on_ground ) ) {
-		if ( !movement_weight ) {
-			predicted_anim_info [ idx ].front ( ).m_vel.y = predicted_anim_info [ idx ].front ( ).m_vel.x = 0.0f;
-		}
-		else if ( movement_weight < 1.0f ) {
-			const auto max_vel = ent->scoped ( ) ? ent->weapon ( )->data ( )->m_max_speed_alt : ent->weapon ( )->data ( )->m_max_speed;
-			const auto new_mag = ( max_vel * CS_PLAYER_SPEED_WALK_MODIFIER ) * movement_weight;
-			const auto unit_vec = predicted_anim_info [ idx ].front ( ).m_vel.normalized ( );
-			predicted_anim_info [ idx ].front ( ).m_vel.y = unit_vec.y * new_mag;
-			predicted_anim_info [ idx ].front ( ).m_vel.x = unit_vec.x * new_mag;
-		}
-	}*/
-
-	auto last_predicted_data = predicted_anim_info [ idx ].front ( );
-
-	/* apply gravity */
-	if ( !( last_predicted_data.m_flags & flags_t::on_ground ) )
-		last_predicted_data.m_vel.z -= g::cvars::sv_gravity->get_float ( ) * cs::ticks2time( 1 );
-	else if ( predicted_anim_info [ idx ].size() > 1 && !( predicted_anim_info [ idx ][1].m_flags & flags_t::on_ground ) )
-		last_predicted_data.m_vel.z = g::cvars::sv_jump_impulse->get_float();
-
-	/* predict new player average velocity (for calculating player movement) */
-	if ( anim_info [ idx ].size ( ) > 1 && ( !!( last_predicted_data.m_flags & flags_t::on_ground ) ? movement_weight : true ) ) {
-		//const auto delta_ticks = anim_info [ idx ][ 0 ].m_choked_commands + 1;
-		//const auto vel_dir = cs::normalize( cs::rad2deg ( atan2 ( anim_info [ idx ][ 0 ].m_vel.y, anim_info [ idx ][ 0 ].m_vel.x )));
-		//const auto last_vel_dir = cs::normalize ( cs::rad2deg ( atan2 ( anim_info [ idx ][ 1 ].m_vel.y, anim_info [ idx ][ 1 ].m_vel.x )));
-		//const auto last_angle_change = cs::normalize ( vel_dir - last_vel_dir ) / static_cast< float >( delta_ticks );
-		//const auto last_vel_mag_change = ( anim_info [ idx ][ 0 ].m_vel.length_2d ( ) - anim_info [ idx ][ 1 ].m_vel.length_2d ( ) ) / static_cast< float >( delta_ticks );
-		//
-		//const auto new_angle = cs::normalize( cs::normalize ( cs::rad2deg ( atan2 ( last_predicted_data.m_vel.y, last_predicted_data.m_vel.x ) ) ) + last_angle_change );
-		//const auto new_mag = last_predicted_data.m_vel.length_2d ( ) + last_vel_mag_change;
-		//
-		//last_predicted_data.m_vel.y = sin ( cs::deg2rad ( new_angle ) ) * new_mag;
-		//last_predicted_data.m_vel.x = cos ( cs::deg2rad ( new_angle ) ) * new_mag;
-
-		const auto delta_vel = (anim_info [ idx ][ 1 ].m_vel - anim_info [ idx ][ 0 ].m_vel) / static_cast<float>( anim_info [ idx ][ 0 ].m_choked_commands + 1 );
-		last_predicted_data.m_vel += vec3_t ( delta_vel.x, delta_vel.y, 0.0f );
-	}
-
-	if ( !movement_weight && !!( last_predicted_data.m_flags & flags_t::on_ground ) )
-		last_predicted_data.m_vel.y = last_predicted_data.m_vel.x = 0.0f;
-
-	/* simulate player movement */
-	anim_util::predict_movement ( ent, last_predicted_data.m_flags, last_predicted_data.m_origin, last_predicted_data.m_vel );
-
-	/* update animations with simulated data */
-	last_predicted_data.m_simtime = last_update_time [ idx ] + cs::ticks2time ( 1 );
-	last_predicted_data.m_old_simtime = last_update_time [ idx ];
-	last_predicted_data.m_choked_commands = std::clamp ( cs::time2ticks ( ( last_update_time [ idx ] + cs::ticks2time ( 1 ) ) - ent->simtime ( ) ) - 1, 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) );
-
-	/* set important animstate vars */
-	last_predicted_data.m_anim_state.m_pitch = last_predicted_data.m_angles.x;
-	last_predicted_data.m_anim_state.m_eye_yaw = last_predicted_data.m_angles.y;
-	last_predicted_data.m_anim_state.m_last_clientside_anim_update = last_predicted_data.m_old_simtime;
-	last_predicted_data.m_anim_state.m_last_clientside_anim_update_time_delta = last_predicted_data.m_simtime - last_predicted_data.m_old_simtime;
-
-	/* backup current data */
-	const auto backup_data = anim_info_t ( ent, last_predicted_data.m_anim_state.m_abs_yaw );
-	const auto backup_abs_angles = ent->abs_angles ( ).y;
-	auto backup_abs_origin = ent->abs_origin ( );
-
-	/* set data to animate with */
-	ent->angles ( ) = last_predicted_data.m_angles;
-	ent->origin ( ) = last_predicted_data.m_origin;
-	ent->lby ( ) = last_predicted_data.m_lby;
-	ent->simtime ( ) = last_predicted_data.m_simtime;
-	ent->old_simtime ( ) = last_predicted_data.m_old_simtime;
-	ent->flags ( ) = last_predicted_data.m_flags;
-	memcpy ( ent->layers ( ), last_predicted_data.m_anim_layers.data ( ), sizeof ( last_predicted_data.m_anim_layers ) );
-	ent->poses ( ) = last_predicted_data.m_poses;
-	ent->vel ( ) = last_predicted_data.m_vel;
-	ent->set_abs_origin ( last_predicted_data.m_origin );
-	ent->set_abs_angles ( last_predicted_data.m_abs_angles );
-	*ent->animstate ( ) = last_predicted_data.m_anim_state;
-
-	/* animate player 1 tick */
-	update_anims ( ent, last_predicted_data.m_angles, resolve, &last_predicted_data.m_aim_bones /* update anim layers as well */, true );
-
-	/* store output */
-	memcpy ( last_predicted_data.m_anim_layers.data ( ), ent->layers ( ), sizeof ( last_predicted_data.m_anim_layers ) );
-	last_predicted_data.m_poses = ent->poses ( );
-	last_predicted_data.m_abs_angles = ent->abs_angles ( );
-	last_predicted_data.m_anim_state = *ent->animstate ( );
-	last_predicted_data.m_predicted = true;
-
-	/* restore backup data */
-	ent->angles ( ) = backup_data.m_angles;
-	ent->origin ( ) = backup_data.m_origin;
-	ent->lby ( ) = backup_data.m_lby;
-	ent->simtime ( ) = backup_data.m_simtime;
-	ent->old_simtime ( ) = backup_data.m_old_simtime;
-	ent->flags ( ) = backup_data.m_flags;
-	memcpy ( ent->layers ( ), backup_data.m_anim_layers.data ( ), sizeof ( backup_data.m_anim_layers ) );
-	ent->poses ( ) = backup_data.m_poses;
-	ent->vel ( ) = backup_data.m_vel;
-	ent->set_abs_origin ( backup_abs_origin );
-	ent->set_abs_angles ( vec3_t( 0.0f, backup_abs_angles, 0.0f ) );
-	*ent->animstate ( ) = backup_data.m_anim_state;
-
-	predicted_anim_info [ idx ].push_front ( last_predicted_data );
-	last_update_time [ idx ] += cs::ticks2time ( 1 );
-}
-
-namespace lby {
-	extern bool in_update;
-}
-
-void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::array< matrix3x4_t, 128 >* bones_out, bool update_anim_layers ) {
-	VM_TIGER_BLACK_START
-	static auto& invalidate_bone_cache = **reinterpret_cast< bool** >( pattern::search ( _ ( "client.dll" ), _ ( "C6 05 ? ? ? ? ? 89 47 70" ) ).add ( 2 ).get<uint32_t> ( ) );
-	static auto invalidate_physics_recursive = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void ( __thiscall* )( player_t*, int )> ( );
-
-	const float backup_frametime = cs::i::globals->m_frametime;
-	const float backup_curtime = cs::i::globals->m_curtime;
-
-	const auto state = ent->animstate ( );
-
-	if ( !state )
+	if ( !delta_ticks )
 		return;
 
+	const auto backup_anim_layers = to.m_anim_layers;
+	const auto backup_abs_origin = ent->abs_origin( );
+
+	/* update from last sent data */
+	ent->angles( ) = from.m_angles;
+	ent->origin( ) = from.m_origin;
+	ent->mins( ) = from.m_mins;
+	ent->maxs( ) = from.m_maxs;
+	ent->lby( ) = from.m_lby;
+	ent->simtime( ) = from.m_simtime;
+	ent->old_simtime( ) = from.m_old_simtime;
+	ent->crouch_amount( ) = from.m_duck_amount;
+	memcpy( ent->layers(), from.m_anim_layers[0].data(), sizeof( from.m_anim_layers[ 0 ] ) );
+	ent->flags( ) = from.m_flags;
+	ent->vel( ) = from.m_vel;
+	ent->set_abs_origin( ent->origin( ) );
+	
+	/* start from last animation data */
+	to.m_poses = from.m_poses;
+	to.m_anim_layers = from.m_anim_layers;
+	to.m_abs_angles = from.m_abs_angles;
+	to.m_anim_state = from.m_anim_state;
+
+	auto last_flags = from.m_flags;
+	const auto delta_yaw = cs::normalize( cs::normalize( to.m_angles.y ) - cs::normalize( from.m_angles.y ) );
+
+	for ( auto i = 0; i < delta_ticks; i++ ) {
+		const float simtime = from.m_simtime + cs::ticks2time( i + 1 );
+		
+		/* interpolate angles */
+		if ( !to.m_shot ) {
+			ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
+		}
+		/* set onshot angles when enemy supposedly shot */
+		else {
+			ent->angles( ) = from.m_angles;
+
+			if ( ent->weapon( ) && ent->weapon( )->last_shot_time() <= simtime )
+				ent->angles( ) = to.m_angles;
+		}
+
+		/* interpolate crouch amount */
+		ent->crouch_amount( ) = std::lerp( from.m_duck_amount , to.m_duck_amount , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
+
+		/* interpolate velocity */
+		ent->vel( ).x = std::lerp( from.m_vel.x , to.m_vel.x , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
+		ent->vel( ).y = std::lerp( from.m_vel.y , to.m_vel.y , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
+		ent->vel( ).z = std::lerp( from.m_vel.z , to.m_vel.z , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) );
+
+		/* use avg velocity (based on position, not instantaneous) to simulate movement */
+		auto anim_velocity = ( to.m_origin - from.m_origin ) / ( to.m_simtime - from.m_simtime );
+
+		/* predict origin */
+		simulate_movement( ent , ent->flags( ) , ent->origin( ) , anim_velocity, last_flags );
+
+		ent->set_abs_origin( ent->origin( ) );
+
+		/* set simtime */
+		const float backup_simtime = ent->simtime( );
+		const float backup_old_simtime = ent->old_simtime( );
+
+		ent->simtime( ) = simtime;
+		ent->old_simtime( ) = simtime - cs::ticks2time( 1 );
+
+		update_all_anims( ent, ent->angles( ), to, i + 1 == delta_ticks /* only build bones for latest tick */ );
+
+		ent->simtime( ) = backup_simtime;
+		ent->old_simtime( ) = backup_old_simtime;
+	}
+
+	/* restore data to current */
+	ent->angles( ) = to.m_angles;
+	ent->origin( ) = to.m_origin;
+	ent->mins( ) = to.m_mins;
+	ent->maxs( ) = to.m_maxs;
+	ent->lby( ) = to.m_lby;
+	ent->simtime( ) = to.m_simtime;
+	ent->old_simtime( ) = to.m_old_simtime;
+	memcpy( ent->layers( ) , backup_anim_layers[0].data( ) , sizeof( backup_anim_layers[ 0 ] ) );
+	ent->crouch_amount( ) = to.m_duck_amount;
+	ent->flags( ) = to.m_flags;
+	ent->vel( ) = to.m_vel;
+	ent->set_abs_origin( backup_abs_origin );
+
+	/* try to guess the orientation of their real matrix */
+	resolver::resolve_desync( ent , to );
+
+	/* set animlayers to ones from the server after we are done using the predicted ones */
+	to.m_anim_layers = backup_anim_layers;
+
+	/* set ideal animation data to be displayed */
+	ent->poses( ) = to.m_poses[ to.m_side ];
+	*ent->animstate( ) = to.m_anim_state[ to.m_side ];
+	ent->set_abs_angles( to.m_abs_angles[ to.m_side ] );
+}
+
+void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , bool build_matrix ) {
+	static auto& resolver = options::vars[ _( "ragebot.resolve_desync" ) ].val.b;
+
+	const auto anim_state = ent->animstate( );
+	const auto anim_layers = ent->layers( );
+
+	auto get_should_resolve = [ & ] ( ) {
+		if ( !resolver || !g::local || !g::local->alive( ) || !anim_state || !anim_layers || ent->team( ) == g::local->team( ) )
+			return false;
+
+		player_info_t pl_info;
+		cs::i::engine->get_player_info( ent->idx( ) , &pl_info );
+
+		if ( pl_info.m_fake_player )
+			return false;
+
+		return true;
+	};
+
+	auto should_resolve = get_should_resolve( );
+
+	auto update_desync_side = [ & ] ( desync_side_t side ) {
+		/* update animations for these set of animlayers and animstate */
+		*anim_state = to.m_anim_state[ side ];
+		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof( *anim_layers ) * 13 );
+		ent->poses( ) = to.m_poses [ side ];
+
+		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
+		const auto abs_yaw = cs::normalize( angles.y + offset );
+
+		anim_state->m_pitch = angles.x;
+		anim_state->m_eye_yaw = angles.y;
+
+		if ( should_resolve )
+			anim_state->m_abs_yaw = abs_yaw;
+
+		/* update animations */
+		update_anims( ent , angles );
+
+		const auto new_abs_yaw = /*cs::normalize( anim_state->m_eye_yaw + ( offset / 60.0f ) * ent->desync_amount( ) )*/ anim_state->m_abs_yaw;
+
+		/* calculate new poses */
+		calc_poses( ent , to.m_poses[ side ] , new_abs_yaw );
+
+		if ( build_matrix )
+			build_bones( ent, to.m_aim_bones[side].data(), 256, vec3_t( 0.0f , new_abs_yaw , 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
+
+		/* store new anim data */
+		to.m_anim_state[ side ] = *anim_state;
+		memcpy( to.m_anim_layers[ side ].data( ) , anim_layers , sizeof( *anim_layers ) * 13 );
+		to.m_abs_angles[ side ] = vec3_t( 0.0f , new_abs_yaw , 0.0f );
+		//to.m_poses[ side ] = ent->poses( );
+	};
+
+	/* backup animation data */
+	std::array<animlayer_t , 13> backup_anim_layers {};
+	memcpy( backup_anim_layers.data( ) , anim_layers , sizeof( backup_anim_layers ) );
+	const auto backup_anim_state = *anim_state;
+	const auto backup_poses = ent->poses();
+
+	/* animate with different desync ranges */
+	if ( should_resolve ) {
+		update_desync_side( desync_left_max );
+		update_desync_side( desync_left_half );
+		update_desync_side( desync_middle );
+		update_desync_side( desync_right_half );
+		update_desync_side( desync_right_max );
+	}
+	else {
+		update_desync_side( desync_middle );
+
+		/* copy single updated data to all others */
+		for ( auto& anim_layer : to.m_anim_layers )
+			anim_layer = to.m_anim_layers[ desync_middle ];
+
+		for ( auto& pose : to.m_poses )
+			pose = to.m_poses[ desync_middle ];
+
+		for ( auto& abs_angle : to.m_abs_angles )
+			abs_angle = to.m_abs_angles[ desync_middle ];
+
+		for ( auto& anim_state : to.m_anim_state )
+			anim_state = to.m_anim_state[ desync_middle ];
+
+		for ( auto& bones : to.m_aim_bones )
+			bones = to.m_aim_bones[ desync_middle ];
+	}
+
+	/* restore animation data */
+	memcpy( anim_layers , backup_anim_layers.data( ) , sizeof( backup_anim_layers ) );
+	*anim_state = backup_anim_state;
+	ent->poses( ) = backup_poses;
+}
+
+void anims::update_anims ( player_t* ent, vec3_t& angles ) {
+	static auto invalidate_physics_recursive = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void( __thiscall* )( player_t* , int )>( );
 	static bool init_last_data = false;
+
+	VM_TIGER_BLACK_START
+		const auto state = ent->animstate( );
+	const auto anim_layers = ent->layers( );
+
+	if ( !state || !anim_layers )
+		return;
 
 	if ( !init_last_data ) {
 		last_local_feet_yaw = state->m_abs_yaw;
@@ -645,6 +671,9 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 		memcpy ( last_anim_layers.data(), ent->layers ( ),sizeof( last_anim_layers ) );
 		init_last_data = true;
 	}
+
+	const float backup_frametime = cs::i::globals->m_frametime;
+	const float backup_curtime = cs::i::globals->m_curtime;
 	
 	if ( g::local && ent != g::local ) {
 		cs::i::globals->m_frametime = cs::ticks2time ( 1 );
@@ -660,169 +689,161 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool resolve, std::arr
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
 	}
 
-	//state->m_weapon = state->m_last_weapon = ent->weapon( );
+	if ( ent == g::local && g::local ) {
+		//state->m_ground_fraction = local_walk_to_run_transition;
+		state->m_ground_fraction = 0.0f;
 
-	std::array<animlayer_t, 13> backup_animlayers;
-	
-	if (!update_anim_layers )
-		memcpy ( backup_animlayers.data(), ent->layers ( ), sizeof( backup_animlayers ) );
+		if ( !cs::i::input->m_camera_in_thirdperson ) {
+			state->m_duck_amount = ent->crouch_amount( );
+			state->m_unk_feet_speed_ratio = ent->crouch_speed( );
+		}
 
-	if ( ent == g::local ) {
-		ent->layers ( ) [ 3 ].m_weight = 0.0f;
-		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
-		ent->layers ( ) [ 12 ].m_weight = 0.0f;
-
-		state->m_ground_fraction = anim_util::local_walk_to_run_transition;
+		state->m_hit_ground = false;
+		state->m_landing_duck_additive = 0.0f;
 	}
 
 	state->m_last_clientside_anim_framecount = cs::i::globals->m_framecount - 1;
 	state->m_feet_yaw_rate = 0.0f;
 	state->m_weapon = state->m_last_weapon = ent->weapon( );
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x98 ) = anim_layers[ 6 ].m_cycle;
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x9C ) = anim_layers[ 6 ].m_weight;
+
+	std::array<animlayer_t , 13> backup_anim_layers { };
+	memcpy( backup_anim_layers.data( ) , ent->layers( ) , sizeof( backup_anim_layers ) );
 
 	ent->animate ( ) = true;
 	ent->update( );
 	ent->animate ( ) = false;
 
+	if ( ent == g::local && g::local )
+		memcpy( ent->layers( ) , backup_anim_layers.data( ) , sizeof( backup_anim_layers ) );
+
 	if ( ent != g::local ) {
 		invalidate_physics_recursive( ent , 2 );
 		invalidate_physics_recursive( ent , 8 );
 		invalidate_physics_recursive( ent , 32 );
-
-		state->m_ground_fraction = anim_util::local_walk_to_run_transition;
 	}
-
-	state->m_last_clientside_anim_framecount = 0;
-	state->m_feet_yaw_rate = 0.0f;
-	state->m_ground_fraction = 0.0f;
-	state->m_weapon = state->m_last_weapon = ent->weapon( );
 	
-	if ( ent == g::local ) {
+	if ( ent == g::local && g::local ) {
 		ent->layers ( ) [ 3 ].m_weight = 0.0f;
 		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
 		ent->layers ( ) [ 12 ].m_weight = 0.0f;
 	}
 
-	if ( !update_anim_layers )
-		memcpy ( ent->layers ( ), backup_animlayers.data ( ), sizeof ( backup_animlayers ) );
-
 	cs::i::globals->m_frametime = backup_frametime;
 	cs::i::globals->m_curtime = backup_curtime;
 
-	if ( g::local && ent != g::local ) {
-		auto yaw_offset = resolver::resolve_yaw ( ent, resolve );
-
-		if ( yaw_offset == std::numeric_limits<float>::max ( ) ) {
-			std::array<float, 24> calc_poses {};
-
-			anim_util::calc_poses ( ent, calc_poses, state->m_abs_yaw );
-			
-			const auto idx = ent->idx ( );
-
-			if ( !update_anim_layers )
-				build_bones( ent, bones_out->data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), ent->simtime ( ), calc_poses );
-
-			ent->poses ( ) = calc_poses;
-			ent->set_abs_angles ( vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ) );
-		}
-		else {
-			const auto resolved_angle = cs::normalize ( cs::normalize( state->m_eye_yaw ) + yaw_offset );
-
-			std::array<float, 24> resolved_poses {};
-
-			anim_util::calc_poses ( ent, resolved_poses, resolved_angle );
-
-			const auto idx = ent->idx ( );
-
-			if ( !update_anim_layers )
-				build_bones( ent, bones_out->data(), 0x7FF00, vec3_t ( 0.0f, resolved_angle, 0.0f ), ent->origin ( ), ent->simtime ( ), resolved_poses );
-
-			ent->poses ( ) = resolved_poses;
-			ent->set_abs_angles ( vec3_t ( 0.0f, resolved_angle, 0.0f ) );
-		}
-	}
-	else {
+	if ( g::local && ent == g::local ) {
 		/* calc animlayers */
-		anim_util::update_local_poses ( ent );
+		update_local_poses( ent );
 
 		/* dont update on local until we send packet */
 		if ( g::send_packet ) {
-			memcpy ( last_anim_layers.data ( ), last_anim_layers_queued.data ( ), sizeof ( last_anim_layers ) );
+			memcpy( last_anim_layers.data( ) , last_anim_layers_queued.data( ) , sizeof( last_anim_layers ) );
 			last_local_feet_yaw = state->m_abs_yaw;
-			anim_util::calc_poses ( ent, last_local_poses, last_local_feet_yaw );
+			calc_poses( ent , last_local_poses , last_local_feet_yaw );
 		}
-		
-		ent->poses ( ) = last_local_poses;
-		memcpy ( ent->layers ( ), last_anim_layers.data(), sizeof( last_anim_layers ) );
 
-		ent->set_abs_angles ( vec3_t ( 0.0f, last_local_feet_yaw, 0.0f ) );
+		ent->poses( ) = last_local_poses;
+		memcpy( ent->layers( ) , last_anim_layers.data( ) , sizeof( last_anim_layers ) );
+
+		ent->set_abs_angles( vec3_t( 0.0f , last_local_feet_yaw , 0.0f ) );
 
 		if ( g::send_packet )
-			manage_fake ( );
+			manage_fake( );
 	}
 	VM_TIGER_BLACK_END
 }
 
 void anims::apply_anims ( player_t* ent ) {
-	if ( ent == g::local && g::local ) {
+	if ( !g::local )
+		return;
+
+	if ( ent == g::local ) {
 		ent->poses ( ) = last_local_poses;
 		ent->set_abs_angles ( vec3_t( 0.0f, last_local_feet_yaw, 0.0f ) );
 		memcpy ( ent->layers ( ), last_anim_layers.data(),sizeof( last_anim_layers ) );
+		return;
 	}
-	else {
-		auto& info = anim_info [ ent->idx ( ) ];
 
-		if ( info.empty ( ) )
-			return;
+	auto& info = anim_info[ ent->idx( ) ];
 
-		auto& first = info.front ( );
+	if ( info.empty( ) )
+		return;
 
-		ent->set_abs_angles ( first.m_abs_angles );
-		ent->poses ( ) = first.m_poses;
-	}
+	auto& first = info.front( );
+
+	ent->set_abs_angles( first.m_abs_angles[ first.m_side ] );
+	ent->poses( ) = first.m_poses[ first.m_side ];
+}
+
+namespace lby {
+	extern bool in_update;
 }
 
 void anims::on_net_update_end ( int idx ) {
 	auto ent = cs::i::ent_list->get<player_t*> ( idx );
 	
-	if ( !ent || !ent->is_player ( ) || !ent->alive ( ) || ent->dormant ( ) || !ent->animstate ( ) )
+	if ( !ent || !ent->is_player ( ) || !ent->alive ( ) || ent->dormant ( ) || !ent->animstate( ) || !ent->layers( ) )
 		return reset_data ( idx );
 
 	//ent->animate ( ) = false;
 
 	if ( g::local && ent == g::local ) {
-		ent->layers ( ) [ 4 ].m_cycle = anim_util::local_poses_airtime;
-		ent->layers ( ) [ 4 ].m_playback_rate = ( ( anim_util::local_poses_airtime > 0.0f ) ? cs::ticks2time ( 1 ) : 0.0f );
-		ent->layers ( ) [ 4 ].m_weight = ( ( anim_util::local_poses_airtime > 0.0f ) ? 1.0f : 0.0f );
+		ent->layers( )[ 4 ].m_cycle = local_poses_airtime;
+		ent->layers( )[ 4 ].m_playback_rate = ( ( local_poses_airtime > 0.0f ) ? cs::ticks2time( 1 ) : 0.0f );
+		ent->layers( )[ 4 ].m_weight = ( ( local_poses_airtime > 0.0f ) ? 1.0f : 0.0f );
 
 		memcpy ( last_anim_layers_queued.data ( ), ent->layers ( ), sizeof ( last_anim_layers_queued ) );
 
 		return;
 	}
 
-	/* temp */
-	const auto max_processing_ticks = g::cvars::sv_maxusrcmdprocessticks->get_int ( );
-
 	if ( ent->simtime ( ) > ent->old_simtime ( ) ) {
-		process_networked_anims ( ent );
-		has_been_predicted[idx] = false;
+		if ( !anim_info[ idx ].empty( ) && ent->origin( ).dist_to_sqr( anim_info[ idx ].front( ).m_origin ) > 4096.0f )
+			for ( auto& rec : anim_info[ idx ] )
+				rec.m_invalid = true;
 
-		if ( anim_info [ idx ].front ( ).m_shot )
-			shot_count [ idx ]++;
+		fix_velocity( ent, ent->vel() );
 
-		if ( g::local && ent->team ( ) != g::local->team ( ) )
-			predicted_anim_info [ idx ].push_front ( anim_info [ idx ].front ( ) );
+		static anim_info_t rec {};
+
+		/* if we don't have any information from the player, start animating from what we have now */
+		if ( anim_info[ idx ].empty( ) ) {
+			rec = anim_info_t( ent );
+
+			if ( rec.m_shot )
+				shot_count[ idx ]++;
+
+			const auto backup_anim_layers = rec.m_anim_layers;
+
+			update_all_anims( ent, ent->angles(), rec, true );
+
+			/* try to guess the orientation of their real matrix */
+			resolver::resolve_desync( ent , rec );
+
+			/* set animlayers to ones from the server after we are done using the predicted ones */
+			rec.m_anim_layers = backup_anim_layers;
+
+			anim_info[ idx ].push_front( rec );
+
+			ent->poses( ) = rec.m_poses[ rec.m_side ];
+			*ent->animstate( ) = rec.m_anim_state[ rec.m_side ];
+			ent->set_abs_angles( rec.m_abs_angles[ rec.m_side ] );
+		}
+		else {
+			rec = anim_info_t( ent );
+
+			if ( rec.m_shot )
+				shot_count[ idx ]++;
+
+			update_from( ent, anim_info[ idx ].front(), rec );
+
+			anim_info[ idx ].push_front( rec );
+		}
 	}
-	else if ( g::local && ent->team ( ) != g::local->team ( ) && !anim_info [ idx ].empty() /*&& !has_been_predicted [ idx ] && !anim_info [ idx ].front ( ).m_shot*/ ) {
-		//for ( auto i = 0; i < max_processing_ticks; i++ )
-		//	process_predicted_anims ( ent, true );
 	
-		process_predicted_anims ( ent, false );
-
-		has_been_predicted [ idx ] = true;
-	}
-	
-	const auto nci = cs::i::engine->get_net_channel_info ( );
-	while ( nci && !anim_info [ idx ].empty ( ) && /*anim_info [ idx ].back ( ).m_simtime < int ( cs::i::globals->m_curtime - g::cvars::sv_maxunlag->get_float ( ) )*/ abs( anim_info[ idx ].back( ).m_simtime - cs::i::globals->m_curtime ) > 1.0f )
+	while ( !anim_info [ idx ].empty ( ) && ( anim_info[ idx ].size() >= 24 || abs( anim_info[ idx ].back( ).m_simtime - cs::i::globals->m_curtime ) > 1.0f ) )
 		anim_info [ idx ].pop_back ( );
 }
 
@@ -836,10 +857,18 @@ void anims::on_render_start ( int idx ) {
 
 	apply_anims ( ent );
 
-	build_bones ( g::local, real_matrix.data ( ), 0x7FF00 /* BONE_USED_BY_HITBOX */, vec3_t ( 0.0f, g::local->animstate ( )->m_abs_yaw, 0.0f ), g::local->origin ( ), cs::i::globals->m_curtime, g::local->poses() );
+	if ( ent == g::local && g::local )
+		build_bones( ent , real_matrix.data( ) , 0x7FF00 , vec3_t( 0.0f , ent->animstate( )->m_abs_yaw , 0.0f ) , ent->origin( ) , cs::i::globals->m_curtime , ent->poses( ) );
 }
 
 void anims::pre_fsn ( int stage ) {
+	if ( !g::local ) {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
+			reset_data( i );
+
+		return;
+	}
+
 	switch ( stage ) {
 	case 5: {
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
@@ -852,27 +881,32 @@ void anims::pre_fsn ( int stage ) {
 }
 
 void anims::fsn ( int stage ) {
-	switch ( stage ) {
-	case 5: {
-		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
-			auto ent = cs::i::ent_list->get<player_t*> ( i );
+	if ( !g::local ) {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
+			reset_data( i );
 
-			if ( !ent || !ent->is_player() || !ent->alive ( ) )
+		return;
+	}
+
+	using update_all_viewmodel_addons_t = int( __fastcall* )( void* );
+	static auto update_all_viewmodel_addons = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t >( );
+
+	switch ( stage ) {
+	case 4: {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+			on_net_update_end( i );
+
+			auto ent = cs::i::ent_list->get<player_t*>( i );
+
+			if ( !ent || !ent->is_player( ) || !ent->alive( ) )
 				continue;
 
-			/* update viewmodel manually tox fix it dissappearing*/
-			using update_all_viewmodel_addons_t = int ( __fastcall* )( void* );
-			static auto update_all_viewmodel_addons = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 ? 83 EC ? 53 8B D9 56 57 8B 03 FF 90 ? ? ? ? 8B F8 89 7C 24 ? 85 FF 0F 84 ? ? ? ? 8B 17 8B CF" ) ).get< update_all_viewmodel_addons_t > ( );
+			/* update viewmodel manually to fix it dissappearing */
+			const auto viewmodel = ent->viewmodel_handle( );
 
-			if ( ent->viewmodel_handle ( ) != 0xFFFFFFFF && cs::i::ent_list->get_by_handle< void* > ( ent->viewmodel_handle ( ) ) )
-				update_all_viewmodel_addons ( cs::i::ent_list->get_by_handle< void* > ( ent->viewmodel_handle ( ) ) );
+			if ( viewmodel != -1 && cs::i::ent_list->get_by_handle< void* >( viewmodel ) )
+				update_all_viewmodel_addons( cs::i::ent_list->get_by_handle< void* >( viewmodel ) );
 		}
-	} break;
-	case 4: {
-		server_time = cs::i::globals->m_curtime;
-
-		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
-			on_net_update_end ( i );
 	} break;
 	}
 }

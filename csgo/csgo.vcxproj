@@ -41,6 +41,7 @@
     <ClCompile Include="fmt\format.cc" />
     <ClCompile Include="fmt\os.cc" />
     <ClCompile Include="globals.cpp" />
+    <ClCompile Include="hooks\accumulate_layers.cpp" />
     <ClCompile Include="hooks\base_interpolate_part1.cpp" />
     <ClCompile Include="hooks\build_transformations.cpp" />
     <ClCompile Include="hooks\cl_fireevents.cpp" />
@@ -57,11 +58,14 @@
     <ClCompile Include="hooks\get_viewmodel_fov.cpp" />
     <ClCompile Include="hooks\hooks.cpp" />
     <ClCompile Include="hooks\in_prediction.cpp" />
+    <ClCompile Include="hooks\is_connected.cpp" />
     <ClCompile Include="hooks\is_hltv.cpp" />
     <ClCompile Include="hooks\list_leaves_in_box.cpp" />
     <ClCompile Include="hooks\lock_cursor.cpp" />
     <ClCompile Include="hooks\modify_eye_pos.cpp" />
     <ClCompile Include="hooks\netmsg_tick.cpp" />
+    <ClCompile Include="hooks\notify_on_layer_change_cycle.cpp" />
+    <ClCompile Include="hooks\notify_on_layer_change_weight.cpp" />
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
     <ClCompile Include="hooks\process_interp_list.cpp" />
@@ -135,6 +139,7 @@
     <ClInclude Include="fmt\ranges.h" />
     <ClInclude Include="globals.hpp" />
     <ClInclude Include="hitsounds.h" />
+    <ClInclude Include="hooks\accumulate_layers.hpp" />
     <ClInclude Include="hooks\base_interpolate_part1.hpp" />
     <ClInclude Include="hooks\build_transformations.hpp" />
     <ClInclude Include="hooks\cl_fireevents.hpp" />
@@ -152,11 +157,14 @@
     <ClInclude Include="hooks\get_viewmodel_fov.hpp" />
     <ClInclude Include="hooks\hooks.hpp" />
     <ClInclude Include="hooks\in_prediction.hpp" />
+    <ClInclude Include="hooks\is_connected.hpp" />
     <ClInclude Include="hooks\is_hltv.hpp" />
     <ClInclude Include="hooks\list_leaves_in_box.hpp" />
     <ClInclude Include="hooks\lock_cursor.hpp" />
     <ClInclude Include="hooks\modify_eye_pos.hpp" />
     <ClInclude Include="hooks\netmsg_tick.hpp" />
+    <ClInclude Include="hooks\notify_on_layer_change_cycle.hpp" />
+    <ClInclude Include="hooks\notify_on_layer_change_weight.hpp" />
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
     <ClInclude Include="hooks\process_interp_list.hpp" />

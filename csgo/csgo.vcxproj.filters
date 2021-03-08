@@ -548,6 +548,18 @@
     <ClInclude Include="hooks\run_command.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\accumulate_layers.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\notify_on_layer_change_cycle.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\notify_on_layer_change_weight.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\is_connected.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -779,6 +791,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\run_command.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\accumulate_layers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\notify_on_layer_change_cycle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\notify_on_layer_change_weight.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\is_connected.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
