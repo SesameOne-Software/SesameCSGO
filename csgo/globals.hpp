@@ -4,7 +4,7 @@
 
 #include <ThemidaSDK/Include/C/ThemidaSDK.h>
 
-#define SESAME_VERSION "Sesame v4.0.2"
+#define SESAME_VERSION "Sesame v4.1.0"
 
 template < typename type >
 constexpr uint32_t rgba ( type r, type g, type b, type a ) {
@@ -22,20 +22,6 @@ enum class round_t : int {
 	ending,
 };
 
-typedef struct _Loader_Info {
-	HMODULE hMod;
-	size_t hMod_sz;
-	void* section;
-	size_t section_sz;
-	const char* init;
-	unsigned char* key;
-	unsigned char* iv;
-	const char* username;
-	const char* avatar;
-	size_t avatar_sz;
-	char padding [ 24 ];
-}Loader_Info, * PLoader_Info;
-
 namespace g {
 	extern bool unload;
 
@@ -48,7 +34,6 @@ namespace g {
 	extern int cock_ticks;
 	extern bool can_fire_revolver;
 	extern round_t round;
-	extern PLoader_Info loader_data;
 	inline uint32_t server_tick = 0;
 
 	namespace resources {

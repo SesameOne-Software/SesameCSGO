@@ -109,8 +109,10 @@ void airstuck ( ucmd_t* ucmd ) {
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
 
-	cs::i::engine->set_viewangles ( ucmd->m_angs );
-	cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+	if ( ucmd ) {
+		cs::i::engine->set_viewangles( ucmd->m_angs );
+		cs::i::pred->set_local_viewangles( ucmd->m_angs );
+	}
 
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;

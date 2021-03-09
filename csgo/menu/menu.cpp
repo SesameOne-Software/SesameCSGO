@@ -130,7 +130,6 @@ int skins_subtab_idx = skins_subtabs_none;
 int misc_subtab_idx = misc_subtabs_none;
 
 std::string g_pfp_data;
-std::string g_username;
 
 ImFont* gui_ui_font = nullptr;
 ImFont* gui_small_font = nullptr;
@@ -336,8 +335,6 @@ void gui::scale_dpi ( ) {
 }
 
 void gui::init( ) {
-	g_username = ( g::loader_data && g::loader_data->username ) ? g::loader_data->username : _ ( "sesame" );
-//
 	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
 	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
 	//else

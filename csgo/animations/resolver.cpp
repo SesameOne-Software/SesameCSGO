@@ -575,7 +575,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			const auto delta = cs::normalize( cs::normalize( last_abs_yaw[ idx ] ) - cs::normalize( anim_state->m_eye_yaw ) );
 
 			for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
-				const auto offset = -60.0f + static_cast< float >( side ) * 30.0f;
+				const auto offset = -ent->desync_amount() + static_cast< float >( side ) * ( ent->desync_amount( ) * 0.5f );
 				const auto delta_yaw = abs( delta - offset );
 
 				if ( delta_yaw < closest_delta_yaw ) {
@@ -596,18 +596,30 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	}
 
 	/* start of resolver */
-	if ( !anim_layers[ 6 ].m_weight ) {
-		const auto delta_yaw = cs::normalize( cs::normalize( anim_state->m_eye_yaw ) - cs::normalize( ent->lby( ) ) );
+	/* check if using big jitter */
+	if ( anim_info[ idx ].size( ) >= 2
+		&& abs( cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) ) > 35.0f
+		&& copysign( 1.0f , cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) )
+		!= copysign( 1.0f , cs::normalize( cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) )
+		&& copysign( 1.0f , cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) )
+		== copysign( 1.0f , cs::normalize( cs::normalize( anim_info[ idx ][ 1 ].m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( anim_info[ idx ][ 1 ].m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) ) ) {
+		const auto delta_yaw = cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
 
-		if ( abs( delta_yaw ) > 35.0f ) {
-			extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
-			found_extended[ idx ] = true;
-		}
+		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
+		found_extended[ idx ] = true;
 	}
-	else if ( !anim_info[ idx ].empty() ) {
-		const auto has_static = abs( anim_layers[ 6 ].m_weight - anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_weight ) < 0.003f;
+	/* lby extended desync */
+	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_weight ) {
+		const auto delta_yaw = cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[anims::desync_side_t::desync_max ].m_abs_yaw ) );
+
+		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+		found_extended[ idx ] = true;
+	}
+	/* moving desync */
+	else if ( anim_layers[ 6 ].m_weight && !anim_info[ idx ].empty() ) {
+		const auto has_static = abs( anim_layers[ 6 ].m_weight - anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_weight ) < 0.0001f;
 		const auto has_jitter_side_1 = anim_info[ idx ].size( ) >= 3
-			&& anim_layers[ 6 ].m_weight > anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
+			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
 			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
 			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate;
 		const auto has_jitter_side_2 = anim_info[ idx ].size( ) >= 3
@@ -615,9 +627,8 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
 			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate;
 		const auto has_jitter = has_jitter_side_1 || has_jitter_side_2;
-		
-		if ( anim_layers[ 12 ].m_weight < 0.006f ) {
-			/* reset resolver if we recieved new, reliable data */
+
+		if ( !anim_layers[ 12 ].m_weight /* make sure no direction change */ || has_static || has_jitter ) {
 			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 
@@ -708,7 +719,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		case 1: /* near side if moving, max opposite side if standing */ {
 			/* near side */
 			if ( anim_layers[ 6 ].m_weight ) {
-				switch ( initial_resolve_side[ idx ] ) {
+				switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
 				case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
 				case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
 				case anims::desync_side_t::desync_middle:
@@ -722,7 +733,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			}
 			/* max opposite side */
 			else {
-				switch ( initial_resolve_side[ idx ] ) {
+				switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
 				case anims::desync_side_t::desync_left_max:
 				case anims::desync_side_t::desync_left_half:
 					rec.m_side = anims::desync_side_t::desync_right_max;
@@ -740,7 +751,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		case 2: /* max opposite if moving, near side side if standing */ {
 			/* max opposite side */
 			if ( anim_layers[ 6 ].m_weight ) {
-				switch ( initial_resolve_side[ idx ] ) {
+				switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
 				case anims::desync_side_t::desync_left_max:
 				case anims::desync_side_t::desync_left_half:
 					rec.m_side = anims::desync_side_t::desync_right_max;
@@ -756,7 +767,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			}
 			/* near side */
 			else {
-				switch ( initial_resolve_side[ idx ] ) {
+				switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
 				case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
 				case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
 				case anims::desync_side_t::desync_middle:
@@ -779,7 +790,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	last_recorded_resolve [ idx ] = rec.m_side;
 	rdata::queued_hit [ idx ] = false;
 
-	const auto offset = -60.0f + static_cast< float >( rec.m_side ) * 30.0f;
+	const auto offset = -ent->desync_amount( ) + static_cast< float >( rec.m_side ) * ( ent->desync_amount( ) * 0.5f );
 	last_abs_yaw[ idx ] = cs::normalize( cs::normalize( anim_state->m_eye_yaw ) + offset );
 	
 	return true;

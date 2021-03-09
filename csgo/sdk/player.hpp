@@ -285,7 +285,7 @@ public:
 		using fn = void( __thiscall* )( void*, vec3_t&, vec3_t& );
 		vfunc< fn >( this + 0x4, 17 )( this + 0x4, va, vb );
 
-		wspace = abs_origin( );
+		wspace = origin( );
 		wspace.z += ( va.z + vb.z ) * 0.5f;
 
 		return wspace;

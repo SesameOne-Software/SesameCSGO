@@ -54,14 +54,31 @@ namespace autowall {
 	}
 
 	inline void clip_trace_to_players_fast( player_t* pl, const vec3_t& start, const vec3_t& end, uint32_t mask, trace_filter_t* filter, trace_t* tr ) {
-		trace_t temp_tr;
-		
-		ray_t ray;
-		ray.init ( start, end );
-		cs::i::trace->clip_ray_to_entity ( ray, mask | contents_hitbox, pl, &temp_tr );
+		const auto dir = ( end - start ).normalized();
+		const auto world_pos = pl->world_space( );
+		const auto to = world_pos - start;
+		const auto range_along = dir.dot_product( to );
 
-		if ( temp_tr.m_fraction < tr->m_fraction )
-			*tr = temp_tr;
+		auto range = 0.0f;
+
+		if ( range_along < 0.0f )
+			range = -to.length( );
+		else if ( range_along > dir.length( ) )
+			range = -( world_pos - end ).length( );
+		else
+			range = ( world_pos - ( dir * range_along + start ) ).length( );
+
+		if ( range > 60.0f )
+			return;
+
+		trace_t trace;
+		ray_t ray;
+		ray.init( start , end );
+
+		cs::i::trace->clip_ray_to_entity( ray , mask | contents_hitbox , pl , &trace );
+
+		if ( tr->m_fraction > trace.m_fraction )
+			*tr = trace;
 	}
 
 	inline bool classname_is( player_t* entity, const char* class_name ) {
@@ -126,6 +143,10 @@ namespace autowall {
 		float dist = 0.0f;
 		int first_contents = 0;
 
+		ray_t ray;
+		trace_filter_t filter;
+		filter.m_skip = src_entity;
+
 		while ( dist <= 90.0f ) {
 			// GHETTO OPTIMIZATION
 			dist += 4.0f;
@@ -139,10 +160,15 @@ namespace autowall {
 
 			end = start - ( dir * 4.0f );
 
-			cs::util_traceline ( start, end, mask_shot_hull | contents_hitbox, src_entity, exit_tr );
+			ray.init( start , end );
+			cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &filter, exit_tr );
 
 			if ( exit_tr->m_startsolid && exit_tr->m_surface.m_flags & surf_hitbox ) {
-				cs::util_traceline ( start, end, mask_shot_hull, exit_tr->m_hit_entity, exit_tr );
+				trace_filter_t filter1;
+				filter1.m_skip = exit_tr->m_hit_entity;
+
+				ray.init( start , end );
+				cs::i::trace->trace_ray( ray , mask_shot_hull , &filter1 , exit_tr );
 
 				if ( exit_tr->did_hit( ) && !exit_tr->m_startsolid ) {
 					start = exit_tr->m_endpos;
@@ -283,13 +309,20 @@ namespace autowall {
 		data.trace_length = 0.0f;
 		data.current_damage = ( float )weapon_data->m_dmg;
 
+		ray_t ray;
+		trace_filter_t filter;
+		filter.m_skip = entity;
+
 		while ( data.current_damage > 1.0f ) {
 			data.trace_length_remaining = trace_len - data.trace_length;
 
 			auto end = data.direction * data.trace_length_remaining + data.src;
 
-			cs::util_traceline ( data.src, end, mask_shot_hull | contents_hitbox, entity, &data.enter_trace );
-			cs::util::clip_trace_to_players ( data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
+			ray.init( data.src , end );
+
+			cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &filter, &data.enter_trace );
+
+			clip_trace_to_players_fast( entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 
 			if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {
 				autowall::scale_dmg( dst_entity, weapon_data, hitgroup, data.current_damage );

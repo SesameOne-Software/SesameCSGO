@@ -54,11 +54,11 @@ bool anims::get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& ou
 		auto& it = data[ i ];
 
 		if ( time_valid_no_deadtime( it.m_simtime ) ) {
-			if ( it.m_origin.dist_to( ent->abs_origin( ) ) < 1.0f )
+			if ( it.m_origin.dist_to( ent->origin( ) ) < 1.0f )
 				return false;
 
 			bool end = ( i - 1 ) <= 0;
-			vec3_t next = end ? ent->abs_origin( ) : data[ i - 1 ].m_origin;
+			vec3_t next = end ? ent->origin( ) : data[ i - 1 ].m_origin;
 			float time_next = end ? ent->simtime( ) : data[ i - 1 ].m_simtime;
 
 			float correct = nci->get_avg_latency( 0 ) + nci->get_avg_latency( 1 ) + lerp;
@@ -86,6 +86,8 @@ bool anims::get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& ou
 
 // credits cbrs
 bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses ) {
+	static auto invalidate_physics_recursive = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void( __thiscall* )( player_t* , int )>( );
+
 	/* vfunc indices */
 	static auto standard_blending_rules_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? 8B 47 FC" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
 	static auto build_transformations_vfunc_idx = pattern::search( _( "client.dll" ) , _( "FF 90 ? ? ? ? A1 ? ? ? ? B9 ? ? ? ? 8B 40 34 FF D0 85 C0 74 41" ) ).add( 2 ).deref( ).get< uint32_t >( ) / 4;
@@ -107,6 +109,12 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 
 	if ( !cstudio )
 		return false;
+
+	if ( target != g::local ) {
+		invalidate_physics_recursive( target , 2 );
+		invalidate_physics_recursive( target , 8 );
+		invalidate_physics_recursive( target , 32 );
+	}
 
 	target->poses( ) = poses;
 
@@ -264,10 +272,14 @@ void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin ,
 	trace_t trace;
 	trace_filter_t filter;
 
+	filter.m_skip = ent;
+
 	start = origin;
 	end = start + vel * cs::ticks2time( 1 );
 
-	cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
+	ray_t ray;
+	ray.init( start , end , ent->mins( ) , ent->maxs( ) );
+	cs::i::trace->trace_ray( ray, mask_playersolid, &filter, &trace );
 
 	if ( trace.m_fraction != 1.0f ) {
 		for ( auto i = 0; i < 2; ++i ) {
@@ -281,7 +293,8 @@ void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin ,
 			start = trace.m_endpos;
 			end = start + ( vel * ( cs::ticks2time( 1 ) * ( 1.0f - trace.m_fraction ) ) );
 
-			cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
+			ray.init( start , end , ent->mins( ) , ent->maxs( ) );
+			cs::i::trace->trace_ray( ray , mask_playersolid , &filter , &trace );
 
 			if ( trace.m_fraction == 1.0f )
 				break;
@@ -291,7 +304,8 @@ void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin ,
 	start = end = origin = trace.m_endpos;
 	end.z -= 2.0f;
 
-	cs::util_tracehull( start , end , ent->mins( ) , ent->maxs( ) , mask_playersolid , ent , &trace );
+	ray.init( start , end , ent->mins( ) , ent->maxs( ) );
+	cs::i::trace->trace_ray( ray , mask_playersolid , &filter , &trace );
 
 	old_flags = flags;
 
@@ -495,7 +509,9 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		
 		/* interpolate angles */
 		if ( !to.m_shot ) {
-			ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
+			ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles;
+			//ent->angles( ).x = ( i + 1 == delta_ticks ) ? to.m_angles.x : from.m_angles.x;
+			//ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
 		}
 		/* set onshot angles when enemy supposedly shot */
 		else {
@@ -587,24 +603,24 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof( *anim_layers ) * 13 );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
+		const auto offset = -ent->desync_amount( ) + static_cast<float>( side ) * ( ent->desync_amount( ) * 0.5f );
 		const auto abs_yaw = cs::normalize( angles.y + offset );
 
 		anim_state->m_pitch = angles.x;
 		anim_state->m_eye_yaw = angles.y;
 
-		if ( should_resolve )
+		if ( should_resolve && side != desync_side_t::desync_max )
 			anim_state->m_abs_yaw = abs_yaw;
 
 		/* update animations */
 		update_anims( ent , angles );
 
-		const auto new_abs_yaw = /*cs::normalize( anim_state->m_eye_yaw + ( offset / 60.0f ) * ent->desync_amount( ) )*/ anim_state->m_abs_yaw;
+		const auto new_abs_yaw = abs_yaw;
 
 		/* calculate new poses */
 		calc_poses( ent , to.m_poses[ side ] , new_abs_yaw );
 
-		if ( build_matrix )
+		if ( build_matrix && side != desync_side_t::desync_max /*don't build bones for unresolved matrix, we only want its animstate */ )
 			build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , new_abs_yaw , 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
 
 		/* store new anim data */
@@ -627,6 +643,9 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		update_desync_side( desync_middle );
 		update_desync_side( desync_right_half );
 		update_desync_side( desync_right_max );
+
+		/* used for reference to fake */
+		update_desync_side( desync_max );
 	}
 	else {
 		update_desync_side( desync_middle );
@@ -655,8 +674,9 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 }
 
 void anims::update_anims ( player_t* ent, vec3_t& angles ) {
+	static auto& invalidate_bone_cache = *pattern::search( _( "client.dll" ) , _( "C6 05 ? ? ? ? ? 89 47 70" ) ).add( 2 ).deref( ).get<bool*>( );
 	static auto invalidate_physics_recursive = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void( __thiscall* )( player_t* , int )>( );
-	static bool init_last_data = false;
+	static auto init_last_data = false;
 
 	VM_TIGER_BLACK_START
 		const auto state = ent->animstate( );
@@ -711,18 +731,16 @@ void anims::update_anims ( player_t* ent, vec3_t& angles ) {
 	std::array<animlayer_t , 13> backup_anim_layers { };
 	memcpy( backup_anim_layers.data( ) , ent->layers( ) , sizeof( backup_anim_layers ) );
 
+	const auto backup_invalidate_bone_cache = invalidate_bone_cache;
+
 	ent->animate ( ) = true;
-	ent->update( );
+	state->update( angles );
 	ent->animate ( ) = false;
+
+	invalidate_bone_cache = backup_invalidate_bone_cache;
 
 	if ( ent == g::local && g::local )
 		memcpy( ent->layers( ) , backup_anim_layers.data( ) , sizeof( backup_anim_layers ) );
-
-	if ( ent != g::local ) {
-		invalidate_physics_recursive( ent , 2 );
-		invalidate_physics_recursive( ent , 8 );
-		invalidate_physics_recursive( ent , 32 );
-	}
 	
 	if ( ent == g::local && g::local ) {
 		ent->layers ( ) [ 3 ].m_weight = 0.0f;
@@ -895,15 +913,18 @@ void anims::fsn ( int stage ) {
 	case 4: {
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 			on_net_update_end( i );
-
+		}
+	} break;
+	case 5: {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 			auto ent = cs::i::ent_list->get<player_t*>( i );
-
+		
 			if ( !ent || !ent->is_player( ) || !ent->alive( ) )
 				continue;
-
+		
 			/* update viewmodel manually to fix it dissappearing */
 			const auto viewmodel = ent->viewmodel_handle( );
-
+		
 			if ( viewmodel != -1 && cs::i::ent_list->get_by_handle< void* >( viewmodel ) )
 				update_all_viewmodel_addons( cs::i::ent_list->get_by_handle< void* >( viewmodel ) );
 		}

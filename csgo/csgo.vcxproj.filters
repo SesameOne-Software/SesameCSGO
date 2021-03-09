@@ -560,6 +560,21 @@
     <ClInclude Include="hooks\is_connected.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PH\Base64.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PH\PH_API.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PH\socket.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PH\picosha2\picosha2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PH\AES\AES.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -803,6 +818,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\is_connected.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PH\socket.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PH\AES\AES.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -443,26 +443,17 @@ void features::esp::render( ) {
 
 			/* DEBUGGING STUFF */
 			//if ( !anims::anim_info [ e->idx ( ) ].empty ( ) ) {
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "weight : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_weight ) );
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "cycle : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_cycle ) );
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate : " ) + std::to_string ( anims::anim_info [ e->idx ( ) ].front ( ).m_anim_layers [ 6 ].m_playback_rate ) );
+			//	auto rec = anims::anim_info[ e->idx( ) ].front( );
 			//
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate - : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 0 ] ) );
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate 0 : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 1 ] ) );
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "rate + : " ) + std::to_string ( resolved_layers [ e->idx ( ) ][ 2 ] ) );
-			//}
-
-			//const auto src = g::local->eyes ( );
-			//auto eyes_max = e->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f );
-			//auto fwd = eyes_max - src;
-			//fwd.normalize ( );
+			//	for ( auto i = 0; i < 13; i++ ) {
+			//		std::string output = "animlayer ";
+			//		output.append( std::to_string( i ) + ":\n" );
+			//		output.append( "weight: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_weight ) + ":\n" );
+			//		output.append( "cycle: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_cycle ) + ":\n" );
+			//		output.append( "rate: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_playback_rate ) + ":\n" );
 			//
-			//if ( fwd.is_valid ( ) ) {
-			//	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
-			//	auto left_dir = -right_dir;
-			//
-			//	render::cube ( eyes_max + fwd * 30.0f + right_dir * 10.0f, 3.0f, rgba ( 255, 0, 0, 255 ), 1.0f );
-			//	render::cube ( eyes_max + fwd * 30.0f + left_dir * 10.0f, 3.0f, rgba ( 255, 0, 0, 255 ), 1.0f );
+			//		draw_esp_widget( esp_rect , visuals.weapon_color , esp_type_text , visuals.value_text , esp_placement_right , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , output );
+			//	}
 			//}
 		}
 	}

@@ -66,11 +66,11 @@ namespace anims {
 		int m_choked_commands;
 		flags_t m_flags;
 		vec3_t m_vel;
-		std::array<std::array<animlayer_t , 13> , desync_side_t::desync_max> m_anim_layers;
-		std::array<std::array<float , 24> , desync_side_t::desync_max> m_poses;
-		std::array<vec3_t , desync_side_t::desync_max> m_abs_angles;
-		std::array<animstate_t , desync_side_t::desync_max> m_anim_state;
-		std::array<std::array< matrix3x4_t , 128 > , desync_side_t::desync_max> m_aim_bones;
+		std::array<std::array<animlayer_t , 13> , desync_side_t::desync_max + 1> m_anim_layers;
+		std::array<std::array<float , 24> , desync_side_t::desync_max + 1> m_poses;
+		std::array<vec3_t , desync_side_t::desync_max + 1> m_abs_angles;
+		std::array<animstate_t , desync_side_t::desync_max + 1> m_anim_state;
+		std::array<std::array< matrix3x4_t , 128 > , desync_side_t::desync_max + 1> m_aim_bones;
 		desync_side_t m_side;
 
 		inline bool valid ( ) {

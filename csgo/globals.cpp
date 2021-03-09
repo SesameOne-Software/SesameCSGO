@@ -16,7 +16,6 @@ bool g::hold_aim = false;
 bool g::send_packet = true;
 int g::cock_ticks = 0;
 bool g::can_fire_revolver = false;
-PLoader_Info g::loader_data;
 
 void g::resources::init ( ) {
 	sesame_icons = ( uint8_t* ) sesame_icons_data;

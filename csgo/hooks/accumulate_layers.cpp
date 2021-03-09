@@ -12,10 +12,10 @@ void __fastcall hooks::accumulate_layers( REG , void* setup , vec3_t& pos , void
     if ( !player || !player->is_player( ) || player->health( ) <= 0 || !player->layers( ) || !*reinterpret_cast< void** >( reinterpret_cast< uintptr_t >( player ) + iks_off ) )
         return old::accumulate_layers( REG_OUT , setup , pos , q , time );
 
-    for ( auto animLayerIndex = 0; animLayerIndex < 13; animLayerIndex++ ) {
+    for ( auto animLayerIndex = 0; animLayerIndex < player->num_overlays( ); animLayerIndex++ ) {
         auto& layer = player->layers( )[ animLayerIndex ];
 
-        if ( layer.m_weight > 0.0f && layer.m_order >= 0 && layer.m_order < 13 )
+        if ( layer.m_weight > 0.0f && layer.m_order >= 0 && layer.m_order < player->num_overlays( ) )
             accumulate_pose( *reinterpret_cast<void**>( setup ), pos , q , layer.m_sequence , layer.m_cycle , layer.m_weight , time , *reinterpret_cast< void** >( reinterpret_cast<uintptr_t>( player ) + iks_off ) );
     }
 }

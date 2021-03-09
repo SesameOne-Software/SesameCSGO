@@ -32,6 +32,8 @@
 
 #include "hitsounds.h"
 
+#include "PH/PH_API.hpp"
+
 uint64_t anti_patch::g_text_section_hash;
 uintptr_t anti_patch::g_text_section, anti_patch::g_text_section_size;
 //anti_patch::s_header_data anti_patch::g_header_data;
@@ -44,7 +46,15 @@ extern bool download_config_code;
 
 std::string last_config_user;
 
-int __stdcall init_proxy( PLoader_Info loader_info ) {
+void do_heartbeat( ) {
+	while ( true ) {
+		std::this_thread::sleep_for( std::chrono::seconds( ph_heartbeat::PH_SECONDS_INTERVAL ) );
+
+		ph_heartbeat::send_heartbeat( );
+	}
+}
+
+int __stdcall init_proxy( void* data ) {
 	VM_SHARK_BLACK_START
 
 	/* wait for all modules to load */
@@ -57,7 +67,7 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 	js_api::init ( );
 	hooks::init ( );
 	
-	security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
+	//security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
 	while ( !g::unload )
 		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
@@ -105,21 +115,23 @@ int __stdcall init_proxy( PLoader_Info loader_info ) {
 	VM_SHARK_BLACK_END
 
 #ifndef DEV_BUILD
-	mmunload( loader_info->hMod );
+	//mmunload( loader_info->hMod );
 #else
-	FreeLibraryAndExitThread( HMODULE( loader_info ), 0 );
+	FreeLibraryAndExitThread( HMODULE( data ), 0 );
 #endif
 
 	return 0;
 }
 
 int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved ) {
-#ifndef DEV_BUILD
-	g::loader_data = reinterpret_cast< PLoader_Info >( loader_data );
-#endif
-
-	if ( reason == 1 )
-		_beginthreadex( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( init_proxy ), loader_data, 0, nullptr );
+	if ( reason == DLL_PROCESS_ATTACH ) {
+		_beginthreadex( nullptr , 0 , reinterpret_cast< _beginthreadex_proc_type >( init_proxy ) , loader_data , 0 , nullptr );
 		
-	return 1;
+#ifndef DEV_BUILD
+		ph_heartbeat::initialize_heartbeat( reinterpret_cast< ph_heartbeat::heartbeat_info* >( loader_data ) );
+		_beginthreadex( nullptr , 0 , reinterpret_cast< _beginthreadex_proc_type >( do_heartbeat ) , nullptr , 0 , nullptr );
+#endif
+	}
+		
+	return TRUE;
 }
