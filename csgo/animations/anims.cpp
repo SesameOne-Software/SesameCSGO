@@ -510,8 +510,14 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		/* interpolate angles */
 		if ( !to.m_shot ) {
 			ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles;
-			//ent->angles( ).x = ( i + 1 == delta_ticks ) ? to.m_angles.x : from.m_angles.x;
-			//ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
+			//switch ( angle_interp_mode ) {
+			//case 0: ent->angles( ) = to.m_angles; break;
+			//case 1: ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles; break;
+			//case 2:
+			//	ent->angles( ).x = ( i + 1 == delta_ticks ) ? to.m_angles.x : from.m_angles.x;
+			//	ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
+			//	break;
+			//}
 		}
 		/* set onshot angles when enemy supposedly shot */
 		else {
@@ -603,7 +609,7 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof( *anim_layers ) * 13 );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -ent->desync_amount( ) + static_cast<float>( side ) * ( ent->desync_amount( ) * 0.5f );
+		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
 		const auto abs_yaw = cs::normalize( angles.y + offset );
 
 		anim_state->m_pitch = angles.x;
@@ -615,7 +621,7 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		/* update animations */
 		update_anims( ent , angles );
 
-		const auto new_abs_yaw = abs_yaw;
+		const auto new_abs_yaw = anim_state->m_eye_yaw + -ent->desync_amount( ) + static_cast< float >( side ) * ( ent->desync_amount( ) * 0.5f );
 
 		/* calculate new poses */
 		calc_poses( ent , to.m_poses[ side ] , new_abs_yaw );

@@ -20,7 +20,7 @@
 float box_alpha = 0.0f;
 
 void draw_esp_box( int x , int y , int w , int h , bool dormant , const options::option::colorf& esp_box_color ) {
-	render::outline( x - 1 , y - 1 , w + 2 , h + 2 , rgba( 0 , 0 , 0 , std::clamp< int >( esp_box_color.a * 60.0f , 0 , 60 ) ) );
+	render::outline( x - 1 , y - 1 , w + 2 , h + 2 , rgba( 0 , 0 , 0 , std::clamp< int >( esp_box_color.a * 60.0f * box_alpha , 0 , 60 ) ) );
 	render::outline( x , y , w , h , dormant ? rgba( 150 , 150 , 150 , static_cast< int > ( esp_box_color.a * 255.0f * box_alpha ) ) : rgba( static_cast< int > ( esp_box_color.r * 255.0f ) , static_cast< int > ( esp_box_color.g * 255.0f ) , static_cast< int > ( esp_box_color.b * 255.0f ) , static_cast< int >( esp_box_color.a * 255.0f * box_alpha ) ) );
 }
 
@@ -42,12 +42,13 @@ void draw_esp_widget( const ImRect& box , const options::option::colorf& widget_
 	uint32_t clr1 = rgba( 0 , 0 , 0 , std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f , 0 , 125 ) );
 	uint32_t clr = rgba( static_cast< int > ( widget_color.r * 255.0f ) , static_cast< int > ( widget_color.g * 255.0f ) , static_cast< int > ( widget_color.b * 255.0f ) , static_cast< int > ( widget_color.a * 255.0f ) );
 
-	if ( dormant )
+	if ( dormant ) {
+		clr1 = rgba( 0 , 0 , 0 , std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f * box_alpha , 0 , 125 ) );
 		clr = rgba( 150 , 150 , 150 , static_cast< int >( widget_color.a * 255.0f * box_alpha ) );
+	}
 
 	switch ( type ) {
-	case esp_type_bar:
-	{
+	case esp_type_t::esp_type_bar: {
 		const auto sval = std::to_string( static_cast< int >( value ) );
 
 		vec3_t text_size;
@@ -57,83 +58,80 @@ void draw_esp_widget( const ImRect& box , const options::option::colorf& widget_
 		const auto calc_height = fraction * box.Max.y;
 
 		switch ( orientation ) {
-		case features::esp_placement_left:
+		case features::esp_placement_t::esp_placement_left:
 			render::rect( box.Min.x - cur_offset_left - 5 + 1 , box.Min.y + ( box.Max.y - calc_height ) + 1 , 5 - 1 , calc_height , clr );
 			render::outline( box.Min.x - cur_offset_left - 5 , box.Min.y , 5 , box.Max.y , clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+				render::text( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast<int>( 255.0f * box_alpha ) ) , true );
 			cur_offset_left += 7;
 			break;
-		case features::esp_placement_right:
+		case features::esp_placement_t::esp_placement_right:
 			render::rect( box.Min.x + box.Max.x + cur_offset_right + 1 , box.Min.y + ( box.Max.y - calc_height ) + 1 , 5 - 1 , calc_height , clr );
 			render::outline( box.Min.x + box.Max.x + cur_offset_right , box.Min.y , 5 , box.Max.y , clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+				render::text( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_right += 7;
 			break;
-		case features::esp_placement_bottom:
+		case features::esp_placement_t::esp_placement_bottom:
 			render::rect( box.Min.x + 1 , box.Min.y + box.Max.y + cur_offset_bottom + 1 , static_cast< float >( box.Max.x ) * fraction + 1 , 5 - 1 , clr );
 			render::outline( box.Min.x , box.Min.y + box.Max.y + cur_offset_bottom , box.Max.x , 5 , clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_bottom += 7;
 			break;
-		case features::esp_placement_top:
+		case features::esp_placement_t::esp_placement_top:
 			render::rect( box.Min.x + 1 , box.Min.y - cur_offset_top - 5 + 1 , static_cast< float >( box.Max.x ) * fraction + 1 , 5 - 1 , clr );
 			render::outline( box.Min.x , box.Min.y - cur_offset_top - 5 , box.Max.x , 5 , clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_top += 7;
 			break;
 		}
 	} break;
-	case esp_type_text:
-	{
+	case esp_type_t::esp_type_text: {
 		std::string as_str = to_print;
 
 		vec3_t text_size;
 		render::text_size( as_str , _( "esp_font" ) , text_size );
 
 		switch ( orientation ) {
-		case features::esp_placement_left:
-			render::gradient( box.Min.x - cur_offset_left - text_size.x - 2.0f , box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , 33 ) , clr , true );
-			render::gradient( box.Min.x - cur_offset_left - text_size.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , 33 ) , true );
-			render::rect( box.Min.x - cur_offset_left - text_size.x - 2.0f , box.Min.y + cur_offset_left_height - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , 72 ) );
-			render::text( box.Min.x - cur_offset_left - text_size.x , box.Min.y + cur_offset_left_height , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+		case features::esp_placement_t::esp_placement_left:
+			render::gradient( box.Min.x - cur_offset_left - text_size.x - 2.0f , box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , clr , true );
+			render::gradient( box.Min.x - cur_offset_left - text_size.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + cur_offset_left_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , true );
+			render::rect( box.Min.x - cur_offset_left - text_size.x - 2.0f , box.Min.y + cur_offset_left_height - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , static_cast< int >( 72.0f * box_alpha ) ) );
+			render::text( box.Min.x - cur_offset_left - text_size.x , box.Min.y + cur_offset_left_height , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_left_height += text_size.y + 6;
 			break;
-		case features::esp_placement_right:
-			render::gradient( box.Min.x + cur_offset_right + box.Max.x - 2.0f , box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , 33 ) , clr , true );
-			render::gradient( box.Min.x + cur_offset_right + box.Max.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , 33 ) , true );
-			render::rect( box.Min.x + cur_offset_right + box.Max.x - 2.0f , box.Min.y + cur_offset_right_height - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , 72 ) );
-			render::text( box.Min.x + cur_offset_right + box.Max.x , box.Min.y + cur_offset_right_height , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+		case features::esp_placement_t::esp_placement_right:
+			render::gradient( box.Min.x + cur_offset_right + box.Max.x - 2.0f , box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , clr , true );
+			render::gradient( box.Min.x + cur_offset_right + box.Max.x - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + cur_offset_right_height - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , true );
+			render::rect( box.Min.x + cur_offset_right + box.Max.x - 2.0f , box.Min.y + cur_offset_right_height - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , static_cast< int >( 72.0f * box_alpha ) ) );
+			render::text( box.Min.x + cur_offset_right + box.Max.x , box.Min.y + cur_offset_right_height , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_right_height += text_size.y + 6;
 			break;
-		case features::esp_placement_bottom:
-			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , 33 ) , clr , true );
-			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , 33 ) , true );
-			render::rect( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , 72 ) );
-			render::text( box.Min.x + box.Max.x / 2 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+		case features::esp_placement_t::esp_placement_bottom:
+			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , clr , true );
+			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , true );
+			render::rect( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y + box.Max.y + cur_offset_bottom - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , static_cast< int >( 72.0f * box_alpha ) ) );
+			render::text( box.Min.x + box.Max.x / 2 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_bottom += text_size.y + 6;
 			break;
-		case features::esp_placement_top:
-			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , 33 ) , clr , true );
-			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , 33 ) , true );
-			render::rect( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y - cur_offset_top - text_size.y - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , 72 ) );
-			render::text( box.Min.x + box.Max.x / 2 - text_size.x / 2 , box.Min.y - cur_offset_top - text_size.y , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , 255 ) , true );
+		case features::esp_placement_t::esp_placement_top:
+			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , clr , true );
+			render::gradient( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f + ( text_size.x + 4.0f ) * 0.5f , box.Min.y - cur_offset_top - text_size.y - 2.0f + ( text_size.y + 3.0f ) , ( text_size.x + 4.0f ) * 0.5f , 2.0f , clr , rgba( 0 , 0 , 0 , static_cast< int >( 33.0f * box_alpha ) ) , true );
+			render::rect( box.Min.x + box.Max.x / 2 - text_size.x / 2 - 2.0f , box.Min.y - cur_offset_top - text_size.y - 2.0f , text_size.x + 4.0f , text_size.y + 3.0f , rgba( 0 , 0 , 0 , static_cast< int >( 72.0f * box_alpha ) ) );
+			render::text( box.Min.x + box.Max.x / 2 - text_size.x / 2 , box.Min.y - cur_offset_top - text_size.y , as_str , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_top += text_size.y + 6;
 			break;
 		}
 	} break;
-	case esp_type_number:
-	{
+	case esp_type_t::esp_type_number: {
 	} break;
-	case esp_type_flag:
-	{
+	case esp_type_t::esp_type_flag: {
 	} break;
 	default: break;
 	}
@@ -199,10 +197,10 @@ void features::esp::handle_dynamic_updates( ) {
 		trace_filter_t trace_filter;
 		trace_filter.m_skip = pl;
 
-		ray.init( *sound.m_origin + vec3_t( 0.0f , 0.0f , 1.0f ) , *sound.m_origin - vec3_t( 0.0f , 0.0f , 4096.0f ) );
+		ray.init( *sound.m_origin + vec3_t( 0.0f , 0.0f , 2.0f ) , *sound.m_origin - vec3_t( 0.0f , 0.0f , 4096.0f ) );
 		cs::i::trace->trace_ray( ray , mask_playersolid , &trace_filter , &tr );
 
-		if ( tr.m_fraction >= 0.97f )
+		if ( !tr.is_visible( ) )
 			end_pos = tr.m_endpos;
 
 		esp_data[ pl->idx( ) ].m_sound_pos = end_pos;
@@ -267,10 +265,16 @@ void features::esp::render( ) {
 		vec3_t flb , brt , blb , frt , frb , brb , blt , flt;
 		float left , top , right , bottom;
 
-		vec3_t min = e->mins( ) + e->abs_origin( );
-		vec3_t max = e->maxs( ) + e->abs_origin( );
+		auto abs_origin = (e->bone_cache( ) && !e->dormant()) ? e->bone_cache( )[ 1 ].origin( ) : e->abs_origin( );
 
-		const auto best_origin = e->origin( );
+		if ( esp_data[ e->idx( ) ].m_dormant && esp_data[ e->idx( ) ].m_sound_pos != vec3_t( 0.f , 0.f , 0.f ) )
+			abs_origin = esp_data[ e->idx( ) ].m_sound_pos;
+
+		auto min = e->mins( ) + abs_origin;
+		auto max = e->maxs( ) + abs_origin;
+
+		if ( (e->crouch_amount( ) < 0.333f || e->crouch_amount( ) == 1.0f) && e->bone_cache( ) && !e->dormant( ) )
+			max.z = e->bone_cache( )[ 8 ].origin( ).z + 12.0f;
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
@@ -334,23 +338,12 @@ void features::esp::render( ) {
 		esp_data[ e->idx( ) ].m_health += ( clamped_health - esp_data[ e->idx( ) ].m_health ) * 1.7f * cs::i::globals->m_frametime;
 		esp_data[ e->idx( ) ].m_health = std::clamp( esp_data[ e->idx( ) ].m_health , clamped_health , 100.0f );
 
-		auto m_valid_dormant = false;
-		auto m_backup_origin = e->abs_origin( );
-
-		const auto m_backup_flags = e->flags( );
-		const auto m_backup_sound_origin = esp_data[ e->idx( ) ].m_sound_pos;
-		if ( esp_data[ e->idx( ) ].m_dormant ) {
-			m_backup_sound_origin == vec3_t( 0.f , 0.f , 0.f ) ? m_valid_dormant = false : m_valid_dormant = true;
-			e->flags( ) = m_backup_flags;
-			e->set_abs_origin( m_valid_dormant ? esp_data[ e->idx( ) ].m_sound_pos : m_backup_origin );
-		}
-
 		if ( g::round == round_t::starting )
 			esp_data[ e->idx( ) ].m_sound_pos = vec3_t( 0.f , 0.f , 0.f );
 
 		if ( !e->dormant( ) ) {
-			esp_data[ e->idx( ) ].m_sound_pos = m_backup_origin; // reset to our current origin since it will show our last sound origin
-			esp_data[ e->idx( ) ].m_pos = best_origin;
+			esp_data[ e->idx( ) ].m_sound_pos = abs_origin; // reset to our current origin since it will show our last sound origin
+			esp_data[ e->idx( ) ].m_pos = abs_origin;
 
 			if ( esp_data[ e->idx( ) ].m_first_seen == 0.0f )
 				esp_data[ e->idx( ) ].m_first_seen = cs::i::globals->m_curtime;

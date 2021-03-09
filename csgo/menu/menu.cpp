@@ -1347,6 +1347,12 @@ void gui::draw( ) {
 							ImGui::Text ( "Cheat" );
 							ImGui::Separator ( );
 
+							//static std::vector<const char*> angle_interp_mode { "None",  "Last Tick", "Lerp" };
+							//
+							//ImGui::PushItemWidth( -1.0f );
+							//ImGui::Combo( _( "Angle Interpolation Mode" ) , &anims::angle_interp_mode , angle_interp_mode.data( ) , angle_interp_mode.size( ) );
+							//ImGui::PopItemWidth( );
+
 #ifdef ANIMATION_LOGGER
 							ImGui::SliderFloat ( _ ( "Debug Desync Amount" ), &options::vars [ _ ( "debug.desync_amount" ) ].val.f, -60.0f, 60.0f, _ ( "%.1f deg" ) );
 

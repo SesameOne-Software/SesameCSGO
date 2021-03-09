@@ -170,6 +170,8 @@ namespace anims {
 		return std::nullopt;
 	}
 
+	inline int angle_interp_mode = 0;
+
 	bool get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out );
 
 	float angle_diff( float dst , float src );
