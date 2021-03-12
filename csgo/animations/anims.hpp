@@ -76,7 +76,7 @@ namespace anims {
 		inline bool valid ( ) {
 			const auto nci = cs::i::engine->get_net_channel_info ( );
 
-			if ( !nci || !g::local || m_invalid /*|| m_simtime < static_cast<int>(cs::ticks2time( g::local->tick_base( ) ) - g::cvars::sv_maxunlag->get_float( ) )*/ )
+			if ( !nci || !g::local || m_invalid || m_simtime < float( int( cs::ticks2time( g::local->tick_base( ) ) - g::cvars::sv_maxunlag->get_float( ) ) ) )
 				return false;
 
 			const auto lerp = lerp_time ( );
@@ -170,12 +170,11 @@ namespace anims {
 		return std::nullopt;
 	}
 
-	inline int angle_interp_mode = 0;
-
 	bool get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out );
 
 	float angle_diff( float dst , float src );
 	void update_local_poses( player_t* ent );
+	void update_local_movement( player_t* ent );
 	void calc_poses( player_t* ent , std::array<float , 24>& poses , float feet_yaw );
 	void simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin , vec3_t& vel, flags_t& old_flags );
 

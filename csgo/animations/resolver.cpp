@@ -615,28 +615,41 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	/* temporary value */
 	auto has_big_range = false;
 
-	if ( abs( delta_yaw ) > 60.0f && !found_extended[ idx ] ) {
-		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
-		has_big_range = true;
+	if ( abs( delta_yaw ) > 60.0f
+		&& anim_info.size() >= 1
+		&& !found_extended[ idx ] ) {
+		const auto second_yaw = cs::normalize( cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
+
+		if ( abs( second_yaw ) > 60.0f && copysign( 1.0f , delta_yaw ) != copysign( 1.0f , second_yaw ) ) {
+			extended_side[ idx ] = ( delta_yaw > 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+			has_big_range = true;
+		}
 	}
-	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_weight ) {
+	else if ( !anim_layers[ 6 ].m_weight && !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_weight ) {
 		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		found_extended[ idx ] = true;
 	}
 	/* moving desync */
 	else if ( anim_layers[ 6 ].m_weight && !anim_info[ idx ].empty() ) {
-		const auto has_static = abs( anim_layers[ 6 ].m_weight - anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_weight ) < 0.001f;
+		const auto has_static = static_cast<int>( anim_layers[ 6 ].m_weight * 1000.0f ) == static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][6].m_weight * 1000.0f );
+		
 		const auto has_jitter_side_1 = anim_info[ idx ].size( ) >= 3
 			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate;
+			&& static_cast< int >( anim_layers[ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f )
+			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
+			&& static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f );
 		const auto has_jitter_side_2 = anim_info[ idx ].size( ) >= 3
 			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate;
+			&& static_cast< int >( anim_layers[ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f )
+			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
+			&& static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f );
+
 		const auto has_jitter = has_jitter_side_1 || has_jitter_side_2;
 
-		if ( anim_layers[ 12 ].m_weight < 0.006f /* anim_layers[ 12 ].m_weight < 0.006f */ /* make sure no direction change */ || has_static || has_jitter ) {
+		//if ( !anim_layers[ 12 ].m_weight
+		//	|| ( static_cast< int >( anim_layers[ 6 ].m_weight * 1000.0f ) == static_cast< int >( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_weight * 1000.0f )
+		//		&& (has_static || has_jitter ))) {
+		if ( !anim_layers[ 12 ].m_weight || has_static || has_jitter ) {
 			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 

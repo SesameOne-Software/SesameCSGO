@@ -205,6 +205,10 @@ float anims::angle_diff( float dst , float src ) {
 	return delta;
 }
 
+void anims::update_local_movement( player_t* ent ) {
+
+}
+
 void anims::update_local_poses( player_t* ent ) {
 	if ( !!( createmove_flags & flags_t::on_ground ) )
 		local_poses_ground_time = cs::i::globals->m_curtime;
@@ -245,7 +249,7 @@ void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float fe
 
 	poses[ pose_param_t::body_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( anim_state->m_eye_yaw ) , cs::normalize( feet_yaw ) ) ) , -60.0f , 60.0f ) / 120.0f + 0.5f;
 	poses[ pose_param_t::move_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( cs::rad2deg( atan2( -vel.y , -vel.x ) ) ) , cs::normalize( feet_yaw ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
-	poses[ pose_param_t::lean_yaw ] = 0.0f;
+	//poses[ pose_param_t::lean_yaw ] = 0.0f;
 
 	const float recalc_air_time = ( ent->layers( )[ 4 ].m_cycle - 0.72f ) * 1.25f;
 	const float clamped = recalc_air_time >= 0.0f ? std::min( recalc_air_time , 1.0f ) : 0.0f;
@@ -316,6 +320,9 @@ void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin ,
 }
 
 void anims::reset_data ( int idx ) {
+	if ( !idx || idx > anim_info.size() - 1 )
+		return;
+
 	if ( !anim_info [ idx ].empty ( ) )
 		anim_info [ idx ].clear ( );
 
@@ -327,12 +334,15 @@ void anims::reset_data ( int idx ) {
 
 /* works fine (not when standing? (need to update anims when standing still as well?(only updates on send?))) */
 void anims::manage_fake ( ) {
-	if ( !g::local )
+	static auto spawn_time = 0.0f;
+
+	if ( !g::local ) {
+		spawn_time = 0.0f;
 		return;
+	}
 
 	static animstate_t fake_anim_state { };
 	static auto handle = g::local->handle ( );
-	static auto spawn_time = g::local->spawn_time ( );
 
 	if ( !g::local->alive ( ) ) {
 		spawn_time = 0.0f;
@@ -342,6 +352,7 @@ void anims::manage_fake ( ) {
 	bool reset = g::local->spawn_time ( ) != spawn_time || g::local->handle ( ) != handle;
 
 	if ( reset ) {
+		memset( &fake_anim_state, 0, sizeof( fake_anim_state ) );
 		g::local->create_animstate ( &fake_anim_state );
 
 		handle = g::local->handle ( );
@@ -510,14 +521,6 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		/* interpolate angles */
 		if ( !to.m_shot ) {
 			ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles;
-			//switch ( angle_interp_mode ) {
-			//case 0: ent->angles( ) = to.m_angles; break;
-			//case 1: ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles; break;
-			//case 2:
-			//	ent->angles( ).x = ( i + 1 == delta_ticks ) ? to.m_angles.x : from.m_angles.x;
-			//	ent->angles( ).y = cs::normalize( from.m_angles.y + std::lerp( 0.0f , delta_yaw , static_cast< float >( i + 1 ) / static_cast< float >( delta_ticks ) ) );
-			//	break;
-			//}
 		}
 		/* set onshot angles when enemy supposedly shot */
 		else {
@@ -609,7 +612,7 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof( *anim_layers ) * 13 );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
+		const auto offset = -ent->desync_amount( ) + static_cast<float>( side ) * ( ent->desync_amount( ) * 0.5f );
 		const auto abs_yaw = cs::normalize( angles.y + offset );
 
 		anim_state->m_pitch = angles.x;
@@ -887,6 +890,9 @@ void anims::on_render_start ( int idx ) {
 
 void anims::pre_fsn ( int stage ) {
 	if ( !g::local ) {
+		if ( !g::local || !g::local->alive( ) )
+			anims::manage_fake( );
+
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
 			reset_data( i );
 
@@ -906,6 +912,9 @@ void anims::pre_fsn ( int stage ) {
 
 void anims::fsn ( int stage ) {
 	if ( !g::local ) {
+		if ( !g::local || !g::local->alive( ) )
+			anims::manage_fake( );
+
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
 			reset_data( i );
 
@@ -917,9 +926,8 @@ void anims::fsn ( int stage ) {
 
 	switch ( stage ) {
 	case 4: {
-		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
 			on_net_update_end( i );
-		}
 	} break;
 	case 5: {
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {

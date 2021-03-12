@@ -1445,7 +1445,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg ) {
 	VM_TIGER_BLACK_START
-	constexpr int SIMILAR_RECORD_THRESHOLD = 2;
+	constexpr int SIMILAR_RECORD_THRESHOLD = 0;
 
 	if ( !ent->valid ( ) )
 		return;
