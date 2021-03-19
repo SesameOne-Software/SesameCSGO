@@ -45,6 +45,7 @@
 #include "notify_on_layer_change_cycle.hpp"
 #include "notify_on_layer_change_weight.hpp"
 #include "is_connected.hpp"
+#include "perform_flashbang_effect.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -123,6 +124,7 @@ void hooks::init( ) {
 	const auto _notify_on_layer_change_cycle = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 98 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
 	const auto _notify_on_layer_change_weight = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 9C 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
 	const auto _is_connected = vfunc<void*>( cs::i::engine , N( 27 ) );
+	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 8B 1D" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -168,7 +170,7 @@ void hooks::init( ) {
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
@@ -177,7 +179,8 @@ void hooks::init( ) {
 	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
-	dbg_hook( _is_connected , is_connected , ( void** ) &old::is_connected );
+	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
+	dbg_hook ( _perform_flashbang_effect, perform_flashbang_effect, ( void** ) &old::perform_flashbang_effect );
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );

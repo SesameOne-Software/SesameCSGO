@@ -127,6 +127,7 @@ namespace anims {
 	inline std::array< std::deque< anim_info_t >, 65> anim_info { {} };
 	inline std::array< matrix3x4_t, 128 > real_matrix { {} };
 	inline std::array< matrix3x4_t, 128 > fake_matrix { {} };
+	inline animstate_t last_local_animstate { };
 	inline flags_t createmove_flags;
 
 	void on_net_update_end ( int idx );
@@ -173,8 +174,6 @@ namespace anims {
 	bool get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out );
 
 	float angle_diff( float dst , float src );
-	void update_local_poses( player_t* ent );
-	void update_local_movement( player_t* ent );
 	void calc_poses( player_t* ent , std::array<float , 24>& poses , float feet_yaw );
 	void simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin , vec3_t& vel, flags_t& old_flags );
 

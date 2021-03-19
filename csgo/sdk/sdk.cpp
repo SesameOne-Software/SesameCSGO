@@ -148,7 +148,7 @@ bool cs::init( ) {
 	i::trace = create_interface< c_engine_trace* >( _( "engine.dll" ), _( "EngineTraceClient004" ) );
 	i::pred = create_interface< c_prediction* >( _( "client.dll" ), _( "VClientPrediction001" ) );
 	i::move = create_interface< c_movement* >( _( "client.dll" ), _( "GameMovement001" ) );
-	i::mdl_cache = create_interface< mdl_cache_t* >( _( "client.dll" ), _( "MDLCache004" ) );
+	i::mdl_cache = pattern::search( _( "client.dll" ) , _( "8B 35 ? ? ? ? 8B CE 8B 06 FF 90 ? ? ? ? 8B 4F" ) ).add( 2 ).deref( ).deref( ).get< mdl_cache_t* >( );
 	i::events = create_interface< c_game_event_mgr* >( _( "engine.dll" ), _( "GAMEEVENTSMANAGER002" ) );
 	i::input = pattern::search( _( "client.dll" ), _( "B9 ? ? ? ? FF 60 60" ) ).add( 1 ).deref( ).get< c_input* >( );
 	i::cvar = create_interface< c_cvar* >( _( "vstdlib.dll" ), _( "VEngineCvar007" ) );

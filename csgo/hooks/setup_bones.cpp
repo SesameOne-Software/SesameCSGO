@@ -18,8 +18,10 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 	
 	if ( pl && pl->is_player ( ) && pl->idx ( ) > 0 && pl->idx ( ) <= cs::i::globals->m_max_clients ) {
 		const auto backup_flags1 = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 );
+		const auto backup_framecount = cs::i::globals->m_framecount;
 
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) |= 8;
+		cs::i::globals->m_framecount = std::numeric_limits<int>::max( );
 
 		auto& info = anims::anim_info[ pl->idx( ) ];
 
@@ -41,6 +43,7 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		}
 
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) = backup_flags1;
+		cs::i::globals->m_framecount = backup_framecount;
 
 		return ret;
 	}

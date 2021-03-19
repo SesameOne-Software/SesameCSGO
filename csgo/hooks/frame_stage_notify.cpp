@@ -119,8 +119,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
-	float old_flashalpha;
-	float old_flashtime;
 
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( stage == 5 && g::local && cs::i::client_state && (last_ack_cmd != cs::i::client_state->last_command_ack( ) || next_cmd_time != cs::i::client_state->next_cmd_time( )) ) {
@@ -222,16 +220,29 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 				pl->ragdoll_vel( ) *= ragdoll_force;
 			}
 		}
-
-		if ( stage == 2 && g::local ) {
-			if ( removals [ 1 ] ) {
-				g::local->flash_alpha( ) = 0.0f;
-				g::local->flash_duration( ) = 0.0f;
-			}
-		}
 	}
 
 	anims::pre_fsn ( stage );
+
+	/* draw server hitboxes for testing */
+	//if ( g::local && g::local->alive() ){
+	//	static const auto UTIL_PlayerByIndex = pattern::search(_( "server.dll") ,_( "85 C9 7E 2A A1") ).get<player_t* ( __fastcall* )( int )>( );
+	//	static const auto draw_server_hitboxes = pattern::search( _( "server.dll" ) , _( "55 8B EC 81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 8B D9 57 8B CE" ) ).get<void*>( );
+	//
+	//	const auto duration = -1.0f;
+	//	const auto player = UTIL_PlayerByIndex( g::local->idx( ) );
+	//
+	//	if ( player ) {
+	//		__asm {
+	//			pushad
+	//			movss xmm1, duration
+	//			push 1
+	//			mov ecx, player
+	//			call draw_server_hitboxes
+	//			popad
+	//		}
+	//	}
+	//}
 
 	old::frame_stage_notify( REG_OUT, stage );
 
@@ -241,8 +252,11 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	if ( stage == 5 && g::local && cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( g::local->alive( ) ) {
-			g::local->aim_punch( ) = old_aimpunch;
-			g::local->view_punch( ) = old_viewpunch;
+			if ( removals[ 3 ] )
+				g::local->aim_punch( ) = old_aimpunch;
+
+			if ( removals[ 4 ] )
+				g::local->view_punch( ) = old_viewpunch;
 		}
 	}
 

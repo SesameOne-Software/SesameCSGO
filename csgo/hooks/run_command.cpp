@@ -34,8 +34,10 @@ void __fastcall hooks::run_command( REG, player_t* ent, ucmd_t* ucmd, c_move_hel
 	/* local anims */
 	if ( ucmd->m_cmdnum > last_cmd_num ) {
 		if ( g::local && g::local->alive( ) ) {
-			anims::createmove_flags = g::local->flags( );
+			//const auto backup_flags = g::local->flags( );
+			//g::local->flags( ) = anims::createmove_flags;
 			anims::update_anims( g::local , lby::in_update ? g::sent_cmd.m_angs : g::angles );
+			//g::local->flags( ) = backup_flags;
 		}
 		else /* reset fake */
 			anims::manage_fake( );

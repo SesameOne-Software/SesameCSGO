@@ -74,7 +74,7 @@ class vec3_t;
 class vec2_t;
 
 struct animstate_pose_param_cache_t {
-	PAD ( 4);
+	int m_init;
 	uint32_t m_idx; //0x4
 	char* m_name; //0x8
 
@@ -108,10 +108,9 @@ public:
 	PAD ( 4 );
 	vec3_t m_origin; //0x00B0
 	vec3_t m_old_origin; //0x00BC
-	vec2_t m_vel2d; //0x00C8
-	uint8_t pad_0x00D0 [ 0x10 ]; //0x00D0
-	vec2_t m_last_accelerating_vel; //0x00E0
-	uint8_t pad_0x00E8 [ 0x4 ]; //0x00E8
+	vec3_t m_vel; //0x00C8
+	vec3_t m_vel_norm; //0x00D4
+	vec3_t m_vel_norm_nonzero; //0x00E0
 	float m_speed2d; //0x00EC
 	float m_up_vel; //0x00F0
 	float m_speed_normalized; //0x00F4

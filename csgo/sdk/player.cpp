@@ -9,8 +9,44 @@ void* planted_c4_t::get_defuser( ) {
 }
 
 void animstate_pose_param_cache_t::set_value( player_t* e, float val ) {
-	if ( m_idx >= 0 )
-		e->poses( ) [ m_idx ] = val;
+	static auto CCSPlayer__GetModelPtr = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 83 C4 04 8B C8 E8 ? ? ? ? 83 B8 C4 00 00 00 00" ) ).resolve_rip( ).get<void* ( __thiscall* )( void* )>( );
+	static auto Studio_SetPoseParameter = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 08 F3 0F 11 54 24 ? 85" ) ).get<float( __stdcall* )( void*, int, float, float& )>( );
+	static auto CCSPlayer__LookupPoseParameter = pattern::search( _( "client.dll" ) , _( "55 8B EC 57 8B 7D 08 85 FF 75 08 83 C8 FF 5F 5D C2 08 00" ) ).get<int( __stdcall* )( void* , const char* )>( );
+
+	if ( !m_init && e ) {
+		MDLCACHE_CRITICAL_SECTION( );
+
+		const auto hdr = CCSPlayer__GetModelPtr( e );
+
+		if ( hdr ) {
+			m_idx = CCSPlayer__LookupPoseParameter( hdr , m_name );
+
+			if ( m_idx != -1 )
+				m_init = true;
+		}
+	}
+
+	if ( m_init && e ) {
+		MDLCACHE_CRITICAL_SECTION( );
+
+		const auto hdr = CCSPlayer__GetModelPtr( e );
+
+		if ( hdr && m_idx >= 0 ) {
+			float new_val = 0.0f;
+
+			__asm {
+				mov ecx, hdr
+				mov edx, m_idx
+				movss xmm2, val
+				lea eax, new_val
+				push eax
+				call Studio_SetPoseParameter
+				add esp, 4
+			}
+
+			e->poses( ) [ m_idx ] = new_val;
+		}
+	}
 }
 
 void animstate_t::reset( ) {

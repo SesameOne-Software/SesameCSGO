@@ -59,15 +59,7 @@ void fix_slide( ucmd_t* ucmd ) {
 			return;
 		}
 
-		if ( ucmd->m_fmove ) {
-			ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::forward : buttons_t::back );
-			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::forward : buttons_t::back );
-		}
-
-		if ( ucmd->m_smove ) {
-			ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::right : buttons_t::left );
-			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::right : buttons_t::left );
-		}
+		ucmd->m_buttons &= ~( buttons_t::right | buttons_t::left | buttons_t::back | buttons_t::forward );
 	};
 
 	fix_legs( jittermove ? flip_slide : should_slide );
@@ -305,6 +297,9 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		if ( g::send_packet )
 			g::hold_aim = false;
 	}
+
+	if ( g::local && g::local->alive( ) )
+		anims::createmove_flags = g::local->flags( );
 
 	return false;
 }

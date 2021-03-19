@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="animations\anims.cpp" />
+    <ClCompile Include="animations\rebuilt.cpp" />
     <ClCompile Include="animations\resolver.cpp" />
     <ClCompile Include="cjson\cJSON.c" />
     <ClCompile Include="features\antiaim.cpp" />
@@ -68,6 +69,7 @@
     <ClCompile Include="hooks\notify_on_layer_change_weight.cpp" />
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
+    <ClCompile Include="hooks\perform_flashbang_effect.cpp" />
     <ClCompile Include="hooks\process_interp_list.cpp" />
     <ClCompile Include="hooks\reset.cpp" />
     <ClCompile Include="hooks\run_command.cpp" />
@@ -106,6 +108,7 @@
   <ItemGroup>
     <ClInclude Include="animations\animations.hpp" />
     <ClInclude Include="animations\anims.hpp" />
+    <ClInclude Include="animations\rebuilt.hpp" />
     <ClInclude Include="animations\resolver.hpp" />
     <ClInclude Include="base85.hpp" />
     <ClInclude Include="cjson\cJSON.h" />
@@ -169,6 +172,7 @@
     <ClInclude Include="hooks\notify_on_layer_change_weight.hpp" />
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
+    <ClInclude Include="hooks\perform_flashbang_effect.hpp" />
     <ClInclude Include="hooks\process_interp_list.hpp" />
     <ClInclude Include="hooks\reset.hpp" />
     <ClInclude Include="hooks\run_command.hpp" />

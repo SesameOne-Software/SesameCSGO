@@ -575,6 +575,12 @@
     <ClInclude Include="PH\AES\AES.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="animations\rebuilt.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\perform_flashbang_effect.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -824,6 +830,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PH\AES\AES.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animations\rebuilt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\perform_flashbang_effect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

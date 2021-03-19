@@ -1,19 +1,18 @@
 ﻿#include "anims.hpp"
 #include "resolver.hpp"
 
+#include "../hooks/setup_bones.hpp"
+
 #include "../features/ragebot.hpp"
 
 #include "../menu/options.hpp"
 
+#include "rebuilt.hpp"
+
 #undef max
 #undef min
 
-float local_poses_airtime = 0.0f;
-float local_poses_ground_time = 0.0f;
-float local_walk_to_run_transition = 0.0f;
-int local_walk_to_run_transition_state = 0;
-bool local_running = false;
-
+std::array< animlayer_t , 13> last_anim_layers_server {};
 std::array< animlayer_t , 13> last_anim_layers_queued {};
 std::array< animlayer_t , 13> last_anim_layers {};
 float last_local_feet_yaw;
@@ -205,37 +204,6 @@ float anims::angle_diff( float dst , float src ) {
 	return delta;
 }
 
-void anims::update_local_movement( player_t* ent ) {
-
-}
-
-void anims::update_local_poses( player_t* ent ) {
-	if ( !!( createmove_flags & flags_t::on_ground ) )
-		local_poses_ground_time = cs::i::globals->m_curtime;
-
-	local_poses_airtime = cs::i::globals->m_curtime - local_poses_ground_time;
-
-	const auto speed_2d = ent->abs_vel( ).length_2d( );
-
-	if ( local_walk_to_run_transition > 0.0f && local_walk_to_run_transition < 1.0f ) {
-		if ( local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN )
-			local_walk_to_run_transition += cs::ticks2time( 1 ) * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
-		else
-			local_walk_to_run_transition -= cs::ticks2time( 1 ) * CSGO_ANIM_WALK_TO_RUN_TRANSITION_SPEED;
-
-		local_walk_to_run_transition = std::clamp( local_walk_to_run_transition , 0.0f , 1.0f );
-	}
-
-	if ( speed_2d > ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_RUN_TO_WALK ) {
-		local_walk_to_run_transition_state = ANIM_TRANSITION_WALK_TO_RUN;
-		local_walk_to_run_transition = std::max( 0.01f , local_walk_to_run_transition );
-	}
-	else if ( speed_2d < ( CS_PLAYER_SPEED_RUN * CS_PLAYER_SPEED_WALK_MODIFIER ) && local_walk_to_run_transition_state == ANIM_TRANSITION_WALK_TO_RUN ) {
-		local_walk_to_run_transition_state = ANIM_TRANSITION_RUN_TO_WALK;
-		local_walk_to_run_transition = std::min( 0.99f , local_walk_to_run_transition );
-	}
-}
-
 void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float feet_yaw ) {
 	/* copy existing poses*/
 	poses = ent->poses( );
@@ -244,12 +212,12 @@ void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float fe
 	const auto vel = ent == g::local ? ent->abs_vel( ) : ent->vel( );
 
 	/* calculate *some* new ones */
-	poses[ pose_param_t::speed ] = vel.length_2d( ) / ( ( ( ent->weapon( ) && ent->weapon( )->data( ) ) ? std::max( ent->weapon( )->data( )->m_max_speed , 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
-	poses[ pose_param_t::stand ] = 1.0f - ent->crouch_amount( );
+	//poses[ pose_param_t::speed ] = vel.length_2d( ) / ( ( ( ent->weapon( ) && ent->weapon( )->data( ) ) ? std::max( ent->weapon( )->data( )->m_max_speed , 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
+	//poses[ pose_param_t::stand ] = 1.0f - ent->crouch_amount( );
 
 	poses[ pose_param_t::body_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( anim_state->m_eye_yaw ) , cs::normalize( feet_yaw ) ) ) , -60.0f , 60.0f ) / 120.0f + 0.5f;
 	poses[ pose_param_t::move_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( cs::rad2deg( atan2( -vel.y , -vel.x ) ) ) , cs::normalize( feet_yaw ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
-	//poses[ pose_param_t::lean_yaw ] = 0.0f;
+	poses[ pose_param_t::lean_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( feet_yaw ), cs::normalize( cs::rad2deg( atan2( vel.y , vel.x ) ) ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
 
 	const float recalc_air_time = ( ent->layers( )[ 4 ].m_cycle - 0.72f ) * 1.25f;
 	const float clamped = recalc_air_time >= 0.0f ? std::min( recalc_air_time , 1.0f ) : 0.0f;
@@ -259,11 +227,11 @@ void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float fe
 		jump_fall = std::min( jump_fall , 1.0f );
 
 	poses[ pose_param_t::jump_fall ] = jump_fall;
-	poses[ pose_param_t::body_pitch ] = std::clamp( cs::normalize( anim_state->m_pitch ) , -90.0f , 90.0f ) / 180.0f + 0.5f;
+	//poses[ pose_param_t::body_pitch ] = std::clamp( cs::normalize( anim_state->m_pitch ) , -90.0f , 90.0f ) / 180.0f + 0.5f;
 
-	poses[ pose_param_t::move_blend_crouch ] = ent->crouch_amount( );
-	poses[ pose_param_t::move_blend_run ] = ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : anim_state->m_ground_fraction ) * ( 1.0f - ent->crouch_amount( ) );
-	poses[ pose_param_t::move_blend_walk ] = ( 1.0f - ( ( g::local && ent == g::local ) ? local_walk_to_run_transition : anim_state->m_ground_fraction ) ) * ( 1.0f - ent->crouch_amount( ) );
+	//poses[ pose_param_t::move_blend_crouch ] = ent->crouch_amount( );
+	//poses[ pose_param_t::move_blend_run ] = anim_state->m_ground_fraction * ( 1.0f - ent->crouch_amount( ) );
+	//poses[ pose_param_t::move_blend_walk ] = ( 1.0f - anim_state->m_ground_fraction ) * ( 1.0f - ent->crouch_amount( ) );
 }
 
 void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin , vec3_t& vel , flags_t& old_flags ) {
@@ -330,6 +298,9 @@ void anims::reset_data ( int idx ) {
 
 	if ( ent )
 		ent->animate ( ) = true;
+
+	if ( ent == g::local && g::local && ent->animstate( ) )
+		last_local_animstate = *ent->animstate( );
 }
 
 /* works fine (not when standing? (need to update anims when standing still as well?(only updates on send?))) */
@@ -359,13 +330,6 @@ void anims::manage_fake ( ) {
 		spawn_time = g::local->spawn_time ( );
 	}
 
-	static float last_ground_time = cs::i::globals->m_curtime;
-
-	if ( !!( g::local->flags ( ) & flags_t::on_ground ) )
-		last_ground_time = cs::i::globals->m_curtime;
-
-	const auto last_air_time = cs::i::globals->m_curtime - last_ground_time;
-
 	std::array<animlayer_t, 13> networked_layers;
 	memcpy ( networked_layers.data(), g::local->layers ( ), sizeof( networked_layers ) );
 
@@ -376,27 +340,45 @@ void anims::manage_fake ( ) {
 	fake_anim_state.m_last_clientside_anim_framecount = 0;
 	fake_anim_state.m_feet_yaw_rate = 0.0f;
 
-	fake_anim_state.m_hit_ground = false;
-	fake_anim_state.m_landing_duck_additive = 0.0f;
-	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( &fake_anim_state ) + 0x118 ) = 1.0f;
+	//fake_anim_state.m_hit_ground = false;
+	//fake_anim_state.m_landing_duck_additive = 0.0f;
+	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( &fake_anim_state ) + 0x118 ) = 1.0f;
 
-	fake_anim_state.update ( g::angles );
+	rebuilt::update( &fake_anim_state, g::angles, g::local->origin() );
+	//fake_anim_state.update ( g::angles );
 
 	g::local->abs_angles ( ).y = fake_anim_state.m_abs_yaw;
 
-	auto poses = g::local->poses ( );
-	calc_poses ( g::local, poses, fake_anim_state.m_abs_yaw );
+	std::array<animlayer_t, 13> backup_layers;
+	memcpy ( backup_layers.data ( ), g::local->layers ( ), sizeof ( backup_layers ) );
 
-	const float recalc_air_time = ( last_air_time - 0.72f ) * 1.25f;
-	const float clamped = recalc_air_time >= 0.0f ? std::min ( recalc_air_time, 1.0f ) : 0.0f;
-	float jump_fall = ( 3.0f - ( clamped + clamped ) ) * ( clamped * clamped );
+	memcpy ( g::local->layers ( ), last_anim_layers_server.data ( ), sizeof ( last_anim_layers_server ) );
 
-	if ( jump_fall >= 0.0f )
-		jump_fall = std::min ( jump_fall, 1.0f );
+	/* use these maintained on client */
+	g::local->layers ( ) [ 3 ] = backup_layers [ 3 ];
+	//last_anim_layers[ 4 ] = last_anim_layers_queued[ 4 ];
+	g::local->layers ( ) [ 5 ] = backup_layers [ 5 ];
+	g::local->layers ( ) [ 6 ] = backup_layers [ 6 ];
+	g::local->layers ( ) [ 9 ] = backup_layers [ 9 ];
 
-	poses [ pose_param_t::jump_fall ] = jump_fall;
+	g::local->layers ( )[ 3 ].m_weight = 0.0f;
+	g::local->layers ( )[ 3 ].m_cycle = 0.0f;
+	g::local->layers ( )[ 12 ].m_weight = 0.0f;
 	
-	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, poses );
+	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, g::local->poses() );
+
+	///* build fake matrix */ {
+	//	const auto backup_flags1 = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 );
+	//	const auto backup_framecount = cs::i::globals->m_framecount;
+	//
+	//	*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 ) |= 8;
+	//	cs::i::globals->m_framecount = std::numeric_limits<int>::max ( );
+	//
+	//	hooks::old::setup_bones ( g::local, nullptr, fake_matrix.data ( ), 256, 0x7FF00, cs::i::globals->m_curtime );
+	//
+	//	*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 ) = backup_flags1;
+	//	cs::i::globals->m_framecount = backup_framecount;
+	//}
 
 	memcpy ( g::local->layers ( ), networked_layers.data ( ), sizeof ( networked_layers ) );
 	g::local->poses ( ) = backup_poses;
@@ -713,64 +695,81 @@ void anims::update_anims ( player_t* ent, vec3_t& angles ) {
 		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0xE8 ) &= ~0x1000;
 		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( ent ) + 0x94 ) = ent->vel( );
 	}
-	else {
-		cs::i::globals->m_frametime = cs::ticks2time ( 1 );
+
+	if ( ent == g::local && g::local ) {
+		//*state = last_local_animstate;
+		memcpy( ent->layers( ), last_anim_layers_queued.data( ) , sizeof( last_anim_layers_queued ) );
+
+		cs::i::globals->m_frametime = cs::ticks2time( 1 );
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
 	}
 
 	if ( ent == g::local && g::local ) {
-		//state->m_ground_fraction = local_walk_to_run_transition;
-		state->m_ground_fraction = 0.0f;
+		//if ( !cs::i::input->m_camera_in_thirdperson ) {
+		//	state->m_duck_amount = ent->crouch_amount( );
+		//	state->m_unk_feet_speed_ratio = ent->crouch_speed( );
+		//}
 
-		if ( !cs::i::input->m_camera_in_thirdperson ) {
-			state->m_duck_amount = ent->crouch_amount( );
-			state->m_unk_feet_speed_ratio = ent->crouch_speed( );
-		}
-
-		state->m_hit_ground = false;
-		state->m_landing_duck_additive = 0.0f;
+		//state->m_hit_ground = false;
+		//state->m_landing_duck_additive = 0.0f;
 	}
 
 	state->m_last_clientside_anim_framecount = cs::i::globals->m_framecount - 1;
 	state->m_feet_yaw_rate = 0.0f;
-	state->m_weapon = state->m_last_weapon = ent->weapon( );
-	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x98 ) = anim_layers[ 6 ].m_cycle;
-	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x9C ) = anim_layers[ 6 ].m_weight;
-
-	std::array<animlayer_t , 13> backup_anim_layers { };
-	memcpy( backup_anim_layers.data( ) , ent->layers( ) , sizeof( backup_anim_layers ) );
+	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x118 ) = 1.0f;
+	//state->m_on_ground = !!( ent->flags() & flags_t::on_ground );
+	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x98 ) = anim_layers[ 6 ].m_cycle;
+	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x9C ) = anim_layers[ 6 ].m_weight;
 
 	const auto backup_invalidate_bone_cache = invalidate_bone_cache;
 
 	ent->animate ( ) = true;
-	state->update( angles );
+	rebuilt::update( state , angles , ent->origin( ) );
 	ent->animate ( ) = false;
 
 	invalidate_bone_cache = backup_invalidate_bone_cache;
 
-	if ( ent == g::local && g::local )
-		memcpy( ent->layers( ) , backup_anim_layers.data( ) , sizeof( backup_anim_layers ) );
-	
 	if ( ent == g::local && g::local ) {
-		ent->layers ( ) [ 3 ].m_weight = 0.0f;
-		ent->layers ( ) [ 3 ].m_cycle = 0.0f;
-		ent->layers ( ) [ 12 ].m_weight = 0.0f;
+		memcpy( last_anim_layers_queued.data( ), ent->layers( ) , sizeof( last_anim_layers_queued ) );
+		//last_local_animstate = *state;
 	}
 
 	cs::i::globals->m_frametime = backup_frametime;
 	cs::i::globals->m_curtime = backup_curtime;
 
 	if ( g::local && ent == g::local ) {
-		/* calc animlayers */
-		update_local_poses( ent );
-
 		/* dont update on local until we send packet */
 		if ( g::send_packet ) {
-			memcpy( last_anim_layers.data( ) , last_anim_layers_queued.data( ) , sizeof( last_anim_layers ) );
+			/* set new animlayers (server data + ones maintained on client) */
+			memcpy( last_anim_layers.data( ) , last_anim_layers_server.data( ) , sizeof( last_anim_layers_server ) );
+
+			/* use these maintained on client */
+			last_anim_layers[ 3 ] = last_anim_layers_queued[ 3 ];
+			//last_anim_layers[ 4 ] = last_anim_layers_queued[ 4 ];
+			last_anim_layers[ 5 ] = last_anim_layers_queued[ 5 ];
+			last_anim_layers[ 6 ] = last_anim_layers_queued[ 6 ];
+			last_anim_layers[ 9 ] = last_anim_layers_queued[ 9 ];
+
+			//last_anim_layers[ 4 ].m_cycle = last_air_time;
+			//last_anim_layers[ 4 ].m_playback_rate = ( ( last_air_time > 0.0f ) ? cs::ticks2time( 1 ) : 0.0f );
+			//last_anim_layers[ 4 ].m_weight = ( ( last_air_time > 0.0f ) ? 1.0f : 0.0f );
+
+			last_anim_layers[ 3 ].m_weight = 0.0f;
+			last_anim_layers[ 3 ].m_cycle = 0.0f;
+			last_anim_layers[ 12 ].m_weight = 0.0f;
+
+			//dbg_print ( _ ( "weight: %.3f\n" ), last_anim_layers_queued [ 4 ].m_weight );
+			//dbg_print ( _ ( "cycle: %.3f\n" ), last_anim_layers_queued [ 4 ].m_cycle );
+			//dbg_print ( _ ( "sequence: %d\n" ), last_anim_layers_queued [ 4 ].m_sequence );
+
+			/* store new data */
+			memcpy( ent->layers( ) , last_anim_layers.data( ) , sizeof( last_anim_layers ) );
+
 			last_local_feet_yaw = state->m_abs_yaw;
-			calc_poses( ent , last_local_poses , last_local_feet_yaw );
+			last_local_poses = ent->poses( );
 		}
 
+		/* apply last sent data */
 		ent->poses( ) = last_local_poses;
 		memcpy( ent->layers( ) , last_anim_layers.data( ) , sizeof( last_anim_layers ) );
 
@@ -779,6 +778,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles ) {
 		if ( g::send_packet )
 			manage_fake( );
 	}
+
 	VM_TIGER_BLACK_END
 }
 
@@ -817,11 +817,7 @@ void anims::on_net_update_end ( int idx ) {
 	//ent->animate ( ) = false;
 
 	if ( g::local && ent == g::local ) {
-		ent->layers( )[ 4 ].m_cycle = local_poses_airtime;
-		ent->layers( )[ 4 ].m_playback_rate = ( ( local_poses_airtime > 0.0f ) ? cs::ticks2time( 1 ) : 0.0f );
-		ent->layers( )[ 4 ].m_weight = ( ( local_poses_airtime > 0.0f ) ? 1.0f : 0.0f );
-
-		memcpy ( last_anim_layers_queued.data ( ), ent->layers ( ), sizeof ( last_anim_layers_queued ) );
+		memcpy ( last_anim_layers_server.data ( ), ent->layers ( ), sizeof ( last_anim_layers_server ) );
 
 		return;
 	}
@@ -930,15 +926,10 @@ void anims::fsn ( int stage ) {
 			on_net_update_end( i );
 	} break;
 	case 5: {
-		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
-			auto ent = cs::i::ent_list->get<player_t*>( i );
-		
-			if ( !ent || !ent->is_player( ) || !ent->alive( ) )
-				continue;
-		
+		if ( g::local ) {
 			/* update viewmodel manually to fix it dissappearing */
-			const auto viewmodel = ent->viewmodel_handle( );
-		
+			const auto viewmodel = g::local->viewmodel_handle( );
+
 			if ( viewmodel != -1 && cs::i::ent_list->get_by_handle< void* >( viewmodel ) )
 				update_all_viewmodel_addons( cs::i::ent_list->get_by_handle< void* >( viewmodel ) );
 		}
