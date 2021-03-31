@@ -70,6 +70,7 @@
     <ClCompile Include="hooks\override_view.cpp" />
     <ClCompile Include="hooks\paint_traverse.cpp" />
     <ClCompile Include="hooks\perform_flashbang_effect.cpp" />
+    <ClCompile Include="hooks\prediction_error_handler.cpp" />
     <ClCompile Include="hooks\process_interp_list.cpp" />
     <ClCompile Include="hooks\reset.cpp" />
     <ClCompile Include="hooks\run_command.cpp" />
@@ -173,6 +174,7 @@
     <ClInclude Include="hooks\override_view.hpp" />
     <ClInclude Include="hooks\paint_traverse.hpp" />
     <ClInclude Include="hooks\perform_flashbang_effect.hpp" />
+    <ClInclude Include="hooks\prediction_error_handler.hpp" />
     <ClInclude Include="hooks\process_interp_list.hpp" />
     <ClInclude Include="hooks\reset.hpp" />
     <ClInclude Include="hooks\run_command.hpp" />
@@ -214,8 +216,9 @@
     <ClInclude Include="renderer\stb_truetype.h" />
     <ClInclude Include="renderer\truetype.hpp" />
     <ClInclude Include="renderer\utf8.h" />
+    <ClInclude Include="resources\roboto.hpp" />
+    <ClInclude Include="resources\roboto_bold.hpp" />
     <ClInclude Include="resources\sesame_icons.hpp" />
-    <ClInclude Include="resources\sesame_ui.hpp" />
     <ClInclude Include="scripting\js_api.hpp" />
     <ClInclude Include="sdk\beams.hpp" />
     <ClInclude Include="sdk\client.hpp" />
@@ -319,8 +322,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;oxui;sdk;D:\Tools\Themida;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;D:\Tools\Themida\ThemidaSDK\Lib\COFF;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include;sdk;ThemidaSDK\Include\C\;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Lib\x86;ThemidaSDK\Lib\COFF;$(LibraryPath)</LibraryPath>
     <TargetName>hack</TargetName>
     <LinkIncremental>true</LinkIncremental>
     <EnableMicrosoftCodeAnalysis>false</EnableMicrosoftCodeAnalysis>
@@ -367,7 +370,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;DEV_BUILD;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
-      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ControlFlowGuard>Guard</ControlFlowGuard>

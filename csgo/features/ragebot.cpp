@@ -744,7 +744,7 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 	if ( !active_config.auto_slow || !( g::local->flags ( ) & flags_t::on_ground ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
 
-	const auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
+	auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove ).normalized();
 	const auto magnitude = vec_move.length_2d ( );
 	const auto max_speed = g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed;
 	const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float ( );
@@ -769,10 +769,15 @@ void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove 
 		old_fmove = normal.x * speed_2d;
 		old_smove = normal.y * speed_2d;
 	}
-	/*else if ( ( old_fmove || old_smove ) && magnitude ) {
-		old_fmove = ( old_fmove / magnitude ) * speed_ratio;
-		old_smove = ( old_smove / magnitude ) * speed_ratio;
-	}*/
+	else {
+		if ( !vec_move.is_valid ( ) )
+			return;
+
+		const auto speed_2d = max_speed * 0.33f;
+
+		old_fmove = vec_move.x * speed_2d;
+		old_smove = vec_move.y * speed_2d;
+	}
 
 	ucmd->m_buttons &= ~buttons_t::walk;
 }
@@ -911,12 +916,15 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 
 void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
 	VM_TIGER_BLACK_START
-	if ( !active_config.main_switch || !g::local || !g::local->alive ( ) )
-		return;
+		if ( !active_config.main_switch || !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
+			scan_points.clear ( );
+			return;
+	}
 
 	/* Don't knifebot without an actual knifebot lmao, currently the hack just fucking shoots the air constantly w/a knife */
 	if ( g::local->weapon ( ) && ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife || g::local->weapon ( )->item_definition_index ( ) == weapons_t::taser ) ) {
 		run_meleebot ( ucmd );
+		scan_points.clear ( );
 		return;
 	}
 
@@ -924,7 +932,8 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		if ( active_config.auto_shoot )
 			ucmd->m_buttons &= ~buttons_t::attack;
 
-		return;
+		//if ( !g::local->weapon ( )->data ( )->m_full_auto )
+			return;
 	}
 
 	/* get potential ragebot targets */
@@ -1296,9 +1305,9 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	/* force baim, literally removes head hitbox from hitscan  */
 	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
 	autowall::scale_dmg( pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
-
-	if ( (/*(get_misses( rec.m_pl->idx( ) ).bad_resolve > active_config.baim_after_misses)
-		||*/ ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
+	
+	if ( ((get_misses( pl->idx( ) ).bad_resolve >= active_config.baim_after_misses && active_config.baim_after_misses )
+		|| ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
 		|| ( active_config.baim_lethal && scaled_dmg > pl->health( ) )
 		|| (( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ))
 		&& !active_config.headshot_only ) {
@@ -1313,7 +1322,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
 	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
-	const auto damage_scalar = ( exploits::is_ready ( ) || exploits::has_shifted ) ? 1.0f : 1.0f;
+	const auto damage_scalar = ( ( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ) ? 2.0f : 1.0f;
 	/* TODO: remove when doubletap fixed */
 
 	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;

@@ -4,8 +4,12 @@
 #include <optional>
 #include "../sdk/sdk.hpp"
 
+#undef min
+#undef max
+
 namespace anims::rebuilt {
 	/* anim utils */
+	void update_layer ( animstate_t* anim_state, int layer, int seq, float playback_rate, float weight, float cycle );
 	void invalidate_physics_recursive( animstate_t* anim_state , int flags );
 	void reset_layer( animstate_t* anim_state , int layer );
 	void set_sequence( animstate_t* anim_state , int layer, int sequence );
@@ -27,7 +31,10 @@ namespace anims::rebuilt {
 	void* seq_desc( void* mdl, int seq );
 
 	/* anim update funcs */
-	void setup_velocity( animstate_t* anim_state );
+	void do_animation_event ( animstate_t* anim_state, int id, int data );
+	void trigger_animation_events ( animstate_t* anim_state );
+
+	void setup_velocity( animstate_t* anim_state, bool force_feet_yaw );
 	void setup_aim_matrix( animstate_t* anim_state );
 	void setup_weapon_action( animstate_t* anim_state );
 	void setup_movement( animstate_t* anim_state );
@@ -38,5 +45,5 @@ namespace anims::rebuilt {
 	void setup_lean( animstate_t* anim_state );
 
 	/* anim update */
-	void update( animstate_t* anim_state , vec3_t angles, vec3_t origin );
+	void update( animstate_t* anim_state , vec3_t angles, vec3_t origin, bool force_feet_yaw = false );
 }

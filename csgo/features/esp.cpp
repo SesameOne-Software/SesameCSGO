@@ -205,7 +205,7 @@ void features::esp::handle_dynamic_updates( ) {
 
 		esp_data[ pl->idx( ) ].m_sound_pos = end_pos;
 		esp_data[ pl->idx( ) ].m_dormant = true;
-		esp_data[ pl->idx( ) ].m_last_seen = cs::i::globals->m_curtime;
+		esp_data [ pl->idx ( ) ].m_last_seen = g::local ? cs::ticks2time( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
 
 		//dbg_print( _( "sound\n" ) );
 	}
@@ -223,11 +223,6 @@ void features::esp::reset_dormancy( event_t* event ) {
 		esp_data[ victim->idx( ) ].m_sound_pos = vec3_t( 0.f , 0.f , 0.f );
 	}
 }
-
-extern std::array< animlayer_t , 13> last_anim_layers_queued;
-extern vec3_t test_velocity;
-
-extern std::array<std::array<float , 3> , 65> resolved_layers;
 
 void features::esp::render( ) {
 	if ( !g::local )
@@ -267,7 +262,7 @@ void features::esp::render( ) {
 
 		auto abs_origin = (e->bone_cache( ) && !e->dormant()) ? e->bone_cache( )[ 1 ].origin( ) : e->abs_origin( );
 
-		if ( esp_data[ e->idx( ) ].m_dormant && esp_data[ e->idx( ) ].m_sound_pos != vec3_t( 0.f , 0.f , 0.f ) )
+		if ( e->dormant ( ) && esp_data[ e->idx( ) ].m_sound_pos != vec3_t( 0.f , 0.f , 0.f ) )
 			abs_origin = esp_data[ e->idx( ) ].m_sound_pos;
 
 		auto min = e->mins( ) + abs_origin;
@@ -346,9 +341,9 @@ void features::esp::render( ) {
 			esp_data[ e->idx( ) ].m_pos = abs_origin;
 
 			if ( esp_data[ e->idx( ) ].m_first_seen == 0.0f )
-				esp_data[ e->idx( ) ].m_first_seen = cs::i::globals->m_curtime;
+				esp_data[ e->idx( ) ].m_first_seen = g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
 
-			esp_data[ e->idx( ) ].m_last_seen = cs::i::globals->m_curtime;
+			esp_data[ e->idx( ) ].m_last_seen = g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
 
 			if ( e && e->weapon( ) && e->weapon( )->data( ) ) {
 				std::string hud_name = e->weapon( )->data( )->m_weapon_name;
@@ -377,9 +372,9 @@ void features::esp::render( ) {
 
 		auto dormant_time = std::max< float >( 9.0f/*esp_fade_time*/ , 0.1f );
 
-		if ( esp_data[ e->idx( ) ].m_pl && std::fabsf( cs::i::globals->m_curtime - esp_data[ e->idx( ) ].m_last_seen ) < dormant_time ) {
+		if ( esp_data[ e->idx( ) ].m_pl && std::fabsf( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - esp_data[ e->idx( ) ].m_last_seen ) < dormant_time ) {
 			auto calc_alpha = [ & ] ( float time , float fade_time , bool add = false ) {
-				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( cs::i::globals->m_curtime - time ) , 0.0f , dormant_time ) ) : std::fabsf( cs::i::globals->m_curtime - time ) , std::max< float >( dormant_time - fade_time , 0.0f ) , dormant_time ) ) , 0.0f , fade_time ) / fade_time );
+				return ( std::clamp< float >( dormant_time - ( std::clamp< float >( add ? ( dormant_time - std::clamp< float >( std::fabsf( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ) , 0.0f , dormant_time ) ) : std::fabsf( cs::i::globals->m_curtime - time ) , std::max< float >( dormant_time - fade_time , 0.0f ) , dormant_time ) ) , 0.0f , fade_time ) / fade_time );
 			};
 
 			if ( !esp_data[ e->idx( ) ].m_dormant )
@@ -435,18 +430,14 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect , visuals.fatal_color , esp_type_text , visuals.value_text , visuals.fatal_flag_placement , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , _( "Fatal" ) );
 
 			/* DEBUGGING STUFF */
-			//if ( !anims::anim_info [ e->idx ( ) ].empty ( ) ) {
-			//	auto rec = anims::anim_info[ e->idx( ) ].front( );
+			//for ( auto i = 0; i < 13; i++ ) {
+			//	std::string output = "animlayer ";
+			//	output.append ( std::to_string ( i ) + ":\n" );
+			//	output.append ( "weight: " + std::to_string ( last_anim_layers_server [ i ].m_weight ) + ":\n" );
+			//	output.append ( "cycle: " + std::to_string ( last_anim_layers_server [ i ].m_cycle ) + ":\n" );
+			//	output.append ( "rate: " + std::to_string ( last_anim_layers_server [ i ].m_playback_rate ) + ":\n" );
 			//
-			//	for ( auto i = 0; i < 13; i++ ) {
-			//		std::string output = "animlayer ";
-			//		output.append( std::to_string( i ) + ":\n" );
-			//		output.append( "weight: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_weight ) + ":\n" );
-			//		output.append( "cycle: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_cycle ) + ":\n" );
-			//		output.append( "rate: " + std::to_string( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ i ].m_playback_rate ) + ":\n" );
-			//
-			//		draw_esp_widget( esp_rect , visuals.weapon_color , esp_type_text , visuals.value_text , esp_placement_right , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , output );
-			//	}
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, output );
 			//}
 		}
 	}

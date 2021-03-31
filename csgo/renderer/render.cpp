@@ -9,10 +9,10 @@
 
 std::unordered_map<std::string, void*> font_list {};
 
-void render::create_font ( const uint8_t* data, size_t data_size, std::string_view family_name, float size, const uint16_t* ranges, void* font_config ) {
+void render::create_font ( std::span<uint32_t> data, std::string_view family_name, float size, const uint16_t* ranges, void* font_config ) {
 	ImGuiIO& io = ImGui::GetIO ( );
 
-	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryTTF ( (void*) data, data_size, size, reinterpret_cast< ImFontConfig *>( font_config), ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
+	font_list[ family_name.data ( ) ] = io.Fonts->AddFontFromMemoryCompressedTTF ( data.data(), data.size_bytes(), size, reinterpret_cast< ImFontConfig *>( font_config), ranges ? ranges : io.Fonts->GetGlyphRangesCyrillic() );
 	reinterpret_cast<ImFont*>( font_list [ family_name.data ( ) ] )->SetFallbackChar ( '?' );
 }
 
@@ -71,7 +71,7 @@ void render::circle ( float x, float y, float radius, int segments, uint32_t col
 		ImGui::GetWindowDrawList ( )->AddCircle ( { round (x),(y) }, radius, color, segments, 2.5f );
 }
 
-void render::polygon ( const std::vector< vec3_t >& verticies, uint32_t color, bool outline, float thickness ) {
+void render::polygon ( std::vector<vec3_t> verticies, uint32_t color, bool outline, float thickness ) {
 	std::vector< ImVec2 > points_2d {};
 
 	for ( auto& point : verticies )

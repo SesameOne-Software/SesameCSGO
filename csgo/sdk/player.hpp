@@ -224,7 +224,9 @@ public:
 	NETVAR( vec3_t, force, "DT_CSRagdoll->m_vecForce" );
 	NETVAR( vec3_t, ragdoll_vel, "DT_CSRagdoll->m_vecRagdollVelocity" );
 	NETVAR( float, next_attack, "DT_CSPlayer->m_flNextAttack" );
+	NETVAR ( vec3_t, ladder_norm, "DT_CSPlayer->m_vecLadderNormal" );
 	NETVAR ( uint32_t*, wearables_handle, "DT_BaseCombatCharacter->m_hMyWearables" );
+	NETVAR ( bool, strafing, "DT_CSPlayer->m_bStrafing" );
 	OFFSET( int, effects, 0xE8 );
 	OFFSET( int, eflags, 0xF0 );
 	OFFSET( void*, iks, 0x266C );

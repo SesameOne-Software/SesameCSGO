@@ -109,11 +109,11 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	if ( !cstudio )
 		return false;
 
-	if ( target != g::local ) {
-		invalidate_physics_recursive( target , 2 );
-		invalidate_physics_recursive( target , 8 );
-		invalidate_physics_recursive( target , 32 );
-	}
+	//if ( target != g::local ) {
+	//	invalidate_physics_recursive( target , 2 );
+	//	invalidate_physics_recursive( target , 8 );
+	//	invalidate_physics_recursive( target , 32 );
+	//}
 
 	target->poses( ) = poses;
 
@@ -215,9 +215,9 @@ void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float fe
 	//poses[ pose_param_t::speed ] = vel.length_2d( ) / ( ( ( ent->weapon( ) && ent->weapon( )->data( ) ) ? std::max( ent->weapon( )->data( )->m_max_speed , 0.001f ) : CS_PLAYER_SPEED_RUN ) * CS_PLAYER_SPEED_WALK_MODIFIER );
 	//poses[ pose_param_t::stand ] = 1.0f - ent->crouch_amount( );
 
-	poses[ pose_param_t::body_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( anim_state->m_eye_yaw ) , cs::normalize( feet_yaw ) ) ) , -60.0f , 60.0f ) / 120.0f + 0.5f;
-	poses[ pose_param_t::move_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( cs::rad2deg( atan2( -vel.y , -vel.x ) ) ) , cs::normalize( feet_yaw ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
-	poses[ pose_param_t::lean_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( feet_yaw ), cs::normalize( cs::rad2deg( atan2( vel.y , vel.x ) ) ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
+	//poses[ pose_param_t::body_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( anim_state->m_eye_yaw ) , cs::normalize( feet_yaw ) ) ) , -60.0f , 60.0f ) / 120.0f + 0.5f;
+	//poses[ pose_param_t::move_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( cs::rad2deg( atan2( -vel.y , -vel.x ) ) ) , cs::normalize( feet_yaw ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
+	//poses[ pose_param_t::lean_yaw ] = std::clamp( cs::normalize( angle_diff( cs::normalize( feet_yaw ), cs::normalize( cs::rad2deg( atan2( vel.y , vel.x ) ) ) ) ) , -180.0f , 180.0f ) / 360.0f + 0.5f;
 
 	const float recalc_air_time = ( ent->layers( )[ 4 ].m_cycle - 0.72f ) * 1.25f;
 	const float clamped = recalc_air_time >= 0.0f ? std::min( recalc_air_time , 1.0f ) : 0.0f;
@@ -296,6 +296,8 @@ void anims::reset_data ( int idx ) {
 
 	auto ent = cs::i::ent_list->get<player_t*> ( idx );
 
+	features::ragebot::get_misses ( idx ).bad_resolve = 0;
+
 	if ( ent )
 		ent->animate ( ) = true;
 
@@ -303,7 +305,21 @@ void anims::reset_data ( int idx ) {
 		last_local_animstate = *ent->animstate( );
 }
 
-/* works fine (not when standing? (need to update anims when standing still as well?(only updates on send?))) */
+void anims::copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from ) {
+	const auto layers = ent->layers ( );
+
+	for ( auto i = 0; i < to.size ( ); i++ ) {
+		if ( i == 3 || i == 4 || i == 5 || i == 6 || i == 9 ) {
+			to [ i ].m_sequence = from [ i ].m_sequence;
+			to [ i ].m_previous_cycle = from [ i ].m_previous_cycle;
+			to [ i ].m_weight = from [ i ].m_weight;
+			to [ i ].m_weight_delta_rate = from [ i ].m_weight_delta_rate;
+			to [ i ].m_playback_rate = from [ i ].m_playback_rate;
+			to [ i ].m_cycle = from [ i ].m_cycle;
+		}
+	}
+}
+
 void anims::manage_fake ( ) {
 	static auto spawn_time = 0.0f;
 
@@ -313,6 +329,7 @@ void anims::manage_fake ( ) {
 	}
 
 	static animstate_t fake_anim_state { };
+	static std::array<animlayer_t, 13> fake_layers {};
 	static auto handle = g::local->handle ( );
 
 	if ( !g::local->alive ( ) ) {
@@ -337,48 +354,13 @@ void anims::manage_fake ( ) {
 	auto backup_poses = g::local->poses ( );
 	auto origin = g::local->origin ( );
 
-	fake_anim_state.m_last_clientside_anim_framecount = 0;
-	fake_anim_state.m_feet_yaw_rate = 0.0f;
-
-	//fake_anim_state.m_hit_ground = false;
-	//fake_anim_state.m_landing_duck_additive = 0.0f;
-	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( &fake_anim_state ) + 0x118 ) = 1.0f;
-
-	rebuilt::update( &fake_anim_state, g::angles, g::local->origin() );
-	//fake_anim_state.update ( g::angles );
+	rebuilt::update ( &fake_anim_state, g::angles, g::local->origin ( ) );
 
 	g::local->abs_angles ( ).y = fake_anim_state.m_abs_yaw;
 
-	std::array<animlayer_t, 13> backup_layers;
-	memcpy ( backup_layers.data ( ), g::local->layers ( ), sizeof ( backup_layers ) );
-
-	memcpy ( g::local->layers ( ), last_anim_layers_server.data ( ), sizeof ( last_anim_layers_server ) );
-
-	/* use these maintained on client */
-	g::local->layers ( ) [ 3 ] = backup_layers [ 3 ];
-	//last_anim_layers[ 4 ] = last_anim_layers_queued[ 4 ];
-	g::local->layers ( ) [ 5 ] = backup_layers [ 5 ];
-	g::local->layers ( ) [ 6 ] = backup_layers [ 6 ];
-	g::local->layers ( ) [ 9 ] = backup_layers [ 9 ];
-
-	g::local->layers ( )[ 3 ].m_weight = 0.0f;
-	g::local->layers ( )[ 3 ].m_cycle = 0.0f;
-	g::local->layers ( )[ 12 ].m_weight = 0.0f;
+	memcpy ( g::local->layers ( ), last_anim_layers.data ( ), sizeof ( last_anim_layers ) );
 	
 	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, g::local->poses() );
-
-	///* build fake matrix */ {
-	//	const auto backup_flags1 = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 );
-	//	const auto backup_framecount = cs::i::globals->m_framecount;
-	//
-	//	*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 ) |= 8;
-	//	cs::i::globals->m_framecount = std::numeric_limits<int>::max ( );
-	//
-	//	hooks::old::setup_bones ( g::local, nullptr, fake_matrix.data ( ), 256, 0x7FF00, cs::i::globals->m_curtime );
-	//
-	//	*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( g::local ) + 0xF0 ) = backup_flags1;
-	//	cs::i::globals->m_framecount = backup_framecount;
-	//}
 
 	memcpy ( g::local->layers ( ), networked_layers.data ( ), sizeof ( networked_layers ) );
 	g::local->poses ( ) = backup_poses;
@@ -465,7 +447,7 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel ) {
 		vel.z = 0.0f;
 }
 
-void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& to ) {
+void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& to, std::array<animlayer_t, 13>& cur_layers ) {
 	const auto delta_ticks = cs::time2ticks( to.m_simtime - from.m_simtime );
 
 	if ( !delta_ticks )
@@ -535,7 +517,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		ent->simtime( ) = simtime;
 		ent->old_simtime( ) = simtime - cs::ticks2time( 1 );
 
-		update_all_anims( ent, ent->angles( ), to, i + 1 == delta_ticks /* only build bones for latest tick */ );
+		update_all_anims( ent, ent->angles( ), to, cur_layers, i + 1 == delta_ticks /* only build bones for latest tick */ );
 
 		ent->simtime( ) = backup_simtime;
 		ent->old_simtime( ) = backup_old_simtime;
@@ -565,9 +547,14 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	ent->poses( ) = to.m_poses[ to.m_side ];
 	*ent->animstate( ) = to.m_anim_state[ to.m_side ];
 	ent->set_abs_angles( to.m_abs_angles[ to.m_side ] );
+
+	build_bones ( ent, to.m_aim_bones [ to.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_side ] );
+
+	for ( auto& bones : to.m_aim_bones )
+		bones = to.m_aim_bones [ to.m_side ];
 }
 
-void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , bool build_matrix ) {
+void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool build_matrix ) {
 	static auto& resolver = options::vars[ _( "ragebot.resolve_desync" ) ].val.b;
 
 	const auto anim_state = ent->animstate( );
@@ -591,33 +578,28 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 	auto update_desync_side = [ & ] ( desync_side_t side ) {
 		/* update animations for these set of animlayers and animstate */
 		*anim_state = to.m_anim_state[ side ];
-		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof( *anim_layers ) * 13 );
+		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof ( to.m_anim_layers [ side ] ) );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -ent->desync_amount( ) + static_cast<float>( side ) * ( ent->desync_amount( ) * 0.5f );
-		const auto abs_yaw = cs::normalize( angles.y + offset );
+		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
 
 		anim_state->m_pitch = angles.x;
-		anim_state->m_eye_yaw = angles.y;
-
-		if ( should_resolve && side != desync_side_t::desync_max )
-			anim_state->m_abs_yaw = abs_yaw;
+		anim_state->m_abs_yaw = cs::normalize( anim_state->m_eye_yaw + offset );
 
 		/* update animations */
 		update_anims( ent , angles );
 
-		const auto new_abs_yaw = anim_state->m_eye_yaw + -ent->desync_amount( ) + static_cast< float >( side ) * ( ent->desync_amount( ) * 0.5f );
-
 		/* calculate new poses */
-		calc_poses( ent , to.m_poses[ side ] , new_abs_yaw );
+		/* NOT NEEDED */
+		calc_poses( ent , to.m_poses[ side ] , anim_state->m_abs_yaw );
 
-		if ( build_matrix && side != desync_side_t::desync_max /*don't build bones for unresolved matrix, we only want its animstate */ )
-			build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , new_abs_yaw , 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
+		//if ( build_matrix && side != desync_side_t::desync_max /*don't build bones for unresolved matrix, we only want its animstate */ )
+		//	build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , anim_state->m_abs_yaw, 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
 
 		/* store new anim data */
 		to.m_anim_state[ side ] = *anim_state;
-		memcpy( to.m_anim_layers[ side ].data( ) , anim_layers , sizeof( *anim_layers ) * 13 );
-		to.m_abs_angles[ side ] = vec3_t( 0.0f , new_abs_yaw , 0.0f );
+		memcpy( to.m_anim_layers[ side ].data( ) , anim_layers , sizeof( to.m_anim_layers [ side ] ) );
+		to.m_abs_angles[ side ] = vec3_t( 0.0f , anim_state->m_abs_yaw, 0.0f );
 		//to.m_poses[ side ] = ent->poses( );
 	};
 
@@ -664,7 +646,7 @@ void anims::update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to , 
 	ent->poses( ) = backup_poses;
 }
 
-void anims::update_anims ( player_t* ent, vec3_t& angles ) {
+void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) {
 	static auto& invalidate_bone_cache = *pattern::search( _( "client.dll" ) , _( "C6 05 ? ? ? ? ? 89 47 70" ) ).add( 2 ).deref( ).get<bool*>( );
 	static auto invalidate_physics_recursive = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void( __thiscall* )( player_t* , int )>( );
 	static auto init_last_data = false;
@@ -698,33 +680,20 @@ void anims::update_anims ( player_t* ent, vec3_t& angles ) {
 
 	if ( ent == g::local && g::local ) {
 		//*state = last_local_animstate;
+		auto new_layers = last_anim_layers_server;
+		copy_client_layers ( ent, new_layers, last_anim_layers_queued );
+		last_anim_layers_queued = new_layers;
+
 		memcpy( ent->layers( ), last_anim_layers_queued.data( ) , sizeof( last_anim_layers_queued ) );
 
 		cs::i::globals->m_frametime = cs::ticks2time( 1 );
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
 	}
-
-	if ( ent == g::local && g::local ) {
-		//if ( !cs::i::input->m_camera_in_thirdperson ) {
-		//	state->m_duck_amount = ent->crouch_amount( );
-		//	state->m_unk_feet_speed_ratio = ent->crouch_speed( );
-		//}
-
-		//state->m_hit_ground = false;
-		//state->m_landing_duck_additive = 0.0f;
-	}
-
-	state->m_last_clientside_anim_framecount = cs::i::globals->m_framecount - 1;
-	state->m_feet_yaw_rate = 0.0f;
-	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x118 ) = 1.0f;
-	//state->m_on_ground = !!( ent->flags() & flags_t::on_ground );
-	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x98 ) = anim_layers[ 6 ].m_cycle;
-	//*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( state ) + 0x9C ) = anim_layers[ 6 ].m_weight;
-
+	
 	const auto backup_invalidate_bone_cache = invalidate_bone_cache;
 
 	ent->animate ( ) = true;
-	rebuilt::update( state , angles , ent->origin( ) );
+	rebuilt::update( state , angles , ent->origin( ), force_feet_yaw );
 	ent->animate ( ) = false;
 
 	invalidate_bone_cache = backup_invalidate_bone_cache;
@@ -738,29 +707,17 @@ void anims::update_anims ( player_t* ent, vec3_t& angles ) {
 	cs::i::globals->m_curtime = backup_curtime;
 
 	if ( g::local && ent == g::local ) {
+		if ( ent == g::local && g::local )
+			build_bones ( ent, real_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), cs::i::globals->m_curtime, ent->poses ( ) );
+
 		/* dont update on local until we send packet */
 		if ( g::send_packet ) {
 			/* set new animlayers (server data + ones maintained on client) */
-			memcpy( last_anim_layers.data( ) , last_anim_layers_server.data( ) , sizeof( last_anim_layers_server ) );
+			memcpy( last_anim_layers.data( ) , last_anim_layers_queued.data( ) , sizeof( last_anim_layers_queued ) );
 
-			/* use these maintained on client */
-			last_anim_layers[ 3 ] = last_anim_layers_queued[ 3 ];
-			//last_anim_layers[ 4 ] = last_anim_layers_queued[ 4 ];
-			last_anim_layers[ 5 ] = last_anim_layers_queued[ 5 ];
-			last_anim_layers[ 6 ] = last_anim_layers_queued[ 6 ];
-			last_anim_layers[ 9 ] = last_anim_layers_queued[ 9 ];
-
-			//last_anim_layers[ 4 ].m_cycle = last_air_time;
-			//last_anim_layers[ 4 ].m_playback_rate = ( ( last_air_time > 0.0f ) ? cs::ticks2time( 1 ) : 0.0f );
-			//last_anim_layers[ 4 ].m_weight = ( ( last_air_time > 0.0f ) ? 1.0f : 0.0f );
-
-			last_anim_layers[ 3 ].m_weight = 0.0f;
-			last_anim_layers[ 3 ].m_cycle = 0.0f;
+			//last_anim_layers[ 3 ].m_weight = 0.0f;
+			//last_anim_layers[ 3 ].m_cycle = 0.0f;
 			last_anim_layers[ 12 ].m_weight = 0.0f;
-
-			//dbg_print ( _ ( "weight: %.3f\n" ), last_anim_layers_queued [ 4 ].m_weight );
-			//dbg_print ( _ ( "cycle: %.3f\n" ), last_anim_layers_queued [ 4 ].m_cycle );
-			//dbg_print ( _ ( "sequence: %d\n" ), last_anim_layers_queued [ 4 ].m_sequence );
 
 			/* store new data */
 			memcpy( ent->layers( ) , last_anim_layers.data( ) , sizeof( last_anim_layers ) );
@@ -840,7 +797,7 @@ void anims::on_net_update_end ( int idx ) {
 
 			const auto backup_anim_layers = rec.m_anim_layers;
 
-			update_all_anims( ent, ent->angles(), rec, true );
+			update_all_anims( ent, ent->angles(), rec, rec.m_anim_layers[desync_side_t::desync_middle], true );
 
 			/* try to guess the orientation of their real matrix */
 			resolver::resolve_desync( ent , rec );
@@ -860,7 +817,7 @@ void anims::on_net_update_end ( int idx ) {
 			if ( rec.m_shot )
 				shot_count[ idx ]++;
 
-			update_from( ent, anim_info[ idx ].front(), rec );
+			update_from( ent, anim_info[ idx ].front(), rec, rec.m_anim_layers [ desync_side_t::desync_middle ] );
 
 			anim_info[ idx ].push_front( rec );
 		}
@@ -879,12 +836,14 @@ void anims::on_render_start ( int idx ) {
 	//ent->animate ( ) = false;
 
 	apply_anims ( ent );
-
-	if ( ent == g::local && g::local )
-		build_bones( ent , real_matrix.data( ) , 0x7FF00 , vec3_t( 0.0f , ent->animstate( )->m_abs_yaw , 0.0f ) , ent->origin( ) , cs::i::globals->m_curtime , ent->poses( ) );
 }
 
 void anims::pre_fsn ( int stage ) {
+	if ( g::round == round_t::starting ) {
+		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
+			features::ragebot::get_misses ( i ).bad_resolve = 0;
+	}
+
 	if ( !g::local ) {
 		if ( !g::local || !g::local->alive( ) )
 			anims::manage_fake( );
@@ -926,7 +885,7 @@ void anims::fsn ( int stage ) {
 			on_net_update_end( i );
 	} break;
 	case 5: {
-		if ( g::local ) {
+		if ( g::local && g::local->alive() ) {
 			/* update viewmodel manually to fix it dissappearing */
 			const auto viewmodel = g::local->viewmodel_handle( );
 

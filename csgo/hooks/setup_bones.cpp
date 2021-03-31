@@ -35,9 +35,9 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 		const auto ret = old::setup_bones( REG_OUT , out , max_bones , mask , curtime );
 
 		if ( pl == g::local && g::local ) {
-			anims::build_bones( pl , temp_mat.data( ) , mask , pl->abs_angles( ) , pl->abs_origin( ) , ( pl != g::local ) ? pl->simtime( ) : ( pl->alive( ) ? cs::ticks2time( pl->tick_base( ) ) : cs::i::globals->m_curtime ) , pl->poses( ) );
+			anims::build_bones( pl , temp_mat.data( ) , mask , pl->abs_angles( ) , pl->abs_origin( ) , cs::i::globals->m_curtime, pl->poses( ) );
 			const auto mat_out = out ? out : pl->bone_cache( );
-
+		
 			if ( mat_out )
 				memcpy( mat_out , temp_mat.data( ) , ( out ? max_bones : pl->bone_count( ) ) * sizeof( matrix3x4_t ) );
 		}

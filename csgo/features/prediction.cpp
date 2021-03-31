@@ -62,7 +62,7 @@ namespace prediction_util {
 
 		const auto v16 = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 48 );
 		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31EC ) = *( uint32_t* ) ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31EC ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F8 ) = v16;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;

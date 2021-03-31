@@ -10,7 +10,7 @@ bool __fastcall hooks::is_hltv( REG ) {
 		return old::is_hltv( REG_OUT );
 
 	//if ( _ReturnAddress( ) == accumulate_layers_call )
-	//	return false;
+	//	return true;
 
 	if ( _ReturnAddress ( ) == setupvelocity_call )
 		return true;

@@ -437,8 +437,8 @@ void anims::resolver::render_impacts ( ) {
 	}
 
 	auto calc_alpha = [ & ] ( float time, float fade_time, float base_alpha, bool add = false ) {
-		const auto dormant_time = 10.0f;
-		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( cs::i::globals->m_curtime - time ), 0.0f, dormant_time ) ) : std::fabsf ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
+		const auto dormant_time = 4.0f;
+		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( abs ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ), 0.0f, dormant_time ) ) : abs ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
 
 	if ( !hit_matrix_rec.empty ( ) ) {
@@ -499,30 +499,64 @@ void anims::resolver::render_impacts ( ) {
 		impact.m_clr = rgba ( static_cast< int >( bullet_tracer_color.r * 255.0f ), static_cast< int >( bullet_tracer_color.g * 255.0f ), static_cast< int >( bullet_tracer_color.b * 255.0f ), alpha );
 
 		vec3_t dim;
-		render::text_size ( impact.m_msg, _ ( "esp_font" ), dim );
+		render::text_size ( impact.m_msg, _ ( "watermark_font" ), dim );
 
 		if ( impact.m_hurt && bullet_impacts ) {
-			render::text ( scrn_dst.x - dim.x / 2, scrn_dst.y - 26, impact.m_msg, ( "esp_font" ), rgba ( 145, 255, 0, alpha2 ), true );
-			render::cube ( impact.m_dst, 4, rgba ( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), alpha1 ) );
+			render::text ( scrn_dst.x - dim.x / 2, scrn_dst.y - 26.0f - ( std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * 100.0f, impact.m_msg, ( "watermark_font" ), rgba ( 255, 255, 255, alpha2 ), true );
+			
+			/* hit dot */ {
+				const auto radius = ( std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * 50.0f;
+				const auto x = scrn_dst.x;
+				const auto y = scrn_dst.y;
+				const auto verticies = 16;
+				
+				struct vtx_t {
+					float x, y, z, rhw;
+					std::uint32_t color;
+				};
+
+				std::vector< vtx_t > circle ( verticies + 2 );
+
+				const auto angle = 0.0f;
+
+				circle [ 0 ].x = static_cast< float > ( x ) - 0.5f;
+				circle [ 0 ].y = static_cast< float > ( y ) - 0.5f;
+				circle [ 0 ].z = 0.0f;
+				circle [ 0 ].rhw = 1.0f;
+				circle [ 0 ].color = D3DCOLOR_RGBA ( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), static_cast< int >( ( 1.0f - std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * ( bullet_tracer_color.a * 255.0f )) );
+
+				for ( auto i = 1; i < verticies + 2; i++ ) {
+					circle [ i ].x = ( float ) ( x - radius * cos ( std::numbers::pi * ( ( i - 1 ) / ( static_cast< float >( verticies ) / 2.0f ) ) ) ) - 0.5f;
+					circle [ i ].y = ( float ) ( y - radius * sin ( std::numbers::pi * ( ( i - 1 ) / ( static_cast< float >( verticies ) / 2.0f ) ) ) ) - 0.5f;
+					circle [ i ].z = 0.0f;
+					circle [ i ].rhw = 1.0f;
+					circle [ i ].color = D3DCOLOR_RGBA ( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), 0 );
+				}
+
+				for ( auto i = 0; i < verticies + 2; i++ ) {
+					circle [ i ].x = x + cos ( angle ) * ( circle [ i ].x - x ) - sin ( angle ) * ( circle [ i ].y - y ) - 0.5f;
+					circle [ i ].y = y + sin ( angle ) * ( circle [ i ].x - x ) + cos ( angle ) * ( circle [ i ].y - y ) - 0.5f;
+				}
+
+				IDirect3DVertexBuffer9* vb = nullptr;
+
+				cs::i::dev->CreateVertexBuffer ( ( verticies + 2 ) * sizeof ( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+
+				void* verticies_ptr;
+				vb->Lock ( 0, ( verticies + 2 ) * sizeof ( vtx_t ), ( void** ) &verticies_ptr, 0 );
+				std::memcpy ( verticies_ptr, &circle [ 0 ], ( verticies + 2 ) * sizeof ( vtx_t ) );
+				vb->Unlock ( );
+
+				cs::i::dev->SetStreamSource ( 0, vb, 0, sizeof ( vtx_t ) );
+				cs::i::dev->DrawPrimitive ( D3DPT_TRIANGLEFAN, 0, verticies );
+
+				if ( vb )
+					vb->Release ( );
+			}
 		}
 
 		cur_ray++;
 	}
-}
-
-__forceinline float angle_diff ( float dst, float src ) {
-	auto delta = fmodf ( dst - src, 360.0f );
-
-	if ( dst > src ) {
-		if ( delta >= 180.0f )
-			delta -= 360.0f;
-	}
-	else {
-		if ( delta <= -180.0f )
-			delta += 360.0f;
-	}
-
-	return delta;
 }
 
 std::array < bool , 65 > found_extended { false };
@@ -571,7 +605,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		auto closest_delta_yaw = std::numeric_limits<float>::max( );
 
 		/* resolve onshot */
-		if ( abs( pitch_timer[ idx ] - cs::i::globals->m_curtime ) < 0.8f ) {
+		if ( abs( pitch_timer[ idx ] - ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) ) < 0.8f ) {
 			const auto delta = cs::normalize( cs::normalize( last_abs_yaw[ idx ] ) - cs::normalize( anim_state->m_eye_yaw ) );
 
 			for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
@@ -592,7 +626,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		return true;
 	}
 	else {
-		pitch_timer[ idx ] = cs::i::globals->m_curtime;
+		pitch_timer[ idx ] = ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime );
 	}
 
 	/* start of resolver */
@@ -611,45 +645,28 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	}
 	else*/ /* lby extended desync */
 	const auto delta_yaw = cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
+	const auto second_yaw = ( anim_info [ idx ].size ( ) >= 1 ) ? cs::normalize ( cs::normalize ( anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize ( anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw ) ) : 0.0f;
 	
 	/* temporary value */
 	auto has_big_range = false;
 
 	if ( abs( delta_yaw ) > 60.0f
-		&& anim_info.size() >= 1
+		&& abs ( second_yaw ) > 60.0f && copysign ( 1.0f, delta_yaw ) != copysign ( 1.0f, second_yaw )
+		&& anim_info [ idx ].size ( ) >= 1
 		&& !found_extended[ idx ] ) {
-		const auto second_yaw = cs::normalize( cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( anim_info[ idx ][ 0 ].m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
-
-		if ( abs( second_yaw ) > 60.0f && copysign( 1.0f , delta_yaw ) != copysign( 1.0f , second_yaw ) ) {
-			extended_side[ idx ] = ( delta_yaw > 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
-			has_big_range = true;
-		}
+		extended_side [ idx ] = ( delta_yaw > 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+		has_big_range = true;
 	}
-	else if ( !anim_layers[ 6 ].m_weight && !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_weight ) {
+	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_cycle ) {
 		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		found_extended[ idx ] = true;
 	}
 	/* moving desync */
 	else if ( anim_layers[ 6 ].m_weight && !anim_info[ idx ].empty() ) {
-		const auto has_static = static_cast<int>( anim_layers[ 6 ].m_weight * 1000.0f ) == static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][6].m_weight * 1000.0f );
-		
-		const auto has_jitter_side_1 = anim_info[ idx ].size( ) >= 3
-			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& static_cast< int >( anim_layers[ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f )
-			&& anim_layers[ 6 ].m_playback_rate > anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f );
-		const auto has_jitter_side_2 = anim_info[ idx ].size( ) >= 3
-			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& static_cast< int >( anim_layers[ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 1 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f )
-			&& anim_layers[ 6 ].m_playback_rate < anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate
-			&& static_cast< int >( anim_info[ idx ][ 0 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f ) == static_cast< int >( anim_info[ idx ][ 2 ].m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate * 100.0f );
-
-		const auto has_jitter = has_jitter_side_1 || has_jitter_side_2;
-
-		//if ( !anim_layers[ 12 ].m_weight
-		//	|| ( static_cast< int >( anim_layers[ 6 ].m_weight * 1000.0f ) == static_cast< int >( rec.m_anim_layers[ anims::desync_side_t::desync_middle ][ 6 ].m_weight * 1000.0f )
-		//		&& (has_static || has_jitter ))) {
-		if ( !anim_layers[ 12 ].m_weight || has_static || has_jitter ) {
+		if ( ( !anim_layers [ 11 ].m_weight
+			&& !rec.m_anim_layers[ anims::desync_side_t::desync_max ] [ 11 ].m_weight )
+			|| ( anim_layers [ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight
+				&& rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) ) {
 			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 
@@ -700,76 +717,63 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	}
 
 	/* bruteforce */
-	/* low max desync, bruteforce faster */
-	if ( ent->desync_amount( ) < 38.0f ) {
-		switch ( features::ragebot::get_misses( idx ).bad_resolve % 2 ) {
-		case 0: /* first side max */ {
-			switch ( initial_resolve_side[ idx ] ) {
-			case anims::desync_side_t::desync_left_max:
-			case anims::desync_side_t::desync_left_half:
-				rec.m_side = anims::desync_side_t::desync_left_max;
-				break;
-			case anims::desync_side_t::desync_middle:
-			case anims::desync_side_t::desync_right_max:
-			case anims::desync_side_t::desync_right_half:
-				rec.m_side = anims::desync_side_t::desync_middle;
-				break;
-			}
-		} break;
-		case 1: /* opposite side max */ {
-			switch ( initial_resolve_side[ idx ] ) {
-			case anims::desync_side_t::desync_left_max:
-			case anims::desync_side_t::desync_left_half:
-				rec.m_side = anims::desync_side_t::desync_middle;
-				break;
-			case anims::desync_side_t::desync_middle:
-			case anims::desync_side_t::desync_right_max:
-			case anims::desync_side_t::desync_right_half:
-				rec.m_side = anims::desync_side_t::desync_left_max;
-				break;
-			}
-		} break;
+	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 4 ) {
+	case 0: {
+		switch ( initial_resolve_side [ idx ] ) {
+		case anims::desync_side_t::desync_middle:
+		case anims::desync_side_t::desync_left_half:
+			rec.m_side = anims::desync_side_t::desync_left_half;
+			break;
+		case anims::desync_side_t::desync_left_max:
+			rec.m_side = anims::desync_side_t::desync_left_max;
+			break;
+		case anims::desync_side_t::desync_right_max:
+		case anims::desync_side_t::desync_right_half:
+			rec.m_side = anims::desync_side_t::desync_right_max;
+			break;
 		}
-	}
-	/* usual desync range */
-	else {
-		switch ( features::ragebot::get_misses( idx ).bad_resolve % 4 ) {
-		case 0: /* first side */ {
-			rec.m_side = initial_resolve_side[ idx ];
-		} break;
-		case 1: /* near side, then max opposite */ {
-			switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
-			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
-			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_middle:
-				rec.m_side = anims::desync_side_t::desync_left_half;
-				break;
-			case anims::desync_side_t::desync_right_max:
-			case anims::desync_side_t::desync_right_half:
-				rec.m_side = anims::desync_side_t::desync_middle;
-				break;
-			}
-		} break;
-		case 2: /* max opposite */ {
-			switch ( found_extended[ idx ] ? extended_side[ idx ] : initial_resolve_side[ idx ] ) {
-			case anims::desync_side_t::desync_left_max:
-			case anims::desync_side_t::desync_left_half:
-				rec.m_side = anims::desync_side_t::desync_right_max;
-				break;
-			case anims::desync_side_t::desync_middle:
-				rec.m_side = anims::desync_side_t::desync_left_max;
-				break;
-			case anims::desync_side_t::desync_right_max:
-			case anims::desync_side_t::desync_right_half:
-				rec.m_side = anims::desync_side_t::desync_left_max;
-				break;
-			}
-		} break;
-		case 3: {
-			rec.m_side = initial_resolve_side[ idx ];
-			features::ragebot::get_misses( idx ).bad_resolve = 0;
-		} break;
+	} break;
+	case 1: {
+		switch ( initial_resolve_side [ idx ] ) {
+		case anims::desync_side_t::desync_left_max:
+			rec.m_side = anims::desync_side_t::desync_left_half;
+			break;
+		case anims::desync_side_t::desync_left_half:
+			rec.m_side = anims::desync_side_t::desync_left_max;
+			break;
+		case anims::desync_side_t::desync_middle:
+		case anims::desync_side_t::desync_right_max:
+		case anims::desync_side_t::desync_right_half:
+			rec.m_side = anims::desync_side_t::desync_middle;
+			break;
 		}
+	} break;
+	case 2: {
+		switch ( initial_resolve_side [ idx ] ) {
+		case anims::desync_side_t::desync_left_max:
+		case anims::desync_side_t::desync_left_half:
+			rec.m_side = anims::desync_side_t::desync_middle;
+			break;
+		case anims::desync_side_t::desync_middle:
+		case anims::desync_side_t::desync_right_max:
+		case anims::desync_side_t::desync_right_half:
+			rec.m_side = anims::desync_side_t::desync_left_half;
+			break;
+		}
+	} break;
+	case 3: {
+		switch ( initial_resolve_side [ idx ] ) {
+		case anims::desync_side_t::desync_left_max:
+		case anims::desync_side_t::desync_left_half:
+			rec.m_side = anims::desync_side_t::desync_right_max;
+			break;
+		case anims::desync_side_t::desync_middle:
+		case anims::desync_side_t::desync_right_max:
+		case anims::desync_side_t::desync_right_half:
+			rec.m_side = anims::desync_side_t::desync_left_max;
+			break;
+		}
+	} break;
 	}
 
 	last_recorded_resolve [ idx ] = rec.m_side;

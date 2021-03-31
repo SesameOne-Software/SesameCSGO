@@ -123,6 +123,34 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 			anims::resolver::render_impacts ( );
 		);
 
+		/* temporary */
+		//if ( g::local) {
+		//	for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
+		//		auto ent = cs::i::ent_list->get<player_t*> ( i );
+		//
+		//		if ( !ent || !ent->is_player ( ) || !ent->alive ( ) || !ent->bone_cache ( ) )
+		//			continue;
+		//
+		//		const auto head_pos = ent->bone_cache ( ) [ 8 ].origin ( ) + vec3_t ( 0.0f, 0.0f, 3.0f );
+		//		const auto fwd = head_pos - g::local->eyes ( );
+		//		const auto right_dir = fwd.normalized().cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+		//
+		//		auto top = head_pos + vec3_t ( 0.0f, 0.0f, 8.0f );
+		//		auto right = head_pos + right_dir * 10.0f;
+		//		auto left = head_pos - right_dir * 10.0f;
+		//
+		//		vec3_t srcn_top, srcn_right, srcn_left;
+		//
+		//		if ( cs::render::world_to_screen ( srcn_top, top ) && cs::render::world_to_screen ( srcn_right, right ) && cs::render::world_to_screen ( srcn_left, left ) ) {
+		//			render::line ( srcn_left.x, srcn_left.y, srcn_top.x, srcn_top.y, rgba ( 255, 255, 0, 255 ), 3.0f );
+		//			render::line ( srcn_right.x, srcn_right.y, srcn_top.x, srcn_top.y, rgba ( 255, 255, 0, 255 ), 3.0f );
+		//			render::polygon ( { srcn_left, srcn_top, srcn_right }, rgba ( 255, 255, 0, 50 ) );
+		//			render::circle3d ( head_pos, 10.0f, 32, rgba ( 255, 255, 0, 255 ), true, 3.0f );
+		//			render::circle3d ( head_pos, 10.0f, 32, rgba ( 255, 255, 0, 50 ) );
+		//		}
+		//	}
+		//}
+
 		//features::ragebot::scan_points.draw( );
 
 		if ( removals [ 2 ] && g::local && g::local->scoped ( ) ) {

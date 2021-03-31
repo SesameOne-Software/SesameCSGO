@@ -92,9 +92,45 @@ void airstuck ( ucmd_t* ucmd ) {
 	static auto& airstuck_key = options::vars [ _ ( "misc.movement.airstuck_key" ) ].val.i;
 	static auto& airstuck_mode = options::vars [ _ ( "misc.movement.airstuck_key_mode" ) ].val.i;
 
-	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) && !cs::is_valve_server() ) {
+	if ( g::local && g::local->alive() && airstuck && utils::keybind_active ( airstuck_key, airstuck_mode ) && !cs::is_valve_server() && g::round != round_t::starting ) {
 		ucmd->m_tickcount = std::numeric_limits<int>::max ( );
 		ucmd->m_cmdnum = std::numeric_limits<int>::max ( );
+	}
+}
+
+void break_bt ( ucmd_t* ucmd ) {
+	static auto& break_bt = options::vars [ _ ( "antiaim.break_backtrack" ) ].val.b;
+	static auto& break_bt_key = options::vars [ _ ( "antiaim.break_backtrack_key" ) ].val.i;
+	static auto& break_bt_mode = options::vars [ _ ( "antiaim.break_backtrack_key_mode" ) ].val.i;
+
+	if ( g::local && g::local->alive ( ) && break_bt && utils::keybind_active ( break_bt_key, break_bt_mode ) && !cs::is_valve_server ( ) && g::send_packet && g::round != round_t::starting ) {
+		ucmd->m_tickcount = std::numeric_limits<int>::max ( );
+		ucmd->m_cmdnum = std::numeric_limits<int>::max ( );
+	}
+}
+
+int last_send_cmd = 0;
+
+void reject_bad_shots ( ucmd_t* ucmd ) {
+	if ( g::local && g::local->alive ( ) && cs::i::client_state ) {
+		if ( g::local->velocity_modifier ( ) - features::prediction::vel_modifier < -0.1f ) {
+			for ( auto i = 0; i < cs::i::client_state->choked ( ) + 1; i++ ) {
+				auto next_verified_cmd = cs::i::input->get_verified_cmd ( last_send_cmd + i );
+				auto next_cmd = cs::i::input->get_cmd ( last_send_cmd + i );
+
+				if ( next_cmd && ( !!( next_cmd->m_buttons & buttons_t::attack ) || !!( next_cmd->m_buttons & buttons_t::attack2 ) ) ) {
+					next_cmd->m_buttons &= ~buttons_t::attack;
+					next_cmd->m_buttons &= ~buttons_t::attack2;
+
+					next_verified_cmd->m_cmd = *next_cmd;
+					next_verified_cmd->m_crc = next_cmd->get_checksum ( );
+				}
+			}
+
+			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+		}
+
+		features::prediction::vel_modifier = g::local->velocity_modifier ( );
 	}
 }
 
@@ -103,7 +139,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	if ( ucmd ) {
 		cs::i::engine->set_viewangles( ucmd->m_angs );
-		cs::i::pred->set_local_viewangles( ucmd->m_angs );
+		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 	}
 
 	if ( !ucmd || !ucmd->m_cmdnum )
@@ -228,6 +264,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if( !!(ucmd->m_buttons & buttons_t::attack) )
 		exploits::has_shifted = false;
 
+	reject_bad_shots ( ucmd );
+
 	fix_event_delay( ucmd );
 
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( ucmd->m_buttons & buttons_t::attack ) ) {
@@ -257,7 +295,12 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	cs::rotate_movement( ucmd, old_smove, old_fmove, old_angs );
 
+	//break_bt ( ucmd );
+
 	*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+
+	if ( g::send_packet )
+		last_send_cmd = ucmd->m_cmdnum;
 
 	fix_slide( ucmd );
 

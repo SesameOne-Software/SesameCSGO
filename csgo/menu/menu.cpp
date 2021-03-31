@@ -3,6 +3,7 @@
 #include <ShlObj.h>
 #include <codecvt>
 #include <fstream>
+#include <span>
 
 #include "menu.hpp"
 #include "options.hpp"
@@ -22,7 +23,8 @@
 
 #include "../features/skinchanger.hpp"
 
-#include "../resources/sesame_ui.hpp"
+#include "../resources/roboto.hpp"
+#include "../resources/roboto_bold.hpp"
 
 #include "../scripting/js_api.hpp"
 
@@ -280,15 +282,6 @@ void gui::scale_dpi ( ) {
 
 	static const ImWchar custom_font_ranges_all [ ] = { 0x20, 0xFFFF, 0 };
 
-	static unsigned int buf_decompressed_size = 0;
-	static unsigned char* buf_decompressed_data = nullptr;
-
-	if ( !buf_decompressed_size ) {
-		buf_decompressed_size = stb::stb_decompress_length ( ( const unsigned char* ) sesame_ui_compressed_data );
-		buf_decompressed_data = ( unsigned char* ) IM_ALLOC ( buf_decompressed_size );
-		stb::stb_decompress ( buf_decompressed_data, ( const unsigned char* ) sesame_ui_compressed_data, ( unsigned int ) sesame_ui_compressed_size );
-	}
-
 	auto font_cfg = ImFontConfig ( );
 
 	font_cfg.FontDataOwnedByAtlas = false;
@@ -297,21 +290,22 @@ void gui::scale_dpi ( ) {
 	//io.Fonts->Build ( );
 
 	//_("C:\\Windows\\Fonts\\segoeui.ttf")
-	font_cfg.RasterizerMultiply = 1.1f;
-	gui_ui_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 13.5f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	gui_ui_font = io.Fonts->AddFontFromMemoryCompressedTTF ( resources::roboto, sizeof( resources::roboto ), 14.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, custom_font_ranges_all );
 	gui_ui_font->SetFallbackChar ( '?' );
 
-	font_cfg.RasterizerMultiply = 1.2f;
-	gui_small_font = io.Fonts->AddFontFromMemoryTTF ( buf_decompressed_data, buf_decompressed_size, 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, io.Fonts->GetGlyphRangesCyrillic ( ) );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	gui_small_font = io.Fonts->AddFontFromMemoryCompressedTTF ( resources::roboto, sizeof ( resources::roboto ), 11.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, io.Fonts->GetGlyphRangesCyrillic ( ) );
 	gui_small_font->SetFallbackChar ( '?' );
 
-	font_cfg.RasterizerMultiply = 1.0f;
+	//font_cfg.RasterizerMultiply = 1.2f;
 	gui_icons_font = io.Fonts->AddFontFromMemoryTTF ( g::resources::sesame_icons, g::resources::sesame_icons_size, 28.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, io.Fonts->GetGlyphRangesDefault ( ) );
 	gui_icons_font->SetFallbackChar ( '?' );
 
-	font_cfg.RasterizerMultiply = 1.25f;
-	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "dbg_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
-	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "esp_font" ), 10.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	render::create_font ( resources::roboto, _ ( "dbg_font" ), 11.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	render::create_font ( resources::roboto, _ ( "esp_font" ), 11.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
 
 	/* emojis */
 	//font_cfg.MergeMode = true;
@@ -319,9 +313,10 @@ void gui::scale_dpi ( ) {
 	//io.Fonts->AddFontFromFileTTF ( _ ( "‪C:\\Windows\\Fonts\\seguiemj.ttf" ), 12.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, &font_cfg, segoe_ui_emoji_ranges );
 	//font_cfg.MergeMode = false;
 
-	font_cfg.RasterizerMultiply = 1.0f;
-	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "indicator_font" ), 32.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
-	render::create_font ( buf_decompressed_data, buf_decompressed_size, _ ( "watermark_font" ), 18.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	render::create_font ( resources::roboto, _ ( "indicator_font" ), 32.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	//font_cfg.RasterizerMultiply = 1.2f;
+	render::create_font ( resources::roboto, _ ( "watermark_font" ), 18.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 
 	ImGui::GetStyle ( ).AntiAliasedFill = ImGui::GetStyle ( ).AntiAliasedLines = true;
 	
@@ -974,7 +969,6 @@ void gui::draw( ) {
 							ImGui::Checkbox( _( "Jitter on Run" ) , &options::vars[ _( "antiaim.jittermove" ) ].val.b );
 							ImGui::SliderFloat ( _ ( "Slow Walk Speed" ), &options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%%" ) );
 							ImGui::PopItemWidth ( );
-							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "Slow Walk Key" ), &options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i, &options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Slide on Slow Walk" ), &options::vars [ _ ( "antiaim.fakewalk" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Fake Duck" ), &options::vars [ _ ( "antiaim.fakeduck" ) ].val.b );
@@ -985,6 +979,9 @@ void gui::draw( ) {
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::Combo ( _ ( "Fake Duck Mode" ), &options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i, fake_duck_modes.data ( ), fake_duck_modes.size ( ) );
 							ImGui::PopItemWidth ( );
+							//ImGui::Checkbox ( _ ( "Break Backtrack" ), &options::vars [ _ ( "antiaim.break_backtrack" ) ].val.b );
+							//ImGui::SameLine ( );
+							//ImGui::Keybind ( _ ( "Break Backtrack Key" ), &options::vars [ _ ( "antiaim.break_backtrack_key" ) ].val.i, &options::vars [ _ ( "antiaim.break_backtrack_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Manual Left Key" ), &options::vars [ _ ( "antiaim.manual_left_key" ) ].val.i, &options::vars [ _ ( "antiaim.manual_left_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Manual Right Key" ), &options::vars [ _ ( "antiaim.manual_right_key" ) ].val.i, &options::vars [ _ ( "antiaim.manual_right_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Manual Back Key" ), &options::vars [ _ ( "antiaim.manual_back_key" ) ].val.i, &options::vars [ _ ( "antiaim.manual_back_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
@@ -1322,6 +1319,11 @@ void gui::draw( ) {
 							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Menu" ).x * 0.5f );
 							ImGui::Text ( "Menu" );
 							ImGui::Separator ( );
+
+							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
+							//ImGui::PushItemWidth ( -1.0f );
+							//ImGui::Combo ( _ ( "Angle Mode" ), &options::vars [ _ ( "debug.angle_mode" ) ].val.i, angle_modes.data ( ), angle_modes.size ( ) );
+							//ImGui::PopItemWidth ( );
 
 							//int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
 							//static std::vector<const char*> dpis { "0.5",  "1.0", "2.0" , "3.0" };

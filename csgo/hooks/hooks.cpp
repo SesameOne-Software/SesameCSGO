@@ -46,6 +46,7 @@
 #include "notify_on_layer_change_weight.hpp"
 #include "is_connected.hpp"
 #include "perform_flashbang_effect.hpp"
+#include "prediction_error_handler.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -72,6 +73,10 @@ void hooks::init( ) {
 	/* initialize cheat config */
 	gui::init( );
 
+	const auto cl_extrapolate = cs::i::cvar->find (_("cl_extrapolate") );
+	cl_extrapolate->no_callback ( );
+	cl_extrapolate->set_value ( 0 );
+
 	features::skinchanger::init ( );
 
 	/* load default config */
@@ -79,15 +84,37 @@ void hooks::init( ) {
 
 	old::wnd_proc = ( WNDPROC ) LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ), GWLP_WNDPROC, LONG_PTR ( wnd_proc ) );
 
+	/* remove max processing ticks clamp */
 	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
 
-	//if ( clsm_numUsrCmdProcessTicksMax_clamp ) {
-		unsigned long old_prot = 0;
-		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, PAGE_EXECUTE_READWRITE, &old_prot );
-		memset( clsm_numUsrCmdProcessTicksMax_clamp, 0x90, 3 );
-		LI_FN( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
-	//}
+	unsigned long old_prot = 0;
+	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, PAGE_EXECUTE_READWRITE, &old_prot );
+	memset ( clsm_numUsrCmdProcessTicksMax_clamp, 0x90, 3 );
+	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
 
+	/* remove breakpoints */
+	const auto client_bp = pattern::search ( _ ( "client.dll" ), _ ( "CC F3 0F 10 4D 18" ) ).get< void* > ( );
+
+	old_prot = 0;
+	LI_FN ( VirtualProtect )( client_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
+	memset ( client_bp, 0x90, 1 );
+	LI_FN ( VirtualProtect )( client_bp, 1, old_prot, &old_prot );
+
+	const auto server_bp = pattern::search ( _ ( "server.dll" ), _ ( "CC F3 0F 10 4D 18" ) ).get< void* > ( );
+
+	old_prot = 0;
+	LI_FN ( VirtualProtect )( server_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
+	memset ( server_bp, 0x90, 1 );
+	LI_FN ( VirtualProtect )( server_bp, 1, old_prot, &old_prot );
+
+	const auto engine_bp = pattern::search ( _ ( "engine.dll" ), _ ( "CC FF 15 ? ? ? ? 8B D0 BB" ) ).get< void* > ( );
+
+	old_prot = 0;
+	LI_FN ( VirtualProtect )( engine_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
+	memset ( engine_bp, 0x90, 1 );
+	LI_FN ( VirtualProtect )( engine_bp, 1, old_prot, &old_prot );
+
+	/* hook functions */
 	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< void* >( );
 	const auto _frame_stage_notify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< void* >( );
 	const auto _end_scene = vfunc< void* >( cs::i::dev, N( 42 ) );
@@ -125,6 +152,7 @@ void hooks::init( ) {
 	const auto _notify_on_layer_change_weight = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 9C 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
 	const auto _is_connected = vfunc<void*>( cs::i::engine , N( 27 ) );
 	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 8B 1D" ) ).get< void* > ( );
+	const auto _prediction_error_handler = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 45 10 53 56 8B F1 57" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -173,14 +201,15 @@ void hooks::init( ) {
 	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
-	dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
+	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
-	dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
+	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
 	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
 	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
 	dbg_hook ( _perform_flashbang_effect, perform_flashbang_effect, ( void** ) &old::perform_flashbang_effect );
+	dbg_hook ( _prediction_error_handler, prediction_error_handler, ( void** ) &old::prediction_error_handler );
 
 	event_handler = std::make_unique< c_event_handler >( );
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );

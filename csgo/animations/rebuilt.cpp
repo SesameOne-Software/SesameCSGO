@@ -1,5 +1,6 @@
 ﻿#include "rebuilt.hpp"
 #include "anims.hpp"
+#include "../menu/options.hpp"
 
 #include <numbers>
 
@@ -14,6 +15,44 @@ constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_DOWN = 3.1f;
 constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_UP = 6.0f;
 
 namespace valve_math {
+	//-----------------------------------------------------------------------------
+	// Euler QAngle -> Basis Vectors.  Each vector is optional
+	//-----------------------------------------------------------------------------
+	__forceinline void AngleVectors ( const vec3_t& angles, vec3_t* forward, vec3_t* right, vec3_t* up ) {
+		float sr, sp, sy, cr, cp, cy;
+
+		cs::sin_cos ( cs::deg2rad ( angles.y ), &sy, &cy );
+		cs::sin_cos ( cs::deg2rad ( angles.x ), &sp, &cp );
+		cs::sin_cos ( cs::deg2rad ( angles.z ), &sr, &cr );
+
+		if ( forward ) {
+			forward->x = cp * cy;
+			forward->y = cp * sy;
+			forward->z = -sp;
+		}
+
+		if ( right ) {
+			right->x = ( -1.0f * sr * sp * cy + -1.0f * cr * -sy );
+			right->y = ( -1.0f * sr * sp * sy + -1.0f * cr * cy );
+			right->z = -1.0f * sr * cp;
+		}
+
+		if ( up ) {
+			up->x = ( cr * sp * cy + -sr * -sy );
+			up->y = ( cr * sp * sy + -sr * cy );
+			up->z = cr * cp;
+		}
+	}
+
+	__forceinline float RemapValClamped ( float val, float A, float B, float C, float D ) {
+		if ( A == B )
+			return val >= B ? D : C;
+		float cVal = ( val - A ) / ( B - A );
+		cVal = std::clamp ( cVal, 0.0f, 1.0f );
+
+		return C + ( D - C ) * cVal;
+	}
+
 	__forceinline float anglemod( float a ) {
 		a = ( 360.f / 65536 ) * ( ( int ) ( a * ( 65536.f / 360.0f ) ) & 65535 );
 		return a;
@@ -117,6 +156,30 @@ namespace valve_math {
 			return 0.5f * Bias( 2.0f * x , 1.0f - biasAmt );
 		
 		return 1.0f - 0.5f * Bias( 2.0f - 2.0f * x , 1.0f - biasAmt );
+	}
+}
+
+void anims::rebuilt::update_layer ( animstate_t* anim_state, int layer, int seq, float playback_rate, float weight, float cycle ) {
+	static auto CCSGOPlayerAnimState__UpdateLayerOrderPreset = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 53 56 57 8B F9 83 7F 60" ) ).get<void*> ( );
+
+	MDLCACHE_CRITICAL_SECTION ( );
+
+	const auto _layer = anim_state->m_entity->layers ( ) + layer;
+
+	if ( _layer->m_owner && _layer->m_sequence != seq )
+		invalidate_physics_recursive ( anim_state, 16 );
+
+	_layer->m_sequence = seq;
+	set_rate ( anim_state, layer, playback_rate );
+	set_cycle ( anim_state, layer, std::clamp( cycle, 0.0f, 1.0f ) );
+	set_weight ( anim_state, layer, std::clamp ( weight, 0.0f, 1.0f ) );
+
+	__asm {
+		mov ecx, anim_state
+		movss xmm0, weight
+		push seq
+		push layer
+		call CCSGOPlayerAnimState__UpdateLayerOrderPreset
 	}
 }
 
@@ -248,12 +311,28 @@ void anims::rebuilt::reset_layer( animstate_t* anim_state , int layer ) {
 }
 
 void anims::rebuilt::set_sequence( animstate_t* anim_state , int layer , int sequence ) {
+	static auto CCSGOPlayerAnimState__UpdateLayerOrderPreset = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 53 56 57 8B F9 83 7F 60" ) ).get<void*> ( );
+
+	MDLCACHE_CRITICAL_SECTION ( );
+
 	const auto _layer = anim_state->m_entity->layers( ) + layer;
 
 	if ( _layer->m_owner && _layer->m_sequence != sequence )
 		invalidate_physics_recursive( anim_state, 16 );
 
 	_layer->m_sequence = sequence;
+	set_rate ( anim_state, layer, anim_state->m_entity->get_sequence_cycle_rate_server ( sequence ) );
+	set_cycle ( anim_state, layer, 0.0f );
+	set_weight ( anim_state, layer, 0.0f );
+
+	auto zero = 0.0f;
+	__asm {
+		mov ecx, anim_state
+		movss xmm0, zero
+		push sequence
+		push layer
+		call CCSGOPlayerAnimState__UpdateLayerOrderPreset
+	}
 }
 
 void anims::rebuilt::set_cycle( animstate_t* anim_state , int layer , float cycle ) {
@@ -322,9 +401,9 @@ void anims::rebuilt::increment_layer_cycle( animstate_t* anim_state , int layer 
 		return;
 
 	float flCurrentCycle = anim_state->m_entity->layers( )[ layer ].m_cycle;
-	flCurrentCycle += anim_state->m_last_clientside_anim_update_time_delta * anim_state->m_entity->layers( )[ layer ].m_weight_delta_rate;
+	flCurrentCycle += anim_state->m_last_clientside_anim_update_time_delta * anim_state->m_entity->layers( )[ layer ].m_playback_rate;
 
-	if ( !allow_loop && flCurrentCycle >= 1 )
+	if ( !allow_loop && flCurrentCycle >= 1.0f )
 		flCurrentCycle = 0.999f;
 
 	set_cycle( anim_state, layer, flCurrentCycle );
@@ -356,34 +435,18 @@ int anims::rebuilt::select_sequence_from_act_mods( animstate_t* anim_state , int
 }
 
 float anims::rebuilt::get_layer_ideal_weight_from_seq_cycle( animstate_t* anim_state , int layer ) {
-	MDLCACHE_CRITICAL_SECTION( );
-	const auto _layer = anim_state->m_entity->layers( ) + layer;
+	static auto CCSGOPlayerAnimState__GetLayerIdealWeightFromSeqCycle = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 53 56 8B 35 ? ? ? ? 57 8B F9 8B CE 8B 06 FF 90 84 00 00 00 8B 7F 60 0F 57 DB" ) ).get<void*> ( );
 
-	auto seqdesc = seq_desc( get_model_ptr( anim_state->m_entity ) , _layer->m_sequence );
+	auto ret = 1.0f;
 
-	float flCycle = _layer->m_cycle;
+	__asm {
+		push layer
+		mov ecx, anim_state
+		call CCSGOPlayerAnimState__GetLayerIdealWeightFromSeqCycle
+		movss ret, xmm0
+	}
 
-	if ( flCycle >= 0.999f )
-		flCycle = 1.0f;
-
-	float flEaseIn = *reinterpret_cast<float*>( reinterpret_cast<uintptr_t>( seqdesc ) + 104 );
-	float flEaseOut = *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( seqdesc ) + 108 );
-	float flIdealWeight = 1;
-
-	auto smoothstep_bounds = [ ] ( float edge0 , float edge1 , float x ) {
-		float v1 = std::clamp( ( x - edge0 ) / ( edge1 - edge0 ) , 0.0f , 1.0f );
-		return v1 * v1 * ( 3.0f - 2.0f * v1 );
-	};
-
-	if ( flEaseIn > 0.0f && flCycle < flEaseIn )
-		flIdealWeight = smoothstep_bounds( 0.0f , flEaseIn , flCycle );
-	else if ( flEaseOut < 1 && flCycle > flEaseOut )
-		flIdealWeight = smoothstep_bounds( 1.0f , flEaseOut , flCycle );
-
-	if ( flIdealWeight < 0.0015f )
-		return 0.0f;
-
-	return std::clamp( flIdealWeight , 0.0f , 1.0f );
+	return ret;
 }
 
 float anims::rebuilt::get_first_sequence_anim_tag( animstate_t* anim_state , int seq , int tag , float start , float end ) {
@@ -420,7 +483,42 @@ void* anims::rebuilt::seq_desc( void* mdl , int seq ) {
 	return pSeqdesc( mdl, seq );
 }
 
-void anims::rebuilt::setup_velocity( animstate_t* anim_state ) {
+/* to fix delayed anim events later */
+/* let's rebuild the animation events in a ghetto way, i cba */
+/* maybe we can use events to trigger do_animation_event later? */
+void anims::rebuilt::do_animation_event ( animstate_t* anim_state, int id, int data ) {
+	const auto active_weapon = anim_state->m_entity ? anim_state->m_entity->weapon ( ) : nullptr;
+
+	switch ( id ) {
+		/* this is the only one we would probably care about rn */
+	case 8 /* PLAYERANIMEVENT_JUMP */:
+		/* 
+		*	use 0x10A as m_bJumping instead of 0x109 since m_bJumping does not seem to exist on the client
+		*	(i'm too lazy to reverse server animstate class, so lets use this workaround and use the "free" space we have in the struct)
+		*	animstate + 0x10A seems to be unused, and is in a great position (m_bJumping is supposed to be after m_bOnGround on the server?)
+		*	good enough.
+		*/
+		*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10A ) = true;
+		set_sequence ( anim_state, 4, 15 /* SelectSequenceFromActMods( ACT_CSGO_JUMP ) */ );
+		break;
+	}
+}
+
+void anims::rebuilt::trigger_animation_events ( animstate_t* anim_state ) {
+	const auto player = anim_state->m_entity;
+
+	/* work on running more animation events on the client later */
+	/* handle jump events in ghetto way (what is a ghetto jump?) */
+	if ( !( player->flags ( ) & flags_t::on_ground )
+		&& anim_state->m_on_ground
+		&& ( ( player == g::local && g::local ) ? reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( player ) + 0x94 )->z : player->vel ( ).z ) > 0.0f ) {
+		do_animation_event ( anim_state, 8, 0 /* is this event used?*/ );
+	}
+}
+
+void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_yaw ) {
+	//static auto& angle_mode = options::vars [ _ ( "debug.angle_mode" ) ].val.i;
+
 	//static auto CCSGOPlayerAnimState__SetUpVelocity = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 30 56 57 8B 3D" ) ).get<void( __thiscall* )( animstate_t* )>( );
 	//CCSGOPlayerAnimState__SetUpVelocity( anim_state );
 	static auto C_CSPlayer__EstimateAbsVelocity = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 1C 53 56 57 8B F9 F7" ) ).get<void( __thiscall* )( player_t* )>( );
@@ -557,41 +655,46 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state ) {
 	// if the player is looking far enough to either side, turn the feet to keep them within the extent of the aim matrix
 	anim_state->m_feet_yaw = anim_state->m_abs_yaw;
 	anim_state->m_abs_yaw = std::clamp( anim_state->m_abs_yaw , -360.0f , 360.0f );
-	float flEyeFootDelta = valve_math::AngleDiff( anim_state->m_eye_yaw , anim_state->m_abs_yaw );
+
+	const auto delta_feet = valve_math::AngleDiff ( anim_state->m_eye_yaw, anim_state->m_abs_yaw );
 
 	// narrow the available aim matrix width as speed increases
-	float flAimMatrixWidthRange = std::lerp( 1.0f , std::lerp( anim_state->m_ground_fraction , 0.8f , 0.5f ), std::clamp( anim_state->m_run_speed , 0.0f , 1.0f ) );
+	auto matrix_width = std::lerp ( 1.0f, std::lerp ( 0.8f, 0.5f, anim_state->m_ground_fraction ), std::clamp ( anim_state->m_run_speed, 0.0f, 1.0f ) );
 
 	if ( anim_state->m_duck_amount > 0.0f )
-		flAimMatrixWidthRange = std::lerp( flAimMatrixWidthRange , 0.5f , anim_state->m_duck_amount * std::clamp( anim_state->m_unk_feet_speed_ratio , 0.0f , 1.0f ) );
+		matrix_width = std::lerp ( matrix_width, 0.5f, anim_state->m_duck_amount * std::clamp ( anim_state->m_unk_feet_speed_ratio, 0.0f, 1.0f ) );
 
-	float flTempYawMax = anim_state->m_max_yaw * flAimMatrixWidthRange;
-	float flTempYawMin = anim_state->m_min_yaw * flAimMatrixWidthRange;
+	const auto max_yaw = anim_state->m_max_yaw * matrix_width;
+	const auto min_yaw = anim_state->m_min_yaw * matrix_width;
 
-	if ( flEyeFootDelta > flTempYawMax )
-		anim_state->m_abs_yaw = anim_state->m_eye_yaw - abs( flTempYawMax );
-	else if ( flEyeFootDelta < flTempYawMin )
-		anim_state->m_abs_yaw = anim_state->m_eye_yaw + abs( flTempYawMin );
+	if ( delta_feet > max_yaw )
+		anim_state->m_abs_yaw = anim_state->m_eye_yaw - abs ( max_yaw );
+	else if ( delta_feet < min_yaw )
+		anim_state->m_abs_yaw = anim_state->m_eye_yaw + abs ( min_yaw );
 
 	anim_state->m_abs_yaw = valve_math::AngleNormalize( anim_state->m_abs_yaw );
 
 	// pull the lower body direction towards the eye direction, but only when the player is moving
 	if ( anim_state->m_on_ground ) {
 		if ( anim_state->m_speed2d > 0.1f ) {
-			anim_state->m_abs_yaw = valve_math::ApproachAngle( anim_state->m_eye_yaw , anim_state->m_abs_yaw , anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
+			anim_state->m_abs_yaw = valve_math::ApproachAngle ( anim_state->m_eye_yaw, anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
 
 			if ( !CLIENT_DLL_ANIMS ) {
 				*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 0.22f;
-				player->lby( ) = anim_state->m_eye_yaw;
+				
+				if ( player == g::local )
+					player->lby ( ) = anim_state->m_eye_yaw;
 			}
 		}
 		else {
-			anim_state->m_abs_yaw = valve_math::ApproachAngle( player->lby( ) , anim_state->m_abs_yaw , anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
+			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
 			if ( !CLIENT_DLL_ANIMS ) {
-				if ( cs::i::globals->m_curtime > *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) && abs( valve_math::AngleDiff( anim_state->m_abs_yaw , anim_state->m_eye_yaw ) ) > 35.0f ) {
+				if ( cs::i::globals->m_curtime > *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
 					*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 1.1f;
-					player->lby( ) = anim_state->m_eye_yaw;
+					
+					if ( player == g::local )
+						player->lby ( ) = anim_state->m_eye_yaw;
 				}
 			}
 		}
@@ -733,8 +836,11 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	//static auto CCSGOPlayerAnimState__SetUpMovement = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 81 EC 88 00 00 00 56 57 8B 3D ? ? ? ? 8B F1 8B CF 89" ) ).get<void( __thiscall* )( animstate_t* )>( );
 	//CCSGOPlayerAnimState__SetUpMovement( anim_state );
 
-	MDLCACHE_CRITICAL_SECTION ( );
+	static auto CCSGOPlayerAnimState__GetWeaponPrefix = pattern::search ( _ ( "client.dll" ), _ ( "53 56 57 8B F9 33 F6 8B 4F 60" ) ).get<const char* ( __thiscall* )( animstate_t* )> ( );
+	static auto m_iMoveState = pattern::search ( _ ( "client.dll" ), _ ( "8B 81 ? ? ? ? 3B 86 ? ? ? ? 74" ) ).add(2).deref().get<uint32_t> ( );
 
+	MDLCACHE_CRITICAL_SECTION ( );
+	
 	const auto player = anim_state->m_entity;
 	
 	if ( anim_state->m_ground_fraction > 0.0f && anim_state->m_ground_fraction < 1.0f ) {
@@ -752,27 +858,313 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	}
 	else if ( anim_state->m_speed2d < 135.2f && !anim_state->m_moving ) {
 		anim_state->m_moving = true;
-		anim_state->m_ground_fraction = std::max ( 0.99f, anim_state->m_ground_fraction );
+		anim_state->m_ground_fraction = std::min ( 0.99f, anim_state->m_ground_fraction );
 	}
-	
+
 	player->poses ( ) [ pose_param_t::move_blend_walk ] = ( 1.0f - anim_state->m_ground_fraction ) * ( 1.0f - anim_state->m_duck_amount );
 	player->poses ( ) [ pose_param_t::move_blend_run ] = anim_state->m_ground_fraction * ( 1.0f - anim_state->m_duck_amount );
 	player->poses ( ) [ pose_param_t::move_blend_crouch ] = anim_state->m_duck_amount;
-
-	char szWeaponMoveSeq [ MAX_ANIMSTATE_ANIMNAME_CHARS ];
-	V_sprintf_safe ( szWeaponMoveSeq, _("move_%s"), GetWeaponPrefix ( ) );
-
-	int nWeaponMoveSeq = m_pPlayer->LookupSequence ( szWeaponMoveSeq );
-
+	
+	char szWeaponMoveSeq [ 64 ];
+	sprintf_s ( szWeaponMoveSeq, _("move_%s"), CCSGOPlayerAnimState__GetWeaponPrefix ( anim_state ) );
+	
+	auto nWeaponMoveSeq = player->lookup_sequence ( szWeaponMoveSeq );
+	
 	if ( nWeaponMoveSeq == -1 )
-		nWeaponMoveSeq = m_pPlayer->LookupSequence ( _("move") );
+		nWeaponMoveSeq = player->lookup_sequence ( _("move") );
+	
+	if ( *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( player ) + m_iMoveState ) != *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2A8 ) )
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2AC ) += 10.0f;
 
-	if ( m_pPlayer->m_iMoveState != m_nPreviousMoveState )
-	{
-		m_flStutterStep += 10;
+	*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2A8 ) = *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( player ) + m_iMoveState );
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2AC ) = std::clamp ( valve_math::Approach ( 0, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2AC ), anim_state->m_last_clientside_anim_update_time_delta * 40.0f ), 0.0f, 100.0f );
+
+	// recompute moveweight
+
+	const auto flTargetMoveWeight = std::lerp ( std::clamp ( anim_state->m_run_speed, 0.0f, 1.0f ), std::clamp ( anim_state->m_unk_feet_speed_ratio, 0.0f, 1.0f ), anim_state->m_duck_amount );
+
+	if ( anim_state->m_feet_yaw_rate <= flTargetMoveWeight )
+		anim_state->m_feet_yaw_rate = flTargetMoveWeight;
+	else
+		anim_state->m_feet_yaw_rate = valve_math::Approach ( flTargetMoveWeight, anim_state->m_feet_yaw_rate, anim_state->m_last_clientside_anim_update_time_delta * valve_math::RemapValClamped ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x2AC ), 0.0f, 100.0f, 2, 20 ) );
+
+	auto vecMoveYawDir = cs::angle_vec( vec3_t ( 0.0f, valve_math::AngleNormalize ( anim_state->m_abs_yaw + anim_state->m_body_yaw + 180.0f ), 0.0f ) );
+	const auto flYawDeltaAbsDot = abs ( anim_state->m_vel_norm_nonzero.dot_product( vecMoveYawDir ) );
+	anim_state->m_feet_yaw_rate *= valve_math::Bias ( flYawDeltaAbsDot, 0.2f );
+
+	auto flMoveWeightWithAirSmooth = anim_state->m_feet_yaw_rate * anim_state->m_unk_fraction;
+
+	// dampen move weight for landings
+	flMoveWeightWithAirSmooth *= std::max ( ( 1.0f - player->layers()[5].m_weight ), 0.55f );
+
+	auto flMoveCycleRate = 0.0f;
+	if ( anim_state->m_speed2d > 0.0f ) {
+		flMoveCycleRate = player->get_sequence_cycle_rate_server ( nWeaponMoveSeq );
+		
+		const auto flSequenceGroundSpeed = std::max ( player->get_sequence_move_distance ( get_model_ptr(player), nWeaponMoveSeq ) / ( 1.0f / flMoveCycleRate ), 0.001f );
+
+		flMoveCycleRate *= anim_state->m_speed2d / flSequenceGroundSpeed;
+		flMoveCycleRate *= std::lerp ( 1.0f, 0.85f, anim_state->m_ground_fraction );
 	}
-	m_nPreviousMoveState = m_pPlayer->m_iMoveState;
-	m_flStutterStep = std::clamp ( Approach ( 0, m_flStutterStep, m_flLastUpdateIncrement * 40.0f ), 0.0f, 100.0f );
+
+	auto clamp_cycle = [ ] ( float in ) {
+		in -= int ( in );
+
+		if ( in < 0.0f )
+			in += 1.0f;
+		else if ( in > 1.0f )
+			in -= 1.0f;
+
+		return in;
+	};
+
+	float flLocalCycleIncrement = ( flMoveCycleRate * anim_state->m_last_clientside_anim_update_time_delta );
+	anim_state->m_feet_cycle = clamp_cycle ( anim_state->m_feet_cycle + flLocalCycleIncrement );
+
+	flMoveWeightWithAirSmooth = std::clamp ( flMoveWeightWithAirSmooth, 0.0f, 1.0f );
+	update_layer ( anim_state, 6, nWeaponMoveSeq, flLocalCycleIncrement, flMoveWeightWithAirSmooth, anim_state->m_feet_cycle );
+
+	if ( !CLIENT_DLL_ANIMS && player == g::local && g::local ) {
+		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + 0x31F8 );
+
+		const auto moveRight = !!( buttons & buttons_t::right );
+		const auto moveLeft = !!( buttons & buttons_t::left );
+		const auto moveForward = !!( buttons & buttons_t::forward );
+		const auto moveBackward = !!( buttons & buttons_t::back );
+
+		vec3_t vecForward;
+		vec3_t vecRight;
+		valve_math::AngleVectors ( vec3_t ( 0.0f, anim_state->m_abs_yaw, 0.0f ), &vecForward, &vecRight, nullptr );
+
+		vecRight.normalize_place ( );
+
+		const auto flVelToRightDot = anim_state->m_vel_norm_nonzero.dot_product ( vecRight );
+		const auto flVelToForwardDot = anim_state->m_vel_norm_nonzero.dot_product ( vecForward );
+
+		const auto bStrafeRight = ( anim_state->m_run_speed >= 0.73f && moveRight && !moveLeft && flVelToRightDot < -0.63f );
+		const auto bStrafeLeft = ( anim_state->m_run_speed >= 0.73f && moveLeft && !moveRight && flVelToRightDot > 0.63f );
+		const auto bStrafeForward = ( anim_state->m_run_speed >= 0.65f && moveForward && !moveBackward && flVelToForwardDot < -0.55f );
+		const auto bStrafeBackward = ( anim_state->m_run_speed >= 0.65f && moveBackward && !moveForward && flVelToForwardDot > 0.55f );
+
+		player->strafing ( ) = ( bStrafeRight || bStrafeLeft || bStrafeForward || bStrafeBackward );
+	}
+
+	if ( player->strafing() ) {
+		if ( !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A0 ) ) {
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A4 ) = 0.0f;
+
+			if ( CLIENT_DLL_ANIMS ) {
+				//if ( !anim_state->m_force_update && !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A0 ) && anim_state->m_on_ground && m_pPlayer->m_boneSnapshots [ BONESNAPSHOT_UPPER_BODY ].GetCurrentWeight ( ) <= 0.0f )
+				//	m_pPlayer->m_boneSnapshots [ BONESNAPSHOT_UPPER_BODY ].SetShouldCapture ( bonesnapshot_get ( cl_bonesnapshot_speed_strafestart ) );
+			}
+		}
+
+		*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A0 ) = true;
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) = valve_math::Approach ( 1.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ), anim_state->m_last_clientside_anim_update_time_delta * 20.0f );
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) = valve_math::Approach ( 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ), anim_state->m_last_clientside_anim_update_time_delta * 10.0f );
+
+		player->poses ( ) [ pose_param_t::strafe_yaw ] = std::clamp ( valve_math::AngleNormalize ( anim_state->m_body_yaw ), -180.0f, 180.0f ) / 360.0f + 0.5f;
+	}
+	else if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) > 0.0f ) {
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A4 ) += anim_state->m_last_clientside_anim_update_time_delta;
+
+		if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A4 ) > 0.08f )
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) = valve_math::Approach ( 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ), anim_state->m_last_clientside_anim_update_time_delta * 5.0f );
+
+		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ) = player->lookup_sequence ( _("strafe" ));
+		float flRate = player->get_sequence_cycle_rate_server ( *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ) );
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) + anim_state->m_last_clientside_anim_update_time_delta * flRate, 0.0f, 1.0f );
+	}
+
+	if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) <= 0.0f )
+		*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A0 ) = false;
+
+	// keep track of if the player is on the ground, and if the player has just touched or left the ground since the last check
+	const auto bPreviousGroundState = anim_state->m_on_ground;
+	anim_state->m_on_ground = !!( player->flags() & flags_t::on_ground );
+
+	*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x120 ) = ( !anim_state->m_force_update && bPreviousGroundState != anim_state->m_on_ground && anim_state->m_on_ground );
+	*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x121 ) = ( bPreviousGroundState != anim_state->m_on_ground && !anim_state->m_on_ground );
+
+	auto flDistanceFell = 0.0f;
+
+	if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x121 ) )
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x114 ) = anim_state->m_origin.z;
+
+	if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x120 ) ) {
+		flDistanceFell = abs ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x114 ) - anim_state->m_origin.z );
+		float flDistanceFallNormalizedBiasRange = valve_math::Bias ( valve_math::RemapValClamped ( flDistanceFell, 12.0f, 72.0f, 0.0f, 1.0f ), 0.4f );
+
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x118 ) = std::clamp ( valve_math::Bias ( anim_state->m_time_in_air, 0.3f ), 0.1f, 1.0f );
+		anim_state->m_landing_duck_additive = std::max ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x118 ), flDistanceFallNormalizedBiasRange );
+	}
+	else {
+		anim_state->m_landing_duck_additive = valve_math::Approach ( 0.0f, anim_state->m_landing_duck_additive, anim_state->m_last_clientside_anim_update_time_delta * 2.0f );
+	}
+
+	// the in-air smooth value is a fuzzier representation of if the player is on the ground or not.
+	// It will approach 1 when the player is on the ground and 0 when in the air. Useful for blending jump animations.
+	anim_state->m_unk_fraction = valve_math::Approach ( anim_state->m_on_ground ? 1.0f : 0.0f, anim_state->m_unk_fraction, std::lerp ( 8.0f, 16.0f, anim_state->m_duck_amount ) * anim_state->m_last_clientside_anim_update_time_delta );
+	anim_state->m_unk_fraction = std::clamp ( anim_state->m_unk_fraction, 0.0f, 1.0f );
+
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) *= ( 1.0f - anim_state->m_duck_amount );
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) *= anim_state->m_unk_fraction;
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ), 0.0f, 1.0f );
+
+	if ( *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ) != -1 )
+		update_layer ( anim_state, 7, *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ), 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ), *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) );
+
+	//ladders
+	bool bPreviouslyOnLadder = *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 );
+	*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) = !anim_state->m_on_ground && player->movetype ( ) == movetypes_t::ladder;
+	bool bStartedLadderingThisFrame = ( !bPreviouslyOnLadder && *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) );
+	bool bStoppedLadderingThisFrame = ( bPreviouslyOnLadder && !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) );
+
+	if ( bStartedLadderingThisFrame || bStoppedLadderingThisFrame ) {
+		if ( CLIENT_DLL_ANIMS ) {
+			//m_footLeft.m_flLateralWeight = 0;
+		//m_footRight.m_flLateralWeight = 0;
+		}
+	}
+
+	if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) > 0.0f || *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) ) {
+		if ( !CLIENT_DLL_ANIMS ) {
+			if ( bStartedLadderingThisFrame ) {
+				set_sequence ( anim_state, 5, 13 /* SelectSequenceFromActMods ( ACT_CSGO_CLIMB_LADDER ) */ );
+			}
+		}
+
+		if ( abs ( anim_state->m_up_vel ) > 100.0f )
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ) = valve_math::Approach ( 1.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ), anim_state->m_last_clientside_anim_update_time_delta * 10.0f );
+		else
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ) = valve_math::Approach ( 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ), anim_state->m_last_clientside_anim_update_time_delta * 10.0f );
+
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ) = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ), 0.0f, 1.0f );
+
+		if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) )
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) = valve_math::Approach ( 1.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ), anim_state->m_last_clientside_anim_update_time_delta * 5.0f );
+		else
+			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) = valve_math::Approach ( 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ), anim_state->m_last_clientside_anim_update_time_delta * 10.0f );
+
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ), 0.0f, 1.0f );
+
+		const auto flLadderYaw = valve_math::AngleDiff ( cs::vec_angle( player->ladder_norm ( ) ).y, anim_state->m_abs_yaw );
+
+		player->poses ( ) [ pose_param_t::ladder_yaw ] = std::clamp ( valve_math::AngleNormalize ( flLadderYaw ), -180.0f, 180.0f ) / 360.0f + 0.5f;
+
+		auto flLadderClimbCycle = player->layers ( ) [ 5 ].m_cycle;
+		flLadderClimbCycle += ( anim_state->m_origin.z - anim_state->m_old_origin.z ) * std::lerp ( 0.010f, 0.004f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ) );
+
+		player->poses ( ) [ pose_param_t::ladder_speed ] = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ), 0.0f, 1.0f );
+
+		if ( get_layer_activity ( anim_state, 5 ) == 987 )
+			set_weight ( anim_state, 5, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) );
+
+		set_cycle ( anim_state, 5, flLadderClimbCycle );
+
+		// fade out jump if we're climbing
+		if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) ) {
+			const auto flIdealJumpWeight = 1.0f - *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C );
+
+			if ( player->layers()[4].m_weight > flIdealJumpWeight ) {
+				set_weight ( anim_state, 4, flIdealJumpWeight );
+			}
+		}
+	}
+	else {
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x130 ) = 0.0f;
+	}
+
+	// jumping
+	if ( anim_state->m_on_ground ) {
+		if ( !anim_state->m_hit_ground && ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x120 ) || bStoppedLadderingThisFrame ) ) {
+			if ( !CLIENT_DLL_ANIMS) {
+				set_sequence ( anim_state, 5, ( anim_state->m_time_in_air > 1.0f ) ? 23 : 20 );
+			}
+
+			set_cycle ( anim_state, 5, 0.0f );
+
+			anim_state->m_hit_ground = true;
+		}
+
+		anim_state->m_time_in_air = 0.0f;
+
+		if ( anim_state->m_hit_ground && get_layer_activity ( anim_state, 5 ) != 987 ) {
+			if ( !CLIENT_DLL_ANIMS ) {
+				*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10A ) = false;
+			}
+
+			increment_layer_cycle ( anim_state, 5, false );
+			increment_layer_cycle ( anim_state, 4, false );
+
+			player->poses ( ) [ pose_param_t::jump_fall ] = 0.0f;
+
+			if ( is_sequence_completed ( anim_state, 5 ) ) {
+				anim_state->m_hit_ground = false;
+
+				set_weight ( anim_state, 5, 0.0f );
+				set_weight ( anim_state, 4, 0.0f );
+
+				*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x118 ) = 1.0f;
+			}
+			else {
+				auto land_weight = get_layer_ideal_weight_from_seq_cycle ( anim_state, 5 ) * *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x118 );
+
+				// if we hit the ground crouched, reduce the land animation as a function of crouch, since the land animations move the head up a bit ( and this is undesirable )
+				land_weight *= std::clamp ( ( 1.0f - anim_state->m_duck_amount ), 0.2f, 1.0f );
+
+				set_weight ( anim_state, 5, land_weight );
+
+				// fade out jump because land is taking over
+				if ( player->layers ( ) [ 4 ].m_weight > 0.0f )
+					set_weight ( anim_state, 4, valve_math::Approach ( 0.0f, player->layers ( ) [ 4 ].m_weight, anim_state->m_last_clientside_anim_update_time_delta * 10.0f ) );
+			}
+		}
+
+		if ( !CLIENT_DLL_ANIMS ) {
+			if ( !anim_state->m_hit_ground && !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10A ) && *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) <= 0.0f )
+				set_weight ( anim_state, 5, 0.0f );
+		}
+	}
+	else if ( !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x128 ) ) {
+		anim_state->m_hit_ground = false;
+
+		// we're in the air
+		if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x121 ) || bStoppedLadderingThisFrame ) {
+			if ( !CLIENT_DLL_ANIMS ) {
+				// If entered the air by jumping, then we already set the jump activity.
+				// But if we're in the air because we strolled off a ledge or the floor collapsed or something,
+				// we need to set the fall activity here.
+				if ( !*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10A ) ) {
+					set_sequence ( anim_state, 4, 14 );
+				}
+			}
+
+			anim_state->m_time_in_air = 0.0f;
+		}
+
+		anim_state->m_time_in_air += anim_state->m_last_clientside_anim_update_time_delta;
+
+		increment_layer_cycle ( anim_state, 4, false );
+
+		// increase jump weight
+		const auto next_jump_weight = get_layer_ideal_weight_from_seq_cycle ( anim_state, 4 );
+
+		if ( next_jump_weight > player->layers()[4].m_weight )
+			set_weight ( anim_state, 4, next_jump_weight );
+
+		// bash any lingering land weight to zero
+		auto smoothstep_bounds = [ ] ( float a, float b, float x ) {
+			const auto r = std::clamp ( ( x - a ) * b, 0.0f, 1.0f );
+			return ( 3.0f - ( r + r ) ) * ( r * r );
+		};
+
+		if ( player->layers ( ) [ 5 ].m_weight > 0.0f )
+			set_weight ( anim_state, 5, player->layers ( ) [ 5 ].m_weight * smoothstep_bounds ( 0.2f, 0.0f, anim_state->m_time_in_air ) );
+
+		// blend jump into fall. This is a no-op if we're playing a fall anim.
+		player->poses ( ) [ pose_param_t::jump_fall ] = std::clamp ( smoothstep_bounds ( 0.72f, 1.52f, anim_state->m_time_in_air ), 0.0f, 1.0f );
+	}
 }
 
 void anims::rebuilt::setup_alive_loop( animstate_t* anim_state ) {
@@ -850,8 +1242,8 @@ void anims::rebuilt::setup_flashed_reaction( animstate_t* anim_state ) {
 				flash_weight = 1.0f - (( time_left >= 0.0f ) ? std::min( time_left , 1.0f ) : 0.0f);
 			}
 	
-			set_cycle( anim_state , 9 , 0 );
-			set_rate( anim_state , 9 , 0 );
+			set_cycle( anim_state , 9 , 0.0f );
+			set_rate( anim_state , 9 , 0.0f );
 
 			float flWeightPrevious = player->layers()[9].m_weight;
 			float flWeightNew = ( ( flash_weight * flash_weight ) * 3.0f ) - ( ( ( flash_weight * flash_weight ) * 2.0f ) * flash_weight );
@@ -878,9 +1270,8 @@ void anims::rebuilt::setup_lean( animstate_t* anim_state ) {
 	CCSGOPlayerAnimState__SetUpLean( anim_state );
 }
 
-void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t origin ) {
+void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t origin, bool force_feet_yaw ) {
 	static auto m_flThirdpersonRecoil = pattern::search( _( "client.dll" ) , _( "F3 0F 10 86 ? ? ? ? F3 0F 58 44 24 0C" ) ).add(4).deref().get< uint32_t >( );
-
 	static auto CCSGOPlayerAnimState__CacheSequences = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 34 53 56 8B F1 57 8B" ) ).get< bool( __thiscall* )( animstate_t* ) >( );
 	static auto& s_bEnableInvalidateBoneCache = *pattern::search( _( "client.dll" ) , _( "C6 05 ? ? ? ? 00 F3 0F 5F 05 ? ? ? ? F3 0F 11 47 74" ) ).add(2).deref().get< bool* >( );
 	static auto IsPreCrouchUpdateDemo = pattern::search( _( "client.dll" ) , _( "8B 0D 94 01 2C 15 8B 01 8B 80 ? ? ? ? FF D0 84 C0 75 14" ) ).get< bool( * )( ) >( );
@@ -952,8 +1343,13 @@ void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t or
 		}
 	}
 
+	/* **THIS IS NOT SUPPOSED TO BE HERE, CHANGE LATER. TEMPORARY SOLUTION.** */
+	/* maybe using events would be better? */
+	/* or animation layers to get the start time of animation events */
+	trigger_animation_events ( anim_state );
+
 	// all the layers get set up here
-	setup_velocity( anim_state );			// calculate speed and set up body yaw values
+	setup_velocity( anim_state, force_feet_yaw );			// calculate speed and set up body yaw values
 	setup_aim_matrix( anim_state );			// aim matrices are full body, so they not only point the weapon down the eye dir, they can crouch the idle player
 	setup_weapon_action( anim_state );		// firing, reloading, silencer-swapping, deploying
 	setup_movement( anim_state );			// jumping, climbing, ground locomotion, post-weapon crouch-stand
@@ -969,7 +1365,7 @@ void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t or
 			const auto layer = player->layers( ) ? ( player->layers( ) + i ) : nullptr;
 
 			if ( layer && !layer->m_sequence )
-				set_weight( anim_state, 1, 0.0f );
+				set_weight( anim_state, i, 0.0f );
 		}
 	//}
 

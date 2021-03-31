@@ -393,6 +393,9 @@ void options::init( ) {
 	/* ANTIAIM */
 	/* global antiaim */
 	option::add_int( _( "antiaim.fakeduck_mode" ), 0 ); /* normal, full */
+	option::add_bool ( _ ( "antiaim.break_backtrack" ), false );
+	option::add_int ( _ ( "antiaim.break_backtrack_key" ), 0 );
+	option::add_int ( _ ( "antiaim.break_backtrack_key_mode" ), 0 );
 	option::add_bool( _( "antiaim.fakewalk" ), false );
 	option::add_bool( _( "antiaim.slide" ) , false );
 	option::add_bool( _( "antiaim.jittermove" ) , false );
@@ -504,8 +507,8 @@ void options::init( ) {
 	option::add_float( _( "misc.effects.weapon_volume" ), 1.0f );
 
 	option::add_float( _( "gui.dpi" ), 1.0f );
-
-	option::add_float ( _ ( "debug.desync_amount" ), 0.0f );
+	
+	//option::add_int ( _ ( "debug.angle_mode" ), 0 ); /* set yaw auto, approach yaw auto, set yaw static, approach yaw static */
 	VM_SHARK_BLACK_END
 		CLEAR_END
 }

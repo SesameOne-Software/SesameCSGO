@@ -1,10 +1,10 @@
 #pragma once
 #include <windows.h>
 #include <memory>
+#include <ThemidaSDK.h>
 
-#include <ThemidaSDK/Include/C/ThemidaSDK.h>
-
-#define SESAME_VERSION "Sesame v4.1.0"
+/* semantic versioning */
+#define SESAME_VERSION "Sesame v4.3.0"
 
 template < typename type >
 constexpr uint32_t rgba ( type r, type g, type b, type a ) {

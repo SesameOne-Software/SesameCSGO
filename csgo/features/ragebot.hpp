@@ -1,5 +1,7 @@
 #pragma once
 #include <mutex>
+#include <numbers>
+
 #include "../sdk/sdk.hpp"
 #include "../animations/anims.hpp"
 #include "../renderer/render.hpp"
@@ -107,8 +109,55 @@ namespace features {
 				vec3_t screen;
 
 				for ( auto& point : m_synced_points ) {
-					if ( cs::render::world_to_screen( screen, point ) )
-						render::rect( screen.x - 2, screen.y - 2, 4, 4, rgba ( 255, 0, 0, 255 ) );
+					if ( cs::render::world_to_screen ( screen, point ) ) {
+						const auto radius = 8.0f;
+						const auto x = screen.x;
+						const auto y = screen.y;
+						const auto verticies = 16;
+
+						struct vtx_t {
+							float x, y, z, rhw;
+							std::uint32_t color;
+						};
+
+						std::vector< vtx_t > circle ( verticies + 2 );
+
+						const auto angle = 0.0f;
+
+						circle [ 0 ].x = static_cast< float > ( x ) - 0.5f;
+						circle [ 0 ].y = static_cast< float > ( y ) - 0.5f;
+						circle [ 0 ].z = 0;
+						circle [ 0 ].rhw = 1;
+						circle [ 0 ].color = D3DCOLOR_RGBA ( 255, 0, 0, 255 );
+
+						for ( auto i = 1; i < verticies + 2; i++ ) {
+							circle [ i ].x = ( float ) ( x - radius * std::cosf ( std::numbers::pi * ( ( i - 1 ) / ( static_cast<float>( verticies ) / 2.0f ) ) ) ) - 0.5f;
+							circle [ i ].y = ( float ) ( y - radius * std::sinf ( std::numbers::pi * ( ( i - 1 ) / ( static_cast<float>( verticies ) / 2.0f ) ) ) ) - 0.5f;
+							circle [ i ].z = 0;
+							circle [ i ].rhw = 1;
+							circle [ i ].color = D3DCOLOR_RGBA ( 255, 0 , 0, 0 );
+						}
+
+						for ( auto i = 0; i < verticies + 2; i++ ) {
+							circle [ i ].x = x + std::cosf ( angle ) * ( circle [ i ].x - x ) - std::sinf ( angle ) * ( circle [ i ].y - y ) - 0.5f;
+							circle [ i ].y = y + std::sinf ( angle ) * ( circle [ i ].x - x ) + std::cosf ( angle ) * ( circle [ i ].y - y ) - 0.5f;
+						}
+
+						IDirect3DVertexBuffer9* vb = nullptr;
+
+						cs::i::dev->CreateVertexBuffer ( ( verticies + 2 ) * sizeof ( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
+
+						void* verticies_ptr;
+						vb->Lock ( 0, ( verticies + 2 ) * sizeof ( vtx_t ), ( void** ) &verticies_ptr, 0 );
+						std::memcpy ( verticies_ptr, &circle [ 0 ], ( verticies + 2 ) * sizeof ( vtx_t ) );
+						vb->Unlock ( );
+
+						cs::i::dev->SetStreamSource ( 0, vb, 0, sizeof ( vtx_t ) );
+						cs::i::dev->DrawPrimitive ( D3DPT_TRIANGLEFAN, 0, verticies );
+
+						if ( vb )
+							vb->Release ( );
+					}
 				}
 			}
 		};

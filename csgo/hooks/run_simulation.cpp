@@ -6,63 +6,67 @@
 #include "../features/exploits.hpp"
 #include "../features/prediction.hpp"
 
+#undef min
+#undef max
+
 decltype( &hooks::run_simulation ) hooks::old::run_simulation = nullptr;
+
+extern bool in_cm;
 
 namespace lby {
 	extern bool in_update;
 }
 
-int old_tickbase = 0;
+int last_cmd_num = 0;
 
-/* cbrs */
 void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, player_t* localplayer ) {
+	if ( !g::local || !g::local->alive ( ) )
+		last_cmd_num = 0;
+
 	if ( !localplayer || localplayer != g::local || !g::local )
 		return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-	if ( exploits::is_recharging() ) {
+	if ( cmd->m_tickcount == std::numeric_limits<int>::max ( ) ) {
 		MUTATE_START
 		cmd->m_hasbeenpredicted = true;
 		localplayer->tick_base ( )++;
-		localplayer->set_abs_origin( localplayer->origin() );
 		MUTATE_END
 		return;
 	}
 
 	MUTATE_START
-		const auto backup_tick_base = localplayer->tick_base( );
+	const auto backup_tick_base = localplayer->tick_base( );
 
-	if ( exploits::shifted_command ( ) == current_command )
+	if ( exploits::shifted_command ( ) == cmd->m_cmdnum )
 		localplayer->tick_base ( ) -= exploits::shifted_tickbase ( );
+
+	const auto backup_vel_mod = localplayer->velocity_modifier ( );
+
+	localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
 
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
 
-	//if ( cs::i::client_state ) {
-	//	if ( current_command == cs::i::client_state->last_command_ack( ) + 1 ) {
-	//		if ( !features::prediction::fix_netvars( current_command ) ) /* needs to repredict */ {
-	//			*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
-	//		}
-	//
-	//		//dbg_print( _( "REPREDICTING.\n" ) );
-	//	}
-	//	else {
-	//		if ( features::prediction::fix_netvars( current_command, true ) ) {
-	//			*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
-	//		}
-	//	}
-	//}
-
-	// backup
-	//features::prediction::fix_netvars( current_command );
-
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-	// restore
-
-	if ( exploits::shifted_command ( ) == current_command )
+	if ( exploits::shifted_command ( ) == cmd->m_cmdnum )
 		localplayer->tick_base ( ) = backup_tick_base;
 
-	//anims::update_anims( localplayer , lby::in_update ? g::sent_cmd.m_angs : g::angles , false );
+	if ( !in_cm )
+		localplayer->velocity_modifier ( ) = backup_vel_mod;
+
+	/* local anims */
+	if ( cmd->m_cmdnum > last_cmd_num ) {
+		if ( localplayer->alive ( ) )
+			anims::update_anims ( localplayer, g::angles );
+		else /* reset fake */
+			anims::manage_fake ( );
+
+		last_cmd_num = cmd->m_cmdnum;
+	}
+
+	features::prediction::fix_netvars ( localplayer->tick_base ( ), true );
+	features::prediction::fix_viewmodel ( true );
 
 	MUTATE_END
 }
