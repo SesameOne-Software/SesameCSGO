@@ -54,7 +54,7 @@ void features::antiaim::simulate_lby( ) {
 		lby::last_breaker_time = lby::spawn_time;
 	}
 
-	if ( g::local->vel( ).length_2d( ) > 0.1f )
+	if ( prediction::vel.length_2d( ) > 0.1f )
 		lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
 	else if ( cs::i::globals->m_curtime >= lby::last_breaker_time ) {
 		lby::in_update = true;
@@ -284,9 +284,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		if ( air && !( g::local->flags( ) & flags_t::on_ground ) )
 			max_lag = lag_air;
-		else if ( slow_walk && g::local->vel( ).length_2d( ) > 5.0f && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
+		else if ( slow_walk && prediction::vel.length_2d( ) > 5.0f && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
 			max_lag = lag_slow_walk;
-		else if ( move && g::local->vel( ).length_2d( ) > 5.0f )
+		else if ( move && prediction::vel.length_2d( ) > 5.0f )
 			max_lag = lag_move;
 		else if ( stand )
 			max_lag = lag_stand;
@@ -378,7 +378,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			const auto vec_move = vec3_t( old_fmove, old_smove, ucmd->m_umove );
 
 			if ( !target_speed ) {
-				if ( g::local->vel( ).length_2d( ) <= 13.0f ) {
+				if ( prediction::vel.length_2d( ) <= 13.0f ) {
 					old_fmove = old_smove = 0.0f;
 				}
 				else {
@@ -390,7 +390,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					old_smove = inverted_move.y * g::cvars::cl_forwardspeed->get_float ( );
 				}
 			}
-			else if ( std::fabsf( old_fmove ) > 3.0f || std::fabsf( old_smove ) > 3.0f ) {
+			else if ( abs ( old_fmove ) > 3.0f || abs ( old_smove ) > 3.0f ) {
 				const auto magnitude = vec_move.length_2d ( );
 
 				old_fmove = ( old_fmove / magnitude ) * target_speed;
@@ -406,31 +406,15 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				if ( cs::i::client_state->choked( ) > 7 )
 					approach_speed( 0.0f );
-
-				/* force lby flick, will update when we stand still and send packet... */
-				//if ( !aa::choke_counter ) {
-				//	approach_speed ( 0.0f );
-				//}
-				//else {
-				//	if ( aa::choke_counter == 6 )
-				//		approach_speed ( 0.0f );
-				//	else {
-				//		//approach_speed ( g::local->weapon ( )->data ( )->m_max_speed * 0.333f );
-				//
-				//		if ( aa::choke_counter == 5 )
-				//			lby::in_update = true;
-				//	}
-				//}
 			}
 			else {
-				// auto @ 70.965, scoped 39.60
-				// scout @ 75.90, scoped 75.90
-				// glock @ 79.20
-				// knife @ 82.50
-
 				/* tiny slowwalk */
-				if ( std::fabsf( old_fmove ) > 3.3f || std::fabsf( old_smove ) > 3.3f )
-					approach_speed( ( (g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed) * 0.33f ) * ( slow_walk_speed / 100.0f ) );
+				if ( abs( old_fmove ) > 3.3f || abs ( old_smove ) > 3.3f )
+					approach_speed( (g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed) * 0.33f * ( slow_walk_speed / 100.0f ) );
+
+				/* mess up consistency of animlayers */
+				if ( abs( prediction::vel.length_2d() - ( ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.33f * ( slow_walk_speed / 100.0f ) ) ) < 1.0f )
+					approach_speed ( 0.0f );
 			}
 		}
 	}
@@ -582,11 +566,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				antiaiming = false;
 			}
 		}
-		else if ( g::local->vel( ).length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
-			/* jitter move ADD OPTION ON MENU LATER */
-			//ucmd->m_fmove *= aa::jitter_flip ? 0.9f : 1.0f;
-			//aa::jitter_flip = !aa::jitter_flip;
-
+		else if ( prediction::vel.length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
 			if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && slow_walk ) {
 				process_base_yaw( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
 
@@ -656,6 +636,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				VM_TIGER_BLACK_END
 			}
 			else if ( move ) {
+				//if ( !utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) ) {
+				//	/* jitter move ADD OPTION ON MENU LATER */
+				//	old_fmove *= aa::jitter_flip ? 0.9f : 1.0f;
+				//	aa::jitter_flip = !aa::jitter_flip;
+				//}
+
 				process_base_yaw( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
 
 				ucmd->m_angs.y += yaw_offset_move;

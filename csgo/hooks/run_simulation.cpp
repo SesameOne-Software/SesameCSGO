@@ -35,11 +35,6 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	}
 
 	MUTATE_START
-	const auto backup_tick_base = localplayer->tick_base( );
-
-	if ( exploits::shifted_command ( ) == cmd->m_cmdnum )
-		localplayer->tick_base ( ) -= exploits::shifted_tickbase ( );
-
 	const auto backup_vel_mod = localplayer->velocity_modifier ( );
 
 	localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
@@ -48,9 +43,6 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	__asm movss xmm2, curtime
 
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
-
-	if ( exploits::shifted_command ( ) == cmd->m_cmdnum )
-		localplayer->tick_base ( ) = backup_tick_base;
 
 	if ( !in_cm )
 		localplayer->velocity_modifier ( ) = backup_vel_mod;
@@ -61,7 +53,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 			anims::update_anims ( localplayer, g::angles );
 		else /* reset fake */
 			anims::manage_fake ( );
-
+	
 		last_cmd_num = cmd->m_cmdnum;
 	}
 

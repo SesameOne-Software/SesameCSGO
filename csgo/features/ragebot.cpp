@@ -551,10 +551,7 @@ bool features::ragebot::dmg_hitchance ( vec3_t ang, player_t* pl, vec3_t point, 
 	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
 	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
 
-	//dbg_print( _( "damage hitchance L: %d\n" ), int(dmg_left >= features::ragebot::active_config.min_dmg) );
-	//dbg_print( _( "damage hitchance R: %d\n" ), int(dmg_right >= features::ragebot::active_config.min_dmg ));
-
-	return dmg_left >= features::ragebot::active_config.min_dmg && dmg_right >= features::ragebot::active_config.min_dmg;
+	return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= features::ragebot::active_config.min_dmg || dmg_right >= features::ragebot::active_config.min_dmg );
 }
 
 bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec ) {
@@ -656,7 +653,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	//dbg_print( _( "calculated chance: %.1f\n" ), calc_chance );
 
 	/* TODO: change when doubletap is fixed */
-	if ( calc_chance < ( exploits::has_shifted ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
+	if ( calc_chance < ( (exploits::has_shifted || exploits::in_exploit) ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
 		return false;
 
 	return true;
@@ -664,16 +661,6 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 }
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
-	auto can_shoot = [ & ] ( ) {
-		if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) || !g::local->weapon( )->data( ) )
-			return false;
-
-		if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( g::can_fire_revolver || cs::time2ticks( prediction::curtime ( ) ) > g::cock_ticks ) )
-			return false;
-
-		return prediction::curtime ( ) >= g::local->next_attack( ) && g::local->weapon( )->next_primary_attack( ) <= prediction::curtime ( ) && g::local->weapon( )->next_primary_attack( ) + g::local->weapon( )->data( )->m_fire_rate <= prediction::curtime ( );
-	};
-
 	/* tickbase manip controller */
 	static auto& fd_mode = options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i;
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
@@ -687,18 +674,8 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
 
-	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && !!( ucmd->m_buttons & buttons_t::attack ) && can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == weapon_type_t::knife || g::local->weapon( )->data( )->m_type >= weapon_type_t::c4 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
+	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && !!( ucmd->m_buttons & buttons_t::attack ) && exploits::can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == weapon_type_t::knife || g::local->weapon( )->data( )->m_type >= weapon_type_t::c4 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		exploits::shift_tickbase( tickbase_as_int, cs::time2ticks( static_cast<float>( active_config.dt_recharge_delay ) / 1000.0f ) );
-}
-
-bool features::ragebot::can_shoot( ) {
-	if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
-		return false;
-
-	if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( g::can_fire_revolver || cs::time2ticks( cs::i::globals->m_curtime ) > g::cock_ticks ) )
-		return false;
-
-	return cs::i::globals->m_curtime >= g::local->next_attack( ) && cs::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
 }
 
 void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out ) {
@@ -743,41 +720,18 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 void features::ragebot::slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
 	if ( !active_config.auto_slow || !( g::local->flags ( ) & flags_t::on_ground ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
-
-	auto vec_move = vec3_t ( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove ).normalized();
-	const auto magnitude = vec_move.length_2d ( );
+	
 	const auto max_speed = g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed;
-	const auto move_to_button_ratio = 250.0f / g::cvars::cl_forwardspeed->get_float ( );
-	const auto speed_ratio = max_speed * 0.33f;
+	const auto target_vel = ( features::prediction::vel.length_2d ( ) > max_speed * 0.34f ) ? -features::prediction::vel : (features::prediction::vel.normalized ( ) * max_speed * 0.34f );
 
-	if ( g::local->vel ( ).length_2d ( ) > max_speed * 0.34f ) {
-		auto vel_ang = cs::vec_angle ( vec_move );
+	vec3_t angles;
+	cs::i::engine->get_viewangles ( angles );
 
-		if ( !vel_ang.is_valid() )
-			return;
+	const auto fwd = cs::angle_vec ( angles );
+	const auto right = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 
-		vel_ang.y = cs::normalize ( vel_ang.y + 180.0f );
-
-		auto vel_dir = cs::angle_vec ( vel_ang );
-
-		if ( !vel_dir.is_valid ( ) )
-			return;
-
-		const auto normal = vel_dir.normalized ( );
-		const auto speed_2d = g::local->vel ( ).length_2d ( );
-
-		old_fmove = normal.x * speed_2d;
-		old_smove = normal.y * speed_2d;
-	}
-	else {
-		if ( !vec_move.is_valid ( ) )
-			return;
-
-		const auto speed_2d = max_speed * 0.33f;
-
-		old_fmove = vec_move.x * speed_2d;
-		old_smove = vec_move.y * speed_2d;
-	}
+	old_fmove = ( target_vel.y - ( right.y / right.x ) * target_vel.x ) / ( fwd.y - ( right.y / right.x ) * fwd.x );
+	old_smove = ( target_vel.x - fwd.x * old_fmove ) / right.x;
 
 	ucmd->m_buttons &= ~buttons_t::walk;
 }
@@ -787,13 +741,6 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		return;
 	else if ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife && !active_config.knife_bot )
 		return;
-
-	/*auto can_shoot = [ & ] ( ) {
-		return g::local->weapon ( ) && g::local->weapon ( )->next_primary_attack ( ) <= csgo::i::globals->m_curtime && g::local->weapon ( )->ammo ( );
-	};
-
-	if ( !can_shoot ( ) )
-		return;*/
 
 	vec3_t engine_ang;
 	cs::i::engine->get_viewangles ( engine_ang );
@@ -928,7 +875,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		return;
 	}
 
-	if ( !can_shoot ( ) ) {
+	if ( !exploits::can_shoot ( ) ) {
 		if ( active_config.auto_shoot )
 			ucmd->m_buttons &= ~buttons_t::attack;
 
@@ -982,7 +929,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 
 	scan_points.sync( );
 
-	/* extrapolate autostop */ /*{
+	/* extrapolate autostop */ {
 		static auto looking_at = [ ] ( ) -> player_t* {
 			player_t* ret = nullptr;
 
@@ -1012,7 +959,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		const auto at_target = looking_at ( );
 
 		if ( at_target ) {
-			auto vel = g::local->vel ( );
+			auto vel = features::prediction::vel;
 			const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f;
 
 			if ( vel.length_2d() > max_speed ) {
@@ -1020,8 +967,8 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 					const auto speed = vel.length_2d ( );
 
 					if ( speed >= 0.1f ) {
-						const auto stop_speed = std::max< float > ( speed, g::cvars::sv_stopspeed->get_float ( ) );
-						vel *= std::max< float > ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::i::globals->m_ipt / speed );
+						const auto stop_speed = std::max( speed, g::cvars::sv_stopspeed->get_float ( ) );
+						vel *= std::max ( 0.0f, (speed - ( stop_speed * g::cvars::sv_friction->get_float ( ) * cs::i::globals->m_ipt)) / speed );
 					}
 				};
 
@@ -1035,16 +982,14 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 				}
 
 				const auto autostop_time = cs::ticks2time ( ticks_until_accurate );
-				const auto predicted_eyes = g::local->eyes ( ) + g::local->vel ( ) * autostop_time;
+				const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * autostop_time;
+				const auto dmg = autowall::dmg ( g::local, at_target, predicted_eyes, at_target->origin ( ) + at_target->view_offset ( ), hitboxes_t::hitbox_head );
 
-				trace_t tr;
-				cs::util_traceline ( predicted_eyes, at_target->origin() + at_target->view_offset(), 0x46004003, g::local, &tr );
-
-				if ( tr.is_visible() || tr.m_hit_entity == at_target )
+				if ( dmg > active_config.min_dmg )
 					slow ( ucmd, old_smove, old_fmove );
 			}
 		}
-	}*/
+	}
 
 	if ( !best.m_ent )
 		return;
@@ -1058,7 +1003,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	if ( best.m_dmg && !hc
 		&& g::local->weapon ( )
 		&& g::local->weapon ( )->data()
-		&& g::local->vel ( ).length_2d ( ) > ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f )
+		&& features::prediction::vel.length_2d ( ) > ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f )
 		slow ( ucmd, old_smove, old_fmove);
 
 	if ( !active_config.auto_shoot )
@@ -1302,27 +1247,35 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		hitboxes.push_back( hitbox_left_forearm );
 	}
 
-	/* force baim, literally removes head hitbox from hitscan  */
+	/* force baim */
 	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
 	autowall::scale_dmg( pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_pelvis ), scaled_dmg );
+
+	float scaled_dmg_head = static_cast< float > ( weapon_data->m_dmg );
+	autowall::scale_dmg ( pl, weapon_data, autowall::hitbox_to_hitgroup ( hitbox_head ), scaled_dmg_head );
 	
+	auto damage_scalar = 1.0f;
+
 	if ( ((get_misses( pl->idx( ) ).bad_resolve >= active_config.baim_after_misses && active_config.baim_after_misses )
 		|| ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
 		|| ( active_config.baim_lethal && scaled_dmg > pl->health( ) )
-		|| (( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ))
+		|| (( exploits::is_ready ( ) || exploits::has_shifted || exploits::in_exploit ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ))
 		&& !active_config.headshot_only ) {
-		std::deque<int> new_hitboxes {};
-	
-		for ( auto& hitbox : hitboxes )
-			if( hitbox != hitbox_head && hitbox != hitbox_neck )
-				new_hitboxes.push_back ( hitbox );
-	
-		hitboxes = new_hitboxes;
+		damage_scalar = ( scaled_dmg_head / scaled_dmg ) * 1.05f;
+		//std::deque<int> new_hitboxes {};
+		//
+		//for ( auto& hitbox : hitboxes )
+		//	if( hitbox != hitbox_head && hitbox != hitbox_neck )
+		//		new_hitboxes.push_back ( hitbox );
+		//
+		//hitboxes = new_hitboxes;
 	}
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
 	/* with doubletap, we can just go for body anyways (scale damage by 2, will calculate as if was 1 shot) */
-	const auto damage_scalar = ( ( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ) ? 2.0f : 1.0f;
+	//const auto damage_scalar = ( ( exploits::is_ready ( ) || exploits::has_shifted ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ) ? 2.0f : 1.0f;
+	//const auto damage_scalar = 1.0f;
+	
 	/* TODO: remove when doubletap fixed */
 
 	//const auto body_priority = g::next_tickbase_shot || rec.m_pl->health( ) < weapon_data->m_dmg;
@@ -1409,7 +1362,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) * damage_scalar;
+			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) * ( ( hitbox == hitbox_pelvis || hitbox == hitbox_chest ) ? damage_scalar : 1.0f );
 			//dbg_print ( _("calculated damage: %.1f"), dmg );
 
 			if ( dmg > best_points_damage ) {
@@ -1454,7 +1407,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg ) {
 	VM_TIGER_BLACK_START
-	constexpr int SIMILAR_RECORD_THRESHOLD = 0;
+	constexpr int SIMILAR_RECORD_THRESHOLD = 3;
 
 	if ( !ent->valid ( ) )
 		return;

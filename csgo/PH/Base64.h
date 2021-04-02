@@ -27,48 +27,11 @@
 
 #include <string>
 
-namespace base64 {
-	struct BASE64_DEC_TABLE {
-		signed char n[256];
-
-		BASE64_DEC_TABLE() {
-			for (int i = 0; i < 256; ++i)    n[i] = -1;
-			for (unsigned char i = '0'; i <= '9'; ++i) n[i] = 52 + i - '0';
-			for (unsigned char i = 'A'; i <= 'Z'; ++i) n[i] = i - 'A';
-			for (unsigned char i = 'a'; i <= 'z'; ++i) n[i] = 26 + i - 'a';
-			n['+'] = 62;
-			n['/'] = 63;
-		}
-		int operator [] (unsigned char i) const { return n[i]; }
-	};
-
-	static size_t Base64DecodeToArray(const std::string& source, void* pdest, size_t dest_size) {
-		static const BASE64_DEC_TABLE b64table;
-		if (!dest_size) return 0;
-		const size_t len = source.length();
-		int bc = 0, a = 0;
-		char* const pstart = static_cast<char*>(pdest);
-		char* pd = pstart;
-		char* const pend = pd + dest_size;
-		for (size_t i = 0; i < len; ++i) {
-			const int n = b64table[source[i]];
-			if (n == -1) continue;
-			a |= (n & 63) << (18 - bc);
-			if ((bc += 6) > 18) {
-				*pd = a >> 16; if (++pd >= pend) return pd - pstart;
-				*pd = a >> 8;  if (++pd >= pend) return pd - pstart;
-				*pd = a;       if (++pd >= pend) return pd - pstart;
-				bc = a = 0;
-			}
-		}
-		if (bc >= 8) {
-			*pd = a >> 16; if (++pd >= pend) return pd - pstart;
-			if (bc >= 16) *(pd++) = a >> 8;
-		}
-		return pd - pstart;
-	}
-}
 namespace macaron {
+	inline const std::string base64_chars =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		"abcdefghijklmnopqrstuvwxyz"
+		"0123456789+/";
 
 	class Base64 {
 	public:
@@ -112,53 +75,71 @@ namespace macaron {
 			return ret;
 		}
 
-		static void Decode(const std::string& input, std::string& out) {
-			static constexpr unsigned char kDecodingTable[] = {
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
-			  52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64,
-			  64,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-			  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
-			  64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-			  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
-			  64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
-			};
+		static unsigned int pos_of_char(const unsigned char chr) {
+			//
+			// Return the position of chr within base64_encode()
+			//
 
-			size_t in_len = input.size();
-			if (in_len % 4 != 0) return; //"Input data size is not a multiple of 4";
-
-			size_t out_len = in_len / 4 * 3;
-			if (input[in_len - 1] == '=') out_len--;
-			if (input[in_len - 2] == '=') out_len--;
-
-			out.resize(out_len);
-
-			for (size_t i = 0, j = 0; i < in_len;) {
-				uint32_t a = input[i] == '=' ? 0 & i++ : kDecodingTable[static_cast<int>(input[i++])];
-				uint32_t b = input[i] == '=' ? 0 & i++ : kDecodingTable[static_cast<int>(input[i++])];
-				uint32_t c = input[i] == '=' ? 0 & i++ : kDecodingTable[static_cast<int>(input[i++])];
-				uint32_t d = input[i] == '=' ? 0 & i++ : kDecodingTable[static_cast<int>(input[i++])];
-
-				uint32_t triple = (a << 3 * 6) + (b << 2 * 6) + (c << 1 * 6) + (d << 0 * 6);
-
-				if (j < out_len) out[j++] = (triple >> 2 * 8) & 0xFF;
-				if (j < out_len) out[j++] = (triple >> 1 * 8) & 0xFF;
-				if (j < out_len) out[j++] = (triple >> 0 * 8) & 0xFF;
-			}
-
-			//return "";
+			if (chr >= 'A' && chr <= 'Z') return chr - 'A';
+			else if (chr >= 'a' && chr <= 'z') return chr - 'a' + ('Z' - 'A') + 1;
+			else if (chr >= '0' && chr <= '9') return chr - '0' + ('Z' - 'A') + ('z' - 'a') + 2;
+			else if (chr == '+' || chr == '-') return 62; // Be liberal with input and accept both url ('-') and non-url ('+') base 64 characters (
+			else if (chr == '/' || chr == '_') return 63; // Ditto for '/' and '_'
+			else
+				//
+				// 2020-10-23: Throw std::exception rather than const char*
+				//(Pablo Martin-Gomez, https://github.com/Bouska)
+				//
+				//throw std::runtime_error("Input is not valid base64-encoded data.");
+				return 0;
 		}
 
-	};
 
+		static inline bool is_base64(unsigned char c) {
+			return (isalnum(c) || (c == '+') || (c == '/'));
+		}
+
+		static std::vector<unsigned char> decode(std::string const& encoded_string) {
+			int in_len = encoded_string.size();
+			int i = 0;
+			int j = 0;
+			int in_ = 0;
+			unsigned char char_array_4[4], char_array_3[3];
+			std::vector<unsigned char> ret;
+
+			while (in_len-- && (encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
+				char_array_4[i++] = encoded_string[in_]; in_++;
+				if (i == 4) {
+					for (i = 0; i < 4; i++)
+						char_array_4[i] = base64_chars.find(char_array_4[i]);
+
+					char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+					char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+					char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+					for (i = 0; (i < 3); i++)
+						ret.push_back(char_array_3[i]);
+					i = 0;
+				}
+			}
+
+			if (i) {
+				for (j = i; j < 4; j++)
+					char_array_4[j] = 0;
+
+				for (j = 0; j < 4; j++)
+					char_array_4[j] = base64_chars.find(char_array_4[j]);
+
+				char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+				char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+				char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+
+				for (j = 0; (j < i - 1); j++) ret.push_back(char_array_3[j]);
+			}
+
+			return ret;
+		}
+	};
 }
 
 #endif /* _MACARON_BASE64_H_ */

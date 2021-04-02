@@ -46,7 +46,28 @@ struct impact_rec_t {
 std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec { };
 std::deque< impact_rec_t > impact_recs { };
 
+void anims::resolver::process_impact_clientside ( event_t* event ) {
+	static auto& bullet_impacts_client = options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b;
+	static auto& bullet_impacts_client_color = options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c;
+
+	auto shooter = cs::i::ent_list->get< player_t* > ( cs::i::engine->get_player_for_userid ( event->get_int ( _ ( "userid" ) ) ) );
+	auto& target = features::ragebot::get_target ( );
+
+	if ( !g::local || !g::local->alive ( ) || !shooter || shooter != g::local )
+		return;
+
+	//const auto impact_pos = vec3_t ( event->get_float ( _ ( "x" ) ), event->get_float ( _ ( "y" ) ), event->get_float ( _ ( "z" ) ) );
+	//
+	//if ( bullet_impacts_client )
+	//	cs::add_box_overlay ( impact_pos, vec3_t ( -2.0f, -2.0f, -2.0f ), vec3_t ( 2.0f, 2.0f, 2.0f ), cs::calc_angle ( target ? features::ragebot::get_shot_pos ( target->idx ( ) ) : g::local->eyes ( ), impact_pos ), bullet_impacts_client_color.r * 255.0f, bullet_impacts_client_color.g * 255.0f, bullet_impacts_client_color.b * 255.0f, bullet_impacts_client_color.a * 255.0f, 7.0f );
+
+	rdata::clientside_shot = true;
+}
+
 void anims::resolver::process_impact ( event_t* event ) {
+	static auto& bullet_impacts_server = options::vars [ _ ( "visuals.other.bullet_impacts_server" ) ].val.b;
+	static auto& bullet_impacts_server_color = options::vars [ _ ( "visuals.other.bullet_impacts_server_color" ) ].val.c;
+
 	auto shooter = cs::i::ent_list->get< player_t* > ( cs::i::engine->get_player_for_userid ( event->get_int ( _ ( "userid" ) ) ) );
 	auto& target = features::ragebot::get_target ( );
 
@@ -54,6 +75,11 @@ void anims::resolver::process_impact ( event_t* event ) {
 		return;
 
 	const auto impact_pos = vec3_t ( event->get_float ( _ ( "x" ) ), event->get_float ( _ ( "y" ) ), event->get_float ( _ ( "z" ) ) );
+
+	if ( bullet_impacts_server )
+		cs::add_box_overlay ( impact_pos, vec3_t ( -2.0f, -2.0f, -2.0f ), vec3_t ( 2.0f, 2.0f, 2.0f ), cs::calc_angle ( target ? features::ragebot::get_shot_pos ( target->idx ( ) ) : g::local->eyes ( ), impact_pos ), bullet_impacts_server_color.r * 255.0f, bullet_impacts_server_color.g * 255.0f, bullet_impacts_server_color.b * 255.0f, bullet_impacts_server_color.a * 255.0f, 7.0f );
+	
+	rdata::clientside_shot = false;
 
 	if ( target ) {
 		const auto shot_pos = features::ragebot::get_shot_pos ( target->idx ( ) );
@@ -332,9 +358,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 
 void anims::resolver::create_beams ( ) {
 	static auto& bullet_tracers = options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b;
-	static auto& bullet_impacts = options::vars [ _ ( "visuals.other.bullet_impacts" ) ].val.b;
 	static auto& bullet_tracer_color = options::vars [ _ ( "visuals.other.bullet_tracer_color" ) ].val.c;
-	static auto& bullet_impact_color = options::vars [ _ ( "visuals.other.bullet_impact_color" ) ].val.c;
 
 	/* erase resolver data if we exit the game or connect to another server */
 	if ( !cs::i::engine->is_connected ( ) || !cs::i::engine->is_in_game ( ) ) {
@@ -365,11 +389,9 @@ void anims::resolver::create_beams ( ) {
 		vec3_t scrn_src;
 		vec3_t scrn_dst;
 
-		const auto alpha = calc_alpha ( impact.m_time, 2.0f, bullet_tracer_color.a * 255.0f );
-		const auto alpha1 = calc_alpha ( impact.m_time, 2.0f, bullet_impact_color.a * 255.0f );
 		const auto alpha2 = calc_alpha ( impact.m_time, 2.0f, 255 );
 
-		if ( !alpha && !alpha1 && !alpha2 ) {
+		if ( !alpha2 ) {
 			impact_recs.erase ( impact_recs.begin ( ) + cur_ray );
 			continue;
 		}
@@ -414,9 +436,11 @@ void anims::resolver::create_beams ( ) {
 
 void anims::resolver::render_impacts ( ) {
 	static auto& bullet_tracers = options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b;
-	static auto& bullet_impacts = options::vars [ _ ( "visuals.other.bullet_impacts" ) ].val.b;
 	static auto& bullet_tracer_color = options::vars [ _ ( "visuals.other.bullet_tracer_color" ) ].val.c;
-	static auto& bullet_impact_color = options::vars [ _ ( "visuals.other.bullet_impact_color" ) ].val.c;
+	static auto& damage_indicator = options::vars [ _ ( "visuals.other.damage_indicator" ) ].val.b;
+	static auto& damage_indicator_color = options::vars [ _ ( "visuals.other.damage_indicator_color" ) ].val.c;
+	static auto& player_hits = options::vars [ _ ( "visuals.other.player_hits" ) ].val.b;
+	static auto& player_hits_color = options::vars [ _ ( "visuals.other.player_hits_color" ) ].val.c;
 
 	/* erase resolver data if we exit the game or connect to another server */
 	if ( !cs::i::engine->is_connected ( ) || !cs::i::engine->is_in_game ( ) ) {
@@ -484,11 +508,9 @@ void anims::resolver::render_impacts ( ) {
 		vec3_t scrn_src;
 		vec3_t scrn_dst;
 
-		const auto alpha = calc_alpha ( impact.m_time, 2.0f, bullet_tracer_color.a * 255.0f );
-		const auto alpha1 = calc_alpha ( impact.m_time, 2.0f, bullet_impact_color.a * 255.0f );
 		const auto alpha2 = calc_alpha ( impact.m_time, 2.0f, 255 );
 
-		if ( !alpha && !alpha1 && !alpha2 ) {
+		if ( !alpha2 ) {
 			impact_recs.erase ( impact_recs.begin ( ) + cur_ray );
 			continue;
 		}
@@ -496,15 +518,17 @@ void anims::resolver::render_impacts ( ) {
 		cs::render::world_to_screen ( scrn_src, impact.m_src );
 		cs::render::world_to_screen ( scrn_dst, impact.m_dst );
 
-		impact.m_clr = rgba ( static_cast< int >( bullet_tracer_color.r * 255.0f ), static_cast< int >( bullet_tracer_color.g * 255.0f ), static_cast< int >( bullet_tracer_color.b * 255.0f ), alpha );
+		impact.m_clr = rgba <int>( bullet_tracer_color.r * 255.0f, bullet_tracer_color.g * 255.0f, bullet_tracer_color.b * 255.0f, calc_alpha ( impact.m_time, 2.0f, bullet_tracer_color.a * 255.0f ) );
 
-		vec3_t dim;
-		render::text_size ( impact.m_msg, _ ( "watermark_font" ), dim );
-
-		if ( impact.m_hurt && bullet_impacts ) {
-			render::text ( scrn_dst.x - dim.x / 2, scrn_dst.y - 26.0f - ( std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * 100.0f, impact.m_msg, ( "watermark_font" ), rgba ( 255, 255, 255, alpha2 ), true );
+		if ( impact.m_hurt ) {
+			if ( damage_indicator ) {
+				vec3_t dim;
+				render::text_size ( impact.m_msg, _ ( "watermark_font" ), dim );
+				render::text ( scrn_dst.x - dim.x / 2, scrn_dst.y - 26.0f - ( std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * 100.0f, impact.m_msg, ( "watermark_font" ), rgba<int> ( damage_indicator_color.r * 255.0f, damage_indicator_color.g * 255.0f, damage_indicator_color.b * 255.0f, calc_alpha ( impact.m_time, 2.0f, damage_indicator_color.a * 255.0f ) ), true );
+			}
 			
-			/* hit dot */ {
+			/* hit dot */
+			if ( player_hits){
 				const auto radius = ( std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * 50.0f;
 				const auto x = scrn_dst.x;
 				const auto y = scrn_dst.y;
@@ -523,14 +547,14 @@ void anims::resolver::render_impacts ( ) {
 				circle [ 0 ].y = static_cast< float > ( y ) - 0.5f;
 				circle [ 0 ].z = 0.0f;
 				circle [ 0 ].rhw = 1.0f;
-				circle [ 0 ].color = D3DCOLOR_RGBA ( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), static_cast< int >( ( 1.0f - std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * ( bullet_tracer_color.a * 255.0f )) );
+				circle [ 0 ].color = D3DCOLOR_RGBA ( static_cast< int >( player_hits_color.r * 255.0f ), static_cast< int >( player_hits_color.g * 255.0f ), static_cast< int >( player_hits_color.b * 255.0f ), static_cast< int >( ( 1.0f - std::clamp ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - impact.m_time, 0.0f, 6.0f ) / 6.0f ) * ( bullet_tracer_color.a * 255.0f )) );
 
 				for ( auto i = 1; i < verticies + 2; i++ ) {
 					circle [ i ].x = ( float ) ( x - radius * cos ( std::numbers::pi * ( ( i - 1 ) / ( static_cast< float >( verticies ) / 2.0f ) ) ) ) - 0.5f;
 					circle [ i ].y = ( float ) ( y - radius * sin ( std::numbers::pi * ( ( i - 1 ) / ( static_cast< float >( verticies ) / 2.0f ) ) ) ) - 0.5f;
 					circle [ i ].z = 0.0f;
 					circle [ i ].rhw = 1.0f;
-					circle [ i ].color = D3DCOLOR_RGBA ( static_cast< int >( bullet_impact_color.r * 255.0f ), static_cast< int >( bullet_impact_color.g * 255.0f ), static_cast< int >( bullet_impact_color.b * 255.0f ), 0 );
+					circle [ i ].color = D3DCOLOR_RGBA ( static_cast< int >( player_hits_color.r * 255.0f ), static_cast< int >( player_hits_color.g * 255.0f ), static_cast< int >( player_hits_color.b * 255.0f ), 0 );
 				}
 
 				for ( auto i = 0; i < verticies + 2; i++ ) {
@@ -657,7 +681,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		extended_side [ idx ] = ( delta_yaw > 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		has_big_range = true;
 	}
-	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_cycle ) {
+	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_cycle && !anim_layers [ 6 ].m_weight ) {
 		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		found_extended[ idx ] = true;
 	}
@@ -667,6 +691,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			&& !rec.m_anim_layers[ anims::desync_side_t::desync_max ] [ 11 ].m_weight )
 			|| ( anim_layers [ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight
 				&& rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) ) {
+				//&& static_cast< int >( anim_layers [ 12 ].m_weight * 100.0f ) == static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 100.0f ) ) ) {
 			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 
@@ -680,8 +705,9 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			}
 
 			if ( nearest_playback_rate_delta != std::numeric_limits<float>::max( ) ) {
+				features::ragebot::get_misses ( idx ).bad_resolve = 0;
+
 				movement_side[ idx ] = nearest_side;
-				features::ragebot::get_misses( idx ).bad_resolve = 0;
 			}
 
 			extended_side[ idx ] = anims::desync_side_t::desync_middle;
@@ -719,16 +745,17 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	/* bruteforce */
 	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 4 ) {
 	case 0: {
+		//rec.m_side = initial_resolve_side [ idx ];
 		switch ( initial_resolve_side [ idx ] ) {
-		case anims::desync_side_t::desync_middle:
 		case anims::desync_side_t::desync_left_half:
+		case anims::desync_side_t::desync_right_half:
 			rec.m_side = anims::desync_side_t::desync_left_half;
 			break;
 		case anims::desync_side_t::desync_left_max:
 			rec.m_side = anims::desync_side_t::desync_left_max;
 			break;
+		case anims::desync_side_t::desync_middle:
 		case anims::desync_side_t::desync_right_max:
-		case anims::desync_side_t::desync_right_half:
 			rec.m_side = anims::desync_side_t::desync_right_max;
 			break;
 		}

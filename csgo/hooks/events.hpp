@@ -11,5 +11,5 @@ namespace hooks {
 		int get_event_debug_id ( ) override;
 	};
 
-	extern std::unique_ptr< c_event_handler > event_handler;
+	inline std::unique_ptr< c_event_handler > event_handler;
 }

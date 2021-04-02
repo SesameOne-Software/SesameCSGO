@@ -41,7 +41,7 @@ namespace prediction_util {
 		*reinterpret_cast< ucmd_t* >( std::uintptr_t ( g::local ) + 0x3288 ) = *ucmd;
 
 		flags = g::local->flags( );
-		velocity = g::local->vel( );
+		features::prediction::vel = g::local->vel( );
 
 		curtime = cs::i::globals->m_curtime;
 		frametime = cs::i::globals->m_frametime;

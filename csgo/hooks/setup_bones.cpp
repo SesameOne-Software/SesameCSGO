@@ -9,6 +9,7 @@ bool hooks::bone_setup::allow = false;
 
 decltype( &hooks::setup_bones ) hooks::old::setup_bones = nullptr;
 
+int last_anim_framecount = 0;
 std::array<matrix3x4_t , 128> temp_mat;
 
 bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int mask, float curtime ) {
@@ -34,12 +35,14 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 
 		const auto ret = old::setup_bones( REG_OUT , out , max_bones , mask , curtime );
 
-		if ( pl == g::local && g::local ) {
+		if ( pl == g::local && g::local && last_anim_framecount != cs::i::globals->m_framecount ) {
 			anims::build_bones( pl , temp_mat.data( ) , mask , pl->abs_angles( ) , pl->abs_origin( ) , cs::i::globals->m_curtime, pl->poses( ) );
 			const auto mat_out = out ? out : pl->bone_cache( );
 		
 			if ( mat_out )
 				memcpy( mat_out , temp_mat.data( ) , ( out ? max_bones : pl->bone_count( ) ) * sizeof( matrix3x4_t ) );
+
+			last_anim_framecount = cs::i::globals->m_framecount;
 		}
 
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) = backup_flags1;

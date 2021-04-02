@@ -114,18 +114,18 @@ int last_send_cmd = 0;
 void reject_bad_shots ( ucmd_t* ucmd ) {
 	if ( g::local && g::local->alive ( ) && cs::i::client_state ) {
 		if ( g::local->velocity_modifier ( ) - features::prediction::vel_modifier < -0.1f ) {
-			for ( auto i = 0; i < cs::i::client_state->choked ( ) + 1; i++ ) {
-				auto next_verified_cmd = cs::i::input->get_verified_cmd ( last_send_cmd + i );
-				auto next_cmd = cs::i::input->get_cmd ( last_send_cmd + i );
-
-				if ( next_cmd && ( !!( next_cmd->m_buttons & buttons_t::attack ) || !!( next_cmd->m_buttons & buttons_t::attack2 ) ) ) {
-					next_cmd->m_buttons &= ~buttons_t::attack;
-					next_cmd->m_buttons &= ~buttons_t::attack2;
-
-					next_verified_cmd->m_cmd = *next_cmd;
-					next_verified_cmd->m_crc = next_cmd->get_checksum ( );
-				}
-			}
+			//for ( auto i = 0; i < cs::i::client_state->choked ( ) + 1; i++ ) {
+			//	auto next_verified_cmd = cs::i::input->get_verified_cmd ( last_send_cmd + i );
+			//	auto next_cmd = cs::i::input->get_cmd ( last_send_cmd + i );
+			//
+			//	if ( next_cmd && ( !!( next_cmd->m_buttons & buttons_t::attack ) || !!( next_cmd->m_buttons & buttons_t::attack2 ) ) ) {
+			//		next_cmd->m_buttons &= ~buttons_t::attack;
+			//		next_cmd->m_buttons &= ~buttons_t::attack2;
+			//
+			//		next_verified_cmd->m_cmd = *next_cmd;
+			//		next_verified_cmd->m_crc = next_cmd->get_checksum ( );
+			//	}
+			//}
 
 			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
 		}
@@ -135,15 +135,17 @@ void reject_bad_shots ( ucmd_t* ucmd ) {
 }
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
-	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
+	if ( !exploits::in_exploit ) {
+		const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
 
-	if ( ucmd ) {
-		cs::i::engine->set_viewangles( ucmd->m_angs );
-		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+		if ( ucmd ) {
+			cs::i::engine->set_viewangles ( ucmd->m_angs );
+			cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+		}
+
+		if ( !ucmd || !ucmd->m_cmdnum )
+			return ret;
 	}
-
-	if ( !ucmd || !ucmd->m_cmdnum )
-		return ret;
 
 	ducking = !!(ucmd->m_buttons & buttons_t::duck);
 	in_cm = true;
@@ -151,12 +153,12 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	utils::update_key_toggles( );
 
 	/* recharge if we need, and return */
-	if ( exploits::recharge( ucmd ) ) {
+	if ( !exploits::in_exploit && exploits::recharge( ucmd ) ) {
 		in_cm = false;
 		return false;
 	}
 
-	if ( cs::i::client_state->choked ( ) ) {
+	if ( cs::i::client_state->choked ( ) && ( features::ragebot::active_config.dt_teleport ? !exploits::in_exploit : true ) ) {
 		cs::i::pred->update (
 			cs::i::client_state->delta_tick ( ),
 			cs::i::client_state->delta_tick ( ) > 0,
@@ -184,82 +186,57 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::spread_circle::total_spread = 0.0f;
 	}
 
-	//RUN_SAFE (
-	//	"features::esp::handle_dynamic_updates",
-	features::esp::handle_dynamic_updates( );
-	//);
+	if ( !exploits::in_exploit )
+		features::esp::handle_dynamic_updates( );
 
 	g::ucmd = ucmd;
 
 	auto old_angs = ucmd->m_angs;
 
-	//RUN_SAFE (
-	//	"features::clantag::run",
-	features::clantag::run( ucmd );
-	//);
+	if ( !exploits::in_exploit )
+		features::clantag::run( ucmd );
 
-	//RUN_SAFE (
-	//	"features::movement::run",
 	features::movement::run( ucmd, old_angs );
 
 	features::blockbot::run( ucmd, old_angs );
-	//);
 
 	auto old_smove = ucmd->m_smove;
 	auto old_fmove = ucmd->m_fmove;
 
-	//RUN_SAFE (
-	//	"csgo::for_each_player",
-	cs::for_each_player( [ ] ( player_t* pl ) {
-		static auto reloading_offset = pattern::search( _( "client.dll" ), _( "C6 87 ? ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 2 ).deref( ).get < uint32_t >( );
+	if ( !exploits::in_exploit ) {
+		cs::for_each_player ( [ ] ( player_t* pl ) {
+			static auto reloading_offset = pattern::search ( _ ( "client.dll" ), _ ( "C6 87 ? ? ? ? ? 8B 06 8B CE FF 90" ) ).add ( 2 ).deref ( ).get < uint32_t > ( );
 
-		features::esp::esp_data [ pl->idx( ) ].m_fakeducking = pl->crouch_speed( ) == 8.0f && pl->crouch_amount( ) > 0.1f && pl->crouch_amount( ) < 0.9f;
-		features::esp::esp_data [ pl->idx( ) ].m_reloading = pl->weapon( ) ? *reinterpret_cast< bool* >( uintptr_t( pl->weapon( ) ) + reloading_offset ) : false;
+			features::esp::esp_data [ pl->idx ( ) ].m_fakeducking = pl->crouch_speed ( ) == 8.0f && pl->crouch_amount ( ) > 0.1f && pl->crouch_amount ( ) < 0.9f;
+			features::esp::esp_data [ pl->idx ( ) ].m_reloading = pl->weapon ( ) ? *reinterpret_cast< bool* >( uintptr_t ( pl->weapon ( ) ) + reloading_offset ) : false;
 
-		if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
-			auto dmg_out = static_cast< float >( g::local->weapon( )->data( )->m_dmg );
-			autowall::scale_dmg( pl, g::local->weapon( )->data( ), 3, dmg_out );
-			features::esp::esp_data [ pl->idx( ) ].m_fatal = static_cast< int > ( dmg_out ) >= pl->health( );
-		}
-		else {
-			features::esp::esp_data [ pl->idx( ) ].m_fatal = false;
-		}
+			if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
+				auto dmg_out = static_cast< float >( g::local->weapon ( )->data ( )->m_dmg );
+				autowall::scale_dmg ( pl, g::local->weapon ( )->data ( ), 3, dmg_out );
+				features::esp::esp_data [ pl->idx ( ) ].m_fatal = static_cast< int > ( dmg_out ) >= pl->health ( );
+			}
+			else {
+				features::esp::esp_data [ pl->idx ( ) ].m_fatal = false;
+			}
 		} );
-	//);
+	}
 
-	//RUN_SAFE (
-	//	"features::nade_prediction::trace",
-	features::nade_prediction::trace( ucmd );
-	//);
+	if ( !exploits::in_exploit )
+		features::nade_prediction::trace( ucmd );
 
-	//RUN_SAFE (
-		//	"animations::resolver::update",
-	//animations::resolver::update( ucmd );
-	//);
-
-	if ( features::prediction::vel_modifier < 1.0f )
-		*reinterpret_cast<bool*> ( reinterpret_cast<uintptr_t>(cs::i::pred) + 0x24 ) = true;
-
-	//RUN_SAFE (
-	//	"features::prediction::run",
 	features::prediction::run( [ & ] ( ) {
 		features::antiaim::simulate_lby( );
 		ducking = !!(ucmd->m_buttons & buttons_t::duck);
 
 		features::legitbot::run( ucmd );
 
-		//RUN_SAFE (
-		//	"features::ragebot::run",
+		//if ( !exploits::in_exploit )
 			features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
-		//);
 
-		//RUN_SAFE (
-		//	"features::antiaim::run",
 		features::antiaim::run( ucmd, old_smove, old_fmove );
 
 		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
 		} );
-	//);
 
 	if( !!(ucmd->m_buttons & buttons_t::attack) )
 		exploits::has_shifted = false;
@@ -319,7 +296,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	/* airstuck (only on community servers) */
 	airstuck ( ucmd );
 
-	exploits::run ( ucmd );
+	if ( !exploits::in_exploit )
+		exploits::run ( ucmd );
 
 	/* recreate what holdaim var does */
 	/* part of anims */ {
@@ -340,9 +318,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		if ( g::send_packet )
 			g::hold_aim = false;
 	}
-
-	if ( g::local && g::local->alive( ) )
-		anims::createmove_flags = g::local->flags( );
 
 	return false;
 }

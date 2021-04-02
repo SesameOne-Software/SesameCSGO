@@ -54,12 +54,15 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 
 		ray_t ray;
 		trace_t trace;
-		trace_filter_t filter( g::local );
+		trace_filter_t filter;
 
 		auto start = g::local->eyes ( );
 		auto end = start + direction * ideal_distance;
+
+		ray.init ( start, end );
+		filter.m_skip = g::local;
 		
-		cs::util_traceline( start, end, mask_solid & ~contents_monster, g::local, &trace );
+		cs::i::trace->trace_ray ( ray, mask_solid & ~contents_monster, &filter, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};

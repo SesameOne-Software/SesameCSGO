@@ -432,6 +432,7 @@ int anims::rebuilt::get_layer_activity( animstate_t* anim_state , int layer ) {
 int anims::rebuilt::select_sequence_from_act_mods( animstate_t* anim_state , int act ) {
 	//MDLCACHE_CRITICAL_SECTION( );
 	//return nSelectedActivity;
+	return 0;
 }
 
 float anims::rebuilt::get_layer_ideal_weight_from_seq_cycle( animstate_t* anim_state , int layer ) {
@@ -970,7 +971,8 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 
 		if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x1A4 ) > 0.08f )
 			*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ) = valve_math::Approach ( 0.0f, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x190 ), anim_state->m_last_clientside_anim_update_time_delta * 5.0f );
-
+		
+		/* save performance */
 		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ) = player->lookup_sequence ( _("strafe" ));
 		float flRate = player->get_sequence_cycle_rate_server ( *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x19C ) );
 		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) = std::clamp ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x198 ) + anim_state->m_last_clientside_anim_update_time_delta * flRate, 0.0f, 1.0f );

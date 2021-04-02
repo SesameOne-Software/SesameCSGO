@@ -14,6 +14,7 @@ namespace anims {
 			inline std::array< bool, 65 > wrong_hitbox { false };
 			inline std::array< bool, 65 > queued_hit { false };
 			inline std::array< int, 65 > last_shots { 0 };
+			inline bool clientside_shot = false;
 		}
 
 		struct hit_matrix_rec_t {
@@ -23,6 +24,7 @@ namespace anims {
 			uint32_t m_clr;
 		};
 		
+		void process_impact_clientside ( event_t* event );
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );

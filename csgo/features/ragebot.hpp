@@ -170,7 +170,6 @@ namespace features {
 		void run_meleebot ( ucmd_t* ucmd );
 		void run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs );
 		void tickbase_controller( ucmd_t* ucmd );
-		bool can_shoot( );
 		void select_targets( std::deque < aim_target_t >& targets_out );
 
 		/* hitscan */

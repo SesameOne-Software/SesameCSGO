@@ -450,7 +450,10 @@ void options::init( ) {
 	option::add_float ( _ ( "visuals.other.viewmodel_offset_z" ), -1.0f );
 	option::add_float( _( "visuals.other.aspect_ratio" ), 1.0f );
 	option::add_bool( _( "visuals.other.bullet_tracers" ), false );
-	option::add_bool( _( "visuals.other.bullet_impacts" ), false );
+	option::add_bool ( _ ( "visuals.other.damage_indicator" ), false );
+	option::add_bool ( _ ( "visuals.other.player_hits" ), false );
+	option::add_bool ( _ ( "visuals.other.bullet_impacts_client" ), false );
+	option::add_bool ( _ ( "visuals.other.bullet_impacts_server" ), false );
 	option::add_list( _( "visuals.other.logs" ), 4 ); /* hits, spread misses, resolver misses, wrong hitbox, manuals */
 	option::add_bool( _( "visuals.other.grenade_trajectories" ), false );
 	option::add_bool( _( "visuals.other.grenade_bounces" ), false );
@@ -466,7 +469,10 @@ void options::init( ) {
 	option::add_color ( _ ( "visuals.other.autopeek_color" ), { 0.80f, 1.0f, 0.95f, 0.15f } );
 	option::add_color( _( "visuals.other.offscreen_esp_color" ), { 0.69f, 1.0f, 0.92f, 0.36f } );
 	option::add_color( _( "visuals.other.bullet_tracer_color" ), { 0.69f, 1.0f, 0.92f, 0.25f } );
-	option::add_color( _( "visuals.other.bullet_impact_color" ), { 0.69f, 1.0f, 0.92f, 0.68f } );
+	option::add_color ( _ ( "visuals.other.damage_indicator_color" ), { 1.0f, 1.0f, 1.0f, 0.68f } );
+	option::add_color ( _ ( "visuals.other.player_hits_color" ), { 0.69f, 1.0f, 0.92f, 0.68f } );
+	option::add_color ( _ ( "visuals.other.bullet_impacts_client_color" ), { 1.0f, 0.0f, 0.0f, 0.68f } );
+	option::add_color ( _ ( "visuals.other.bullet_impacts_server_color" ), { 0.0f, 0.0f, 1.0f, 0.68f } );
 	option::add_color( _( "visuals.other.grenade_trajectory_color" ), { 0.86f, 0.98f, 1.0f, 0.24f } );
 	option::add_color( _( "visuals.other.grenade_bounce_color" ), { 0.86f, 0.987f, 1.0f, 0.52f } );
 	option::add_color( _( "visuals.other.grenade_radii_color" ), { 1.0f, 0.343f, 0.343f, 0.217f } );

@@ -329,7 +329,6 @@ void anims::manage_fake ( ) {
 	}
 
 	static animstate_t fake_anim_state { };
-	static std::array<animlayer_t, 13> fake_layers {};
 	static auto handle = g::local->handle ( );
 
 	if ( !g::local->alive ( ) ) {
@@ -584,7 +583,9 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
 
 		anim_state->m_pitch = angles.x;
-		anim_state->m_abs_yaw = cs::normalize( anim_state->m_eye_yaw + offset );
+
+		if ( should_resolve )
+			anim_state->m_abs_yaw = cs::normalize( angles.y + offset );
 
 		/* update animations */
 		update_anims( ent , angles );
@@ -845,13 +846,23 @@ void anims::pre_fsn ( int stage ) {
 	}
 
 	if ( !g::local ) {
-		if ( !g::local || !g::local->alive( ) )
-			anims::manage_fake( );
+		g::round = round_t::in_progress;
+
+		anims::manage_fake ( );
 
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
-			reset_data( i );
+			reset_data ( i );
 
 		return;
+	}
+	else if ( !g::local->alive ( ) ) {
+		g::round = round_t::in_progress;
+
+		anims::manage_fake ( );
+
+		memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
+		memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
+		memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
 	}
 
 	switch ( stage ) {
@@ -867,13 +878,23 @@ void anims::pre_fsn ( int stage ) {
 
 void anims::fsn ( int stage ) {
 	if ( !g::local ) {
-		if ( !g::local || !g::local->alive( ) )
-			anims::manage_fake( );
+		g::round = round_t::in_progress;
+
+		anims::manage_fake( );
 
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
 			reset_data( i );
 
 		return;
+	}
+	else if ( !g::local->alive ( ) ) {
+		g::round = round_t::in_progress;
+
+		anims::manage_fake ( );
+
+		memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
+		memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
+		memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
 	}
 
 	using update_all_viewmodel_addons_t = int( __fastcall* )( void* );

@@ -13,6 +13,8 @@
 
 #include "../features/skinchanger.hpp"
 
+#include <span>
+
 #undef min
 #undef max
 
@@ -93,6 +95,10 @@ decltype( &hooks::frame_stage_notify ) hooks::old::frame_stage_notify = nullptr;
 void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	//dbg_print ( fmt::format("stage: {}", stage).c_str());
 
+	static auto m_vecBulletVerifyListClient = pattern::search ( _ ( "client.dll" ), _ ( "F3 0F 10 86 ? ? ? ? F3 0F 58 44 24 0C" ) ).add ( 4 ).deref ( ).add ( 0x274 ).get< uint32_t > ( );
+	static auto& bullet_impacts_client = options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b;
+	static auto& bullet_impacts_client_color = options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c;
+
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
 	static auto& world_color = options::vars [ _( "visuals.other.world_color" ) ].val.c;
 	static auto& prop_color = options::vars [ _( "visuals.other.prop_color" ) ].val.c;
@@ -119,6 +125,34 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( stage == 5 && g::local ) {
+			/* bullet impacts */
+			if ( g::local && bullet_impacts_client ) {
+				static int last_num_impacts = 0;
+
+				struct client_hit_verify_t {
+					vec3_t pos;
+					float time;
+					float duration;
+				};
+
+				const auto num_impacts = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( g::local ) + m_vecBulletVerifyListClient );
+				const auto impacts = *reinterpret_cast< client_hit_verify_t** >( reinterpret_cast< uintptr_t >( g::local ) + m_vecBulletVerifyListClient + 4 );
+
+				if ( num_impacts > last_num_impacts ) {
+					for ( auto i = 0; i <= num_impacts - last_num_impacts - 1; i++ ) {
+						auto& impact = impacts [ num_impacts - ( num_impacts - last_num_impacts ) + i ];
+						cs::add_box_overlay ( impact.pos, vec3_t ( -2.0f, -2.0f, -2.0f ), vec3_t ( 2.0f, 2.0f, 2.0f ), cs::calc_angle ( g::local->eyes ( ), impact.pos ), bullet_impacts_client_color.r * 255.0f, bullet_impacts_client_color.g * 255.0f, bullet_impacts_client_color.b * 255.0f, bullet_impacts_client_color.a * 255.0f, 7.0f );
+						anims::resolver::rdata::clientside_shot = true;
+					}
+				}
+
+				last_num_impacts = num_impacts;
+			}
+
+			//static auto sv_showimpacts = cs::i::cvar->find (_("sv_showimpacts") );
+			//sv_showimpacts->no_callback ( );
+			//sv_showimpacts->set_value ( 1 );
+
 			RUN_SAFE(
 				"animations::resolver::create_beams",
 				anims::resolver::create_beams( );

@@ -345,26 +345,8 @@ void features::esp::render( ) {
 
 			esp_data[ e->idx( ) ].m_last_seen = g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
 
-			if ( e && e->weapon( ) && e->weapon( )->data( ) ) {
-				std::string hud_name = e->weapon( )->data( )->m_weapon_name;
-
-				hud_name.erase( 0 , 7 );
-
-				for ( auto& character : hud_name ) {
-					if ( character == '_' ) {
-						character = ' ';
-						continue;
-					}
-
-					if ( character >= 65 && character <= 90 )
-						character = std::tolower( character );
-				}
-
-				esp_data[ e->idx( ) ].m_weapon_name = hud_name;
-
-				if ( e->weapon( ) && e->weapon( )->item_definition_index( ) == weapons_t::revolver )
-					esp_data[ e->idx( ) ].m_weapon_name = _( "revolver" );
-			}
+			if ( e->weapon ( ) )
+				esp_data [ e->idx ( ) ].m_weapon_name = cs::get_weapon_name ( e->weapon ( )->item_definition_index ( ) );
 		}
 		else {
 			esp_data[ e->idx( ) ].m_first_seen = 0.0f;
@@ -430,14 +412,16 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect , visuals.fatal_color , esp_type_text , visuals.value_text , visuals.fatal_flag_placement , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , _( "Fatal" ) );
 
 			/* DEBUGGING STUFF */
-			//for ( auto i = 0; i < 13; i++ ) {
-			//	std::string output = "animlayer ";
-			//	output.append ( std::to_string ( i ) + ":\n" );
-			//	output.append ( "weight: " + std::to_string ( last_anim_layers_server [ i ].m_weight ) + ":\n" );
-			//	output.append ( "cycle: " + std::to_string ( last_anim_layers_server [ i ].m_cycle ) + ":\n" );
-			//	output.append ( "rate: " + std::to_string ( last_anim_layers_server [ i ].m_playback_rate ) + ":\n" );
+			//if ( !anims::anim_info [ e->idx ( ) ].empty() ) {
+			//	for ( auto i = 0; i < 13; i++ ) {
+			//		std::string output = "animlayer ";
+			//		output.append ( std::to_string ( i ) + ":\n" );
+			//		output.append ( "weight: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_weight ) + ":\n" );
+			//		output.append ( "cycle: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_cycle ) + ":\n" );
+			//		output.append ( "rate: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_playback_rate ) + ":\n" );
 			//
-			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, output );
+			//		draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, output );
+			//	}
 			//}
 		}
 	}
