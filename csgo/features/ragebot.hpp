@@ -38,6 +38,7 @@ namespace features {
 				onshot_only;
 
 			double min_dmg,
+				min_dmg_override,
 				dmg_accuracy,
 				hit_chance,
 				dt_hit_chance,

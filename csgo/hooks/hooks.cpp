@@ -190,7 +190,7 @@ void hooks::init( ) {
 	//dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
 	dbg_hook( _list_leaves_in_box, list_leaves_in_box, ( void** )&old::list_leaves_in_box );
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
-	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
+	//dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
 	dbg_hook( _send_net_msg, send_net_msg, ( void** )&old::send_net_msg );
@@ -200,13 +200,13 @@ void hooks::init( ) {
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-	//dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
 	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );

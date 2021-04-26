@@ -259,8 +259,8 @@ void features::esp::render( ) {
 
 		vec3_t flb , brt , blb , frt , frb , brb , blt , flt;
 		float left , top , right , bottom;
-
-		auto abs_origin = (e->bone_cache( ) && !e->dormant()) ? e->bone_cache( )[ 1 ].origin( ) : e->abs_origin( );
+		
+		auto abs_origin = (e->bone_cache( ) && !e->dormant()) ? e->bone_cache( )[ 1 ].origin( ) : e->abs_origin ( );
 
 		if ( e->dormant ( ) && esp_data[ e->idx( ) ].m_sound_pos != vec3_t( 0.f , 0.f , 0.f ) )
 			abs_origin = esp_data[ e->idx( ) ].m_sound_pos;

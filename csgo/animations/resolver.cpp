@@ -687,11 +687,9 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	}
 	/* moving desync */
 	else if ( anim_layers[ 6 ].m_weight && !anim_info[ idx ].empty() ) {
-		if ( ( !anim_layers [ 11 ].m_weight
-			&& !rec.m_anim_layers[ anims::desync_side_t::desync_max ] [ 11 ].m_weight )
-			|| ( anim_layers [ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight
-				&& rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight <= anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) ) {
-				//&& static_cast< int >( anim_layers [ 12 ].m_weight * 100.0f ) == static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 100.0f ) ) ) {
+		//if ( ( anim_layers [ 7 ].m_weight >= 1.0f && rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 7 ].m_weight >= 1.0f )
+		//	|| !static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) ) {
+		if (( anim_layers [ 7 ].m_weight >= 1.0f && rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 7 ].m_weight >= 1.0f ) ||( static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) == static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f ) )) {
 			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 
@@ -745,20 +743,20 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	/* bruteforce */
 	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 4 ) {
 	case 0: {
-		//rec.m_side = initial_resolve_side [ idx ];
-		switch ( initial_resolve_side [ idx ] ) {
-		case anims::desync_side_t::desync_left_half:
-		case anims::desync_side_t::desync_right_half:
-			rec.m_side = anims::desync_side_t::desync_left_half;
-			break;
-		case anims::desync_side_t::desync_left_max:
-			rec.m_side = anims::desync_side_t::desync_left_max;
-			break;
-		case anims::desync_side_t::desync_middle:
-		case anims::desync_side_t::desync_right_max:
-			rec.m_side = anims::desync_side_t::desync_right_max;
-			break;
-		}
+		rec.m_side = initial_resolve_side [ idx ];
+		//switch ( initial_resolve_side [ idx ] ) {
+		//case anims::desync_side_t::desync_left_half:
+		//case anims::desync_side_t::desync_right_half:
+		//	rec.m_side = anims::desync_side_t::desync_left_half;
+		//	break;
+		//case anims::desync_side_t::desync_left_max:
+		//	rec.m_side = anims::desync_side_t::desync_left_max;
+		//	break;
+		//case anims::desync_side_t::desync_middle:
+		//case anims::desync_side_t::desync_right_max:
+		//	rec.m_side = anims::desync_side_t::desync_right_max;
+		//	break;
+		//}
 	} break;
 	case 1: {
 		switch ( initial_resolve_side [ idx ] ) {

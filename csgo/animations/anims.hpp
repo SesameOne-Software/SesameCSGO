@@ -123,6 +123,8 @@ namespace anims {
 		}
 	};
 
+	inline std::array<std::array< matrix3x4_t, 128 >, 65> usable_bones {};
+	inline std::array<vec3_t, 65> usable_origin {};
 	inline std::array< int, 65> shot_count { 0 };
 	inline std::array< std::deque< anim_info_t >, 65> anim_info { {} };
 	inline std::array< matrix3x4_t, 128 > real_matrix { {} };

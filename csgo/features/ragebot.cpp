@@ -88,7 +88,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& headshot_only = options::vars [ _( "ragebot.revolver.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.revolver.onshot_only" ) ].val.b;
 		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.revolver.dt_recharge_delay" ) ].val.i;
+		static auto& min_dmg_override = options::vars [ _ ( "ragebot.revolver.min_dmg_override" ) ].val.f;
 
+		config.min_dmg_override = min_dmg_override;
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -146,7 +148,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& headshot_only = options::vars [ _( "ragebot.pistol.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.pistol.onshot_only" ) ].val.b;
 		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.pistol.dt_recharge_delay" ) ].val.i;
-
+		static auto& min_dmg_override = options::vars [ _ ( "ragebot.pistol.min_dmg_override" ) ].val.f;
+		
+		config.min_dmg_override = min_dmg_override;
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -204,7 +208,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& headshot_only = options::vars [ _( "ragebot.rifle.headshot_only" ) ].val.b;
 		static auto& onshot_only = options::vars [ _ ( "ragebot.rifle.onshot_only" ) ].val.b;
 		static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.rifle.dt_recharge_delay" ) ].val.i;
+		static auto& min_dmg_override = options::vars [ _ ( "ragebot.rifle.min_dmg_override" ) ].val.f;
 
+		config.min_dmg_override = min_dmg_override;
 		config.dt_recharge_delay = dt_recharge_delay;
 		config.dmg_accuracy = dmg_accuracy;
 		config.choke_on_shot = choke_onshot;
@@ -263,7 +269,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& headshot_only = options::vars [ _( "ragebot.awp.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.awp.onshot_only" ) ].val.b;
 			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.awp.dt_recharge_delay" ) ].val.i;
+			static auto& min_dmg_override = options::vars [ _ ( "ragebot.awp.min_dmg_override" ) ].val.f;
 
+			config.min_dmg_override = min_dmg_override;
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -321,7 +329,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& headshot_only = options::vars [ _( "ragebot.auto.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.auto.onshot_only" ) ].val.b;
 			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.auto.dt_recharge_delay" ) ].val.i;
+			static auto& min_dmg_override = options::vars [ _ ( "ragebot.auto.min_dmg_override" ) ].val.f;
 
+			config.min_dmg_override = min_dmg_override;
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -379,7 +389,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& headshot_only = options::vars [ _( "ragebot.scout.headshot_only" ) ].val.b;
 			static auto& onshot_only = options::vars [ _ ( "ragebot.scout.onshot_only" ) ].val.b;
 			static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.scout.dt_recharge_delay" ) ].val.i;
+			static auto& min_dmg_override = options::vars [ _ ( "ragebot.scout.min_dmg_override" ) ].val.f;
 
+			config.min_dmg_override = min_dmg_override;
 			config.dt_recharge_delay = dt_recharge_delay;
 			config.dmg_accuracy = dmg_accuracy;
 			config.choke_on_shot = choke_onshot;
@@ -445,7 +457,9 @@ set_default:
 	static auto& headshot_only = options::vars [ _( "ragebot.default.headshot_only" ) ].val.b;
 	static auto& onshot_only = options::vars [ _ ( "ragebot.default.onshot_only" ) ].val.b;
 	static auto& dt_recharge_delay = options::vars [ _ ( "ragebot.default.dt_recharge_delay" ) ].val.i;
+	static auto& min_dmg_override = options::vars [ _ ( "ragebot.default.min_dmg_override" ) ].val.f;
 
+	config.min_dmg_override = min_dmg_override;
 	config.dt_recharge_delay = dt_recharge_delay;
 	config.dmg_accuracy = dmg_accuracy;
 	config.choke_on_shot = choke_onshot;
@@ -515,6 +529,10 @@ int& features::ragebot::get_hitbox( int pl ) {
 }
 
 bool features::ragebot::dmg_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox ) {
+	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
+	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
+
 	auto weapon = g::local->weapon( );
 
 	if ( !weapon || !weapon->data( ) )
@@ -551,7 +569,7 @@ bool features::ragebot::dmg_hitchance ( vec3_t ang, player_t* pl, vec3_t point, 
 	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
 	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
 
-	return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= features::ragebot::active_config.min_dmg || dmg_right >= features::ragebot::active_config.min_dmg );
+	return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= min_dmg || dmg_right >= min_dmg );
 }
 
 bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec ) {
@@ -863,6 +881,10 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 
 void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
 	VM_TIGER_BLACK_START
+		static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
+	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
+
 		if ( !active_config.main_switch || !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
 			scan_points.clear ( );
 			return;
@@ -929,66 +951,51 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 
 	scan_points.sync( );
 
-	/* extrapolate autostop */ {
-		static auto looking_at = [ ] ( ) -> player_t* {
-			player_t* ret = nullptr;
+	/* extrapolate autostop */ 
+	const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f;
+	const auto cur_speed = features::prediction::vel.length_2d ( );
 
-			vec3_t angs;
-			cs::i::engine->get_viewangles ( angs );
-			cs::clamp ( angs );
+	if ( cur_speed > max_speed ) {
+		static auto calc_velocity = [ & ] ( vec3_t& vel ) {
+			const auto speed = vel.length_2d ( );
 
-			auto best_fov = 180.0f;
-
-			cs::for_each_player ( [ & ] ( player_t* pl ) {
-				if ( pl->team ( ) == g::local->team ( ) )
-					return;
-
-				auto angle_to = cs::calc_angle ( g::local->origin ( ), pl->origin ( ) );
-				cs::clamp ( angle_to );
-				auto fov = cs::calc_fov ( angle_to, angs );
-
-				if ( fov < best_fov ) {
-					ret = pl;
-					best_fov = fov;
-				}
-			} );
-
-			return ret;
+			if ( speed >= 0.1f ) {
+				const auto stop_speed = std::max ( speed, g::cvars::sv_stopspeed->get_float ( ) );
+				vel *= std::max ( 0.0f, std::max ( 0.0f, speed - ( stop_speed * g::cvars::sv_friction->get_float ( ) * cs::i::globals->m_ipt ) ) / cur_speed );
+			}
 		};
 
-		const auto at_target = looking_at ( );
+		auto vel = features::prediction::vel;
+		auto ticks_until_accurate = 0;
 
-		if ( at_target ) {
-			auto vel = features::prediction::vel;
-			const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f;
+		for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ticks_until_accurate++ ) {
+			if ( vel.length_2d ( ) <= max_speed )
+				break;
 
-			if ( vel.length_2d() > max_speed ) {
-				static auto calc_velocity = [ ] ( vec3_t& vel ) {
-					const auto speed = vel.length_2d ( );
+			calc_velocity ( vel );
+		}
 
-					if ( speed >= 0.1f ) {
-						const auto stop_speed = std::max( speed, g::cvars::sv_stopspeed->get_float ( ) );
-						vel *= std::max ( 0.0f, (speed - ( stop_speed * g::cvars::sv_friction->get_float ( ) * cs::i::globals->m_ipt)) / speed );
-					}
-				};
+		const auto autostop_time = cs::ticks2time ( ticks_until_accurate );
+		const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * autostop_time;
 
-				auto ticks_until_accurate = 0;
+		player_t* at_target = nullptr;
 
-				for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ticks_until_accurate++ ) {
-					if ( vel.length_2d ( ) <= max_speed )
-						break;
+		for ( auto i = 0; i < cs::i::globals->m_max_clients; i++ ) {
+			const auto ent = cs::i::ent_list->get<player_t*> ( i );
 
-					calc_velocity ( vel );
+			if ( ent->valid ( ) && !ent->immune() && ent->team ( ) != g::local->team ( ) ) {
+				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) );
+				const auto dmg = autowall::dmg ( g::local, ent, predicted_eyes, pred_ent_pos, hitboxes_t::hitbox_head );
+
+				if ( dmg >= ( static_cast< float >( min_dmg ) > 100.0f ? ( ent->health ( ) == 100 ? static_cast< float >( min_dmg ) : static_cast< float >( ent->health ( ) ) ) : std::min ( static_cast< float >( ent->health ( ) ), static_cast< float >( min_dmg ) ) )) {
+					at_target = ent;
+					break;
 				}
-
-				const auto autostop_time = cs::ticks2time ( ticks_until_accurate );
-				const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * autostop_time;
-				const auto dmg = autowall::dmg ( g::local, at_target, predicted_eyes, at_target->origin ( ) + at_target->view_offset ( ), hitboxes_t::hitbox_head );
-
-				if ( dmg > active_config.min_dmg )
-					slow ( ucmd, old_smove, old_fmove );
 			}
 		}
+
+		if ( at_target )
+			slow ( ucmd, old_smove, old_fmove );
 	}
 
 	if ( !best.m_ent )
@@ -1180,6 +1187,10 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, int 
 
 bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg ) {
 	VM_TIGER_BLACK_START
+		static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
+	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
+
 	auto pl = ent;
 
 	if ( !pl )
@@ -1380,13 +1391,13 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		}
 
 		/* if we meet min dmg requirement or shot will be fatal, we can immediately break out */
-		//if ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
+		//if ( best_dmg_tmp > min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
 		//	best_dmg = best_dmg_tmp;
 		//	break;
 		//}
 	}
 
-	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > active_config.min_dmg || best_dmg_tmp > pl->health( ) ) ) {
+	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > min_dmg || best_dmg_tmp > pl->health( ) ) ) {
 		/* save best data */
 		pos_out = best_pos;
 		hitbox_out = best_hitbox;

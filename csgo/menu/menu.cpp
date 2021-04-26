@@ -416,7 +416,8 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 		ImGui::SliderInt ( _ ( "Doubletap Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
 		ImGui::SliderInt( _( "Doubletap Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
-		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat ( _ ( "Overrided Minimum Damage" ), &options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f > 100.0f ? ( _ ( "HP + " ) + std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f - 100.0f ) ) + _ ( " HP" ) ) : ( std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f ) ) + _ ( " HP" ) ) ).c_str ( ) );
+		//ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
@@ -917,7 +918,8 @@ void gui::draw( ) {
 							ImGui::Keybind ( _ ( "##Safe Point Key" ), &options::vars [ _ ( "ragebot.safe_point_key" ) ].val.i, &options::vars [ _ ( "ragebot.safe_point_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Auto Revolver" ), &options::vars [ _ ( "ragebot.auto_revolver" ) ].val.b );
 							ImGui::Keybind ( _ ( "Doubletap Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
-
+							ImGui::Keybind ( _ ( "Damage Override Key" ), &options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i, &options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
+							
 							ImGui::EndChildFrame ( );
 						}
 					} );
@@ -1648,6 +1650,8 @@ void gui::keybinds::draw( ) {
 	static auto& assistance_type = options::vars [ _( "global.assistance_type" ) ].val.i;
 	static auto& third_person = options::vars [ _( "misc.effects.third_person" ) ].val.b;
 	static auto& autopeek = options::vars [ _ ( "ragebot.autopeek" ) ].val.b;
+	static auto& break_backtrack = options::vars [ _ ( "antiaim.break_backtrack" ) ].val.b;
+	static auto& airstuck = options::vars [ _ ( "misc.movement.airstuck" ) ].val.b;
 
 	static auto triggerbot_key = find_keybind( _( "legitbot.triggerbot_key" ) );
 	static auto safe_point_key = find_keybind( _( "ragebot.safe_point_key" ) );
@@ -1662,6 +1666,10 @@ void gui::keybinds::draw( ) {
 	static auto thirdperson_key = find_keybind( _( "misc.effects.third_person_key" ) );
 	static auto autopeek_key = find_keybind ( _ ( "ragebot.autopeek_key" ) );
 
+	static auto break_backtrack_key = find_keybind ( _ ( "antiaim.break_backtrack_key" ) );
+	static auto airstuck_key = find_keybind ( _ ( "misc.movement.airstuck_key" ) );
+	static auto min_dmg_override_key = find_keybind ( _ ( "ragebot.min_dmg_override_key" ) );
+
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( triggerbot && assistance_type == 1 )
 			add_key_entry( triggerbot_key, _( "Trigger Bot" ) );
@@ -1670,7 +1678,10 @@ void gui::keybinds::draw( ) {
 			add_key_entry( safe_point_key, _( "Safe Point" ) );
 
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.dt_enabled )
-			add_key_entry( doubletap_key, _( "Double Tap (" ) + std::to_string( static_cast< int > ( features::ragebot::active_config.max_dt_ticks ) ) + _( " ticks)" ) );
+			add_key_entry( doubletap_key, _( "Double Tap" ) );
+
+		if ( features::ragebot::active_config.main_switch )
+			add_key_entry ( min_dmg_override_key, _ ( "Damage Override" ) );
 
 		if ( features::antiaim::antiaiming )
 			add_key_entry( slow_walk_key, _( "Slow Walk" ) );
@@ -1689,6 +1700,12 @@ void gui::keybinds::draw( ) {
 
 		if ( autopeek )
 			add_key_entry ( autopeek_key, _ ( "Autopeek" ) );
+
+		if ( break_backtrack )
+			add_key_entry ( break_backtrack_key, _ ( "Break Backtrack" ) );
+
+		if ( airstuck )
+			add_key_entry ( airstuck_key, _ ( "Airstuck" ) );
 
 		if ( features::antiaim::antiaiming ) {
 			switch ( features::antiaim::side ) {

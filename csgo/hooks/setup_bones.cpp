@@ -13,42 +13,30 @@ int last_anim_framecount = 0;
 std::array<matrix3x4_t , 128> temp_mat;
 
 bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int mask, float curtime ) {
-	static auto setup_bones_ret = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 5E 5D C2 10 00 32 C0" ) ).add( 5 ).get< int* >( );
+	static auto& g_model_bone_counter = *pattern::search ( _ ( "client.dll" ), _ ( "3B 05 ? ? ? ? 0F 84 ? ? ? ? 8B 47" ) ).add ( 2 ).deref ( ).get<int*> ( );
+	static const auto attachmenthelper_fn = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 8B 5D" ) ).get<void ( __thiscall* )( void*, void* )> ( );
 
-	const auto pl = reinterpret_cast< player_t* > ( uintptr_t ( ecx ) - 4 );
+	const auto pl = reinterpret_cast< player_t* > ( reinterpret_cast< uintptr_t >( ecx ) - 4 );
 	
-	if ( pl && pl->is_player ( ) && pl->idx ( ) > 0 && pl->idx ( ) <= cs::i::globals->m_max_clients ) {
-		const auto backup_flags1 = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 );
-		const auto backup_framecount = cs::i::globals->m_framecount;
+	if ( pl && pl->is_player ( ) && pl->health() > 0 ) {
+		if ( *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( pl ) + 0x2690 ) != g_model_bone_counter ) {
+			memcpy ( pl->bone_cache ( ), anims::usable_bones [ pl->idx ( ) ].data ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+			
+			for ( auto i = 0; i < pl->bone_count(); i++ )
+				pl->bone_cache ( ) [ i ].set_origin ( pl->bone_cache ( ) [ i ].origin ( ) - anims::usable_origin [ pl->idx ( ) ] + pl->render_origin ( ) );
 
-		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) |= 8;
-		cs::i::globals->m_framecount = std::numeric_limits<int>::max( );
-
-		auto& info = anims::anim_info[ pl->idx( ) ];
-
-		if ( !info.empty( ) && pl != g::local ) {
-			auto& first = info.front( );
-
-			pl->set_abs_angles( first.m_abs_angles[ first.m_side ] );
-			pl->poses( ) = first.m_poses[ first.m_side ];
+			attachmenthelper_fn ( pl, *reinterpret_cast< void** > ( reinterpret_cast< uintptr_t >( pl ) + 0x294C ) );
+			*reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( pl ) + 0x2690 ) = g_model_bone_counter;
 		}
 
-		const auto ret = old::setup_bones( REG_OUT , out , max_bones , mask , curtime );
-
-		if ( pl == g::local && g::local && last_anim_framecount != cs::i::globals->m_framecount ) {
-			anims::build_bones( pl , temp_mat.data( ) , mask , pl->abs_angles( ) , pl->abs_origin( ) , cs::i::globals->m_curtime, pl->poses( ) );
-			const auto mat_out = out ? out : pl->bone_cache( );
-		
-			if ( mat_out )
-				memcpy( mat_out , temp_mat.data( ) , ( out ? max_bones : pl->bone_count( ) ) * sizeof( matrix3x4_t ) );
-
-			last_anim_framecount = cs::i::globals->m_framecount;
+		if ( out ) {
+			if ( max_bones >= pl->bone_count ( ) )
+				memcpy ( out, pl->bone_cache ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
+			else
+				return false;
 		}
 
-		*reinterpret_cast< int* >( reinterpret_cast< uintptr_t > ( pl ) + 0xF0 ) = backup_flags1;
-		cs::i::globals->m_framecount = backup_framecount;
-
-		return ret;
+		return true;
 	}
 
 	return old::setup_bones( REG_OUT, out, max_bones, mask, curtime );

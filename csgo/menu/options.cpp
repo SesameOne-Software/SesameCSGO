@@ -271,6 +271,7 @@ __forceinline void add_weapon_config( const std::string& weapon_category ) {
 	option::add_int( prefix + _( "dt_ticks" ), 0 );
 	option::add_int ( prefix + _ ( "dt_recharge_delay" ), 0 );
 	option::add_float( prefix + _( "min_dmg" ), 0.0f );
+	option::add_float ( prefix + _ ( "min_dmg_override" ), 0.0f );
 	option::add_float( prefix + _( "dmg_accuracy" ), 0.0f );
 	option::add_float( prefix + _( "hit_chance" ), 0.0f );
 	option::add_float( prefix + _( "dt_hit_chance" ), 0.0f );
@@ -381,6 +382,9 @@ void options::init( ) {
 	option::add_int( _( "ragebot.safe_point_key_mode" ), 0 );
 	option::add_int( _( "ragebot.dt_key" ), 0 );
 	option::add_int( _( "ragebot.dt_key_mode" ), 0 );
+	option::add_int ( _ ( "ragebot.min_dmg_override_key" ), 0 );
+	option::add_int ( _ ( "ragebot.min_dmg_override_key_mode" ), 0 );
+
 	/* weapon configs */
 	add_weapon_config( _( "default" ) );
 	add_weapon_config( _( "pistol" ) );

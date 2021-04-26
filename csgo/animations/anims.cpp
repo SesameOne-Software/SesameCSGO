@@ -349,9 +349,9 @@ void anims::manage_fake ( ) {
 	std::array<animlayer_t, 13> networked_layers;
 	memcpy ( networked_layers.data(), g::local->layers ( ), sizeof( networked_layers ) );
 
-	auto backup_abs_angles = g::local->abs_angles ( );
-	auto backup_poses = g::local->poses ( );
-	auto origin = g::local->origin ( );
+	const auto backup_abs_angles = g::local->abs_angles ( );
+	const auto backup_poses = g::local->poses ( );
+	const auto origin = g::local->origin ( );
 
 	rebuilt::update ( &fake_anim_state, g::angles, g::local->origin ( ) );
 
@@ -359,7 +359,7 @@ void anims::manage_fake ( ) {
 
 	memcpy ( g::local->layers ( ), last_anim_layers.data ( ), sizeof ( last_anim_layers ) );
 	
-	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, fake_anim_state.m_abs_yaw, 0.0f ), origin, cs::i::globals->m_curtime, g::local->poses() );
+	build_bones( g::local, fake_matrix.data ( ), 0x7FF00, g::local->abs_angles ( ), origin, cs::i::globals->m_curtime, g::local->poses() );
 
 	memcpy ( g::local->layers ( ), networked_layers.data ( ), sizeof ( networked_layers ) );
 	g::local->poses ( ) = backup_poses;
@@ -548,7 +548,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	ent->set_abs_angles( to.m_abs_angles[ to.m_side ] );
 
 	build_bones ( ent, to.m_aim_bones [ to.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_side ] );
-
+	
 	for ( auto& bones : to.m_aim_bones )
 		bones = to.m_aim_bones [ to.m_side ];
 }
@@ -596,7 +596,7 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 
 		//if ( build_matrix && side != desync_side_t::desync_max /*don't build bones for unresolved matrix, we only want its animstate */ )
 		//	build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , anim_state->m_abs_yaw, 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
-
+		
 		/* store new anim data */
 		to.m_anim_state[ side ] = *anim_state;
 		memcpy( to.m_anim_layers[ side ].data( ) , anim_layers , sizeof( to.m_anim_layers [ side ] ) );
@@ -689,6 +689,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 
 		cs::i::globals->m_frametime = cs::ticks2time( 1 );
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
+		state->m_feet_yaw_rate = 0.0f;
 	}
 	
 	const auto backup_invalidate_bone_cache = invalidate_bone_cache;
@@ -708,9 +709,6 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 	cs::i::globals->m_curtime = backup_curtime;
 
 	if ( g::local && ent == g::local ) {
-		if ( ent == g::local && g::local )
-			build_bones ( ent, real_matrix.data ( ), 0x7FF00, vec3_t ( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), cs::i::globals->m_curtime, ent->poses ( ) );
-
 		/* dont update on local until we send packet */
 		if ( g::send_packet ) {
 			/* set new animlayers (server data + ones maintained on client) */
@@ -733,8 +731,14 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 
 		ent->set_abs_angles( vec3_t( 0.0f , last_local_feet_yaw , 0.0f ) );
 
-		if ( g::send_packet )
-			manage_fake( );
+		build_bones ( ent, real_matrix.data ( ), 0x7FF00, ent->abs_angles(), ent->origin ( ), cs::i::globals->m_curtime, ent->poses ( ) );
+
+		if ( g::send_packet ) {
+			usable_bones [ ent->idx ( ) ] = real_matrix;
+			usable_origin [ ent->idx ( ) ] = ent->origin ( );
+
+			manage_fake ( );
+		}
 	}
 
 	VM_TIGER_BLACK_END
@@ -758,6 +762,9 @@ void anims::apply_anims ( player_t* ent ) {
 
 	auto& first = info.front( );
 
+	usable_bones [ ent->idx ( ) ] = first.m_aim_bones [ first.m_side ];
+	usable_origin [ ent->idx ( ) ] = first.m_origin;
+
 	ent->set_abs_angles( first.m_abs_angles[ first.m_side ] );
 	ent->poses( ) = first.m_poses[ first.m_side ];
 }
@@ -776,7 +783,6 @@ void anims::on_net_update_end ( int idx ) {
 
 	if ( g::local && ent == g::local ) {
 		memcpy ( last_anim_layers_server.data ( ), ent->layers ( ), sizeof ( last_anim_layers_server ) );
-
 		return;
 	}
 

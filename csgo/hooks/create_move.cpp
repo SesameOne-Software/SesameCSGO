@@ -158,7 +158,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		return false;
 	}
 
-	if ( cs::i::client_state->choked ( ) && ( features::ragebot::active_config.dt_teleport ? !exploits::in_exploit : true ) ) {
+	if ( cs::i::client_state->choked ( ) && (features::ragebot::active_config.dt_teleport ? true : !exploits::in_exploit )) {
 		cs::i::pred->update (
 			cs::i::client_state->delta_tick ( ),
 			cs::i::client_state->delta_tick ( ) > 0,
@@ -248,7 +248,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( ucmd->m_buttons & buttons_t::attack ) ) {
 		if ( g::local->tick_base ( ) > g::cock_ticks ) {
 			ucmd->m_buttons &= ~buttons_t::attack;
-			g::cock_ticks = cs::time2ticks( cs::ticks2time ( g::local->tick_base ( ) ) + 0.25f ) - 1;
+			g::cock_ticks = g::local->tick_base ( ) + cs::time2ticks(0.25f) - 1;
 			g::can_fire_revolver = true;
 		}
 		else {
