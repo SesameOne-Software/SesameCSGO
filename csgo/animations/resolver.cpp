@@ -587,54 +587,57 @@ std::array < bool , 65 > found_extended { false };
 std::array < float , 65 > pitch_timer { 0.0f };
 std::array < float , 65 > last_abs_yaw { 0.0f };
 std::array < anims::desync_side_t , 65 > extended_side { anims::desync_side_t::desync_middle };
-std::array < anims::desync_side_t , 65 > movement_side { anims::desync_side_t::desync_middle };
+std::array < anims::desync_side_t, 65 > confident_movement_side { anims::desync_side_t::desync_middle };
+std::array < anims::desync_side_t, 65 > movement_side { anims::desync_side_t::desync_middle };
 std::array < anims::desync_side_t , 65 > initial_resolve_side { anims::desync_side_t::desync_middle };
 
 bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	/* set default desync direction to middle (0 deg range) */
 	rec.m_side = anims::desync_side_t::desync_middle;
 
-	static auto& resolver = options::vars[ _( "ragebot.resolve_desync" ) ].val.b;
+	static auto& resolver = options::vars [ _ ( "ragebot.resolve_desync" ) ].val.b;
 
-	security_handler::update( );
+	security_handler::update ( );
 
-	const auto speed = ent->vel( ).length_2d( );
-	const auto anim_state = ent->animstate( );
-	const auto anim_layers = ent->layers( );
-	const auto idx = ent->idx( );
+	const auto speed = ent->vel ( ).length_2d ( );
+	const auto anim_state = ent->animstate ( );
+	const auto anim_layers = ent->layers ( );
+	const auto idx = ent->idx ( );
 
-	if ( !resolver || !g::local || !g::local->alive( ) || !anim_state || !anim_layers || ent->team( ) == g::local->team( ) ) {
-		last_recorded_resolve[ idx ] = anims::desync_side_t::desync_middle;
-		extended_side[ idx ] = anims::desync_side_t::desync_middle;
-		movement_side[ idx ] = anims::desync_side_t::desync_middle;
-		found_extended[ idx ] = false;
+	if ( !resolver || !g::local || !g::local->alive ( ) || !anim_state || !anim_layers || ent->team ( ) == g::local->team ( ) ) {
+		last_recorded_resolve [ idx ] = anims::desync_side_t::desync_middle;
+		extended_side [ idx ] = anims::desync_side_t::desync_middle;
+		confident_movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		found_extended [ idx ] = false;
 		return false;
 	}
 
 	player_info_t pl_info;
-	cs::i::engine->get_player_info( idx , &pl_info );
+	cs::i::engine->get_player_info ( idx, &pl_info );
 
 	/* bot check */
 	if ( pl_info.m_fake_player ) {
-		last_recorded_resolve[ idx ] = anims::desync_side_t::desync_middle;
-		extended_side[ idx ] = anims::desync_side_t::desync_middle;
-		movement_side[ idx ] = anims::desync_side_t::desync_middle;
-		found_extended[ idx ] = false;
+		last_recorded_resolve [ idx ] = anims::desync_side_t::desync_middle;
+		extended_side [ idx ] = anims::desync_side_t::desync_middle;
+		confident_movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		found_extended [ idx ] = false;
 		return false;
 	}
 
-	const auto has_legit_aa = ( !anim_layers[ 6 ].m_weight && abs( cs::normalize( cs::normalize( anim_state->m_eye_yaw ) - cs::normalize( ent->lby( ) ) ) ) > 60.0f ) || cs::time2ticks( abs( ent->simtime( ) - ent->old_simtime( ) ) ) >= 2;
+	const auto has_legit_aa = ( !anim_layers [ 6 ].m_weight && abs ( cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) - cs::normalize ( ent->lby ( ) ) ) ) > 60.0f ) || cs::time2ticks ( abs ( ent->simtime ( ) - ent->old_simtime ( ) ) ) >= 2;
 
-	if ( abs( anim_state->m_pitch ) < 70.0f && !has_legit_aa ) {
-		auto closest_delta_yaw = std::numeric_limits<float>::max( );
+	if ( abs ( anim_state->m_pitch ) < 70.0f && !has_legit_aa ) {
+		auto closest_delta_yaw = std::numeric_limits<float>::max ( );
 
 		/* resolve onshot */
-		if ( abs( pitch_timer[ idx ] - ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) ) < 0.8f ) {
-			const auto delta = cs::normalize( cs::normalize( last_abs_yaw[ idx ] ) - cs::normalize( anim_state->m_eye_yaw ) );
+		if ( abs ( pitch_timer [ idx ] - ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) ) < 0.8f ) {
+			const auto delta = cs::normalize ( cs::normalize ( last_abs_yaw [ idx ] ) - cs::normalize ( anim_state->m_eye_yaw ) );
 
 			for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
-				const auto offset = -ent->desync_amount() + static_cast< float >( side ) * ( ent->desync_amount( ) * 0.5f );
-				const auto delta_yaw = abs( delta - offset );
+				const auto offset = -ent->desync_amount ( ) + static_cast< float >( side ) * ( ent->desync_amount ( ) * 0.5f );
+				const auto delta_yaw = abs ( delta - offset );
 
 				if ( delta_yaw < closest_delta_yaw ) {
 					rec.m_side = static_cast< anims::desync_side_t >( side );
@@ -650,7 +653,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		return true;
 	}
 	else {
-		pitch_timer[ idx ] = ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime );
+		pitch_timer [ idx ] = ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime );
 	}
 
 	/* start of resolver */
@@ -663,38 +666,38 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		&& copysign( 1.0f , cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) )
 		== copysign( 1.0f , cs::normalize( cs::normalize( anim_info[ idx ][ 1 ].m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( anim_info[ idx ][ 1 ].m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) ) ) ) {
 		const auto delta_yaw = cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
-
 		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
 		found_extended[ idx ] = true;
 	}
 	else*/ /* lby extended desync */
-	const auto delta_yaw = cs::normalize( cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize( rec.m_anim_state[ anims::desync_side_t::desync_max ].m_abs_yaw ) );
+	const auto delta_yaw = cs::normalize ( cs::normalize ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw ) );
 	const auto second_yaw = ( anim_info [ idx ].size ( ) >= 1 ) ? cs::normalize ( cs::normalize ( anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw ) - cs::normalize ( anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw ) ) : 0.0f;
-	
+
 	/* temporary value */
 	auto has_big_range = false;
 
-	if ( abs( delta_yaw ) > 60.0f
+	if ( abs ( delta_yaw ) > 60.0f
 		&& abs ( second_yaw ) > 60.0f && copysign ( 1.0f, delta_yaw ) != copysign ( 1.0f, second_yaw )
 		&& anim_info [ idx ].size ( ) >= 1
-		&& !found_extended[ idx ] ) {
+		&& !found_extended [ idx ] ) {
 		extended_side [ idx ] = ( delta_yaw > 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		has_big_range = true;
 	}
-	else if ( !anim_layers[ 3 ].m_weight && !anim_layers[ 3 ].m_cycle && !anim_layers [ 6 ].m_weight ) {
-		extended_side[ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
-		found_extended[ idx ] = true;
+	else if ( !anim_layers [ 3 ].m_weight && !anim_layers [ 3 ].m_cycle && !static_cast<int>( anim_layers [ 6 ].m_weight * 1000.0f ) ) {
+		extended_side [ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+		found_extended [ idx ] = true;
 	}
 	/* moving desync */
-	else if ( anim_layers[ 6 ].m_weight && !anim_info[ idx ].empty() ) {
+	else if ( static_cast< int >( anim_layers [ 6 ].m_weight * 1000.0f ) && !anim_info [ idx ].empty ( ) ) {
 		//if ( ( anim_layers [ 7 ].m_weight >= 1.0f && rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 7 ].m_weight >= 1.0f )
 		//	|| !static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) ) {
-		if (( anim_layers [ 7 ].m_weight >= 1.0f && rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 7 ].m_weight >= 1.0f ) ||( static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) == static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f ) )) {
-			auto nearest_playback_rate_delta = std::numeric_limits<float>::max( );
+		if ( ( anim_layers [ 7 ].m_weight >= 1.0f && rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 7 ].m_weight >= 1.0f )
+			|| ( static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) == static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f ) )) {
+			auto nearest_playback_rate_delta = std::numeric_limits<float>::max ( );
 			auto nearest_side = anims::desync_side_t::desync_middle;
 
 			for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
-				const auto playback_rate_delta = abs( anim_layers[ 6 ].m_playback_rate - rec.m_anim_layers[ side ][ 6 ].m_playback_rate );
+				const auto playback_rate_delta = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ side ][ 6 ].m_playback_rate );
 
 				if ( playback_rate_delta < nearest_playback_rate_delta ) {
 					nearest_side = static_cast< anims::desync_side_t >( side );
@@ -702,61 +705,52 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				}
 			}
 
-			if ( nearest_playback_rate_delta != std::numeric_limits<float>::max( ) ) {
+			if ( nearest_playback_rate_delta != std::numeric_limits<float>::max ( ) ) {
 				features::ragebot::get_misses ( idx ).bad_resolve = 0;
 
-				movement_side[ idx ] = nearest_side;
+				if ( !static_cast< int >( anim_layers [ 12 ].m_weight * 1000.0f ) && !static_cast< int >( rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f ) )
+					confident_movement_side [ idx ] = nearest_side;
+
+				movement_side [ idx ] = nearest_side;
 			}
 
-			extended_side[ idx ] = anims::desync_side_t::desync_middle;
-			found_extended[ idx ] = false;
+			extended_side [ idx ] = anims::desync_side_t::desync_middle;
+			found_extended [ idx ] = false;
 		}
 	}
 
 	const auto src = g::local->eyes ( );
-	auto eyes_max = ent->origin() + vec3_t ( 0.0f, 0.0f, 64.0f );
+	auto eyes_max = ent->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f );
 	auto fwd = eyes_max - src;
 	fwd.normalize ( );
 
 	if ( !fwd.is_valid ( ) ) {
-		last_recorded_resolve[ idx ] = anims::desync_side_t::desync_middle;
-		extended_side[ idx ] = anims::desync_side_t::desync_middle;
-		movement_side[ idx ] = anims::desync_side_t::desync_middle;
-		found_extended[ idx ] = false;
+		last_recorded_resolve [ idx ] = anims::desync_side_t::desync_middle;
+		extended_side [ idx ] = anims::desync_side_t::desync_middle;
+		confident_movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		movement_side [ idx ] = anims::desync_side_t::desync_middle;
+		found_extended [ idx ] = false;
 		return false;
 	}
 
 	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 	auto left_dir = -right_dir;
-	auto dmg_left = autowall::dmg ( g::local, ent , src + left_dir * 10.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 /* pretend player would be there */ ) + autowall::dmg( g::local , ent , src - left_dir * 10.0f , eyes_max + fwd * 30.0f + left_dir * 10.0f , 0 /* pretend player would be there */ );
-	auto dmg_right = autowall::dmg ( g::local, ent , src + right_dir * 10.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 /* pretend player would be there */ ) + autowall::dmg( g::local , ent , src - right_dir * 10.0f , eyes_max + fwd * 30.0f + right_dir * 10.0f , 0 /* pretend player would be there */ );
+	auto dmg_left = autowall::dmg ( g::local, ent, src + left_dir * 10.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 /* pretend player would be there */ ) + autowall::dmg ( g::local, ent, src - left_dir * 10.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 /* pretend player would be there */ );
+	auto dmg_right = autowall::dmg ( g::local, ent, src + right_dir * 10.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 /* pretend player would be there */ ) + autowall::dmg ( g::local, ent, src - right_dir * 10.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 /* pretend player would be there */ );
 
 	if ( !features::ragebot::get_misses ( idx ).bad_resolve ) {
-		if ( found_extended[ idx ] || has_big_range )
-			initial_resolve_side[ idx ] = extended_side[ idx ];
-		else if ( ( ( dmg_left && !dmg_right ) || ( !dmg_left && dmg_right ) ) && !anim_layers[ 6 ].m_weight )
-			initial_resolve_side[ idx ] = ( dmg_left > dmg_right ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+		if ( found_extended [ idx ] || has_big_range )
+			initial_resolve_side [ idx ] = extended_side [ idx ];
+		else if ( ( ( dmg_left && !dmg_right ) || ( !dmg_left && dmg_right ) ) && !static_cast< int >( anim_layers [ 6 ].m_weight * 1000.0f ) )
+			initial_resolve_side [ idx ] = ( dmg_left > dmg_right ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 		else
-			initial_resolve_side[ idx ] = movement_side[ idx ];
+			initial_resolve_side [ idx ] = static_cast< int >( anim_layers [ 6 ].m_weight * 1000.0f ) ? movement_side [ idx ] : confident_movement_side [ idx ];
 	}
 
 	/* bruteforce */
 	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 4 ) {
 	case 0: {
 		rec.m_side = initial_resolve_side [ idx ];
-		//switch ( initial_resolve_side [ idx ] ) {
-		//case anims::desync_side_t::desync_left_half:
-		//case anims::desync_side_t::desync_right_half:
-		//	rec.m_side = anims::desync_side_t::desync_left_half;
-		//	break;
-		//case anims::desync_side_t::desync_left_max:
-		//	rec.m_side = anims::desync_side_t::desync_left_max;
-		//	break;
-		//case anims::desync_side_t::desync_middle:
-		//case anims::desync_side_t::desync_right_max:
-		//	rec.m_side = anims::desync_side_t::desync_right_max;
-		//	break;
-		//}
 	} break;
 	case 1: {
 		switch ( initial_resolve_side [ idx ] ) {
@@ -804,8 +798,8 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	last_recorded_resolve [ idx ] = rec.m_side;
 	rdata::queued_hit [ idx ] = false;
 
-	const auto offset = -ent->desync_amount( ) + static_cast< float >( rec.m_side ) * ( ent->desync_amount( ) * 0.5f );
-	last_abs_yaw[ idx ] = cs::normalize( cs::normalize( anim_state->m_eye_yaw ) + offset );
-	
+	const auto offset = -ent->desync_amount ( ) + static_cast< float >( rec.m_side ) * ( ent->desync_amount ( ) * 0.5f );
+	last_abs_yaw [ idx ] = cs::normalize ( cs::normalize ( anim_state->m_eye_yaw ) + offset );
+
 	return true;
 }

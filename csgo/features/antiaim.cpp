@@ -92,11 +92,11 @@ player_t* looking_at( ) {
 int find_freestand_side( player_t* pl, float range ) {
 	const auto cross = cs::angle_vec( cs::calc_angle( g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ), pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ) ) ).cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
 
-	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
+	const auto src = g::local->origin( ) + features::prediction::vel * cs::ticks2time( 2 ) + vec3_t( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
-	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, 0 );
-	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst - cross * range, 0 );
+	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, hitbox_head );
+	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst - cross * range, hitbox_head );
 
 	if ( l_dmg == r_dmg )
 		return -1;

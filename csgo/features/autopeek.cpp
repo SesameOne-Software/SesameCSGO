@@ -2,6 +2,7 @@
 #include "ragebot.hpp"
 #include "../menu/options.hpp"
 #include "../renderer/render.hpp"
+#include "prediction.hpp"
 
 void features::autopeek::draw ( ) {
 	static auto& enabled = options::vars [ _ ( "ragebot.autopeek" ) ].val.b;
@@ -76,7 +77,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 			};
 
 			auto ticks_until_stop = 0;
-			auto pred_vel = g::local->vel ( );
+			auto pred_vel = features::prediction::vel;
 			auto needed_dist = 0.0f;
 
 			for ( ticks_until_stop = 0; ticks_until_stop < 16; ++ticks_until_stop ) {
@@ -88,14 +89,12 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 				predict_stop ( pred_vel );
 			}
 
-			if ( dist_to_target <= needed_dist && g::local->vel ( ).length_2d ( ) > 5.0f ) {
+			if ( dist_to_target <= needed_dist && features::prediction::vel.length_2d ( ) > 5.0f )
 				features::ragebot::slow ( ucmd, side_move, fwd_move );
-			}
 
 			/* stop tracking if we reached target */
-			if ( dist_to_target < 7.0f ) {
+			if ( dist_to_target < 12.0f )
 				peek.m_retrack = false;
-			}
 		}
 	}
 }

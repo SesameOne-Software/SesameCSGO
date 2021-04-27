@@ -200,7 +200,7 @@ void hooks::init( ) {
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
 	//dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
