@@ -149,7 +149,6 @@ namespace valve_math {
 		return pow( x , lastExponent );
 	}
 
-
 	__forceinline float Gain( float x , float biasAmt ) {
 		// WARNING: not thread safe
 		if ( x < 0.5f )
@@ -157,6 +156,27 @@ namespace valve_math {
 		
 		return 1.0f - 0.5f * Bias( 2.0f - 2.0f * x , 1.0f - biasAmt );
 	}
+
+	__forceinline vec3_t ApproachVector ( vec3_t& a, vec3_t& b, float rate ) {
+		const auto delta = a - b;
+		const auto delta_len = delta.length ( );
+
+		if ( delta_len <= rate ) {
+			vec3_t result;
+
+			if ( -rate <= delta_len ) {
+				return a;
+			}
+			else {
+				const auto iradius = 1.0f / ( delta_len + std::numeric_limits<float>::epsilon ( ) );
+				return b - ( ( delta * iradius ) * rate );
+			}
+		}
+		else {
+			const auto iradius = 1.0f / ( delta_len + std::numeric_limits<float>::epsilon ( ) );
+			return b + ( ( delta * iradius ) * rate );
+		}
+	};
 }
 
 void anims::rebuilt::update_layer ( animstate_t* anim_state, int layer, int seq, float playback_rate, float weight, float cycle ) {
@@ -525,27 +545,6 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 	static auto C_CSPlayer__EstimateAbsVelocity = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 1C 53 56 57 8B F9 F7" ) ).get<void( __thiscall* )( player_t* )>( );
 	static auto m_boneSnapshots_BONESNAPSHOT_ENTIRE_BODY = pattern::search( _( "client.dll" ) , _( "0F 2F 99 ? ? ? ? 0F 82 ? ? ? ? F3 0F 10 0D ? ? ? ? 81 C1" ) ).add(3).deref( ).sub(4).get<uint32_t>( );
 
-	auto approach_vel = [ ] ( vec3_t& a , vec3_t& b, float rate ) {
-		const auto delta = a - b;
-		const auto delta_len = delta.length( );
-
-		if ( delta_len <= rate ) {
-			vec3_t result;
-
-			if ( -rate <= delta_len ) {
-				return a;
-			}
-			else {
-				const auto iradius = 1.0f / ( delta_len + std::numeric_limits<float>::epsilon( ) );
-				return b - ( ( delta * iradius ) * rate );
-			}
-		}
-		else {
-			const auto iradius = 1.0f / ( delta_len + std::numeric_limits<float>::epsilon( ) );
-			return b + ( ( delta * iradius ) * rate );
-		}
-	};
-
 	MDLCACHE_CRITICAL_SECTION( );
 
 	// update the local velocity variables so we don't recalculate them unnecessarily
@@ -593,7 +592,7 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 
 	// rapidly approach ideal velocity instead of instantly adopt it. This helps smooth out instant velocity changes, like
 	// when the player runs headlong into a wall and their velocity instantly becomes zero.
-	anim_state->m_vel = approach_vel( vecAbsVelocity , anim_state->m_vel , anim_state->m_last_clientside_anim_update_time_delta * 2000.0f );
+	anim_state->m_vel = valve_math::ApproachVector ( vecAbsVelocity , anim_state->m_vel , anim_state->m_last_clientside_anim_update_time_delta * 2000.0f );
 	anim_state->m_vel_norm = anim_state->m_vel.normalized( );
 
 	// save horizontal velocity length
@@ -680,22 +679,18 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 		if ( anim_state->m_speed2d > 0.1f ) {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( anim_state->m_eye_yaw, anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
 
-			if ( !CLIENT_DLL_ANIMS ) {
+			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
 				*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 0.22f;
-				
-				if ( player == g::local )
-					player->lby ( ) = anim_state->m_eye_yaw;
+				player->lby ( ) = anim_state->m_eye_yaw;
 			}
 		}
 		else {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
-			if ( !CLIENT_DLL_ANIMS ) {
+			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
 				if ( cs::i::globals->m_curtime > *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
 					*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 1.1f;
-					
-					if ( player == g::local )
-						player->lby ( ) = anim_state->m_eye_yaw;
+					player->lby ( ) = anim_state->m_eye_yaw;
 				}
 			}
 		}
@@ -1268,8 +1263,34 @@ void anims::rebuilt::setup_flinch( animstate_t* anim_state ) {
 }
 
 void anims::rebuilt::setup_lean( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpLean = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 A1 ? ? ? ? 83 EC 20 F3" ) ).get<void( __thiscall* )( animstate_t* )>( );
-	CCSGOPlayerAnimState__SetUpLean( anim_state );
+	// lean the body into velocity derivative (acceleration) to simulate maintaining a center of gravity
+	float flInterval = cs::i::globals->m_curtime - *reinterpret_cast<float*>( reinterpret_cast<uintptr_t>( anim_state ) + 0x158 );
+
+	if ( flInterval > 0.025f ) {
+		flInterval = std::min ( flInterval, 0.1f );
+		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( anim_state ) + 0x158 ) = cs::i::globals->m_curtime;
+
+		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x168 ) = ( anim_state->m_entity->vel() - *reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x15C ) ) / flInterval;
+		reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x168 )->z = 0.0f;
+
+		*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x15C ) = anim_state->m_entity->vel ( );
+	}
+
+	*reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x174 ) = valve_math::ApproachVector ( *reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x168 ), *reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x174 ), anim_state->m_last_clientside_anim_update_time_delta * 800.0f );
+
+	const auto temp = reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x174 )->cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( anim_state ) + 0x180 ) = std::clamp ( ( reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x174 )->length ( ) / 260.0f ) * anim_state->m_speed_normalized, 0.0f, 1.0f );
+	*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( anim_state ) + 0x180 ) *= ( 1.0f - *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x12C ) );
+
+	anim_state->m_entity->poses ( ) [ pose_param_t::lean_yaw ] = std::clamp ( valve_math::AngleNormalize ( anim_state->m_abs_yaw - temp.y ), -180.0f, 180.0f ) / 360.0f + 0.5f;
+
+	if ( anim_state->m_entity->layers()[12].m_sequence <= 0 ) {
+		MDLCACHE_CRITICAL_SECTION ( );
+		set_sequence ( anim_state, 12, anim_state->m_entity->lookup_sequence ( "lean" ) );
+	}
+
+	set_weight ( anim_state, 12, *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( anim_state ) + 0x180 ) );
 }
 
 void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t origin, bool force_feet_yaw ) {

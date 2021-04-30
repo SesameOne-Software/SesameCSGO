@@ -412,13 +412,13 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect , visuals.fatal_color , esp_type_text , visuals.value_text , visuals.fatal_flag_placement , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , _( "Fatal" ) );
 
 			/* DEBUGGING STUFF */
-			//if ( !anims::anim_info [ e->idx ( ) ].empty() ) {
+			//if ( e != g::local ) {
 			//	for ( auto i = 0; i < 13; i++ ) {
 			//		std::string output = "animlayer ";
 			//		output.append ( std::to_string ( i ) + ":\n" );
-			//		output.append ( "weight: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_weight ) + ":\n" );
-			//		output.append ( "cycle: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_cycle ) + ":\n" );
-			//		output.append ( "rate: " + std::to_string ( anims::anim_info [ e->idx ( ) ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ i ].m_playback_rate ) + ":\n" );
+			//		output.append ( "weight: " + std::to_string ( anims::resolver::rdata::latest_layers [ e->idx ( ) ][ i ].m_weight ) + ":\n" );
+			//		output.append ( "cycle: " + std::to_string ( anims::resolver::rdata::latest_layers [ e->idx ( ) ][ i ].m_cycle ) + ":\n" );
+			//		output.append ( "rate: " + std::to_string ( anims::resolver::rdata::latest_layers [ e->idx ( ) ][ i ].m_playback_rate ) + ":\n" );
 			//
 			//		draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, output );
 			//	}

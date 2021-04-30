@@ -109,10 +109,10 @@ int ducked_ticks = 0;
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
 	VM_TIGER_BLACK_START
 	/* toggle */
-	auto air = options::vars [ _( "antiaim.air.enabled" ) ].val.b;
-	auto move = options::vars [ _( "antiaim.moving.enabled" ) ].val.b;
-	auto stand = options::vars [ _( "antiaim.standing.enabled" ) ].val.b;
-	auto slow_walk = options::vars [ _( "antiaim.slow_walk.enabled" ) ].val.b;
+	static auto& air = options::vars [ _( "antiaim.air.enabled" ) ].val.b;
+	static auto& move = options::vars [ _( "antiaim.moving.enabled" ) ].val.b;
+	static auto& stand = options::vars [ _( "antiaim.standing.enabled" ) ].val.b;
+	static auto& slow_walk = options::vars [ _( "antiaim.slow_walk.enabled" ) ].val.b;
 
 	/* desync */
 	static auto& desync_air = options::vars [ _( "antiaim.air.desync" ) ].val.b;

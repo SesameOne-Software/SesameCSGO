@@ -123,6 +123,12 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	vec3_t old_aimpunch;
 	vec3_t old_viewpunch;
 	
+	/* reset resolver data when not in game */
+	if ( !cs::i::engine->is_in_game ( ) || !cs::i::engine->is_connected() ) {
+		anims::resolver::rdata::new_resolve.fill ( false );
+		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
+	}
+
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( stage == 5 && g::local ) {
 			/* bullet impacts */

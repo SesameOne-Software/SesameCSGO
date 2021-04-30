@@ -584,7 +584,7 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 
 		anim_state->m_pitch = angles.x;
 
-		if ( should_resolve )
+		if ( should_resolve && side != desync_side_t::desync_max )
 			anim_state->m_abs_yaw = cs::normalize( angles.y + offset );
 
 		/* update animations */

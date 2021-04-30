@@ -41,16 +41,16 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 
 	const auto backup_tickbase = localplayer->tick_base ( );
 
-	//if ( current_command == exploits::shifted_command ( ) )
-	//	localplayer->tick_base ( ) += exploits::last_shifted_amount();
+	if ( current_command == exploits::shifted_command ( ) )
+		localplayer->tick_base ( ) += exploits::last_shifted_amount();
 
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
 
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-	//if ( current_command == exploits::shifted_command ( ) )
-	//	localplayer->tick_base ( ) = backup_tickbase;
+	if ( current_command == exploits::shifted_command ( ) )
+		localplayer->tick_base ( ) = backup_tickbase;
 
 	if ( !in_cm )
 		localplayer->velocity_modifier ( ) = backup_vel_mod;

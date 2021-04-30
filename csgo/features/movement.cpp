@@ -47,10 +47,10 @@ void features::movement::run( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 				if ( !( g::local->flags ( ) & flags_t::on_ground ) ) {
 					//	manually turning
-					if ( abs ( ucmd->m_mousedx ) > 2 ) {
-						ucmd->m_smove = ucmd->m_mousedx < 0 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
-						return;
-					}
+					//if ( abs ( ucmd->m_mousedx ) > 2 ) {
+					//	ucmd->m_smove = ucmd->m_mousedx < 0 ? -g::cvars::cl_sidespeed->get_float ( ) : g::cvars::cl_sidespeed->get_float ( );
+					//	return;
+					//}
 
 					//	easy strafe direction selection (4dir)
 					{

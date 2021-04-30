@@ -1331,6 +1331,9 @@ void gui::draw( ) {
 							ImGui::Text ( "Menu" );
 							ImGui::Separator ( );
 
+							//ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.3f deg" ) );
+							//ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 20.0f, _ ( "%.3f deg" ) );
+
 							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
 							//ImGui::PushItemWidth ( -1.0f );
 							//ImGui::Combo ( _ ( "Angle Mode" ), &options::vars [ _ ( "debug.angle_mode" ) ].val.i, angle_modes.data ( ), angle_modes.size ( ) );

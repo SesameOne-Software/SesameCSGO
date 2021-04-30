@@ -15,6 +15,15 @@ namespace anims {
 			inline std::array< bool, 65 > queued_hit { false };
 			inline std::array< int, 65 > last_shots { 0 };
 			inline bool clientside_shot = false;
+
+			inline float lean_tolerance = 16.5f;
+			inline float velocity_tolerance = 15.0f;
+
+			inline std::array < std::array<animlayer_t, 13>, 65 > latest_layers { {} };
+			inline std::array < bool, 65 > new_resolve { false };
+			inline std::array < bool, 65 > was_moving { false };
+			inline std::array < bool, 65 > prefer_edge { false };
+			inline std::array < anims::desync_side_t, 65 > resolved_side { anims::desync_side_t::desync_middle };
 		}
 
 		struct hit_matrix_rec_t {
