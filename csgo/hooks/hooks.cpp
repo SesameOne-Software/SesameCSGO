@@ -219,6 +219,9 @@ void hooks::init( ) {
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
 	ent_listener->add ( );
 
+	cs::i::engine->client_cmd_unrestricted ( "clear" );
+	dbg_print ( "Initialized successfully.\n" );
+
 	VM_SHARK_BLACK_END
 		CLEAR_END
 }

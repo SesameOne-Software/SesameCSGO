@@ -171,6 +171,7 @@ namespace features {
 
 		inline bool in_prediction = false;
 		inline float vel_modifier = 0.0f;
+		inline float crouch_amount = 0.0f;
 		inline vec3_t vel = vec3_t ( 0.0f, 0.0f, 0.0f );
 
 		float curtime( );

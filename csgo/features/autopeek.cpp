@@ -89,8 +89,8 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 				predict_stop ( pred_vel );
 			}
 
-			if ( dist_to_target <= needed_dist && features::prediction::vel.length_2d ( ) > 5.0f )
-				features::ragebot::slow ( ucmd, side_move, fwd_move );
+			//if ( dist_to_target <= needed_dist && features::prediction::vel.length_2d ( ) > 5.0f )
+			//	features::ragebot::slow ( ucmd, side_move, fwd_move );
 
 			/* stop tracking if we reached target */
 			if ( dist_to_target < 12.0f )

@@ -976,11 +976,11 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Fake Duck" ), &options::vars [ _ ( "antiaim.fakeduck" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "Fake Duck Key" ), &options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i, &options::vars [ _ ( "antiaim.fakeduck_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
-							static std::vector<const char*> fake_duck_modes { "Normal" ,  "Full" };
-
-							ImGui::PushItemWidth ( -1.0f );
-							ImGui::Combo ( _ ( "Fake Duck Mode" ), &options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i, fake_duck_modes.data ( ), fake_duck_modes.size ( ) );
-							ImGui::PopItemWidth ( );
+							//static std::vector<const char*> fake_duck_modes { "Offensive" , "Defensive" };
+							//
+							//ImGui::PushItemWidth ( -1.0f );
+							//ImGui::Combo ( _ ( "Fake Duck Mode" ), &options::vars [ _ ( "antiaim.fakeduck_mode" ) ].val.i, fake_duck_modes.data ( ), fake_duck_modes.size ( ) );
+							//ImGui::PopItemWidth ( );
 							//ImGui::Checkbox ( _ ( "Break Backtrack" ), &options::vars [ _ ( "antiaim.break_backtrack" ) ].val.b );
 							//ImGui::SameLine ( );
 							//ImGui::Keybind ( _ ( "Break Backtrack Key" ), &options::vars [ _ ( "antiaim.break_backtrack_key" ) ].val.i, &options::vars [ _ ( "antiaim.break_backtrack_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
@@ -1331,8 +1331,8 @@ void gui::draw( ) {
 							ImGui::Text ( "Menu" );
 							ImGui::Separator ( );
 
-							//ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.3f deg" ) );
-							//ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 20.0f, _ ( "%.3f deg" ) );
+							ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
+							ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
 
 							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
 							//ImGui::PushItemWidth ( -1.0f );

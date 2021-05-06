@@ -129,6 +129,24 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
 	}
 
+	if ( g::local && cs::i::client_state ) {
+		static auto last_cmd_time = cs::i::client_state->next_cmd_time ( );
+		static auto last_ack_cmd = cs::i::client_state->last_command_ack ( );
+
+		if ( last_cmd_time != cs::i::client_state->next_cmd_time ( )
+			|| last_ack_cmd != cs::i::client_state->last_command_ack ( ) ) {
+			if ( features::prediction::vel_modifier != g::local->velocity_modifier ( ) ) {
+				features::prediction::vel_modifier = g::local->velocity_modifier ( );
+
+				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+				*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
+			}
+
+			last_cmd_time = cs::i::client_state->next_cmd_time ( );
+			last_ack_cmd = cs::i::client_state->last_command_ack ( );
+		}
+	}
+
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
 		if ( stage == 5 && g::local ) {
 			/* bullet impacts */

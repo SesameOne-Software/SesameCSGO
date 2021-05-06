@@ -396,7 +396,7 @@ void options::init( ) {
 
 	/* ANTIAIM */
 	/* global antiaim */
-	option::add_int( _( "antiaim.fakeduck_mode" ), 0 ); /* normal, full */
+	//option::add_int( _( "antiaim.fakeduck_mode" ), 0 ); /* normal, full */
 	option::add_bool ( _ ( "antiaim.break_backtrack" ), false );
 	option::add_int ( _ ( "antiaim.break_backtrack_key" ), 0 );
 	option::add_int ( _ ( "antiaim.break_backtrack_key_mode" ), 0 );

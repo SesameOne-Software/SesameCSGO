@@ -16,8 +16,8 @@ namespace anims {
 			inline std::array< int, 65 > last_shots { 0 };
 			inline bool clientside_shot = false;
 
-			inline float lean_tolerance = 16.5f;
-			inline float velocity_tolerance = 15.0f;
+			inline float lean_tolerance = 3.0f;
+			inline float velocity_tolerance = 0.909f;
 
 			inline std::array < std::array<animlayer_t, 13>, 65 > latest_layers { {} };
 			inline std::array < bool, 65 > new_resolve { false };

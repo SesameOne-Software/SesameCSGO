@@ -21,9 +21,8 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 	static auto& third_person_key_mode = options::vars [ _( "misc.effects.third_person_key_mode" ) ].val.i;
 
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
-	static auto& fd_mode = options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i;
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
-	static auto& fd_key_mode = options::vars [ _( "antiaim.fd_key_mode" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
 
 	static float ideal_range = 0.0f;
 
@@ -62,7 +61,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		ray.init ( start, end );
 		filter.m_skip = g::local;
 		
-		cs::i::trace->trace_ray ( ray, mask_solid & ~contents_monster, &filter, &trace );
+		cs::i::trace->trace_ray ( ray, mask_solid & ~contents_hitbox, &filter, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};
@@ -71,9 +70,8 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		auto target_range = 0.0f;
 		auto collided_range = get_ideal_dist ( third_person_range );
 
-		if ( third_person && utils::keybind_active ( third_person_key, third_person_key_mode ) && g::local ) {
+		if ( third_person && utils::keybind_active ( third_person_key, third_person_key_mode ) )
 			target_range = collided_range;
-		}
 
 		const auto val_before = ideal_range;
 

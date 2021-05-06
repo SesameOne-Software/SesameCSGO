@@ -1,6 +1,7 @@
 ﻿#include "prediction.hpp"
 #include "../globals.hpp"
 #include "../hooks/in_prediction.hpp"
+#include "exploits.hpp"
 
 float predicted_curtime = 0.0f;
 
@@ -31,6 +32,15 @@ namespace prediction_util {
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
+		if ( cs::i::client_state->delta_tick ( ) > 0 ) {
+			cs::i::pred->update (
+				cs::i::client_state->delta_tick ( ),
+				cs::i::client_state->delta_tick ( ) > 0,
+				cs::i::client_state->last_command_ack ( ),
+				cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
+			);
+		}
+
 		first_time_pred = cs::i::pred->m_is_first_time_predicted;
 		in_pred = cs::i::pred->m_in_prediction;
 
@@ -41,6 +51,7 @@ namespace prediction_util {
 		*reinterpret_cast< ucmd_t* >( std::uintptr_t ( g::local ) + 0x3288 ) = *ucmd;
 
 		flags = g::local->flags( );
+		features::prediction::crouch_amount = g::local->crouch_amount ( );
 		features::prediction::vel = g::local->vel( );
 
 		curtime = cs::i::globals->m_curtime;
@@ -67,7 +78,7 @@ namespace prediction_util {
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;
 
-		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
+		//cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
 
 		// copy angles from command to player
 		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
@@ -96,7 +107,7 @@ namespace prediction_util {
 		//cs::i::move_helper->process_impacts ( );
 
 		// run post think
-		//g::local->post_think ( );
+		g::local->post_think ( );
 		VM_TIGER_BLACK_END
 	}
 

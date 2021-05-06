@@ -671,7 +671,9 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 
 			if ( !anim_layers [ 3 ].m_weight
 				&& !anim_layers [ 3 ].m_cycle
-				&& !anim_layers [ 6 ].m_weight )
+				&& !anim_layers [ 6 ].m_weight
+				&& !anim_layers [ 6 ].m_playback_rate
+				&& abs( delta_yaw ) > 60.0f )
 			{
 				features::ragebot::get_misses ( idx ).bad_resolve = 0;
 				rdata::resolved_side [ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
@@ -680,27 +682,89 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			}
 		}
 		else if ( anim_info [ idx ].size() > 1 ) {
-			if ( anim_layers [ 6 ].m_weight && abs( anim_layers [ 12 ].m_weight * 1000.0f - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f ) <= rdata::lean_tolerance ) {
-				auto nearest_playback_rate_delta = std::numeric_limits<float>::max ( );
-				auto nearest_side = anims::desync_side_t::desync_max;
+			const auto lean_delta = abs ( anim_layers [ 12 ].m_weight * 1000.0f - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 1000.0f );
+			const auto weight_delta = abs ( anim_layers [ 6 ].m_weight * 1000.0f - anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 6 ].m_weight * 1000.0f );
 
-				for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
-					const auto playback_rate_delta = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ side ][ 6 ].m_playback_rate );
+			const auto running_full_speed_stable = !static_cast< int > ( anim_layers [ 11 ].m_weight * 1000.0f ) && !static_cast< int > ( anim_layers [ 7 ].m_weight * 1000.0f );
 
-					if ( abs ( anim_layers [ 6 ].m_weight * 1000.0f - rec.m_anim_layers [ side ][ 6 ].m_weight * 1000.0f ) <= rdata::velocity_tolerance
-						&& playback_rate_delta < nearest_playback_rate_delta ) {
-						nearest_side = static_cast< anims::desync_side_t >( side );
-						nearest_playback_rate_delta = playback_rate_delta;
+			if ( anim_layers [ 12 ].m_weight * 100.0f < 2.0f || lean_delta < 1.0f ) {
+				// moving, but not accelerating
+				const auto middle_delta_rate = abs (
+					anim_layers [ 6 ].m_playback_rate
+					- rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate ) * 1000.0f;
+				const auto left_delta_rate = abs (
+					anim_layers [ 6 ].m_playback_rate
+					- rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ 6 ].m_playback_rate ) * 1000.0f;
+				const auto right_delta_rate = abs (
+					anim_layers [ 6 ].m_playback_rate
+					- rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ 6 ].m_playback_rate ) * 1000.0f;
+
+				if ( middle_delta_rate < left_delta_rate
+					|| right_delta_rate < left_delta_rate
+					|| left_delta_rate > 0.2f ) {
+					if ( right_delta_rate < middle_delta_rate
+						|| left_delta_rate < middle_delta_rate
+						|| middle_delta_rate > 0.2f ) {
+						if ( middle_delta_rate > right_delta_rate
+							&& left_delta_rate > right_delta_rate
+							&& right_delta_rate < 0.2f ) {
+							features::ragebot::get_misses ( idx ).bad_resolve = 0;
+							rdata::resolved_side [ idx ] = anims::desync_side_t::desync_right_max;
+							rdata::new_resolve [ idx ] = true;
+							rdata::prefer_edge [ idx ] = false;
+						}
+					}
+					else {
+						if ( right_delta_rate > middle_delta_rate
+							&& left_delta_rate > middle_delta_rate
+							&& middle_delta_rate < 0.2f ) {
+							features::ragebot::get_misses ( idx ).bad_resolve = 0;
+							rdata::resolved_side [ idx ] = anims::desync_side_t::desync_middle;
+							rdata::new_resolve [ idx ] = true;
+							rdata::prefer_edge [ idx ] = false;
+						}
 					}
 				}
-
-				if ( nearest_playback_rate_delta != std::numeric_limits<float>::max ( ) ) {
+				else {
 					features::ragebot::get_misses ( idx ).bad_resolve = 0;
-					rdata::resolved_side [ idx ] = nearest_side;
+					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_max;
 					rdata::new_resolve [ idx ] = true;
 					rdata::prefer_edge [ idx ] = false;
 				}
 			}
+
+			//if ( anim_layers [ 6 ].m_weight > 0.0f
+			//	&& lean_delta <= rdata::lean_tolerance
+			//	/*&& anim_layers [ 6 ].m_weight >= min_weight - ( max_weight - min_weight ) * rdata::velocity_tolerance && anim_layers [ 6 ].m_weight <= max_weight + ( max_weight - min_weight ) * rdata::velocity_tolerance */) {
+			//	auto nearest_playback_rate_delta = std::numeric_limits<float>::max ( );
+			//	auto nearest_side = anims::desync_side_t::desync_max;
+			//
+			//	for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
+			//		const auto playback_rate_delta = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ side ][ 6 ].m_playback_rate );
+			//		
+			//		if ( playback_rate_delta < nearest_playback_rate_delta ) {
+			//			nearest_side = static_cast< anims::desync_side_t >( side );
+			//
+			//			//if ( side < anims::desync_side_t::desync_middle )
+			//			//	nearest_side = anims::desync_side_t::desync_left_max;
+			//			//else if ( side > anims::desync_side_t::desync_middle )
+			//			//	nearest_side = anims::desync_side_t::desync_right_max;
+			//			//else
+			//			//	nearest_side = anims::desync_side_t::desync_middle;
+			//
+			//			nearest_playback_rate_delta = playback_rate_delta;
+			//		}
+			//	}
+			//
+			//	if ( nearest_playback_rate_delta != std::numeric_limits<float>::max ( ) ) {
+			//		if ( rdata::resolved_side [ idx ] != nearest_side )
+			//			features::ragebot::get_misses ( idx ).bad_resolve = 0;
+			//
+			//		rdata::resolved_side [ idx ] = nearest_side;
+			//		rdata::new_resolve [ idx ] = true;
+			//		rdata::prefer_edge [ idx ] = false;
+			//	}
+			//}
 
 			rdata::was_moving [ idx ] = true;
 		}
@@ -733,22 +797,22 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	case 0: /* base side */ {
 		rec.m_side = target_side_tmp;
 	} break;
-	case 1: /* close side */ {
-		switch ( target_side_tmp ) {
-		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
-		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
-		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
-		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
-		}
-	} break;
-	case 2: /* oposite side */ {
+	case 1: /* oposite side */ {
 		switch ( target_side_tmp ) {
 		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_right_max; break;
 		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
 		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
 		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_half; break;
 		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_half; break;
+		}
+	} break;
+	case 2: /* close side */ {
+		switch ( target_side_tmp ) {
+		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
+		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
+		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
 		}
 	} break;
 	}

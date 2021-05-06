@@ -188,7 +188,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	static auto& slowwalk_key = options::vars [ _( "antiaim.slow_walk_key" ) ].val.i;
 	static auto& slowwalk_key_mode = options::vars [ _( "antiaim.slow_walk_key_mode" ) ].val.i;
 
-	static auto& fd_mode = options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i;
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
@@ -279,7 +278,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 	}
 
-	if ( g::local->valid( ) && ( g::round == round_t::in_progress || ( g::round == round_t::ending && found_enemy ) ) ) {
+	if ( g::local->valid( ) && ( g::round == round_t::in_progress || ( g::round == round_t::ending /*&& found_enemy*/ ) ) ) {
 		auto max_lag = 1;
 
 		if ( air && !( g::local->flags( ) & flags_t::on_ground ) )
@@ -333,43 +332,33 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		aa::was_on_ground = !!(g::local->flags( ) & flags_t::on_ground);
 
+		static bool reached_choke_limit = false;
 		if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) {
 			aa::was_fd = true;
 
-			if ( cs::is_valve_server( ) ) {
-				static int fd_cycle = 0;
+			if ( cs::i::client_state->choked ( ) <= max_lag / 2 )
+				ucmd->m_buttons &= ~buttons_t::duck;
+			else
+				ucmd->m_buttons |= buttons_t::duck;
 
-				if ( fd_cycle >= 8 )
-					fd_cycle = 0;
+			if ( cs::i::client_state->choked ( ) >= max_lag )
+				reached_choke_limit = true;
 
-				if ( !ducked_ticks ) {
+			if ( reached_choke_limit ) {
+				if ( g::local->crouch_amount() < 1.0f )
 					ucmd->m_buttons |= buttons_t::duck;
-					g::send_packet = true;
-				}
-				else {
-					if ( fd_cycle >= 6 )
-						g::send_packet = true; 
-					else
-						g::send_packet = false;
+				else
+					reached_choke_limit = false;
 
-					if( fd_cycle >= 2 )
-						ucmd->m_buttons &= ~buttons_t::duck;
-					else
-						ucmd->m_buttons |= buttons_t::duck;
-				}
-
-				if ( g::local->crouch_amount ( ) >= 0.9f )
-					ducked_ticks = 1;
-
-				fd_cycle++;
+				g::send_packet = true;
 			}
-			else {
-				ucmd->m_buttons = ( cs::i::client_state->choked( ) > ( fd_mode == 0 ? 9 : 8 ) ) ? ( ucmd->m_buttons | buttons_t::duck ) : ( ucmd->m_buttons & ~buttons_t::duck );
-			}
+			else
+				g::send_packet = false;
 
 			ucmd->m_buttons |= buttons_t::bullrush;
 		}
 		else if ( aa::was_fd ) {
+			reached_choke_limit = false;
 			ducked_ticks = 0;
 			aa::was_fd = false;
 		}
@@ -433,8 +422,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		|| !g::local->weapon( )->data( )
 		|| ( g::local->weapon( )->data( )->m_type == weapon_type_t::knife && !!( ucmd->m_buttons & buttons_t::attack2 ) )
 		//|| g::local->weapon( )->data( )->m_type == 0
-		|| g::round == round_t::starting
-		|| ( g::round == round_t::ending && !found_enemy ) ) {
+		|| g::round == round_t::starting ) {
 		antiaiming = false;	
 		return;
 	}

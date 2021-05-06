@@ -28,7 +28,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	if ( !in_cm )
 		return;
 
-	if ( anim_state->m_hit_ground || anim_state->m_duck_amount || !cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
+	if ( anim_state->m_hit_ground && anim_state->m_duck_amount && cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
 		auto bone_pos = anims::real_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
 
 		bone_pos.z += 1.7f;

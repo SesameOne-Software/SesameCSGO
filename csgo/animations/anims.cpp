@@ -547,8 +547,11 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	*ent->animstate( ) = to.m_anim_state[ to.m_side ];
 	ent->set_abs_angles( to.m_abs_angles[ to.m_side ] );
 
+	const auto backup_lean = ent->layers ( ) [ 12 ].m_weight;
+	ent->layers ( ) [ 12 ].m_weight = 0.0f;
 	build_bones ( ent, to.m_aim_bones [ to.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_side ] );
-	
+	ent->layers ( ) [ 12 ].m_weight = backup_lean;
+
 	for ( auto& bones : to.m_aim_bones )
 		bones = to.m_aim_bones [ to.m_side ];
 }

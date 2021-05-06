@@ -70,12 +70,11 @@ void fix_slide( ucmd_t* ucmd ) {
 
 void fix_event_delay( ucmd_t* ucmd ) {
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
-	static auto& fd_mode = options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i;
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
-	static auto& fd_key_mode = options::vars [ _( "antiaim.fd_key_mode" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
 
 	/* choke packets if requested */
-	if ( !!(ucmd->m_buttons & buttons_t::attack) && g::local && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
+	if ( !!(ucmd->m_buttons & buttons_t::attack) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
@@ -109,30 +108,16 @@ void break_bt ( ucmd_t* ucmd ) {
 	}
 }
 
-int last_send_cmd = 0;
+void fd_crouch ( ucmd_t* ucmd ) {
+	static auto& fd_enabled = options::vars [ _ ( "antiaim.fakeduck" ) ].val.b;
+	static auto& fd_key = options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _ ( "antiaim.fakeduck_key_mode" ) ].val.i;
 
-void reject_bad_shots ( ucmd_t* ucmd ) {
-	if ( g::local && g::local->alive ( ) && cs::i::client_state ) {
-		if ( g::local->velocity_modifier ( ) - features::prediction::vel_modifier < -0.1f ) {
-			//for ( auto i = 0; i < cs::i::client_state->choked ( ) + 1; i++ ) {
-			//	auto next_verified_cmd = cs::i::input->get_verified_cmd ( last_send_cmd + i );
-			//	auto next_cmd = cs::i::input->get_cmd ( last_send_cmd + i );
-			//
-			//	if ( next_cmd && ( !!( next_cmd->m_buttons & buttons_t::attack ) || !!( next_cmd->m_buttons & buttons_t::attack2 ) ) ) {
-			//		next_cmd->m_buttons &= ~buttons_t::attack;
-			//		next_cmd->m_buttons &= ~buttons_t::attack2;
-			//
-			//		next_verified_cmd->m_cmd = *next_cmd;
-			//		next_verified_cmd->m_crc = next_cmd->get_checksum ( );
-			//	}
-			//}
-
-			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
-		}
-
-		features::prediction::vel_modifier = g::local->velocity_modifier ( );
-	}
+	if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) )
+		ucmd->m_buttons |= buttons_t::duck;
 }
+
+int last_send_cmd = 0;
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !exploits::in_exploit ) {
@@ -147,7 +132,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			return ret;
 	}
 
-	ducking = !!(ucmd->m_buttons & buttons_t::duck);
 	in_cm = true;
 
 	utils::update_key_toggles( );
@@ -158,14 +142,9 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		return false;
 	}
 
-	if ( cs::i::client_state->choked ( ) && (features::ragebot::active_config.dt_teleport ? true : !exploits::in_exploit )) {
-		cs::i::pred->update (
-			cs::i::client_state->delta_tick ( ),
-			cs::i::client_state->delta_tick ( ) > 0,
-			cs::i::client_state->last_command_ack ( ),
-			cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
-		);
-	}
+	fd_crouch ( ucmd );
+
+	ducking = !!( ucmd->m_buttons & buttons_t::duck );
 
 	//RUN_SAFE (
 	//	"features::ragebot::get_weapon_config",
@@ -197,7 +176,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::clantag::run( ucmd );
 
 	features::movement::run( ucmd, old_angs );
-
 	features::blockbot::run( ucmd, old_angs );
 
 	auto old_smove = ucmd->m_smove;
@@ -224,26 +202,19 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !exploits::in_exploit )
 		features::nade_prediction::trace( ucmd );
 
-	features::prediction::run( [ & ] ( ) {
-		features::antiaim::simulate_lby( );
-		ducking = !!(ucmd->m_buttons & buttons_t::duck);
-
-		features::legitbot::run( ucmd );
-
-		//if ( !exploits::in_exploit )
-			features::ragebot::run( ucmd, old_smove, old_fmove, old_angs );
-
-		features::antiaim::run( ucmd, old_smove, old_fmove );
-
+	features::prediction::run ( [ & ] ( ) {
+		features::antiaim::simulate_lby ( );
+		features::legitbot::run ( ucmd );
+		features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
+		features::antiaim::run ( ucmd, old_smove, old_fmove );
 		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
-		} );
+	} );
 
 	if( !!(ucmd->m_buttons & buttons_t::attack) )
 		exploits::has_shifted = false;
 
-	reject_bad_shots ( ucmd );
-
-	fix_event_delay( ucmd );
+	if ( !exploits::in_exploit )
+		fix_event_delay( ucmd );
 
 	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( ucmd->m_buttons & buttons_t::attack ) ) {
 		if ( g::local->tick_base ( ) > g::cock_ticks ) {
@@ -274,14 +245,16 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	//break_bt ( ucmd );
 
-	*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+	if ( !exploits::in_exploit )
+		*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	if ( g::send_packet )
 		last_send_cmd = ucmd->m_cmdnum;
 
 	fix_slide( ucmd );
 
-	features::ragebot::tickbase_controller( ucmd );
+	if ( !exploits::in_exploit )
+		features::ragebot::tickbase_controller( ucmd );
 
 	if ( g::send_packet ) {
 		g::sent_cmd = *ucmd;

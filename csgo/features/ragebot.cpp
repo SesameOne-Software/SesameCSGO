@@ -680,7 +680,6 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	/* tickbase manip controller */
-	static auto& fd_mode = options::vars [ _( "antiaim.fakeduck_mode" ) ].val.i;
 	static auto& fd_enabled = options::vars [ _( "antiaim.fakeduck" ) ].val.b;
 	static auto& fd_key = options::vars [ _( "antiaim.fakeduck_key" ) ].val.i;
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
@@ -898,8 +897,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	}
 
 	if ( !exploits::can_shoot ( ) ) {
-		if ( active_config.auto_shoot )
-			ucmd->m_buttons &= ~buttons_t::attack;
+		//ucmd->m_buttons &= ~buttons_t::attack;
 
 		//if ( !g::local->weapon ( )->data ( )->m_full_auto )
 			return;
@@ -956,12 +954,12 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	const auto cur_speed = features::prediction::vel.length_2d ( );
 
 	if ( cur_speed > max_speed ) {
-		static auto calc_velocity = [ & ] ( vec3_t& vel ) {
+		auto calc_velocity = [ & ] ( vec3_t& vel ) {
 			const auto speed = vel.length_2d ( );
 
 			if ( speed >= 0.1f ) {
 				const auto stop_speed = std::max ( speed, g::cvars::sv_stopspeed->get_float ( ) );
-				vel *= std::max ( 0.0f, std::max ( 0.0f, speed - ( stop_speed * g::cvars::sv_friction->get_float ( ) * cs::i::globals->m_ipt ) ) / cur_speed );
+				vel *= std::max ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::ticks2time ( 1 ) / speed );
 			}
 		};
 
@@ -994,8 +992,20 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 			}
 		}
 
-		if ( at_target )
-			slow ( ucmd, old_smove, old_fmove );
+		if ( at_target && features::prediction::vel.length_2d ( ) > 0.1f ) {
+			const auto target_vel = -features::prediction::vel.normalized ( ) * g::cvars::cl_forwardspeed->get_float ( );
+
+			vec3_t angles;
+			cs::i::engine->get_viewangles ( angles );
+
+			const auto fwd = cs::angle_vec ( angles );
+			const auto right = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+
+			old_fmove = ( target_vel.y - ( right.y / right.x ) * target_vel.x ) / ( fwd.y - ( right.y / right.x ) * fwd.x );
+			old_smove = ( target_vel.x - fwd.x * old_fmove ) / right.x;
+
+			ucmd->m_buttons &= ~buttons_t::walk;
+		}
 	}
 
 	if ( !best.m_ent )
@@ -1418,7 +1428,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg ) {
 	VM_TIGER_BLACK_START
-	constexpr int SIMILAR_RECORD_THRESHOLD = 3;
+	constexpr int SIMILAR_RECORD_THRESHOLD = 0;
 
 	if ( !ent->valid ( ) )
 		return;
