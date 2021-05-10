@@ -652,6 +652,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	/* temporary value */
 	const auto speed_2d = rec.m_vel.length_2d ( );
 
+	/* Similar version from onetap for resolving big jitter desync */
 	if ( abs ( delta_yaw ) > 60.0f
 		&& abs ( second_yaw ) > 60.0f && copysign ( 1.0f, delta_yaw ) != copysign ( 1.0f, second_yaw ) ) {
 		//features::ragebot::get_misses ( idx ).bad_resolve = 0;
@@ -659,7 +660,9 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		rdata::new_resolve [ idx ] = true;
 		rdata::prefer_edge [ idx ] = false;
 	}
+	/* on ground resolver */
 	else if ( !!( rec.m_flags & flags_t::on_ground ) ) {
+		/* standing still */
 		if ( speed_2d <= 0.1f ) {
 			if ( rdata::was_moving [ idx ] ) {
 				if ( !rdata::new_resolve [ idx ] )
@@ -669,18 +672,33 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				rdata::was_moving [ idx ] = false;
 			}
 
+			/* 
+			*	- Pretty much simplified version of Neverlose resolver logic for standing players.
+			*	(Take last real angle when was moving, and use it instead of standing guess if it has the same sign. If sign is different, change our guess.)
+			*/
 			if ( !anim_layers [ 3 ].m_weight
 				&& !anim_layers [ 3 ].m_cycle
 				&& !anim_layers [ 6 ].m_weight
 				&& !anim_layers [ 6 ].m_playback_rate
-				&& abs( delta_yaw ) > 60.0f )
-			{
-				features::ragebot::get_misses ( idx ).bad_resolve = 0;
-				rdata::resolved_side [ idx ] = ( delta_yaw < 0.0f ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+				&& abs( delta_yaw ) > 60.0f ) {
+				anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
+
+				if (delta_yaw < 0.0f && rdata::resolved_side[idx] < anims::desync_side_t::desync_middle)
+					new_desync_side = rdata::resolved_side[idx];
+				else if (delta_yaw > 0.0f && rdata::resolved_side[idx] >= anims::desync_side_t::desync_middle)
+					new_desync_side = rdata::resolved_side[idx];
+				else
+					new_desync_side = (delta_yaw < 0.0f) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
+
+				if (rdata::resolved_side[idx] != new_desync_side)
+					features::ragebot::get_misses(idx).bad_resolve = 0;
+				
+				rdata::resolved_side[idx] = new_desync_side;
 				rdata::new_resolve [ idx ] = true;
 				rdata::prefer_edge [ idx ] = false;
 			}
 		}
+		/* player moving */
 		else if ( anim_info [ idx ].size() > 1 ) {
 			const auto lean_delta = abs ( anim_layers [ 12 ].m_weight * 100.0f - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 100.0f );
 			auto similar_weight = false;
@@ -693,6 +711,24 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			}
 
 			const auto running_full_speed_stable = !static_cast< int > ( anim_layers [ 11 ].m_weight * 1000.0f ) && !static_cast< int > ( anim_layers [ 7 ].m_weight * 1000.0f );
+			
+			/*
+			*	-- WELL-MODIFIED VERSION OF ONETAP ANIMATION RESOLVER WITH ADDED CHECKS ---
+			*
+			*	- let's hope the values in our animlayers are relatively constant.
+			*	- we have to add a larger tolerance for our values, since neverlose slow walk jitters movement,
+			*	messing up layer 12's weight and consistency of layer 6's weight + playback rate.
+			*	- onetap checks if layer 12 weight is 0, which can symbolize the player is not accelerating, and animlayer 6's weight is constant;
+			*	while that works for running players and slow walking players, having neverlose's jittering slow walk, jitter desync antiaims,
+			*	or even higher amounts of fakelag can mess up the resolver consistency and make it update less frequently when it would be highly optimal.
+			*	- this seems to be okay, but sometimes make players jitter when they switch directions too much. this updates pretty quickly as well.
+			*	- this is basically the majority of onetap's resolver (at least the bit with interpreting animlayer values),
+			*	but onetap lacked checks for middle desync / no desync and checks for "low delta" desync. I fixed that.
+			* 
+			*	TODO: Please find another, more reliable way to check if we should resolve using animlayers.
+			*	maybe check if our values match the server somewhat well?
+			*	(This did not seem to be too effective, but I'll have to double-check my results).
+			*/
 
 			//if ( lean_delta < 6.0f
 			//	&& similar_weight ) {
@@ -718,29 +754,6 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				//dbg_print ( "low: %.6f\n", left_half_delta_rate * 1000.0f );
 				//dbg_print ( "mid: %.6f\n", middle_delta_rate * 1000.0f );
 				//dbg_print ( "right: %.6f\n", right_delta_rate * 1000.0f );
-				//
-				//dbg_print ( "REAL: %.6f\n", anim_layers [ 6 ].m_playback_rate * 1000.0f );
-
-				//if ( middle_delta_rate < left_delta_rate
-				//	|| right_delta_rate <= left_delta_rate
-				//	|| left_delta_rate * 1000.0f > 0.1f ) {
-				//	if ( middle_delta_rate >= right_delta_rate
-				//		&& left_delta_rate > right_delta_rate
-				//		&& right_delta_rate * 1000.0f < 0.1f ) {
-				//		if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_right_max )
-				//			features::ragebot::get_misses ( idx ).bad_resolve = 0;
-				//		rdata::resolved_side [ idx ] = anims::desync_side_t::desync_right_max;
-				//		rdata::new_resolve [ idx ] = true;
-				//		rdata::prefer_edge [ idx ] = false;
-				//	}
-				//}
-				//else {
-				//	if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_max )
-				//		features::ragebot::get_misses ( idx ).bad_resolve = 0;
-				//	rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_max;
-				//	rdata::new_resolve [ idx ] = true;
-				//	rdata::prefer_edge [ idx ] = false;
-				//}
 
 				auto max_speed = 260.0f;
 				auto weapon_info = ent->weapon ( ) ? ent->weapon ( )->data() : nullptr;
@@ -748,11 +761,13 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				if ( weapon_info )
 					max_speed = ent->scoped ( ) ? weapon_info->m_max_speed_alt : weapon_info->m_max_speed;
 
+				/* from onetap */
+				/* additional check (onetap doesn't have this) */
 				if ( right_delta_rate > left_half_delta_rate
 					&& left_delta_rate > left_half_delta_rate
 					&& middle_delta_rate > left_half_delta_rate
 					&& left_half_delta_rate * 1000.0f < 0.1f
-					&& abs ( left_half_delta_rate * 1000.0f - left_delta_rate * 1000.0f ) < 0.08f ) {
+					&& abs ( left_half_delta_rate * 1000.0f - left_delta_rate * 1000.0f ) < 0.1f ) {
 					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_half )
 						features::ragebot::get_misses ( idx ).bad_resolve = 0;
 					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_half;
@@ -779,6 +794,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 							rdata::prefer_edge [ idx ] = false;
 						}
 					}
+					/* additional check (onetap doesn't have this) */
 					else {
 						if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_middle )
 							features::ragebot::get_misses ( idx ).bad_resolve = 0;
@@ -818,33 +834,67 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	const auto occluded_side = ( dmg_left > dmg_right ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
 	auto target_side_tmp = rdata::resolved_side [ idx ];
 
-	/* put head towards wall if only one side is hittable and we don't have enough information */
-	//if ( rdata::prefer_edge [ idx ] && one_side_hittable )
-	//	target_side_tmp = occluded_side;
+	/*
+	*	- Put head towards wall if only one side is hittable and we don't have enough information
+	*	- Onetap does almost the same thing iirc.
+	*/
+	if ( rdata::prefer_edge [ idx ] && one_side_hittable )
+		target_side_tmp = occluded_side;
 
-	/* bruteforce */
-	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 3 ) {
-	case 0: /* base side */ {
-		rec.m_side = target_side_tmp;
-	} break;
-	case 1: /* oposite side */ {
-		switch ( target_side_tmp ) {
-		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_right_max; break;
-		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
-		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
-		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_half; break;
-		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_half; break;
+	/* bruteforce from Onetap, except a bit more agressive, with different order depending on weapon (skeet does this as well) */
+	const auto has_accurate_weapon = g::local && g::local->weapon() && g::local->weapon()->item_definition_index() == weapons_t::ssg08;
+	const auto has_bad_desync = ent->desync_amount() <= 36.666f;
+
+	auto bruteforce = [&](int brute_mode /* 0 = none, 1 = opposite, 2 = close, 3 = fast, 4 = fast opposite*/) {
+		switch (brute_mode) {
+		case 0: {
+			rec.m_side = target_side_tmp;
+		} break;
+		case 1: {
+			switch (target_side_tmp) {
+			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_right_max; break;
+			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_half; break;
+			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_half; break;
+			}
+		} break;
+		case 2: {
+			switch (target_side_tmp) {
+			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
+			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
+			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
+			}
+		} break;
+		case 3: {
+			switch (target_side_tmp) {
+			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_middle; break;
+			}
+		} break;
+		case 4: {
+			switch (target_side_tmp) {
+			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_max; break;
+			}
+		} break;
+		default: rec.m_side = target_side_tmp; break;
 		}
-	} break;
-	case 2: /* close side */ {
-		switch ( target_side_tmp ) {
-		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
-		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
-		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
-		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
-		}
-	} break;
+	};
+
+	switch (features::ragebot::get_misses(idx).bad_resolve % (has_bad_desync ? 2 : 3)) {
+	case 0: bruteforce(has_bad_desync ? 3 : 0); break;
+	case 1: bruteforce(has_bad_desync ? 4 : (has_accurate_weapon ? 1 : 2)); break;
+	case 2: bruteforce(has_bad_desync ? 3 : (has_accurate_weapon ? 2 : 1)); break;
+	default: bruteforce(has_bad_desync ? 3 : 0); break;
 	}
 
 	last_recorded_resolve [ idx ] = rec.m_side;
