@@ -559,17 +559,25 @@ bool features::ragebot::dmg_hitchance ( vec3_t ang, player_t* pl, vec3_t point, 
 	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
 
 	/* check damage accuracy */
-	const auto spread_coeff = weap_spread * 0.5f * ( features::ragebot::active_config.dmg_accuracy / 100.0f );
-
+	const auto spread_coeff = weap_spread * 0.5f;
 	const auto dist_to = src.dist_to ( point );
 
-	const auto left_point = src + ( forward - right * spread_coeff ) * dist_to;
-	const auto right_point = src + ( forward + right * spread_coeff ) * dist_to;
+	const auto point_count = 10;
+	auto hits = 0;
 
-	const auto dmg_left = autowall::dmg( g::local, pl, src, left_point, hitbox );
-	const auto dmg_right = autowall::dmg( g::local, pl, src, right_point, hitbox );
+	for ( auto i = 0; i < point_count; i++ ) {
+		const auto dmg_left = autowall::dmg ( g::local, pl, src, src + ( forward - right * spread_coeff * ( static_cast< float >( i + 1 ) / static_cast< float >( point_count ) ) ) * dist_to, hitbox );
+		const auto dmg_right = autowall::dmg ( g::local, pl, src, src + ( forward + right * spread_coeff * ( static_cast< float >( i + 1 ) / static_cast< float >( point_count ) ) ) * dist_to, hitbox );
 
-	return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= min_dmg || dmg_right >= min_dmg );
+		if ( dmg_left >= static_cast<float>( min_dmg ) )
+			hits++;
+
+		if ( dmg_right >= static_cast< float >( min_dmg ) )
+			hits++;
+	}
+
+	//return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= min_dmg || dmg_right >= min_dmg );
+	return false;
 }
 
 bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec ) {
@@ -675,7 +683,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		return false;
 
 	return true;
-	//return dmg_hitchance( ang, pl, point, rays, hitbox );
+	//;return dmg_hitchance( ang, pl, point, rays, hitbox );
 }
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
@@ -897,7 +905,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	}
 
 	if ( !exploits::can_shoot ( ) ) {
-		//ucmd->m_buttons &= ~buttons_t::attack;
+		ucmd->m_buttons &= ~buttons_t::attack;
 
 		//if ( !g::local->weapon ( )->data ( )->m_full_auto )
 			return;
@@ -950,7 +958,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	scan_points.sync( );
 
 	/* extrapolate autostop */ 
-	const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f;
+	const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.33f;
 	const auto cur_speed = features::prediction::vel.length_2d ( );
 
 	if ( cur_speed > max_speed ) {
@@ -993,7 +1001,10 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		}
 
 		if ( at_target && features::prediction::vel.length_2d ( ) > 0.1f ) {
-			const auto target_vel = -features::prediction::vel.normalized ( ) * g::cvars::cl_forwardspeed->get_float ( );
+			auto target_vel = -features::prediction::vel.normalized ( ) * g::cvars::cl_forwardspeed->get_float ( );
+
+			if ( ticks_until_accurate <= 1 )
+				target_vel = features::prediction::vel.normalized ( ) * max_speed;
 
 			vec3_t angles;
 			cs::i::engine->get_viewangles ( angles );
@@ -1244,7 +1255,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		hitboxes.push_back( hitbox_pelvis );
 
 	if ( active_config.scan_chest ) {
-		hitboxes.push_back( hitbox_chest );
+		hitboxes.push_back( hitbox_upper_chest );
 	}
 
 	if ( active_config.scan_head )
@@ -1275,21 +1286,14 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	float scaled_dmg_head = static_cast< float > ( weapon_data->m_dmg );
 	autowall::scale_dmg ( pl, weapon_data, autowall::hitbox_to_hitgroup ( hitbox_head ), scaled_dmg_head );
 	
-	auto damage_scalar = 1.0f;
+	auto should_baim = false;
 
 	if ( ((get_misses( pl->idx( ) ).bad_resolve >= active_config.baim_after_misses && active_config.baim_after_misses )
 		|| ( active_config.baim_air && !( rec.m_flags & flags_t::on_ground ) )
 		|| ( active_config.baim_lethal && scaled_dmg > pl->health( ) )
 		|| (( exploits::is_ready ( ) || exploits::has_shifted || exploits::in_exploit ) && active_config.max_dt_ticks > 6 && active_config.dt_enabled && utils::keybind_active ( active_config.dt_key, active_config.dt_key_mode ) ))
 		&& !active_config.headshot_only ) {
-		damage_scalar = ( scaled_dmg_head / scaled_dmg ) * 1.05f;
-		//std::deque<int> new_hitboxes {};
-		//
-		//for ( auto& hitbox : hitboxes )
-		//	if( hitbox != hitbox_head && hitbox != hitbox_neck )
-		//		new_hitboxes.push_back ( hitbox );
-		//
-		//hitboxes = new_hitboxes;
+		should_baim = true;
 	}
 
 	/* allows us to make smarter choices for hitboxes if we know how many shots we will want to shoot */
@@ -1358,7 +1362,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	const auto backup_maxs = pl->maxs ( );
 
 	pl->origin ( ) = rec.m_origin;
-	pl->set_abs_origin ( rec.m_origin );
+	//pl->set_abs_origin ( rec.m_origin );
 	pl->bone_cache ( ) = dmg_scan_matrix.data();
 	pl->mins ( ) = rec.m_mins;
 	pl->maxs ( ) = rec.m_maxs;
@@ -1383,7 +1387,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) * ( ( hitbox == hitbox_pelvis || hitbox == hitbox_chest ) ? damage_scalar : 1.0f );
+			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
 			//dbg_print ( _("calculated damage: %.1f"), dmg );
 
 			if ( dmg > best_points_damage ) {
@@ -1401,14 +1405,19 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		}
 
 		/* if we meet min dmg requirement or shot will be fatal, we can immediately break out */
+		if ( should_baim
+			&& hitbox != hitbox_head && hitbox != hitbox_neck
+			&& best_dmg_tmp >= ent->health ( ) )
+			break;
+
 		//if ( best_dmg_tmp > min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
 		//	best_dmg = best_dmg_tmp;
 		//	break;
 		//}
 	}
 
+	/* save best data */
 	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > min_dmg || best_dmg_tmp > pl->health( ) ) ) {
-		/* save best data */
 		pos_out = best_pos;
 		hitbox_out = best_hitbox;
 		best_dmg = best_dmg_tmp;
@@ -1416,7 +1425,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* restore player data to what it was before so we dont mess up anything */
 	pl->origin ( ) = backup_origin;
-	pl->set_abs_origin ( backup_abs_origin );
+	//pl->set_abs_origin ( backup_abs_origin );
 	pl->bone_cache ( ) = backup_bone_cache;
 	pl->mins ( ) = backup_mins;
 	pl->maxs ( ) = backup_maxs;

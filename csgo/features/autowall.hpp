@@ -322,7 +322,6 @@ namespace autowall {
 
 			cs::i::trace->trace_ray( ray, mask_shot_hull | contents_hitbox, &filter, &data.enter_trace );
 
-			//clip_trace_to_players_fast( entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 			clip_trace_to_players_fast( dst_entity, data.src, end + data.direction * 40.0f, mask_shot_hull | contents_hitbox, &data.filter, &data.enter_trace );
 
 			if ( data.enter_trace.m_fraction >= 1.0f && hitgroup != -1 ) {

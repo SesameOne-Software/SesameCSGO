@@ -182,7 +182,7 @@ namespace anims {
 	void reset_data ( int idx );
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
-	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool build_matrix );
+	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix );
 	void fix_velocity ( player_t* ent, vec3_t& vel );
 	void update_from ( player_t* ent, const anim_info_t& from, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
 	void apply_anims ( player_t* ent );

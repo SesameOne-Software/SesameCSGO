@@ -74,7 +74,9 @@ void fix_event_delay( ucmd_t* ucmd ) {
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
 
 	/* choke packets if requested */
-	if ( !!(ucmd->m_buttons & buttons_t::attack) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
+	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( )
+		&& (!!(ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon()->data()->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t>(0) ) )) && exploits::can_shoot())
+		&& !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
@@ -152,7 +154,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	//);
 
 	if ( !g::local || !g::local->alive( ) )
-		g::cock_ticks = 0;
+		g::cock_time = 0.0f;
 
 	security_handler::update( );
 
@@ -216,19 +218,45 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !exploits::in_exploit )
 		fix_event_delay( ucmd );
 
-	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && features::ragebot::active_config.auto_revolver && g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( ucmd->m_buttons & buttons_t::attack ) ) {
-		if ( g::local->tick_base ( ) > g::cock_ticks ) {
-			ucmd->m_buttons &= ~buttons_t::attack;
-			g::cock_ticks = g::local->tick_base ( ) + cs::time2ticks(0.25f) - 1;
+	/* auto-revolver */
+	if ( g::local && g::local->weapon ( ) ) {
+		const auto weapon = g::local->weapon ( );
+		const auto server_time = cs::ticks2time ( g::local->tick_base ( ) );
+
+		if ( g::local
+			&& weapon->data ( )
+			&& features::ragebot::active_config.auto_revolver
+			&& weapon->item_definition_index ( ) == weapons_t::revolver
+			&& !( ucmd->m_buttons & buttons_t::attack ) ) {
+			ucmd->m_buttons &= ~buttons_t::attack2;
+
+			const auto can_shoot = server_time >= g::local->next_attack ( )
+				&& server_time >= weapon->next_primary_attack ( )
+				/*&& weapon->postpone_fire_time ( ) < server_time*/;
+
 			g::can_fire_revolver = true;
+
+			if ( g::can_fire_revolver && can_shoot ) {
+				if ( g::cock_time <= server_time ) {
+					if ( weapon->next_secondary_attack ( ) <= server_time )
+						g::cock_time = server_time + 0.234375f;
+					else
+						ucmd->m_buttons |= buttons_t::attack2;
+				}
+				else
+					ucmd->m_buttons |= buttons_t::attack;
+
+				g::can_fire_revolver = server_time > g::cock_time;
+			}
+			else {
+				g::can_fire_revolver = false;
+				g::cock_time = server_time + 0.234375f;
+				ucmd->m_buttons &= ~buttons_t::attack;
+			}
 		}
 		else {
-			ucmd->m_buttons |= buttons_t::attack;
 			g::can_fire_revolver = false;
 		}
-	}
-	else {
-		g::can_fire_revolver = false;
 	}
 
 	cs::clamp( ucmd->m_angs );
@@ -246,7 +274,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	//break_bt ( ucmd );
 
 	if ( !exploits::in_exploit )
-		*( bool* )( *( uintptr_t* )( uintptr_t( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t * >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	if ( g::send_packet )
 		last_send_cmd = ucmd->m_cmdnum;

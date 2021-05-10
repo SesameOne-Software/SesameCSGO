@@ -480,10 +480,14 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 
 	for ( auto i = 0; i < delta_ticks; i++ ) {
 		const float simtime = from.m_simtime + cs::ticks2time( i + 1 );
-		
+		auto should_desync = false;
+
 		/* interpolate angles */
 		if ( !to.m_shot ) {
-			ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles : from.m_angles;
+			ent->angles( ) = ( i + 1 == delta_ticks ) ? to.m_angles /*real*/ : from.m_angles /*fake*/;
+
+			if ( !( i + 1 == delta_ticks ) )
+				should_desync = true;
 		}
 		/* set onshot angles when enemy supposedly shot */
 		else {
@@ -491,6 +495,8 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 
 			if ( ent->weapon( ) && ent->weapon( )->last_shot_time() <= simtime )
 				ent->angles( ) = to.m_angles;
+			else
+				should_desync = true;
 		}
 
 		/* interpolate crouch amount */
@@ -516,7 +522,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		ent->simtime( ) = simtime;
 		ent->old_simtime( ) = simtime - cs::ticks2time( 1 );
 
-		update_all_anims( ent, ent->angles( ), to, cur_layers, i + 1 == delta_ticks /* only build bones for latest tick */ );
+		update_all_anims( ent, ent->angles( ), to, cur_layers, should_desync, i + 1 == delta_ticks /* only build bones for latest tick */ );
 
 		ent->simtime( ) = backup_simtime;
 		ent->old_simtime( ) = backup_old_simtime;
@@ -556,7 +562,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		bones = to.m_aim_bones [ to.m_side ];
 }
 
-void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool build_matrix ) {
+void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix ) {
 	static auto& resolver = options::vars[ _( "ragebot.resolve_desync" ) ].val.b;
 
 	const auto anim_state = ent->animstate( );
@@ -584,14 +590,16 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		ent->poses( ) = to.m_poses [ side ];
 
 		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
-
-		anim_state->m_pitch = angles.x;
+		//const auto backup_angles = angles;
 
 		if ( should_resolve && side != desync_side_t::desync_max )
-			anim_state->m_abs_yaw = cs::normalize( angles.y + offset );
+			//angles.y = cs::normalize( angles.y + offset );
+			anim_state->m_abs_yaw = cs::normalize ( anim_state->m_eye_yaw + offset );
 
 		/* update animations */
 		update_anims( ent , angles );
+
+		//angles = backup_angles;
 
 		/* calculate new poses */
 		/* NOT NEEDED */
@@ -794,7 +802,10 @@ void anims::on_net_update_end ( int idx ) {
 			for ( auto& rec : anim_info[ idx ] )
 				rec.m_invalid = true;
 
-		fix_velocity( ent, ent->vel() );
+		if ( !!( ent->flags ( ) & flags_t::on_ground ) && ent->vel ( ).length_2d ( ) > 0.0f && !ent->layers()[ 6 ].m_weight )
+			ent->vel ( ).zero ( );
+
+		//fix_velocity( ent, ent->vel() );
 
 		static anim_info_t rec {};
 
@@ -807,7 +818,7 @@ void anims::on_net_update_end ( int idx ) {
 
 			const auto backup_anim_layers = rec.m_anim_layers;
 
-			update_all_anims( ent, ent->angles(), rec, rec.m_anim_layers[desync_side_t::desync_middle], true );
+			update_all_anims( ent, ent->angles(), rec, rec.m_anim_layers[desync_side_t::desync_middle], true, true );
 
 			/* try to guess the orientation of their real matrix */
 			resolver::resolve_desync( ent , rec );

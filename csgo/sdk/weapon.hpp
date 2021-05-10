@@ -91,6 +91,7 @@ enum weapon_type_t : uint32_t {
 	sniper,
 	lmg,
 	c4,
+	placeholder,
 	grenade,
 	unknown
 };

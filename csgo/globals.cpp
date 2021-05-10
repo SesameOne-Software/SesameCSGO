@@ -14,7 +14,7 @@ ucmd_t g::sent_cmd { };
 vec3_t g::angles = vec3_t ( 0.0f, 0.0f, 0.0f );
 bool g::hold_aim = false;
 bool g::send_packet = true;
-int g::cock_ticks = 0;
+float g::cock_time = 0.0f;
 bool g::can_fire_revolver = false;
 
 void g::resources::init ( ) {

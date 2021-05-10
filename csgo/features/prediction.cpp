@@ -32,6 +32,11 @@ namespace prediction_util {
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
+		if ( features::prediction::vel_modifier < 1.0f ) {
+			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+			*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
+		}
+
 		if ( cs::i::client_state->delta_tick ( ) > 0 ) {
 			cs::i::pred->update (
 				cs::i::client_state->delta_tick ( ),
@@ -78,7 +83,7 @@ namespace prediction_util {
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;
 
-		//cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
+		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
 
 		// copy angles from command to player
 		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
@@ -107,7 +112,7 @@ namespace prediction_util {
 		//cs::i::move_helper->process_impacts ( );
 
 		// run post think
-		g::local->post_think ( );
+		//g::local->post_think ( );
 		VM_TIGER_BLACK_END
 	}
 

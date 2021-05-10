@@ -135,7 +135,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 		if ( last_cmd_time != cs::i::client_state->next_cmd_time ( )
 			|| last_ack_cmd != cs::i::client_state->last_command_ack ( ) ) {
-			if ( features::prediction::vel_modifier != g::local->velocity_modifier ( ) ) {
+			if ( features::prediction::vel_modifier != 1.0f ) {
 				features::prediction::vel_modifier = g::local->velocity_modifier ( );
 
 				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;

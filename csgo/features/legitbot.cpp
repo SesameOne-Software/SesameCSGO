@@ -4,6 +4,7 @@
 #include "../menu/options.hpp"
 #include "prediction.hpp"
 #include "autowall.hpp"
+#include "exploits.hpp"
 
 __forceinline void run_triggerbot( ucmd_t* ucmd ) {
     static auto& triggerbot_enabled = options::vars [ _( "legitbot.triggerbot" ) ].val.b;
@@ -30,16 +31,6 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
     ray.init( eyes, eyes + cs::angle_vec( ang ).normalized( ) * g::local->weapon( )->data( )->m_range );
 
     cs::i::trace->trace_ray( ray, mask_shot, &filter, &tr );
-
-    auto can_shoot = [ & ] ( ) {
-        if ( !g::local->weapon( ) || !g::local->weapon( )->ammo( ) )
-            return false;
-
-        if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver && !( g::can_fire_revolver || cs::time2ticks( cs::i::globals->m_curtime ) > g::cock_ticks ) )
-            return false;
-
-        return cs::i::globals->m_curtime >= g::local->next_attack( ) && cs::i::globals->m_curtime >= g::local->weapon( )->next_primary_attack( );
-    };
 
     const auto hit_pl = reinterpret_cast< player_t* >( tr.m_hit_entity );
 
@@ -77,7 +68,7 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
         ? std::find( hitboxes.begin( ), hitboxes.end( ), tr.m_hitgroup ) != hitboxes.end( )
         : false;
 
-    if ( can_shoot( )
+    if ( exploits::can_shoot( )
         && hit_pl->valid( )
         && hit_pl->team( ) != g::local->team( )
         && hitbox_target ) {

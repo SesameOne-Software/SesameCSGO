@@ -31,7 +31,7 @@ namespace g {
 	extern vec3_t angles;
 	extern bool hold_aim;
 	extern bool send_packet;
-	extern int cock_ticks;
+	extern float cock_time;
 	extern bool can_fire_revolver;
 	extern round_t round;
 	inline uint32_t server_tick = 0;

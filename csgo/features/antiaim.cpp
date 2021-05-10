@@ -101,7 +101,7 @@ int find_freestand_side( player_t* pl, float range ) {
 	if ( l_dmg == r_dmg )
 		return -1;
 
-	return l_dmg > r_dmg ? 0 : 1;
+	return (l_dmg > r_dmg) ? 0 : 1;
 }
 
 int ducked_ticks = 0;
@@ -336,7 +336,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) {
 			aa::was_fd = true;
 
-			if ( cs::i::client_state->choked ( ) <= max_lag / 2 )
+			if ( cs::i::client_state->choked ( ) < max_lag / 2 )
 				ucmd->m_buttons &= ~buttons_t::duck;
 			else
 				ucmd->m_buttons |= buttons_t::duck;
@@ -417,17 +417,16 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	if ( !g::local->valid( )
 		|| g::local->movetype( ) == movetypes_t::noclip
 		|| g::local->movetype( ) == movetypes_t::ladder
-		|| !!(ucmd->m_buttons & buttons_t::use)
 		|| !g::local->weapon( )
 		|| !g::local->weapon( )->data( )
-		|| ( g::local->weapon( )->data( )->m_type == weapon_type_t::knife && !!( ucmd->m_buttons & buttons_t::attack2 ) )
-		//|| g::local->weapon( )->data( )->m_type == 0
+		|| (!!( ucmd->m_buttons & buttons_t::use ) && g::local->weapon ( )->item_definition_index ( ) != weapons_t::c4)
+		|| (exploits::can_shoot() && !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) )
 		|| g::round == round_t::starting ) {
 		antiaiming = false;	
 		return;
 	}
 
-	if ( ( g::local->weapon( )->data( )->m_type == 9 ) ? ( !g::local->weapon( )->pin_pulled( ) && g::local->weapon( )->throw_time( ) > 0.0f ) : !!( ucmd->m_buttons & buttons_t::attack ) ) {
+	if ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::grenade && g::local->weapon ( )->throw_time ( ) > 0.0f ) {
 		antiaiming = false;
 		return;
 	}
