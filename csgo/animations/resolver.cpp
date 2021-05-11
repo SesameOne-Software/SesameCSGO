@@ -700,14 +700,14 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 		}
 		/* player moving */
 		else if ( anim_info [ idx ].size() > 1 ) {
-			const auto lean_delta = abs ( anim_layers [ 12 ].m_weight * 100.0f - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 100.0f );
-			auto similar_weight = false;
+			auto lean_delta = abs ( anim_layers [ 12 ].m_weight * 100.0f - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight * 100.0f );
+			auto best_rate_delta = std::numeric_limits<float>::max();
 
 			for ( auto side = 0; side < anims::desync_side_t::desync_max; side++ ) {
 				const auto playback_rate_delta = abs ( anim_layers [ 6 ].m_weight * 100.0f - rec.m_anim_layers [ side ][ 6 ].m_weight * 100.0f );
 				
-				if ( playback_rate_delta < 6.0f )
-					similar_weight = true;
+				if ( playback_rate_delta < best_rate_delta )
+					best_rate_delta = playback_rate_delta;
 			}
 
 			const auto running_full_speed_stable = !static_cast< int > ( anim_layers [ 11 ].m_weight * 1000.0f ) && !static_cast< int > ( anim_layers [ 7 ].m_weight * 1000.0f );
@@ -730,8 +730,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 			*	(This did not seem to be too effective, but I'll have to double-check my results).
 			*/
 
-			//if ( lean_delta < 6.0f
-			//	&& similar_weight ) {
+			//if ( ( lean_delta <= 3.0f || anim_layers [ 7 ].m_weight >= 0.99f) && best_rate_delta <= 3.0f ) {
 			if ( anim_layers [ 6 ].m_weight
 				&& ( !anim_layers [ 12 ].m_weight
 					|| abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) < 0.05f )
@@ -750,6 +749,7 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 					anim_layers [ 6 ].m_playback_rate
 					- rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ 6 ].m_playback_rate );
 
+				dbg_print ( "RESOLVING %d\n", ent->idx() );
 				//dbg_print ( "left: %.6f\n", left_delta_rate * 1000.0f );
 				//dbg_print ( "low: %.6f\n", left_half_delta_rate * 1000.0f );
 				//dbg_print ( "mid: %.6f\n", middle_delta_rate * 1000.0f );
@@ -766,8 +766,8 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				if ( right_delta_rate > left_half_delta_rate
 					&& left_delta_rate > left_half_delta_rate
 					&& middle_delta_rate > left_half_delta_rate
-					&& left_half_delta_rate * 1000.0f < 0.1f
-					&& abs ( left_half_delta_rate * 1000.0f - left_delta_rate * 1000.0f ) < 0.1f ) {
+					&& left_half_delta_rate * 1000.0f < 0.0666f
+					&& abs ( left_half_delta_rate * 1000.0f - left_delta_rate * 1000.0f ) < 0.0666f ) {
 					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_half )
 						features::ragebot::get_misses ( idx ).bad_resolve = 0;
 					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_half;
@@ -776,17 +776,14 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 				}
 				else if ( middle_delta_rate < left_delta_rate
 					|| right_delta_rate < left_delta_rate
-					|| left_half_delta_rate < left_delta_rate
-					|| left_delta_rate * 1000.0f > 0.1f ) {
+					|| left_delta_rate * 1000.0f > 0.0666f ) {
 					if ( left_delta_rate < middle_delta_rate
 						|| right_delta_rate < middle_delta_rate
-						|| left_half_delta_rate < middle_delta_rate
-						|| middle_delta_rate * 1000.0f > 0.1f ) {
+						|| middle_delta_rate * 1000.0f > 0.0666f ) {
 						if ( middle_delta_rate > right_delta_rate
 							&& left_delta_rate > right_delta_rate
-							&& left_half_delta_rate > right_delta_rate
-							&& right_delta_rate * 1000.0f < 0.1f
-							&& abs ( middle_delta_rate * 1000.0f - right_delta_rate * 1000.0f ) > 0.08f ) {
+							&& right_delta_rate * 1000.0f < 0.0666f
+							&& abs ( middle_delta_rate * 1000.0f - right_delta_rate * 1000.0f ) > 0.0666f ) {
 							if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_right_max )
 								features::ragebot::get_misses ( idx ).bad_resolve = 0;
 							rdata::resolved_side [ idx ] = anims::desync_side_t::desync_right_max;
@@ -838,8 +835,8 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	*	- Put head towards wall if only one side is hittable and we don't have enough information
 	*	- Onetap does almost the same thing iirc.
 	*/
-	if ( rdata::prefer_edge [ idx ] && one_side_hittable )
-		target_side_tmp = occluded_side;
+	//if ( rdata::prefer_edge [ idx ] && one_side_hittable )
+	//	target_side_tmp = occluded_side;
 
 	/* bruteforce from Onetap, except a bit more agressive, with different order depending on weapon (skeet does this as well) */
 	const auto has_accurate_weapon = g::local && g::local->weapon() && g::local->weapon()->item_definition_index() == weapons_t::ssg08;

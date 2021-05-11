@@ -589,12 +589,12 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof ( to.m_anim_layers [ side ] ) );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -60.0f + static_cast<float>( side ) * 30.0f;
+		const auto offset = -ent->desync_amount() + static_cast<float>( side ) * ( ent->desync_amount ( ) * 0.5f );
 		//const auto backup_angles = angles;
 
 		if ( should_resolve && side != desync_side_t::desync_max )
 			//angles.y = cs::normalize( angles.y + offset );
-			anim_state->m_abs_yaw = cs::normalize ( anim_state->m_eye_yaw + offset );
+			anim_state->m_abs_yaw = cs::normalize ( angles.y + offset );
 
 		/* update animations */
 		update_anims( ent , angles );
