@@ -51,4 +51,6 @@ void g::cvars::init ( ) {
 	viewmodel_offset_x = cs::i::cvar->find ( _ ( "viewmodel_offset_x" ) );
 	viewmodel_offset_y = cs::i::cvar->find ( _ ( "viewmodel_offset_y" ) );
 	viewmodel_offset_z = cs::i::cvar->find ( _ ( "viewmodel_offset_z" ) );
+	sv_maxspeed = cs::i::cvar->find ( _ ( "sv_maxspeed" ) );
+	sv_accelerate = cs::i::cvar->find ( _ ( "sv_accelerate" ) );
 }

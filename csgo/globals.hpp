@@ -75,6 +75,8 @@ namespace g {
 		inline cvar_t* viewmodel_offset_x = nullptr;
 		inline cvar_t* viewmodel_offset_y = nullptr;
 		inline cvar_t* viewmodel_offset_z = nullptr;
+		inline cvar_t* sv_maxspeed = nullptr;
+		inline cvar_t* sv_accelerate = nullptr;
 
 		void init ( );
 	}

@@ -165,7 +165,6 @@ namespace features {
 
 		extern c_scan_points scan_points;
 
-		bool dmg_hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox );
 		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec );
 		void slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove );
 		void run_meleebot ( ucmd_t* ucmd );

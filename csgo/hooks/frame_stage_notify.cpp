@@ -26,13 +26,14 @@ void* find_hud_element( const char* name ) {
 
 void run_preserve_death_notices( ) {
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
+	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 53 56 8B 71 58" ) ).get< void ( __thiscall* )( void* ) > ( );
 
-	if ( !g::local || !g::local->alive( ) )
-		return;
+	const auto death_notice = find_hud_element ( _ ( "CCSGO_HudDeathNotice" ) );
 
-	static auto clear_death_notices = pattern::search( _( "client.dll" ), _( "55 8B EC 83 EC 0C 53 56 8B 71 58" ) ).get< void( __thiscall* )( void* ) >( );
-
-	const auto death_notice = find_hud_element( _( "CCSGO_HudDeathNotice" ) );
+	if ( !g::local || !g::local->alive ( ) ) {
+		if ( clear_death_notices && death_notice )
+			clear_death_notices ( reinterpret_cast< void* > ( uintptr_t ( death_notice ) - 20 ) );
+	}
 
 	if ( death_notice ) {
 		if ( g::round == round_t::in_progress ) {

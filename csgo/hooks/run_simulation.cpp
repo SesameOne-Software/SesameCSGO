@@ -43,10 +43,8 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 		localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
 	}
 
-	if ( current_command == exploits::shifted_command ( ) ) {
+	if ( current_command == exploits::shifted_command ( ) )
 		localplayer->tick_base ( ) -= exploits::last_shifted_amount ( );
-		localplayer->tick_base ( )++;
-	}
 
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
@@ -54,10 +52,6 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
 	//cs::i::globals->m_curtime = backup_curtime;
-
-	if ( current_command == exploits::shifted_command ( ) ) {
-		localplayer->tick_base ( ) = backup_tickbase;
-	}
 
 	if ( !in_cm ) {
 		localplayer->velocity_modifier ( ) = backup_vel_mod;

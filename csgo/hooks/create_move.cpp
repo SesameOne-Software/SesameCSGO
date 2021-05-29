@@ -218,6 +218,26 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	if ( !exploits::in_exploit )
 		fix_event_delay( ucmd );
 
+	/* recreate what holdaim var does */
+	/* part of anims */ {
+		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+			if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
+				g::angles = ucmd->m_angs;
+				g::hold_aim = true;
+			}
+		}
+		else {
+			g::hold_aim = false;
+		}
+
+		if ( !g::hold_aim ) {
+			g::angles = ucmd->m_angs;
+		}
+
+		if ( g::send_packet )
+			g::hold_aim = false;
+	}
+
 	/* auto-revolver */
 	if ( g::local && g::local->weapon ( ) ) {
 		const auto weapon = g::local->weapon ( );
@@ -299,26 +319,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	if ( !exploits::in_exploit )
 		exploits::run ( ucmd );
-
-	/* recreate what holdaim var does */
-	/* part of anims */ {
-		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool( ) ) {
-			if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
-				g::angles = ucmd->m_angs;
-				g::hold_aim = true;
-			}
-		}
-		else {
-			g::hold_aim = false;
-		}
-
-		if ( !g::hold_aim ) {
-			g::angles = ucmd->m_angs;
-		}
-
-		if ( g::send_packet )
-			g::hold_aim = false;
-	}
 
 	return false;
 }

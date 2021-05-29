@@ -528,59 +528,11 @@ int& features::ragebot::get_hitbox( int pl ) {
 	return hitbox [ pl ];
 }
 
-bool features::ragebot::dmg_hitchance ( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox ) {
+bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec ) {
 	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
 	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
 	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
 
-	auto weapon = g::local->weapon( );
-
-	if ( !weapon || !weapon->data( ) )
-		return false;
-
-	//weapon->update_accuracy( );
-
-	auto src = g::local->eyes( );
-
-	ang = cs::calc_angle( src, point );
-	cs::clamp( ang );
-
-	auto forward = cs::angle_vec( ang );
-	auto right = cs::angle_vec( ang + vec3_t( 0.0f, 90.0f, 0.0f ) );
-	auto up = cs::angle_vec( ang + vec3_t( 90.0f, 0.0f, 0.0f ) );
-
-	forward.normalize( );
-	right.normalize( );
-	up.normalize( );
-
-	if ( !forward.is_valid( ) || !right.is_valid( ) || !up.is_valid( ) )
-		return false;
-
-	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
-
-	/* check damage accuracy */
-	const auto spread_coeff = weap_spread * 0.5f;
-	const auto dist_to = src.dist_to ( point );
-
-	const auto point_count = 10;
-	auto hits = 0;
-
-	for ( auto i = 0; i < point_count; i++ ) {
-		const auto dmg_left = autowall::dmg ( g::local, pl, src, src + ( forward - right * spread_coeff * ( static_cast< float >( i + 1 ) / static_cast< float >( point_count ) ) ) * dist_to, hitbox );
-		const auto dmg_right = autowall::dmg ( g::local, pl, src, src + ( forward + right * spread_coeff * ( static_cast< float >( i + 1 ) / static_cast< float >( point_count ) ) ) * dist_to, hitbox );
-
-		if ( dmg_left >= static_cast<float>( min_dmg ) )
-			hits++;
-
-		if ( dmg_right >= static_cast< float >( min_dmg ) )
-			hits++;
-	}
-
-	//return dmg_left > 0.0f && dmg_right > 0.0f && ( dmg_left >= min_dmg || dmg_right >= min_dmg );
-	return false;
-}
-
-bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec ) {
 	if ( g::cvars::weapon_accuracy_nospread->get_bool ( ) )
 		return true;
 
@@ -613,77 +565,64 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 	auto weap_spread = weapon->inaccuracy( ) + weapon->spread( );
 
-	auto hits_hitbox = [ & ] ( const vec3_t& src, const vec3_t& dst, int hitbox ) -> bool {
-		auto mdl = pl->mdl( );
-
-		if ( !mdl )
-			return false;
-
-		auto studio_mdl = cs::i::mdl_info->studio_mdl( mdl );
-
-		if ( !studio_mdl )
-			return false;
-
-		auto s = studio_mdl->hitbox_set( 0 );
-
-		if ( !s )
-			return false;
-
-		auto hb = s->hitbox( hitbox );
-
-		if ( !hb )
-			return false;
-
-		std::array< matrix3x4_t,128>& bone_matrix = rec.m_aim_bones[rec.m_side];
-
-		auto vmin = hb->m_bbmin;
-		auto vmax = hb->m_bbmax;
-
-		VEC_TRANSFORM( hb->m_bbmin, bone_matrix [ hb->m_bone ], vmin );
-		VEC_TRANSFORM( hb->m_bbmax, bone_matrix [ hb->m_bone ], vmax );
-
-		return autowall::trace_ray( vmin, vmax, bone_matrix [ hb->m_bone ], hb->m_radius, src, dst );
-	};
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones [ rec.m_side ];
 
 	static bool rand_table = false;
-	static float rand_flt1 [ 255 ];
-	static float rand_flt2 [ 255 ];
-	static float rand_flt3 [ 255 ];
+	static std::array< std::array<float, 256>, 3> rand_components { 0 };
 
 	if ( !rand_table ) {
-		for ( auto& flt : rand_flt1 )
-			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
-
-		for ( auto& flt : rand_flt2 )
-			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
-
-		for ( auto& flt : rand_flt3 )
-			flt = static_cast < float > ( rand( ) ) / static_cast < float > ( RAND_MAX );
+		for ( auto& comp : rand_components )
+			for ( auto& flt : comp )
+				flt = static_cast < float > ( rand ( ) ) / static_cast < float > ( RAND_MAX );
 
 		rand_table = true;
 	}
 
 	/* normal hitchance */
-	for ( auto i = 0; i < rays; i++ ) {
-		const auto spread_x = -weap_spread * 0.5f + ( rand_flt1 [ i ] * weap_spread );
-		const auto spread_y = -weap_spread * 0.5f + ( rand_flt2 [ i ] * weap_spread );
-		const auto spread_z = -weap_spread * 0.5f + ( rand_flt3 [ i ] * weap_spread );
-		const auto final_pos = src + ( ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon->data( )->m_range );
+	const auto backup_origin = pl->origin ( );
+	auto backup_abs_origin = pl->abs_origin ( );
+	const auto backup_bone_cache = pl->bone_cache ( );
+	const auto backup_mins = pl->mins ( );
+	const auto backup_maxs = pl->maxs ( );
 
-		if ( hits_hitbox( src, final_pos, hitbox ) )
+	pl->origin ( ) = rec.m_origin;
+	//pl->set_abs_origin ( rec.m_origin );
+	pl->bone_cache ( ) = bone_matrix.data ( );
+	pl->mins ( ) = rec.m_mins;
+	pl->maxs ( ) = rec.m_maxs;
+
+	const auto weapon_range = weapon->data ( )->m_range;
+	const auto hitbox_as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
+
+	for ( auto i = 0; i < rays; i++ ) {
+		const auto spread_x = -weap_spread * 0.5f + ( rand_components [ 0 ][ i ] * weap_spread );
+		const auto spread_y = -weap_spread * 0.5f + ( rand_components [ 1 ][ i ] * weap_spread );
+		const auto spread_z = -weap_spread * 0.5f + ( rand_components [ 2 ][ i ] * weap_spread );
+		const auto final_pos = src + ( ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon_range );
+		
+		vec3_t impact_out;
+		int hitgroup_out = -1;
+		const auto dmg = autowall::dmg ( g::local, pl, src, final_pos, -1, &impact_out, &hitgroup_out );
+
+		if ( hitgroup_out != -1
+			&& hitgroup_out == hitbox_as_hitgroup
+			/* only allow bullets through that would do at least as much damage as we would want */
+			&& dmg > std::min( pl->health ( ), static_cast<int>( min_dmg + 0.5f)) * ( static_cast< float >( active_config.dmg_accuracy ) / 100.0f ) )
 			hits++;
 	}
 
+	pl->origin ( ) = backup_origin;
+	//pl->set_abs_origin ( backup_abs_origin );
+	pl->bone_cache ( ) = backup_bone_cache;
+	pl->mins ( ) = backup_mins;
+	pl->maxs ( ) = backup_maxs;
+
 	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
 
-	//dbg_print( _( "calculated chance: %.1f\n" ), calc_chance );
-
-	/* TODO: change when doubletap is fixed */
 	if ( calc_chance < ( (exploits::has_shifted || exploits::in_exploit) ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
 		return false;
 
 	return true;
-	//;return dmg_hitchance( ang, pl, point, rays, hitbox );
 }
 
 void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
@@ -960,29 +899,32 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	/* extrapolate autostop */ 
 	const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.33f;
 	const auto cur_speed = features::prediction::vel.length_2d ( );
+	auto pre_autostop_working = false;
 
-	if ( cur_speed > max_speed ) {
+	if ( active_config.auto_slow ) {
 		auto calc_velocity = [ & ] ( vec3_t& vel ) {
 			const auto speed = vel.length_2d ( );
-
+		
 			if ( speed >= 0.1f ) {
 				const auto stop_speed = std::max ( speed, g::cvars::sv_stopspeed->get_float ( ) );
 				vel *= std::max ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::ticks2time ( 1 ) / speed );
 			}
 		};
-
-		auto vel = features::prediction::vel;
+		
+		//auto vel = features::prediction::vel;
 		auto ticks_until_accurate = 0;
+		
+		//for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ticks_until_accurate++ ) {
+		//	if ( vel.length_2d ( ) <= max_speed )
+		//		break;
+		//
+		//	calc_velocity ( vel );
+		//}
 
-		for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ticks_until_accurate++ ) {
-			if ( vel.length_2d ( ) <= max_speed )
-				break;
-
-			calc_velocity ( vel );
-		}
-
-		const auto autostop_time = cs::ticks2time ( ticks_until_accurate );
-		const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * autostop_time;
+		const float deceleration = g::cvars::sv_accelerate->get_float ( ) * g::cvars::sv_maxspeed->get_float() * cs::ticks2time ( 1 );
+		ticks_until_accurate = cur_speed / deceleration;
+		
+		const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * cs::ticks2time( ticks_until_accurate );
 
 		player_t* at_target = nullptr;
 
@@ -1002,7 +944,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 
 		if ( at_target && features::prediction::vel.length_2d ( ) > 0.1f ) {
 			auto target_vel = -features::prediction::vel.normalized ( ) * g::cvars::cl_forwardspeed->get_float ( );
-
+			
 			if ( ticks_until_accurate <= 1 )
 				target_vel = features::prediction::vel.normalized ( ) * max_speed;
 
@@ -1016,6 +958,8 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 			old_smove = ( target_vel.x - fwd.x * old_fmove ) / right.x;
 
 			ucmd->m_buttons &= ~buttons_t::walk;
+
+			pre_autostop_working = true;
 		}
 	}
 
@@ -1025,10 +969,11 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	auto angle_to = cs::calc_angle( g::local->eyes( ), best.m_point );
 	cs::clamp( angle_to );
 
-	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 255, best.m_hitbox, best.m_record );
+	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 150, best.m_hitbox, best.m_record );
 	auto should_aim = best.m_dmg && hc;
 	
-	if ( best.m_dmg && !hc
+	if ( !pre_autostop_working
+		&& best.m_dmg && !hc
 		&& g::local->weapon ( )
 		&& g::local->weapon ( )->data()
 		&& features::prediction::vel.length_2d ( ) > ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.34f )

@@ -53,11 +53,11 @@ bool anims::get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& ou
 		auto& it = data[ i ];
 
 		if ( time_valid_no_deadtime( it.m_simtime ) ) {
-			if ( it.m_origin.dist_to( ent->origin( ) ) < 1.0f )
+			if ( it.m_origin.dist_to( ent->origin ( ) ) < 1.0f )
 				return false;
 
 			bool end = ( i - 1 ) <= 0;
-			vec3_t next = end ? ent->origin( ) : data[ i - 1 ].m_origin;
+			vec3_t next = end ? ent->origin ( ) : data[ i - 1 ].m_origin;
 			float time_next = end ? ent->simtime( ) : data[ i - 1 ].m_simtime;
 
 			float correct = nci->get_avg_latency( 0 ) + nci->get_avg_latency( 1 ) + lerp;
@@ -74,7 +74,7 @@ bool anims::get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& ou
 			out = it.m_aim_bones[it.m_side];
 
 			for ( auto& iter : out )
-				iter.set_origin( iter.origin( ) - it.m_origin + lerp );
+				iter.set_origin( iter.origin ( ) - it.m_origin + lerp );
 
 			return true;
 		}
@@ -226,7 +226,7 @@ void anims::calc_poses( player_t* ent , std::array<float , 24>& poses , float fe
 	if ( jump_fall >= 0.0f )
 		jump_fall = std::min( jump_fall , 1.0f );
 
-	poses[ pose_param_t::jump_fall ] = jump_fall;
+	//poses[ pose_param_t::jump_fall ] = jump_fall;
 	//poses[ pose_param_t::body_pitch ] = std::clamp( cs::normalize( anim_state->m_pitch ) , -90.0f , 90.0f ) / 180.0f + 0.5f;
 
 	//poses[ pose_param_t::move_blend_crouch ] = ent->crouch_amount( );
@@ -281,10 +281,10 @@ void anims::simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin ,
 
 	old_flags = flags;
 
-	flags &= ~flags_t::on_ground;
-
-	if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > 0.7f )
-		flags |= flags_t::on_ground;
+	//flags &= ~flags_t::on_ground;
+	//
+	//if ( trace.m_fraction != 1.0f && trace.m_plane.m_normal.z > 0.7f )
+	//	flags |= flags_t::on_ground;
 }
 
 void anims::reset_data ( int idx ) {
@@ -477,6 +477,8 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 
 	auto last_flags = from.m_flags;
 	const auto delta_yaw = cs::normalize( cs::normalize( to.m_angles.y ) - cs::normalize( from.m_angles.y ) );
+	const auto ticks_ago_hit_ground = static_cast<int>( backup_anim_layers [ desync_side_t::desync_max ][ 4 ].m_cycle / backup_anim_layers [ desync_side_t::desync_max ][ 4 ].m_playback_rate );
+	const auto delta_tick_hit_ground = cs::time2ticks ( to.m_simtime - from.m_simtime ) - ticks_ago_hit_ground;
 
 	for ( auto i = 0; i < delta_ticks; i++ ) {
 		const float simtime = from.m_simtime + cs::ticks2time( i + 1 );
@@ -512,6 +514,11 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 
 		/* predict origin */
 		simulate_movement( ent , ent->flags( ) , ent->origin( ) , anim_velocity, last_flags );
+
+		if ( i + 1 == delta_tick_hit_ground )
+			ent->flags ( ) |= flags_t::on_ground;
+		else
+			ent->flags ( ) &= ~flags_t::on_ground;
 
 		ent->set_abs_origin( ent->origin( ) );
 
@@ -589,15 +596,14 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof ( to.m_anim_layers [ side ] ) );
 		ent->poses( ) = to.m_poses [ side ];
 
-		const auto offset = -ent->desync_amount() + static_cast<float>( side ) * ( ent->desync_amount ( ) * 0.5f );
-		//const auto backup_angles = angles;
-
-		if ( should_resolve && side != desync_side_t::desync_max )
-			//angles.y = cs::normalize( angles.y + offset );
-			anim_state->m_abs_yaw = cs::normalize ( angles.y + offset );
+		if ( should_resolve && side != desync_side_t::desync_max ) {
+			const auto desync_amount = ent->desync_amount ( );
+			const auto desync_offset = -desync_amount + side * ( desync_amount * 0.5f );
+			anim_state->m_abs_yaw = cs::normalize ( angles.y + desync_offset );
+		}
 
 		/* update animations */
-		update_anims( ent , angles );
+		update_anims( ent , angles, should_resolve && side != desync_side_t::desync_max );
 
 		//angles = backup_angles;
 
@@ -700,7 +706,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 
 		cs::i::globals->m_frametime = cs::ticks2time( 1 );
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
-		state->m_feet_yaw_rate = 0.0f;
+		//state->m_feet_yaw_rate = 0.0f;
 	}
 	
 	const auto backup_invalidate_bone_cache = invalidate_bone_cache;
@@ -802,10 +808,10 @@ void anims::on_net_update_end ( int idx ) {
 			for ( auto& rec : anim_info[ idx ] )
 				rec.m_invalid = true;
 
-		if ( !!( ent->flags ( ) & flags_t::on_ground ) && ent->vel ( ).length_2d ( ) > 0.0f && !ent->layers()[ 6 ].m_weight )
-			ent->vel ( ).zero ( );
+		//if ( !!( ent->flags ( ) & flags_t::on_ground ) && ent->vel ( ).length_2d ( ) > 0.0f && !ent->layers()[ 6 ].m_weight )
+		//	ent->vel ( ).zero ( );
 
-		//fix_velocity( ent, ent->vel() );
+		fix_velocity( ent, ent->vel() );
 
 		static anim_info_t rec {};
 
