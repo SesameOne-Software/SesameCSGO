@@ -36,8 +36,6 @@ namespace aa {
 }
 
 void features::antiaim::simulate_lby( ) {
-	lby::balance_update = lby::in_update;
-	lby::tick_before_update = false;
 	lby::in_update = false;
 
 	if ( !g::local->valid( ) ) {
@@ -58,7 +56,6 @@ void features::antiaim::simulate_lby( ) {
 		lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
 	else if ( cs::i::globals->m_curtime >= lby::last_breaker_time ) {
 		lby::in_update = true;
-		//dbg_print( "updated\n" );
 		lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
 	}
 }
@@ -92,7 +89,7 @@ player_t* looking_at( ) {
 int find_freestand_side( player_t* pl, float range ) {
 	const auto cross = cs::angle_vec( cs::calc_angle( g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ), pl->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f ) ) ).cross_product( vec3_t( 0.0f, 0.0f, 1.0f ) );
 
-	const auto src = g::local->origin( ) + features::prediction::vel * cs::ticks2time( 2 ) + vec3_t( 0.0f, 0.0f, 64.0f );
+	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
 	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, hitbox_head );
@@ -623,12 +620,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				VM_TIGER_BLACK_END
 			}
 			else if ( move ) {
-				//if ( !utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) ) {
-				//	/* jitter move ADD OPTION ON MENU LATER */
-				//	old_fmove *= aa::jitter_flip ? 0.9f : 1.0f;
-				//	aa::jitter_flip = !aa::jitter_flip;
-				//}
-
 				process_base_yaw( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
 
 				ucmd->m_angs.y += yaw_offset_move;
@@ -747,20 +738,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						VM_TIGER_BLACK_START
 							if ( g::send_packet ) {
 								/* micro movements */
-								const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
-
+								const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 1.1f : 1.1f;
 								old_fmove += aa::move_flip ? -move_amount : move_amount;
 								aa::move_flip = !aa::move_flip;
 							}
 
 						static float last_update_time = cs::i::globals->m_curtime;
-
-						//if ( fabsf( last_update_time - csgo::i::globals->m_curtime ) > 0.22f ) {
-						//	old_fmove = copysignf ( 15.0f, old_fmove );
-						//	last_update_time = csgo::i::globals->m_curtime;
-						//}
-
-						//desync_amnt *= 0.5f;
 
 						if ( desync_stand && jitter_stand && !g::send_packet ) {
 							if ( ( aa::flip ? -desync_amnt : desync_amnt ) > 0.0f )
@@ -782,14 +765,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}break;
 					case 1: /* fake real around */ {
 						VM_TIGER_BLACK_START
-							//if ( lby::balance_update ) {
-							//	const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
-							//
-							//	old_fmove += aa::move_flip ? -move_amount : move_amount;
-							//	aa::move_flip = !aa::move_flip;
-							//	g::send_packet = false;
-							//}
-
 						if ( jitter_stand ) {
 							/* go 180 from update location to trigger 979 activity */
 							if ( lby::in_update || !g::send_packet ) {

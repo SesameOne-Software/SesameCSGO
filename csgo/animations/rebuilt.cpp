@@ -14,6 +14,15 @@ constexpr auto ANIMATION_LAYER_COUNT = 13;
 constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_DOWN = 3.1f;
 constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_UP = 6.0f;
 
+namespace lby {
+	extern float spawn_time;
+	extern float last_breaker_time;
+	extern bool tick_before_update;
+	extern bool in_update;
+	extern bool broken;
+	extern bool balance_update;
+}
+
 namespace valve_math {
 	//-----------------------------------------------------------------------------
 	// Euler QAngle -> Basis Vectors.  Each vector is optional
@@ -1944,11 +1953,14 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 
 	// pull the lower body direction towards the eye direction, but only when the player is moving
 	if ( anim_state->m_on_ground && !force_feet_yaw ) {
+		if ( !CLIENT_DLL_ANIMS && player == g::local )
+			lby::in_update = false;
+
 		if ( anim_state->m_speed2d > 0.1f ) {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( anim_state->m_eye_yaw, anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
 
 			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
-				*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 0.22f;
+				lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
 				player->lby ( ) = anim_state->m_eye_yaw;
 			}
 		}
@@ -1956,8 +1968,9 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
 			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
-				if ( cs::i::globals->m_curtime > *reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
-					*reinterpret_cast< float* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x10C ) = cs::i::globals->m_curtime + 1.1f;
+				if ( cs::i::globals->m_curtime > lby::last_breaker_time && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
+					lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
+					lby::in_update = true;
 					player->lby ( ) = anim_state->m_eye_yaw;
 				}
 			}

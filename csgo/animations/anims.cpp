@@ -479,6 +479,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	const auto delta_yaw = cs::normalize( cs::normalize( to.m_angles.y ) - cs::normalize( from.m_angles.y ) );
 	const auto ticks_ago_hit_ground = static_cast<int>( backup_anim_layers [ desync_side_t::desync_max ][ 4 ].m_cycle / backup_anim_layers [ desync_side_t::desync_max ][ 4 ].m_playback_rate );
 	const auto delta_tick_hit_ground = cs::time2ticks ( to.m_simtime - from.m_simtime ) - ticks_ago_hit_ground;
+	const auto twice_in_air = !( from.m_flags & flags_t::on_ground ) && !( to.m_flags & flags_t::on_ground );
 
 	for ( auto i = 0; i < delta_ticks; i++ ) {
 		const float simtime = from.m_simtime + cs::ticks2time( i + 1 );
@@ -515,10 +516,12 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 		/* predict origin */
 		simulate_movement( ent , ent->flags( ) , ent->origin( ) , anim_velocity, last_flags );
 
-		if ( i + 1 == delta_tick_hit_ground )
-			ent->flags ( ) |= flags_t::on_ground;
-		else
-			ent->flags ( ) &= ~flags_t::on_ground;
+		if ( twice_in_air ) {
+			if ( i + 1 == delta_tick_hit_ground )
+				ent->flags ( ) |= flags_t::on_ground;
+			else
+				ent->flags ( ) &= ~flags_t::on_ground;
+		}
 
 		ent->set_abs_origin( ent->origin( ) );
 
@@ -549,6 +552,11 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	ent->vel( ) = to.m_vel;
 	ent->set_abs_origin( backup_abs_origin );
 
+	auto backup_lean = ent->layers ( ) [ 12 ].m_weight;
+	ent->layers ( ) [ 12 ].m_weight = 0.0f;
+	build_bones ( ent, to.m_aim_bones [ desync_max ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ desync_max ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ desync_max ] );
+	ent->layers ( ) [ 12 ].m_weight = backup_lean;
+
 	/* try to guess the orientation of their real matrix */
 	resolver::resolve_desync( ent , to );
 
@@ -560,7 +568,7 @@ void anims::update_from( player_t* ent , const anim_info_t& from , anim_info_t& 
 	*ent->animstate( ) = to.m_anim_state[ to.m_side ];
 	ent->set_abs_angles( to.m_abs_angles[ to.m_side ] );
 
-	const auto backup_lean = ent->layers ( ) [ 12 ].m_weight;
+	backup_lean = ent->layers ( ) [ 12 ].m_weight;
 	ent->layers ( ) [ 12 ].m_weight = 0.0f;
 	build_bones ( ent, to.m_aim_bones [ to.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_side ] );
 	ent->layers ( ) [ 12 ].m_weight = backup_lean;
@@ -596,11 +604,8 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		memcpy( anim_layers , to.m_anim_layers[ side ].data( ) , sizeof ( to.m_anim_layers [ side ] ) );
 		ent->poses( ) = to.m_poses [ side ];
 
-		if ( should_resolve && side != desync_side_t::desync_max ) {
-			const auto desync_amount = ent->desync_amount ( );
-			const auto desync_offset = -desync_amount + side * ( desync_amount * 0.5f );
-			anim_state->m_abs_yaw = cs::normalize ( angles.y + desync_offset );
-		}
+		if ( should_resolve && side != desync_side_t::desync_max )
+			anim_state->m_abs_yaw = cs::normalize ( angles.y + ( -ent->desync_amount ( ) + static_cast< float >( side ) * ( ent->desync_amount ( ) * 0.5f ) ) );
 
 		/* update animations */
 		update_anims( ent , angles, should_resolve && side != desync_side_t::desync_max );
@@ -609,7 +614,6 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 
 		/* calculate new poses */
 		/* NOT NEEDED */
-		calc_poses( ent , to.m_poses[ side ] , anim_state->m_abs_yaw );
 
 		//if ( build_matrix && side != desync_side_t::desync_max /*don't build bones for unresolved matrix, we only want its animstate */ )
 		//	build_bones( ent, to.m_aim_bones[side].data(), 0x7FF00, vec3_t( 0.0f , anim_state->m_abs_yaw, 0.0f ) , ent->origin(), ent->simtime(), to.m_poses[ side ] );
@@ -618,7 +622,7 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		to.m_anim_state[ side ] = *anim_state;
 		memcpy( to.m_anim_layers[ side ].data( ) , anim_layers , sizeof( to.m_anim_layers [ side ] ) );
 		to.m_abs_angles[ side ] = vec3_t( 0.0f , anim_state->m_abs_yaw, 0.0f );
-		//to.m_poses[ side ] = ent->poses( );
+		to.m_poses[ side ] = ent->poses( );
 	};
 
 	/* backup animation data */

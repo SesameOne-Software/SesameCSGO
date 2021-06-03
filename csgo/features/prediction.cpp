@@ -11,7 +11,7 @@ namespace prediction_util {
 	int tickcount;
 	flags_t flags;
 	vec3_t velocity;
-	void* movedata;
+	uint8_t movedata[256];
 	uintptr_t prediction_player;
 	uintptr_t prediction_seed;
 	bool first_time_pred;
@@ -24,9 +24,6 @@ namespace prediction_util {
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
 				return;
 
-		if ( !movedata )
-			movedata = malloc ( 256 );
-
 		if ( !prediction_player || !prediction_seed ) {
 			prediction_seed = pattern::search( _( "client.dll" ), _( "8B 47 40 A3" ) ).add( 4 ).deref( ).get< std::uintptr_t >( );
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
@@ -37,7 +34,7 @@ namespace prediction_util {
 			*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
 		}
 
-		if ( cs::i::client_state->delta_tick ( ) > 0 ) {
+		if ( cs::i::client_state->choked ( ) > 0 ) {
 			cs::i::pred->update (
 				cs::i::client_state->delta_tick ( ),
 				cs::i::client_state->delta_tick ( ) > 0,
@@ -82,6 +79,11 @@ namespace prediction_util {
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F8 ) = v16;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
 		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;
+		
+		// set host player
+		cs::i::move_helper->set_host ( g::local );
+
+		cs::i::move->start_track_prediction_errors ( g::local );
 
 		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
 
@@ -100,16 +102,13 @@ namespace prediction_util {
 			g::local->think ( );
 		}
 
-		// set host player
-		cs::i::move_helper->set_host ( g::local );
-
 		// setup move
+		memset ( movedata, 0, sizeof ( movedata ) );
 		cs::i::pred->setup_move ( g::local, ucmd, cs::i::move_helper, movedata );
 		cs::i::move->process_movement ( g::local, movedata );
-
-		// finish move
 		cs::i::pred->finish_move ( g::local, ucmd, movedata );
-		//cs::i::move_helper->process_impacts ( );
+
+		cs::i::move_helper->process_impacts ( );
 
 		// run post think
 		//g::local->post_think ( );
@@ -125,7 +124,9 @@ namespace prediction_util {
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
 				return;
 
+		cs::i::move->finish_track_prediction_errors ( g::local );
 		cs::i::move_helper->set_host ( nullptr );
+		cs::i::move->reset ( );
 
 		cs::i::globals->m_curtime = curtime;
 		cs::i::globals->m_frametime = frametime;
@@ -135,10 +136,11 @@ namespace prediction_util {
 		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;
 
+		//if ( cs::i::globals->m_frametime > 0.0f )
+		//	g::local->tick_base ( )++;
+
 		cs::i::pred->m_is_first_time_predicted = first_time_pred;
 		cs::i::pred->m_in_prediction = in_pred;
-
-		cs::i::move->reset ( );
 		VM_TIGER_BLACK_END
 	}
 }
@@ -188,15 +190,17 @@ void features::prediction::fix_viewmodel ( bool store ) {
 std::array< features::prediction::netvars_t , 150> cmd_netvars {};
 
 bool features::prediction::fix_netvars( int cmd, bool store ) {
-	if ( !g::local || !g::local->alive( ) )
+	if ( !g::local || !g::local->alive ( ) ) {
+		memset ( cmd_netvars.data(), 0, sizeof( cmd_netvars ) );
 		return false;
+	}
 
 	auto& cur_rec = cmd_netvars[ cmd % cmd_netvars.size( ) ];
 
 	if ( store )
 		return cur_rec.store( g::local );
 
-	if ( g::local->tick_base( ) != cur_rec.m_tick_base )
+	if ( cur_rec.m_tick_base != 0 && g::local->tick_base( ) != cur_rec.m_tick_base )
 		return false;
 
 	return cur_rec.restore( g::local );

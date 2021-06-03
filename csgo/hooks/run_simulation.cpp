@@ -29,6 +29,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	if ( cmd->m_tickcount > cs::i::globals->m_tickcount + cs::time2ticks ( 1.0f ) ) {
 		MUTATE_START;
 		cmd->m_hasbeenpredicted = true;
+		localplayer->set_abs_origin ( localplayer->origin() );
 		localplayer->tick_base ( )++;
 		MUTATE_END;
 		return;
@@ -39,9 +40,8 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	const auto backup_curtime = cs::i::globals->m_curtime;
 	const auto backup_tickbase = localplayer->tick_base ( );
 
-	if ( cs::i::client_state && in_cm && current_command == cs::i::client_state->last_command_ack() + 1 ) {
+	if ( cmd->m_cmdnum > last_cmd_num )
 		localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
-	}
 
 	if ( current_command == exploits::shifted_command ( ) )
 		localplayer->tick_base ( ) -= exploits::last_shifted_amount ( );
@@ -51,11 +51,11 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-	//cs::i::globals->m_curtime = backup_curtime;
-
-	if ( !in_cm ) {
+	if ( !in_cm && cmd->m_cmdnum > last_cmd_num )
 		localplayer->velocity_modifier ( ) = backup_vel_mod;
-	}
+
+	features::prediction::fix_netvars ( localplayer->tick_base ( ), true );
+	features::prediction::fix_viewmodel ( true );
 
 	/* local anims */
 	if ( cmd->m_cmdnum > last_cmd_num ) {
@@ -63,12 +63,9 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 			anims::update_anims ( localplayer, g::angles );
 		else /* reset fake */
 			anims::manage_fake ( );
-	
+
 		last_cmd_num = cmd->m_cmdnum;
 	}
-
-	features::prediction::fix_netvars ( localplayer->tick_base ( ), true );
-	features::prediction::fix_viewmodel ( true );
 
 	MUTATE_END;
 }

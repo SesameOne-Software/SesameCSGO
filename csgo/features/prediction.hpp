@@ -118,17 +118,17 @@ namespace features {
 				if ( abs( ent->crouch_speed( ) - m_duck_speed ) < 0.03125f )
 					ent->crouch_speed( ) = m_duck_speed , updated = true;
 
-				if ( abs( ent->velocity_modifier( ) - m_vel_modifier ) < 0.03125f )
-					ent->velocity_modifier( ) = m_vel_modifier , updated = true;
-
-				if ( ent->ground_entity_handle( ) != m_ground_ent )
-					ent->ground_entity_handle( ) = m_ground_ent , updated = true;
-
-				if ( ent->movetype( ) != m_move_type )
-					ent->movetype( ) = m_move_type , updated = true;
-
-				if ( ent->flags( ) != m_flags )
-					ent->flags( ) = m_flags , updated = true;
+				//if ( abs( ent->velocity_modifier( ) - m_vel_modifier ) < 0.03125f )
+				//	ent->velocity_modifier( ) = m_vel_modifier , updated = true;
+				//
+				//if ( ent->ground_entity_handle( ) != m_ground_ent )
+				//	ent->ground_entity_handle( ) = m_ground_ent , updated = true;
+				//
+				//if ( ent->movetype( ) != m_move_type )
+				//	ent->movetype( ) = m_move_type , updated = true;
+				//
+				//if ( ent->flags( ) != m_flags )
+				//	ent->flags( ) = m_flags , updated = true;
 
 				if ( weapon && m_weapon_valid ) {
 					if ( abs( weapon->accuracy_penalty( ) - m_accuracy_penalty ) < 0.03125f )
@@ -139,33 +139,6 @@ namespace features {
 				}
 
 				return updated;
-			}
-
-			void reapply( player_t* ent ) {
-				if ( !ent || !ent->alive( ) )
-					return;
-
-				const auto weapon = ent->weapon( );
-
-				ent->aim_punch( ) = m_aim_punch;
-				ent->aim_punch_vel( ) = m_aim_punch_vel;
-				ent->view_punch( ) = m_view_punch;
-				ent->view_offset( ) = m_view_offset;
-				ent->base_vel( ) = m_base_velocity;
-				ent->vel( ) = m_velocity;
-				ent->origin( ) = m_origin;
-				ent->fall_vel( ) = m_fall_vel;
-				ent->crouch_amount( ) = m_duck_amount;
-				ent->crouch_speed( ) = m_duck_speed;
-				ent->velocity_modifier( ) = m_vel_modifier;
-				ent->ground_entity_handle( ) = m_ground_ent;
-				ent->movetype( ) = m_move_type;
-				ent->flags( ) = m_flags;
-
-				if ( weapon && m_weapon_valid ) {
-					weapon->accuracy_penalty( ) = m_accuracy_penalty;
-					weapon->recoil_index( ) = m_recoil_index;
-				}
 			}
 		};
 

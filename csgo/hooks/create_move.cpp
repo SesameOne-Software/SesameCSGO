@@ -205,7 +205,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::nade_prediction::trace( ucmd );
 
 	features::prediction::run ( [ & ] ( ) {
-		features::antiaim::simulate_lby ( );
 		features::legitbot::run ( ucmd );
 		features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
 		features::antiaim::run ( ucmd, old_smove, old_fmove );
