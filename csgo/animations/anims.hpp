@@ -76,7 +76,7 @@ namespace anims {
 		inline bool valid ( ) {
 			const auto nci = cs::i::engine->get_net_channel_info ( );
 
-			if ( !nci || !g::local || m_invalid || m_simtime < float( int( cs::ticks2time( g::local->tick_base( ) ) - g::cvars::sv_maxunlag->get_float( ) ) ) )
+			if ( !nci || !g::local /*|| m_invalid*/ || m_simtime < float ( int ( cs::ticks2time ( g::local->tick_base ( ) ) - g::cvars::sv_maxunlag->get_float ( ) ) ) )
 				return false;
 
 			const auto lerp = lerp_time ( );
@@ -113,8 +113,11 @@ namespace anims {
 			for ( auto& abs_angles : m_abs_angles )
 				abs_angles = ent->abs_angles( );
 
-			for ( auto& anim_state : m_anim_state )
-				anim_state = *ent->animstate( );
+			for ( auto& anim_state : m_anim_state ) {
+				anim_state = *ent->animstate ( );
+				anim_state.m_feet_cycle = ent->layers ( ) [ 6 ].m_cycle;
+				anim_state.m_feet_yaw_rate = ent->layers ( ) [ 6 ].m_weight;
+			}
 
 			for ( auto& aim_bones : m_aim_bones )
 				memcpy( aim_bones.data( ) , ent->bone_cache( ) , ent->bone_count( ) * sizeof( matrix3x4_t ) );
@@ -135,6 +138,7 @@ namespace anims {
 	void on_net_update_end ( int idx );
 	void on_render_start ( int idx );
 
+	void build_real_bones ( player_t* target );
 	void manage_fake ( );
 
 	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );
@@ -183,8 +187,8 @@ namespace anims {
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
 	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix );
-	void fix_velocity ( player_t* ent, vec3_t& vel );
-	void update_from ( player_t* ent, const anim_info_t& from, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
+	void fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlayer_t, 13>& animlayers, const vec3_t& origin );
+	void update_from ( player_t* ent, anim_info_t& from, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
 	void apply_anims ( player_t* ent );
 
 	void pre_fsn ( int stage );

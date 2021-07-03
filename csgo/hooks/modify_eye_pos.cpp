@@ -28,19 +28,19 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	if ( !in_cm )
 		return;
 
-	if ( anim_state->m_hit_ground && anim_state->m_duck_amount && cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
+	if ( anim_state->m_hit_ground || anim_state->m_duck_amount || !cs::i::ent_list->get_by_handle< entity_t* > ( pl->ground_entity_handle ( ) ) ) {
 		auto bone_pos = anims::real_matrix[ lookup_bone ( pl, "head_0" ) ].origin();
-
+	
 		bone_pos.z += 1.7f;
-
+	
 		if ( pos.z > bone_pos.z ) {
 			float some_factor = 0.0f;
 			float delta = pos.z - bone_pos.z;
 			float some_offset = ( delta - 4.0f ) / 6.0f;
-
+	
 			if ( some_offset >= 0.0f )
 				some_factor = std::min ( some_offset, 1.0f );
-
+	
 			pos.z += ( ( bone_pos.z - pos.z ) * ( ( ( some_factor * some_factor ) * 3.0f ) - ( ( ( some_factor * some_factor ) * 2.0f ) * some_factor ) ) );
 		}
 	}

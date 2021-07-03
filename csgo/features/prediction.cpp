@@ -29,12 +29,7 @@ namespace prediction_util {
 			prediction_player = pattern::search( _( "client.dll" ), _( "0F 5B C0 89 35" ) ).add( 5 ).deref( ).get< std::uintptr_t >( );
 		}
 
-		if ( features::prediction::vel_modifier < 1.0f ) {
-			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
-			*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
-		}
-
-		if ( cs::i::client_state->choked ( ) > 0 ) {
+		if ( cs::i::client_state->delta_tick ( ) > 0 ) {
 			cs::i::pred->update (
 				cs::i::client_state->delta_tick ( ),
 				cs::i::client_state->delta_tick ( ) > 0,
@@ -108,7 +103,7 @@ namespace prediction_util {
 		cs::i::move->process_movement ( g::local, movedata );
 		cs::i::pred->finish_move ( g::local, ucmd, movedata );
 
-		cs::i::move_helper->process_impacts ( );
+		//cs::i::move_helper->process_impacts ( );
 
 		// run post think
 		//g::local->post_think ( );

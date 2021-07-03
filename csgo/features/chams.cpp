@@ -83,7 +83,7 @@ bool create_materials( ) {
 			set_string( kv , _( "$envmaptint" ) , _( "[ 0 0 0 ]" ) );
 			set_string( kv , _( "$envmapfresnelminmaxexp" ) , _( "[ 0 1 2 ]" ) );
 			set_string( kv , _( "$alpha" ) , _( "1" ) );
-			set_int( kv , _( "$znearer" ) , 1 );
+			set_int( kv , _( "$znearer" ) , 0 );
 		}
 		else {
 			set_string( kv , _( "$basetexture" ) , _( "vgui/white_additive" ) );
@@ -102,7 +102,7 @@ bool create_materials( ) {
 			set_int( kv , _( "$selfillum" ) , 1 );
 			set_int( kv , _( "$halflambert" ) , 1 );
 			set_int( kv , _( "$ignorez" ) , 1 );
-			set_int( kv , _( "$znearer" ) , 1 );
+			set_int( kv , _( "$znearer" ) , 0 );
 		}
 
 		auto matname = _( "mat_" ) + std::to_string( created );
@@ -368,7 +368,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 					cs::i::render_view->set_alpha( 255 );
 					cs::i::render_view->set_color( 255 , 255 , 255 );
 					// mat->set_material_var_flag( 268435456, false );
-					m_mat_glow->set_material_var_flag( 0x8000 , true );
+					m_mat_glow->set_material_var_flag( 0x8000 , visuals.chams_xqz );
 					m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
 					cs::i::mdl_render->force_mat( m_mat_glow );
 					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );

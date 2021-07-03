@@ -69,19 +69,21 @@ player_t* looking_at( ) {
 
 	auto best_fov = 180.0f;
 
-	cs::for_each_player( [ & ] ( player_t* pl ) {
-		if ( pl->team( ) == g::local->team( ) )
-			return;
+	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+		auto pl = cs::i::ent_list->get< player_t* > ( i );
 
-		auto angle_to = cs::calc_angle( g::local->origin( ), pl->origin( ) );
-		cs::clamp( angle_to );
-		auto fov = cs::calc_fov( angle_to, angs );
+		if ( !pl || !pl->is_player ( ) || !pl->alive ( ) || pl->team ( ) == g::local->team ( ) )
+			continue;
+
+		auto angle_to = cs::calc_angle ( g::local->origin ( ), pl->origin ( ) );
+		cs::clamp ( angle_to );
+		auto fov = cs::calc_fov ( angle_to, angs );
 
 		if ( fov < best_fov ) {
 			ret = pl;
 			best_fov = fov;
 		}
-		} );
+	}
 
 	return ret;
 }
@@ -92,13 +94,33 @@ int find_freestand_side( player_t* pl, float range ) {
 	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
-	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, hitbox_head );
-	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst - cross * range, hitbox_head );
+	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst /*+ cross * range*/, hitbox_head );
+	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst /*- cross * range*/, hitbox_head );
 
-	if ( l_dmg == r_dmg )
+	bool hit_wall = false;
+
+	for ( float i = 0.0f; i < cs::pi * 2.0f; i += cs::pi * 0.25f ) {
+		vec3_t location ( src.x + cos ( i ) * 35.0f, src.y + sin ( i ) * 35.0f, src.z );
+
+		ray_t ray;
+		trace_t tr;
+		trace_filter_t filter;
+
+		filter.m_skip = g::local;
+		ray.init ( src, location );
+
+		cs::i::trace->trace_ray ( ray, mask_shot & ~contents_monster & ~contents_hitbox, &filter, &tr );
+		
+		if ( tr.m_fraction != 1.0f ) {
+			hit_wall = true;
+			break;
+		}
+	}
+
+	if ( ( l_dmg == r_dmg || ( !l_dmg && !r_dmg ) || ( l_dmg && r_dmg ) ) || !hit_wall )
 		return -1;
 
-	return (l_dmg > r_dmg) ? 0 : 1;
+	return ( l_dmg > r_dmg ) ? 0 : 1;
 }
 
 int ducked_ticks = 0;
@@ -411,13 +433,14 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	if ( g::send_packet )
 		aa::flip = !aa::flip;
 
+	const auto pressing_use = !!( ucmd->m_buttons & buttons_t::use ) && g::local->weapon ( ) && g::local->weapon ( )->item_definition_index ( ) != weapons_t::c4;
+
 	if ( !g::local->valid( )
 		|| g::local->movetype( ) == movetypes_t::noclip
 		|| g::local->movetype( ) == movetypes_t::ladder
 		|| !g::local->weapon( )
 		|| !g::local->weapon( )->data( )
-		|| (!!( ucmd->m_buttons & buttons_t::use ) && g::local->weapon ( )->item_definition_index ( ) != weapons_t::c4)
-		|| (exploits::can_shoot() && !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) )
+		|| ( exploits::can_shoot ( ) && !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) )
 		|| g::round == round_t::starting ) {
 		antiaiming = false;	
 		return;
@@ -455,15 +478,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			} break;
 			case 3: {
 				if ( target_player ) {
+					const auto yaw_to = cs::normalize ( cs::calc_angle ( g::local->origin ( ), target_player->origin ( ) ).y + 180.0f );
 					const auto desync_side = find_freestand_side( target_player, auto_dir_range );
 
-					if ( desync_side != -1 ) {
-						ucmd->m_angs.y += desync_side ? -auto_dir_amount : auto_dir_amount;
-					}
-					else {
-						const auto yaw_to = cs::normalize( cs::calc_angle( g::local->origin( ), target_player->origin( ) ).y + 180.0f );
+					if ( desync_side != -1 )
+						ucmd->m_angs.y = yaw_to + ( desync_side ? -auto_dir_amount : auto_dir_amount );
+					else
 						ucmd->m_angs.y = yaw_to;
-					}
 				}
 				else {
 					vec3_t ang;
@@ -479,9 +500,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 	/* manage antiaim */ {
 		if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
 			if ( air ) {
-				process_base_yaw( base_yaw_air, auto_direction_amount_air, auto_direction_range_air );
+				if ( !pressing_use ) {
+					process_base_yaw ( base_yaw_air, auto_direction_amount_air, auto_direction_range_air );
 
-				ucmd->m_angs.y += yaw_offset_air;
+					ucmd->m_angs.y += yaw_offset_air;
+				}
 
 				if ( side != -1 ) {
 					vec3_t ang;
@@ -494,11 +517,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				switch ( pitch_air ) {
+				if ( !pressing_use ) {
+					switch ( pitch_air ) {
 					case 0: break;
 					case 1: ucmd->m_angs.x = 89.0f; break;
 					case 2: ucmd->m_angs.x = -89.0f; break;
 					case 3: ucmd->m_angs.x = 0.0f; break;
+					}
 				}
 
 				VM_TIGER_BLACK_START
@@ -552,9 +577,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 		else if ( prediction::vel.length_2d( ) > 5.0f && g::local->weapon( ) && g::local->weapon( )->data( ) && !force_standing_antiaim ) {
 			if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && slow_walk ) {
-				process_base_yaw( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
+				if ( !pressing_use ) {
+					process_base_yaw ( base_yaw_slow_walk, auto_direction_amount_slow_walk, auto_direction_range_slow_walk );
 
-				ucmd->m_angs.y += yaw_offset_slow_walk;
+					ucmd->m_angs.y += yaw_offset_slow_walk;
+				}
 
 				if ( side != -1 ) {
 					vec3_t ang;
@@ -567,11 +594,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				switch ( pitch_slow_walk ) {
+				if ( !pressing_use ) {
+					switch ( pitch_slow_walk ) {
 					case 0: break;
 					case 1: ucmd->m_angs.x = 89.0f; break;
 					case 2: ucmd->m_angs.x = -89.0f; break;
 					case 3: ucmd->m_angs.x = 0.0f; break;
+					}
 				}
 
 				VM_TIGER_BLACK_START
@@ -620,9 +649,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				VM_TIGER_BLACK_END
 			}
 			else if ( move ) {
-				process_base_yaw( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
+				if ( !pressing_use ) {
+					process_base_yaw ( base_yaw_move, auto_direction_amount_move, auto_direction_range_move );
 
-				ucmd->m_angs.y += yaw_offset_move;
+					ucmd->m_angs.y += yaw_offset_move;
+				}
 
 				if ( side != -1 ) {
 					vec3_t ang;
@@ -635,11 +666,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				switch ( pitch_move ) {
+				if ( !pressing_use ) {
+					switch ( pitch_move ) {
 					case 0: break;
 					case 1: ucmd->m_angs.x = 89.0f; break;
 					case 2: ucmd->m_angs.x = -89.0f; break;
 					case 3: ucmd->m_angs.x = 0.0f; break;
+					}
 				}
 
 				VM_TIGER_BLACK_START
@@ -692,9 +725,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			}
 		}
 		else if ( stand ) {
-			process_base_yaw( base_yaw_stand, auto_direction_amount_stand, auto_direction_range_stand );
+			if ( !pressing_use ) {
+				process_base_yaw ( base_yaw_stand, auto_direction_amount_stand, auto_direction_range_stand );
 
-			ucmd->m_angs.y += yaw_offset_stand;
+				ucmd->m_angs.y += yaw_offset_stand;
+			}
 
 			if ( side != -1 ) {
 				vec3_t ang;
@@ -707,11 +742,13 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 			}
 
-			switch ( pitch_stand ) {
+			if ( !pressing_use ) {
+				switch ( pitch_stand ) {
 				case 0: break;
 				case 1: ucmd->m_angs.x = 89.0f; break;
 				case 2: ucmd->m_angs.x = -89.0f; break;
 				case 3: ucmd->m_angs.x = 0.0f; break;
+				}
 			}
 
 			VM_TIGER_BLACK_START
@@ -738,7 +775,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 						VM_TIGER_BLACK_START
 							if ( g::send_packet ) {
 								/* micro movements */
-								const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 1.1f : 1.1f;
+								const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
 								old_fmove += aa::move_flip ? -move_amount : move_amount;
 								aa::move_flip = !aa::move_flip;
 							}

@@ -314,15 +314,15 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 
 	const std::string prefix = _( "visuals." ) + player_category + _( "." );
 
-	/* ENEMIES: chams, chams flat, chams xqz, backtrack chams, hit matrix, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal */
-	/* TEAMMATES: chams, chams flat, chams xqz, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal */
-	/* LOCAL: chams, chams flat, chams xqz, desync chams, desync chams fakelag, desync chams rimlight, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal */
+	/* ENEMIES: chams, chams flat, chams xqz, backtrack chams, hit matrix, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal, zoom */
+	/* TEAMMATES: chams, chams flat, chams xqz, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal, zoom */
+	/* LOCAL: chams, chams flat, chams xqz, desync chams, desync chams fakelag, desync chams rimlight, glow, rimlight overlay, esp box, health bar, ammo bar, desync bar, value text, nametag, weapon name, fakeduck, reloading, fatal, zoom */
 	if ( player_category == _( "local" ) )
-		option::add_list( prefix + _( "options" ), 18 );
+		option::add_list( prefix + _( "options" ), 19 );
 	else if ( player_category == _( "enemies" ) )
-		option::add_list( prefix + _( "options" ), 17 );
+		option::add_list( prefix + _( "options" ), 18 );
 	else if ( player_category == _( "teammates" ) )
-		option::add_list( prefix + _( "options" ), 15 );
+		option::add_list( prefix + _( "options" ), 16 );
 
 	option::add_int( prefix + _( "health_bar_location" ), 2 ); /* left, right, bottom, top */
 	option::add_int( prefix + _( "ammo_bar_location" ), 1 ); /* left, right, bottom, top */
@@ -333,6 +333,7 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 	option::add_int ( prefix + _ ( "fakeduck_flag_location" ), 1 ); /* left, right, bottom, top */
 	option::add_int ( prefix + _ ( "reloading_flag_location" ), 1 ); /* left, right, bottom, top */
 	option::add_int ( prefix + _ ( "fatal_flag_location" ), 1 ); /* left, right, bottom, top */
+	option::add_int ( prefix + _ ( "zoom_flag_location" ), 1 ); /* left, right, bottom, top */
 	option::add_float( prefix + _( "reflectivity" ), 0.0f );
 	option::add_float( prefix + _( "phong" ), 0.0f );
 	option::add_color( prefix + _( "chams_color" ), { 0.81f, 0.96f, 1.0f, 0.12f } );
@@ -350,6 +351,7 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 	option::add_color ( prefix + _ ( "fakeduck_color" ), { 1.0f, 0.2f, 0.2f, 0.72f } );
 	option::add_color ( prefix + _ ( "reloading_color" ), { 0.5f, 1.0f, 0.3f, 0.72f } );
 	option::add_color ( prefix + _ ( "fatal_color" ), { 1.0f, 0.2f, 0.2f, 0.72f } );
+	option::add_color ( prefix + _ ( "zoom_color" ), { 0.5f, 1.0f, 0.3f, 0.72f } );
 }
 
 void options::init( ) {
@@ -515,6 +517,7 @@ void options::init( ) {
 	option::add_str( _( "misc.effects.clantag_text" ), _( "sesame" ) );
 	option::add_float( _( "misc.effects.revolver_cock_volume" ), 1.0f );
 	option::add_float( _( "misc.effects.weapon_volume" ), 1.0f );
+	option::add_int ( _ ( "misc.effects.view_interpolation" ), -1 );
 
 	option::add_float( _( "gui.dpi" ), 1.0f );
 	

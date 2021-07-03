@@ -245,7 +245,7 @@ void features::esp::render( ) {
 	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 		auto e = cs::i::ent_list->get< player_t* >( i );
 
-		if ( !e || !e->alive( ) ) {
+		if ( !e || !e->alive( ) || ( e == g::local && !cs::i::input->m_camera_in_thirdperson ) ) {
 			esp_data[ i ].m_pl = nullptr;
 			esp_data[ i ].m_health = 100.0f;
 			continue;
@@ -328,6 +328,7 @@ void features::esp::render( ) {
 		esp_data[ e->idx( ) ].m_box.bottom = bottom;
 		esp_data[ e->idx( ) ].m_box.top = top;
 		esp_data[ e->idx( ) ].m_dormant = e->dormant( );
+		esp_data [ e->idx ( ) ].m_scoped = e->scoped ( );
 
 		const auto clamped_health = std::clamp( static_cast< float >( e->health( ) ) , 0.0f , 100.0f );
 		esp_data[ e->idx( ) ].m_health += ( clamped_health - esp_data[ e->idx( ) ].m_health ) * 1.7f * cs::i::globals->m_frametime;
@@ -388,7 +389,7 @@ void features::esp::render( ) {
 			ImVec4 esp_rect { left, top, right - left, bottom - top };
 
 			if ( visuals.health_bar )
-				draw_esp_widget( esp_rect , visuals.health_bar_color , esp_type_bar , visuals.value_text , visuals.health_bar_placement , esp_data[ e->idx( ) ].m_dormant , esp_data[ e->idx( ) ].m_health , 100.0 );
+				draw_esp_widget( esp_rect , visuals.health_bar_color , esp_type_bar , esp_data [ e->idx ( ) ].m_health >= 100.0f ? false : visuals.value_text , visuals.health_bar_placement , esp_data[ e->idx( ) ].m_dormant , esp_data[ e->idx( ) ].m_health , 100.0 );
 
 			if ( visuals.ammo_bar && e->weapon( ) && e->weapon( )->data( ) && e->weapon( )->ammo( ) != -1 )
 				draw_esp_widget( esp_rect , visuals.ammo_bar_color , esp_type_bar , visuals.value_text , visuals.ammo_bar_placement , esp_data[ e->idx( ) ].m_dormant , e->weapon( )->ammo( ) , e->weapon( )->data( )->m_max_clip );
@@ -410,6 +411,9 @@ void features::esp::render( ) {
 
 			if ( visuals.fatal_flag && esp_data[ e->idx( ) ].m_fatal )
 				draw_esp_widget( esp_rect , visuals.fatal_color , esp_type_text , visuals.value_text , visuals.fatal_flag_placement , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , _( "Fatal" ) );
+			
+			if ( visuals.zoom_flag && esp_data [ e->idx ( ) ].m_scoped )
+				draw_esp_widget ( esp_rect, visuals.fatal_color, esp_type_text, visuals.value_text, visuals.fatal_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Zoom" ) );
 
 			/* DEBUGGING STUFF */
 			//if ( e != g::local && e->team() != g::local->team() ) {

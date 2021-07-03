@@ -22,6 +22,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.local.fakeduck_flag_location" ) ].val.i;
 		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.local.reloading_flag_location" ) ].val.i;
 		static auto& fatal_flag_placement = options::vars [ _ ( "visuals.local.fatal_flag_location" ) ].val.i;
+		static auto& zoom_flag_placement = options::vars [ _ ( "visuals.local.zoom_flag_location" ) ].val.i;
 		static auto& health_bar_placement = options::vars [ _( "visuals.local.health_bar_location" ) ].val.i;
 		static auto& desync_bar_placement = options::vars [ _( "visuals.local.desync_bar_location" ) ].val.i;
 		static auto& ammo_bar_placement = options::vars [ _( "visuals.local.ammo_bar_location" ) ].val.i;
@@ -45,6 +46,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		static auto& fakeduck_color = options::vars [ _ ( "visuals.local.fakeduck_color" ) ].val.c;
 		static auto& reloading_color = options::vars [ _ ( "visuals.local.reloading_color" ) ].val.c;
 		static auto& fatal_color = options::vars [ _ ( "visuals.local.fatal_color" ) ].val.c;
+		static auto& zoom_color = options::vars [ _ ( "visuals.local.zoom_color" ) ].val.c;
 		static auto& desync_chams_color = options::vars [ _( "visuals.local.desync_chams_color" ) ].val.c;
 		static auto& desync_rimlight_overlay_color = options::vars [ _( "visuals.local.desync_rimlight_overlay_color" ) ].val.c;
 
@@ -68,9 +70,11 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.fakeduck_flag = options [ 15 ];
 		out.reloading_flag = options [ 16 ];
 		out.fatal_flag = options [ 17 ];
+		out.zoom_flag = options [ 18 ];
 		out.fakeduck_flag_placement = fakeduck_flag_placement;
 		out.reloading_flag_placement = reloading_flag_placement;
 		out.fatal_flag_placement = fatal_flag_placement;
+		out.zoom_flag_placement = zoom_flag_placement;
 		out.health_bar_placement = health_bar_placement;
 		out.ammo_bar_placement = ammo_bar_placement;
 		out.desync_bar_placement = desync_bar_placement;
@@ -95,6 +99,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.fakeduck_color = fakeduck_color;
 		out.reloading_color = reloading_color;
 		out.fatal_color = fatal_color;
+		out.zoom_color = zoom_color;
 		MUTATE_END
 
 		return true;
@@ -103,9 +108,10 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	if ( g::local->team( ) != pl->team( ) ) {
 		MUTATE_START
 		static auto& options = options::vars [ _( "visuals.enemies.options" ) ].val.l;
-		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.local.fakeduck_flag_location" ) ].val.i;
-		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.local.reloading_flag_location" ) ].val.i;
-		static auto& fatal_flag_placement = options::vars [ _ ( "visuals.local.fatal_flag_location" ) ].val.i;
+		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.enemies.fakeduck_flag_location" ) ].val.i;
+		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.enemies.reloading_flag_location" ) ].val.i;
+		static auto& fatal_flag_placement = options::vars [ _ ( "visuals.enemies.fatal_flag_location" ) ].val.i;
+		static auto& zoom_flag_placement = options::vars [ _ ( "visuals.enemies.zoom_flag_location" ) ].val.i;
 		static auto& health_bar_placement = options::vars [ _( "visuals.enemies.health_bar_location" ) ].val.i;
 		static auto& desync_bar_placement = options::vars [ _( "visuals.enemies.desync_bar_location" ) ].val.i;
 		static auto& ammo_bar_placement = options::vars [ _( "visuals.enemies.ammo_bar_location" ) ].val.i;
@@ -129,6 +135,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		static auto& fakeduck_color = options::vars [ _ ( "visuals.enemies.fakeduck_color" ) ].val.c;
 		static auto& reloading_color = options::vars [ _ ( "visuals.enemies.reloading_color" ) ].val.c;
 		static auto& fatal_color = options::vars [ _ ( "visuals.enemies.fatal_color" ) ].val.c;
+		static auto& zoom_color = options::vars [ _ ( "visuals.enemies.zoom_color" ) ].val.c;
 
 		out.reflectivity = reflectivity;
 		out.phong = phong;
@@ -149,9 +156,11 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.fakeduck_flag = options [ 14 ];
 		out.reloading_flag = options [ 15 ];
 		out.fatal_flag = options [ 16 ];
+		out.zoom_flag = options [ 17 ];
 		out.fakeduck_flag_placement = fakeduck_flag_placement;
 		out.reloading_flag_placement = reloading_flag_placement;
 		out.fatal_flag_placement = fatal_flag_placement;
+		out.zoom_flag_placement = zoom_flag_placement;
 		out.health_bar_placement = health_bar_placement;
 		out.ammo_bar_placement = ammo_bar_placement;
 		out.desync_bar_placement = desync_bar_placement;
@@ -174,6 +183,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.fakeduck_color = fakeduck_color;
 		out.reloading_color = reloading_color;
 		out.fatal_color = fatal_color;
+		out.zoom_color = zoom_color;
 		MUTATE_END
 
 		return true;
@@ -181,9 +191,10 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 
 	MUTATE_START
 	static auto& options = options::vars [ _( "visuals.teammates.options" ) ].val.l;
-	static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.local.fakeduck_flag_location" ) ].val.i;
-	static auto& reloading_flag_placement = options::vars [ _ ( "visuals.local.reloading_flag_location" ) ].val.i;
-	static auto& fatal_flag_placement = options::vars [ _ ( "visuals.local.fatal_flag_location" ) ].val.i;
+	static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.teammates.fakeduck_flag_location" ) ].val.i;
+	static auto& reloading_flag_placement = options::vars [ _ ( "visuals.teammates.reloading_flag_location" ) ].val.i;
+	static auto& fatal_flag_placement = options::vars [ _ ( "visuals.teammates.fatal_flag_location" ) ].val.i;
+	static auto& zoom_flag_placement = options::vars [ _ ( "visuals.teammates.zoom_flag_location" ) ].val.i;
 	static auto& health_bar_placement = options::vars [ _( "visuals.teammates.health_bar_location" ) ].val.i;
 	static auto& desync_bar_placement = options::vars [ _( "visuals.teammates.desync_bar_location" ) ].val.i;
 	static auto& ammo_bar_placement = options::vars [ _( "visuals.teammates.ammo_bar_location" ) ].val.i;
@@ -207,6 +218,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	static auto& fakeduck_color = options::vars [ _ ( "visuals.teammates.fakeduck_color" ) ].val.c;
 	static auto& reloading_color = options::vars [ _ ( "visuals.teammates.reloading_color" ) ].val.c;
 	static auto& fatal_color = options::vars [ _ ( "visuals.teammates.fatal_color" ) ].val.c;
+	static auto& zoom_color = options::vars [ _ ( "visuals.teammates.zoom_color" ) ].val.c;
 
 	out.reflectivity = reflectivity;
 	out.phong = phong;
@@ -225,9 +237,11 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.fakeduck_flag = options [ 12 ];
 	out.reloading_flag = options [ 13 ];
 	out.fatal_flag = options [ 14 ];
+	out.zoom_flag = options [ 15 ];
 	out.fakeduck_flag_placement = fakeduck_flag_placement;
 	out.reloading_flag_placement = reloading_flag_placement;
 	out.fatal_flag_placement = fatal_flag_placement;
+	out.zoom_flag_placement = zoom_flag_placement;
 	out.health_bar_placement = health_bar_placement;
 	out.ammo_bar_placement = ammo_bar_placement;
 	out.desync_bar_placement = desync_bar_placement;
@@ -250,6 +264,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.fakeduck_color = fakeduck_color;
 	out.reloading_color = reloading_color;
 	out.fatal_color = fatal_color;
+	out.zoom_color = zoom_color;
 	MUTATE_END
 
 	return true;

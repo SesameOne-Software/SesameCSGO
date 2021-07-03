@@ -64,7 +64,7 @@ void fix_slide( ucmd_t* ucmd ) {
 
 	fix_legs( jittermove ? flip_slide : should_slide );
 
-	if ( g::send_packet )
+	if ( ucmd->m_cmdnum % 4 == 0 )
 		flip_slide = !flip_slide;
 }
 
@@ -205,37 +205,39 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::nade_prediction::trace( ucmd );
 
 	features::prediction::run ( [ & ] ( ) {
+		features::antiaim::simulate_lby ( );
+
 		features::legitbot::run ( ucmd );
 		features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
 		features::antiaim::run ( ucmd, old_smove, old_fmove );
 		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
-	} );
 
-	if( !!(ucmd->m_buttons & buttons_t::attack) )
-		exploits::has_shifted = false;
+		if ( !!( ucmd->m_buttons & buttons_t::attack ) )
+			exploits::has_shifted = false;
 
-	if ( !exploits::in_exploit )
-		fix_event_delay( ucmd );
+		if ( !exploits::in_exploit )
+			fix_event_delay ( ucmd );
 
-	/* recreate what holdaim var does */
-	/* part of anims */ {
-		if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
-			if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
-				g::angles = ucmd->m_angs;
-				g::hold_aim = true;
+		/* recreate what holdaim var does */
+		/* part of anims */ {
+			if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+				if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
+					g::angles = ucmd->m_angs;
+					g::hold_aim = true;
+				}
 			}
-		}
-		else {
-			g::hold_aim = false;
-		}
+			else {
+				g::hold_aim = false;
+			}
 
-		if ( !g::hold_aim ) {
-			g::angles = ucmd->m_angs;
-		}
+			if ( !g::hold_aim ) {
+				g::angles = ucmd->m_angs;
+			}
 
-		if ( g::send_packet )
-			g::hold_aim = false;
-	}
+			if ( g::send_packet )
+				g::hold_aim = false;
+		}
+	} );
 
 	/* auto-revolver */
 	if ( g::local && g::local->weapon ( ) ) {

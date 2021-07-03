@@ -48,6 +48,7 @@
 #include "perform_flashbang_effect.hpp"
 #include "prediction_error_handler.hpp"
 #include "draw_cube_overlay.hpp"
+#include "get_client_interp_amount.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -155,6 +156,7 @@ void hooks::init( ) {
 	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 8B 1D" ) ).get< void* > ( );
 	const auto _prediction_error_handler = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 45 10 53 56 8B F1 57" ) ).get< void* > ( );
 	const auto _draw_cube_overlay = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC F3 0F 10 45 28 8B 55 0C" ) ).get< void* > ( );
+	const auto _get_client_interp_amount = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 8B 0D ? ? ? ? 83 EC 08 85 C9 75" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -206,13 +208,14 @@ void hooks::init( ) {
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	//dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
 	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
 	dbg_hook ( _perform_flashbang_effect, perform_flashbang_effect, ( void** ) &old::perform_flashbang_effect );
 	//dbg_hook ( _prediction_error_handler, prediction_error_handler, ( void** ) &old::prediction_error_handler );
 	//dbg_hook ( _draw_cube_overlay, draw_cube_overlay, ( void** ) &old::draw_cube_overlay );
+	//dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
 
 	event_handler = std::make_unique< c_event_handler > ( );
 

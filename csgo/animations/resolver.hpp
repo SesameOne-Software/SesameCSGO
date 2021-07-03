@@ -27,6 +27,11 @@ namespace anims {
 			inline std::array < bool, 65 > was_moving { false };
 			inline std::array < bool, 65 > prefer_edge { false };
 			inline std::array < anims::desync_side_t, 65 > resolved_side { anims::desync_side_t::desync_middle };
+			inline std::array < bool, 65 > last_good_weight { false };
+			inline std::array < bool, 65 > last_bad_weight { false };
+			inline std::array < bool, 65 > resolved_jitter { false };
+			inline std::array < int, 65 > jitter_sync { 0 };
+			inline std::array < anims::desync_side_t, 65 > resolved_side1 { anims::desync_side_t::desync_middle };
 		}
 
 		struct hit_matrix_rec_t {

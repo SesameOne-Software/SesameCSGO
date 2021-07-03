@@ -1922,7 +1922,7 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 			}
 			else {
 				*reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x138 ) = false;
-				float flWeight = player->layers()[3].m_weight;
+				float flWeight = player->layers ( ) [ 3 ].m_weight;
 				set_weight( anim_state, 3 , valve_math::Approach( 0.0f , flWeight , anim_state->m_last_clientside_anim_update_time_delta * 5.0f ) );
 				set_weight_rate( anim_state, 3 , flWeight );
 			}
@@ -1952,25 +1952,25 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 	anim_state->m_abs_yaw = valve_math::AngleNormalize( anim_state->m_abs_yaw );
 
 	// pull the lower body direction towards the eye direction, but only when the player is moving
-	if ( anim_state->m_on_ground && !force_feet_yaw ) {
-		if ( !CLIENT_DLL_ANIMS && player == g::local )
-			lby::in_update = false;
+	if ( anim_state->m_on_ground ) {
+		//if ( !CLIENT_DLL_ANIMS && player == g::local )
+		//	lby::in_update = false;
 
 		if ( anim_state->m_speed2d > 0.1f ) {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( anim_state->m_eye_yaw, anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
 
 			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
-				lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
+				//lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
 				player->lby ( ) = anim_state->m_eye_yaw;
 			}
 		}
 		else {
-			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
+			anim_state->m_abs_yaw = valve_math::ApproachAngle ( ( player == g::local ) ? player->lby ( ) : ( force_feet_yaw ? anim_state->m_eye_yaw : player->lby ( ) ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
 			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
 				if ( cs::i::globals->m_curtime > lby::last_breaker_time && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
-					lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
-					lby::in_update = true;
+					//lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
+					//lby::in_update = true;
 					player->lby ( ) = anim_state->m_eye_yaw;
 				}
 			}
@@ -2357,7 +2357,7 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	if ( anim_state->m_on_ground ) {
 		if ( !anim_state->m_hit_ground && ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t > ( anim_state ) + 0x120 ) || bStoppedLadderingThisFrame ) ) {
 			if ( !CLIENT_DLL_ANIMS) {
-				set_sequence ( anim_state, 5, ( anim_state->m_time_in_air > 1.0f ) ? 23 : 20 );
+				set_sequence ( anim_state, 5, select_weighted_seq ( anim_state, anim_state->m_time_in_air > 1.0f ? act_csgo_land_heavy : act_csgo_land_light ) );
 			}
 
 			set_cycle ( anim_state, 5, 0.0f );

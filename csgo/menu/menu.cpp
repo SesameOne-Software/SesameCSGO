@@ -303,9 +303,9 @@ void gui::scale_dpi ( ) {
 	gui_icons_font->SetFallbackChar ( '?' );
 
 	//font_cfg.RasterizerMultiply = 1.2f;
-	render::create_font ( resources::roboto, _ ( "dbg_font" ), 11.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
+	render::create_font ( resources::roboto, _ ( "dbg_font" ), 9.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, nullptr, &font_cfg );
 	//font_cfg.RasterizerMultiply = 1.2f;
-	render::create_font ( resources::roboto, _ ( "esp_font" ), 11.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
+	render::create_font ( resources::roboto, _ ( "esp_font" ), 9.0f * options::vars [ _ ( "gui.dpi" ) ].val.f, custom_font_ranges_all, &font_cfg );
 
 	/* emojis */
 	//font_cfg.MergeMode = true;
@@ -410,16 +410,16 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 			ImGui::Checkbox( _( "Auto Scope" ), &options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
 
 		ImGui::Checkbox( _( "Auto Slow" ), &options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
-		ImGui::Checkbox ( _ ( "Doubletap Teleport" ), &options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
-		ImGui::Checkbox( _( "Doubletap" ), &options::vars [ ragebot_weapon + _( "dt_enabled" ) ].val.b );
+		ImGui::Checkbox ( _ ( "Shift Tickbase" ), &options::vars [ ragebot_weapon + _ ( "dt_enabled" ) ].val.b );
+		ImGui::Checkbox ( _ ( "Teleport On Shift" ), &options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderInt ( _ ( "Doubletap Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
-		ImGui::SliderInt( _( "Doubletap Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
+		ImGui::SliderInt ( _ ( "Tickbase Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
+		ImGui::SliderInt( _( "Tickbase Shift Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
 		ImGui::SliderFloat ( _ ( "Overrided Minimum Damage" ), &options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f > 100.0f ? ( _ ( "HP + " ) + std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f - 100.0f ) ) + _ ( " HP" ) ) : ( std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f ) ) + _ ( " HP" ) ) ).c_str ( ) );
-		ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		//ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::SliderFloat( _( "Hit Chance" ), &options::vars [ ragebot_weapon + _( "hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
-		ImGui::SliderFloat( _( "Doubletap Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
+		ImGui::SliderFloat( _( "Tickbase Hit Chance" ), &options::vars [ ragebot_weapon + _( "dt_hit_chance" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
 
 		ImGui::EndChildFrame( );
@@ -572,6 +572,7 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Fakeduck Flag",
 			"Reloading Flag",
 			"Fatal Flag",
+			"Zoom Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.local.options" ) ].val.l, visual_options.data(), visual_options.size() );
@@ -595,6 +596,7 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Fakeduck Flag",
 			"Reloading Flag",
 			"Fatal Flag",
+			"Zoom Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.enemies.options" ) ].val.l , visual_options .data(), visual_options .size());
@@ -616,6 +618,7 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 			"Fakeduck Flag",
 			"Reloading Flag",
 			"Fatal Flag",
+			"Zoom Flag",
 			};
 
 			ImGui::MultiCombo( _( "Options" ), options::vars [ _ ( "visuals.teammates.options" ) ].val.l , visual_options .data(), visual_options .size());
@@ -632,6 +635,7 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 		ImGui::Combo ( _ ( "Fakeduck Flag Location" ), &options::vars [ visuals_config + _ ( "fakeduck_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
 		ImGui::Combo ( _ ( "Reloading Flag Location" ), &options::vars [ visuals_config + _ ( "reloading_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
 		ImGui::Combo ( _ ( "Fatal Flag Location" ), &options::vars [ visuals_config + _ ( "fatal_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
+		ImGui::Combo ( _ ( "Zoom Flag Location" ), &options::vars [ visuals_config + _ ( "zoom_flag_location" ) ].val.i, element_locations.data ( ), element_locations.size ( ) );
 		ImGui::SliderFloat( _( "Chams Reflectivity" ), &options::vars [ visuals_config + _( "reflectivity" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::SliderFloat( _( "Chams Phong" ), &options::vars [ visuals_config + _( "phong" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
 		ImGui::PopItemWidth ( );
@@ -673,12 +677,13 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 		ImGui::ColorEdit4 ( _ ( "Fakeduck Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "fakeduck_color" ) ].val.c );
 		ImGui::ColorEdit4 ( _ ( "Reloading Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "reloading_color" ) ].val.c );
 		ImGui::ColorEdit4 ( _ ( "Fatal Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "fatal_color" ) ].val.c );
+		ImGui::ColorEdit4 ( _ ( "Zoom Flag Color" ), ( float* ) &options::vars [ visuals_config + _ ( "zoom_color" ) ].val.c );
 
 		ImGui::EndChildFrame( );
 	}
 
 	//MUTATE_END
-		VM_TIGER_BLACK_END
+	VM_TIGER_BLACK_END
 }
 
 void gui::draw( ) {
@@ -917,7 +922,7 @@ void gui::draw( ) {
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Safe Point Key" ), &options::vars [ _ ( "ragebot.safe_point_key" ) ].val.i, &options::vars [ _ ( "ragebot.safe_point_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Auto Revolver" ), &options::vars [ _ ( "ragebot.auto_revolver" ) ].val.b );
-							ImGui::Keybind ( _ ( "Doubletap Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
+							ImGui::Keybind ( _ ( "Tickbase Shift Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Damage Override Key" ), &options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i, &options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							
 							ImGui::EndChildFrame ( );
@@ -1281,6 +1286,7 @@ void gui::draw( ) {
 							ImGui::InputText ( _ ( "Clan Tag Text" ), options::vars [ _ ( "misc.effects.clantag_text" ) ].val.s, 128 );
 							ImGui::SliderFloat ( _ ( "Revolver Cock Volume" ), &options::vars [ _ ( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
 							ImGui::SliderFloat ( _ ( "Weapon Volume" ), &options::vars [ _ ( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
+							ImGui::SliderInt ( _ ( "View Interpolation" ), &options::vars [ _ ( "misc.effects.view_interpolation" ) ].val.i, -1, 16, ( options::vars [ _ ( "misc.effects.view_interpolation" ) ].val.i == -1 ) ? _ ( "Default" ) : _ ( "%d ticks" ) );
 							ImGui::PopItemWidth ( );
 
 							ImGui::EndChildFrame ( );
@@ -1331,11 +1337,11 @@ void gui::draw( ) {
 							ImGui::Text ( "Menu" );
 							ImGui::Separator ( );
 
-							ImGui::SliderFloat ( _ ( "Low Tolerance" ), &anims::resolver::rdata::low_delta_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							ImGui::SliderFloat ( _ ( "Middle Tolerance" ), &anims::resolver::rdata::middle_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							ImGui::SliderFloat ( _ ( "Correct Tolerance" ), &anims::resolver::rdata::correct_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
-							ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
+							//ImGui::SliderFloat ( _ ( "Low Tolerance" ), &anims::resolver::rdata::low_delta_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
+							//ImGui::SliderFloat ( _ ( "Middle Tolerance" ), &anims::resolver::rdata::middle_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
+							//ImGui::SliderFloat ( _ ( "Correct Tolerance" ), &anims::resolver::rdata::correct_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
+							//ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
+							//ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
 
 							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
 							//ImGui::PushItemWidth ( -1.0f );
@@ -1684,7 +1690,7 @@ void gui::keybinds::draw( ) {
 			add_key_entry( safe_point_key, _( "Safe Point" ) );
 
 		if ( features::ragebot::active_config.main_switch && features::ragebot::active_config.dt_enabled )
-			add_key_entry( doubletap_key, _( "Double Tap" ) );
+			add_key_entry( doubletap_key, _( "Tickbase Shift" ) );
 
 		if ( features::ragebot::active_config.main_switch )
 			add_key_entry ( min_dmg_override_key, _ ( "Damage Override" ) );
@@ -1723,7 +1729,7 @@ void gui::keybinds::draw( ) {
 		}
 	}
 
-	if ( keybind_list && ImGui::Begin( _( "Keybinds" ), &keybind_list, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize ) ) {
+	if ( keybind_list && ImGui::Begin( _( "Keybinds" ), &keybind_list, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ( gui::opened ? 0 : ImGuiWindowFlags_NoMove ) ) ) {
 		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Keybinds" ).x * 0.5f );
 		ImGui::Text ( _("Keybinds" )); 
 		ImGui::Separator ( );

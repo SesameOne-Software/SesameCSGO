@@ -578,19 +578,26 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		rand_table = true;
 	}
 
+	auto studio_mdl = cs::i::mdl_info->studio_mdl ( pl->mdl ( ) );
+
+	if ( !studio_mdl )
+		return false;
+
+	auto set = studio_mdl->hitbox_set ( 0 );
+
+	if ( !set )
+		return false;
+
+	auto hhitbox = set->hitbox ( hitbox );
+
+	if ( !hhitbox )
+		return false;
+
+	vec3_t vmin, vmax;
+	VEC_TRANSFORM ( hhitbox->m_bbmin, bone_matrix [ hhitbox->m_bone ], vmin );
+	VEC_TRANSFORM ( hhitbox->m_bbmax, bone_matrix [ hhitbox->m_bone ], vmax );
+
 	/* normal hitchance */
-	const auto backup_origin = pl->origin ( );
-	auto backup_abs_origin = pl->abs_origin ( );
-	const auto backup_bone_cache = pl->bone_cache ( );
-	const auto backup_mins = pl->mins ( );
-	const auto backup_maxs = pl->maxs ( );
-
-	pl->origin ( ) = rec.m_origin;
-	//pl->set_abs_origin ( rec.m_origin );
-	pl->bone_cache ( ) = bone_matrix.data ( );
-	pl->mins ( ) = rec.m_mins;
-	pl->maxs ( ) = rec.m_maxs;
-
 	const auto weapon_range = weapon->data ( )->m_range;
 	const auto hitbox_as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
 
@@ -598,24 +605,11 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		const auto spread_x = -weap_spread * 0.5f + ( rand_components [ 0 ][ i ] * weap_spread );
 		const auto spread_y = -weap_spread * 0.5f + ( rand_components [ 1 ][ i ] * weap_spread );
 		const auto spread_z = -weap_spread * 0.5f + ( rand_components [ 2 ][ i ] * weap_spread );
-		const auto final_pos = src + ( ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon_range );
-		
-		vec3_t impact_out;
-		int hitgroup_out = -1;
-		const auto dmg = autowall::dmg ( g::local, pl, src, final_pos, -1, &impact_out, &hitgroup_out );
+		const auto final_pos = src + ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon_range;
 
-		if ( hitgroup_out != -1
-			&& hitgroup_out == hitbox_as_hitgroup
-			/* only allow bullets through that would do at least as much damage as we would want */
-			&& dmg > std::min( pl->health ( ), static_cast<int>( min_dmg + 0.5f)) * ( static_cast< float >( active_config.dmg_accuracy ) / 100.0f ) )
+		if ( autowall::trace_ray( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius == -1.0f ? 4.0f : hhitbox->m_radius, src, final_pos ) )
 			hits++;
 	}
-
-	pl->origin ( ) = backup_origin;
-	//pl->set_abs_origin ( backup_abs_origin );
-	pl->bone_cache ( ) = backup_bone_cache;
-	pl->mins ( ) = backup_mins;
-	pl->maxs ( ) = backup_maxs;
 
 	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
 
@@ -664,8 +658,7 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 			}
 		);
 
-		}
-	);
+	} );
 
 	if ( targets_out.empty( ) )
 		return;
@@ -843,7 +836,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		return;
 	}
 
-	if ( !exploits::can_shoot ( ) ) {
+	if ( !exploits::can_shoot ( ) && g::local->weapon ( )->data ( ) && g::local->weapon ( )->data ( )->m_type > weapon_type_t::knife && g::local->weapon ( )->data ( )->m_type < weapon_type_t::c4 ) {
 		ucmd->m_buttons &= ~buttons_t::attack;
 
 		//if ( !g::local->weapon ( )->data ( )->m_full_auto )
@@ -897,11 +890,11 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 	scan_points.sync( );
 
 	/* extrapolate autostop */ 
-	const auto max_speed = ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.33f;
+	const auto max_speed = g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed;
 	const auto cur_speed = features::prediction::vel.length_2d ( );
 	auto pre_autostop_working = false;
 
-	if ( active_config.auto_slow ) {
+	if ( active_config.auto_slow && cur_speed > max_speed * 0.34f ) {
 		auto calc_velocity = [ & ] ( vec3_t& vel ) {
 			const auto speed = vel.length_2d ( );
 		
@@ -911,18 +904,21 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 			}
 		};
 		
+		//const float dynamic_hitchance = ( exploits::has_shifted || exploits::in_exploit ) ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance;
+		//const float speed_for_hitchance = max_speed * 0.34f + ( max_speed - max_speed * 0.34f ) * ( 1.0f - dynamic_hitchance / 100.0f );
+		//
 		//auto vel = features::prediction::vel;
-		auto ticks_until_accurate = 0;
-		
+		//auto ticks_until_accurate = 0;
+		//
 		//for ( ticks_until_accurate = 0; ticks_until_accurate < 16; ticks_until_accurate++ ) {
-		//	if ( vel.length_2d ( ) <= max_speed )
+		//	if ( vel.length_2d ( ) <= speed_for_hitchance )
 		//		break;
 		//
 		//	calc_velocity ( vel );
 		//}
 
 		const float deceleration = g::cvars::sv_accelerate->get_float ( ) * g::cvars::sv_maxspeed->get_float() * cs::ticks2time ( 1 );
-		ticks_until_accurate = cur_speed / deceleration;
+		const int ticks_until_accurate = cur_speed / deceleration;
 		
 		const auto predicted_eyes = g::local->eyes ( ) + features::prediction::vel * cs::ticks2time( ticks_until_accurate );
 
@@ -935,7 +931,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) );
 				const auto dmg = autowall::dmg ( g::local, ent, predicted_eyes, pred_ent_pos, hitboxes_t::hitbox_head );
 
-				if ( dmg >= ( static_cast< float >( min_dmg ) > 100.0f ? ( ent->health ( ) == 100 ? static_cast< float >( min_dmg ) : static_cast< float >( ent->health ( ) ) ) : std::min ( static_cast< float >( ent->health ( ) ), static_cast< float >( min_dmg ) ) )) {
+				if ( dmg >= 1.0f && dmg >= ( static_cast< float >( min_dmg ) > 100.0f ? static_cast< float >( ent->health ( ) + ( min_dmg - 100 ) ) : std::min ( static_cast< float >( ent->health ( ) + 5.0f ), static_cast< float >( min_dmg ) ) ) ) {
 					at_target = ent;
 					break;
 				}
@@ -946,7 +942,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 			auto target_vel = -features::prediction::vel.normalized ( ) * g::cvars::cl_forwardspeed->get_float ( );
 			
 			if ( ticks_until_accurate <= 1 )
-				target_vel = features::prediction::vel.normalized ( ) * max_speed;
+				target_vel = features::prediction::vel.normalized ( ) * max_speed * 0.34f;
 
 			vec3_t angles;
 			cs::i::engine->get_viewangles ( angles );
@@ -1217,6 +1213,9 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	if ( active_config.scan_legs ) {
 		hitboxes.push_back( hitbox_right_calf );
 		hitboxes.push_back( hitbox_left_calf );
+
+		hitboxes.push_back ( hitbox_right_thigh );
+		hitboxes.push_back ( hitbox_left_thigh );
 	}
 
 	if ( active_config.scan_arms ) {
@@ -1307,7 +1306,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	const auto backup_maxs = pl->maxs ( );
 
 	pl->origin ( ) = rec.m_origin;
-	//pl->set_abs_origin ( rec.m_origin );
+	pl->set_abs_origin ( rec.m_origin );
 	pl->bone_cache ( ) = dmg_scan_matrix.data();
 	pl->mins ( ) = rec.m_mins;
 	pl->maxs ( ) = rec.m_maxs;
@@ -1360,9 +1359,9 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		//	break;
 		//}
 	}
-
+	
 	/* save best data */
-	if ( best_dmg_tmp > best_dmg && ( best_dmg_tmp > min_dmg || best_dmg_tmp > pl->health( ) ) ) {
+	if ( best_dmg_tmp > best_dmg && best_dmg_tmp > ( static_cast< float >( min_dmg ) > 100.0f ? static_cast< float >( ent->health ( ) + ( min_dmg - 100 ) ) : std::min ( static_cast< float >( ent->health ( ) + 5.0f ), static_cast< float >( min_dmg ) ) ) ) {
 		pos_out = best_pos;
 		hitbox_out = best_hitbox;
 		best_dmg = best_dmg_tmp;
@@ -1370,7 +1369,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* restore player data to what it was before so we dont mess up anything */
 	pl->origin ( ) = backup_origin;
-	//pl->set_abs_origin ( backup_abs_origin );
+	pl->set_abs_origin ( backup_abs_origin );
 	pl->bone_cache ( ) = backup_bone_cache;
 	pl->mins ( ) = backup_mins;
 	pl->maxs ( ) = backup_maxs;

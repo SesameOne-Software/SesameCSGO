@@ -7,7 +7,7 @@ int __fastcall hooks::base_interpolate_part1 ( REG, float& current_time, vec3_t&
 
 	auto pl = ( player_t* ) ecx;
 
-	if ( pl && pl->is_player ( ) && pl != g::local && cs::time2ticks( abs( pl->simtime ( ) - pl->old_simtime ( ) ) ) > 1 ) {
+	if ( pl && pl->is_player ( ) && pl != g::local /*&& cs::time2ticks( abs( pl->simtime ( ) - pl->old_simtime ( ) ) ) > 1*/ ) {
 		no_more_changes = 1;
 		
 		move_to_last_received_pos ( pl, false );

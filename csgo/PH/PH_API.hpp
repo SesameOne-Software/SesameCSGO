@@ -55,7 +55,7 @@ namespace ph_heartbeat {
 		The reason you should Xor it both ways is because the DLL can be dumped from the process memory before entrypoint is called and the string won't be xor'd because if it's only xor'd at runtime
 	*/
 
-	//std::string PH_APPLICATION_ID = std::string(_("56097057bace3450088a9ce3f539f792"));
+	//std::string PH_APPLICATION_ID = std::string(_("b63f52e4e746bd22e69e86226aba5dc8"));
 
 	/*
 		This structure is the data that will be passed from the loader to the entrypoint.
@@ -119,12 +119,12 @@ namespace ph_heartbeat {
 			case PH_HEARTBEAT_INIT_TASK: {
 				ph_heartbeat_mutex.lock();
 
-				std::string key_str = std::string ( _ ( "56097057bace3450088a9ce3f539f792" ) ) + ph_heartbeat::heartbeat_token_hashed;
+				std::string key_str = std::string ( _ ( "b63f52e4e746bd22e69e86226aba5dc8" ) ) + ph_heartbeat::heartbeat_token_hashed;
 
 				picosha2::hash256(key_str.begin(), key_str.end(), aes_key.begin(), aes_key.end());
 
 				std::string app_id_hash_str;
-				picosha2::hash256_hex_string( std::string ( _ ( "56097057bace3450088a9ce3f539f792" ) ), app_id_hash_str);
+				picosha2::hash256_hex_string( std::string ( _ ( "b63f52e4e746bd22e69e86226aba5dc8" ) ), app_id_hash_str);
 
 				std::string token_hashed = ph_heartbeat::heartbeat_token_hashed;
 

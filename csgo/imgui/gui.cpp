@@ -480,6 +480,8 @@ void ImGui::custom::End( ) {
 
     draw_list->PopClipRect( );
 
+    //draw_list->AddRect ( ImVec2 ( window_pos.x - 3.0f, window_pos.y - 3.0f ), ImVec2 ( window_pos.x + window_size.x + 3.0f, window_pos.y + window_size.y + 3.0f ), GetColorU32 ( ImVec4 ( 1.0f, 1.0f, 1.0f, std::lerp( 0.3f, 0.7f, sinf ( ImGui::GetTime ( ) ) * 0.5f + 0.5f ) ) ), 0.0f, ImDrawCornerFlags_None, 3.0f );
+
     ImGui::End( );
 
     g_small_font = nullptr;

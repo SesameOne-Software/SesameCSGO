@@ -130,18 +130,26 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
 	}
 
+	/* remove event delay */ {
+		static auto event_off = pattern::search ( _ ( "engine.dll" ), _ ( "8B BB ? ? ? ? 85 FF 0F 84" ) ).add ( 2 ).deref ( ).get<uint32_t> ( );
+
+		if ( cs::i::client_state )
+			for ( auto ei = *reinterpret_cast< void** >( uintptr_t ( cs::i::client_state ) + event_off ); ei; ei = *reinterpret_cast< void** >( uintptr_t ( ei ) + 56 ) )
+				*reinterpret_cast< float* >( uintptr_t ( ei ) + 4 ) = 0.0f;
+	}
+
 	if ( g::local && cs::i::client_state ) {
 		static auto last_cmd_time = cs::i::client_state->next_cmd_time ( );
 		static auto last_ack_cmd = cs::i::client_state->last_command_ack ( );
 
 		if ( last_cmd_time != cs::i::client_state->next_cmd_time ( )
 			|| last_ack_cmd != cs::i::client_state->last_command_ack ( ) ) {
-			if ( features::prediction::vel_modifier != 1.0f ) {
-				features::prediction::vel_modifier = g::local->velocity_modifier ( );
-
+			if ( /*g::local->velocity_modifier ( ) < features::prediction::vel_modifier*/ g::local->velocity_modifier ( ) != features::prediction::vel_modifier ) {
 				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
 				*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
 			}
+
+			features::prediction::vel_modifier = g::local->velocity_modifier ( );
 
 			last_cmd_time = cs::i::client_state->next_cmd_time ( );
 			last_ack_cmd = cs::i::client_state->last_command_ack ( );

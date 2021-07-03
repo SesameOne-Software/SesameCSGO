@@ -32,6 +32,7 @@ namespace features {
 		bool fakeduck_flag;
 		bool reloading_flag;
 		bool fatal_flag;
+		bool zoom_flag;
 
 		int health_bar_placement;
 		int ammo_bar_placement;
@@ -42,6 +43,7 @@ namespace features {
 		int fakeduck_flag_placement;
 		int reloading_flag_placement;
 		int fatal_flag_placement;
+		int zoom_flag_placement;
 
 		float reflectivity;
 		float phong;
@@ -63,6 +65,7 @@ namespace features {
 		options::option::colorf fakeduck_color;
 		options::option::colorf reloading_color;
 		options::option::colorf fatal_color;
+		options::option::colorf zoom_color;
 	};
 
 	bool get_visuals ( player_t* pl, visual_config_t& out );

@@ -40,18 +40,17 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	const auto backup_curtime = cs::i::globals->m_curtime;
 	const auto backup_tickbase = localplayer->tick_base ( );
 
-	if ( cmd->m_cmdnum > last_cmd_num )
-		localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
+	localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
 
 	if ( current_command == exploits::shifted_command ( ) )
-		localplayer->tick_base ( ) -= exploits::last_shifted_amount ( );
+		localplayer->tick_base ( ) = exploits::shifted_tickbase( );
 
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
 
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 
-	if ( !in_cm && cmd->m_cmdnum > last_cmd_num )
+	if ( !in_cm )
 		localplayer->velocity_modifier ( ) = backup_vel_mod;
 
 	features::prediction::fix_netvars ( localplayer->tick_base ( ), true );
@@ -60,7 +59,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 	/* local anims */
 	if ( cmd->m_cmdnum > last_cmd_num ) {
 		if ( localplayer->alive ( ) )
-			anims::update_anims ( localplayer, g::angles );
+			anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
 		else /* reset fake */
 			anims::manage_fake ( );
 

@@ -13,7 +13,7 @@ namespace features {
 			float m_health = 0;
 			RECT m_box { 0 };
 			float m_first_seen = 0.0f , m_last_seen = 0.0f;
-			bool m_dormant = false , m_fakeducking = false , m_fatal = false , m_reloading = false;
+			bool m_dormant = false , m_fakeducking = false , m_fatal = false , m_reloading = false, m_scoped = false;
 			std::string m_weapon_name;
 		};
 

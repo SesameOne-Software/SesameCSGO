@@ -49,16 +49,18 @@ std::deque< std::deque< nade_record_t > > nade_points { };
 bool nade_predicted = false;
 
 void features::nade_prediction::predict( ucmd_t* ucmd ) {
-	constexpr float restitution = 0.45f;
-	constexpr float velocity = 403.0f * 0.9f;
+	if ( !g::local->weapon ( ) || !g::local->weapon ( )->data( ) ) {
+		nade_predicted = false;
+		return;
+	}
 
-	float step, gravity, new_velocity, unk01;
-	int index {}, grenade_act { 1 };
+	float step, gravity;
+	int index = 0, grenade_act = 1;
 	vec3_t pos, thrown_direction, start, eye_origin;
 	vec3_t angles, thrown;
 
 	//	calculate step and actual gravity value
-	gravity = 800.0f / 8.0f;
+	gravity = g::cvars::sv_gravity->get_float() * 0.4f;
 	step = cs::i::globals->m_ipt;
 
 	//	get local view and eye origin
@@ -68,46 +70,26 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	//	copy current angles and normalise pitch
 	thrown = angles;
 
-	if ( thrown.x < 0 ) {
-		thrown.x = -10 + thrown.x * ( ( 90 - 10 ) / 90.0f );
-	}
-	else {
-		thrown.x = -10 + thrown.x * ( ( 90 + 10 ) / 90.0f );
-	}
+	if ( thrown.x < -90.0f )
+		thrown.x += 360.f;
+	else if ( thrown.x > 90.0f )
+		thrown.x -= 360.0f;
 
-	//	find out how we're throwing the grenade
-	auto primary_attack = !!(ucmd->m_buttons & buttons_t::attack);
-	auto secondary_attack = !!(ucmd->m_buttons & buttons_t::attack2);
+	thrown.x -= ( 90.0f - abs ( thrown.x ) ) * 10.0f / 90.0f;
 
-	if ( primary_attack && secondary_attack ) {
-		grenade_act = ACT_LOB;
-	}
-	else if ( secondary_attack ) {
-		grenade_act = ACT_DROP;
-	}
+	auto throw_strength = std::clamp ( g::local->weapon ( )->throw_strength ( ), 0.0f, 1.0f );
 
-	//	apply 'magic' and modulate by velocity
-	unk01 = g::local->weapon( )->throw_strength( );
+	auto speed = std::clamp ( g::local->weapon ( )->data ( )->m_throw_velocity * 0.9f, 15.0f, 750.0f );
+	speed *= throw_strength * 0.7f + 0.3f;
 
-	if ( !primary_attack && !secondary_attack ) {
-		unk01 = old_throw_strength;
-	}
-	else {
-		old_throw_strength = unk01;
-	}
+	thrown_direction = cs::angle_vec ( thrown );
+	eye_origin.z += throw_strength * 12.0f - 12.0f;
 
-	const auto throw_strength = unk01;
+	trace_t trace;
+	cs::util_tracehull ( eye_origin, eye_origin + thrown_direction * 22.0f, vec3_t ( -2.0f, -2.0f, -2.0f ), vec3_t ( 2.0f, 2.0f, 2.0f ), 0x46004003, g::local, &trace );
+	start = trace.m_endpos - thrown_direction * 6.0f;
 
-	unk01 = unk01 * 0.7f;
-	unk01 = unk01 + 0.3f;
-
-	new_velocity = velocity * unk01;
-
-	//	here's where the fun begins
-	thrown_direction = cs::angle_vec( thrown );
-
-	start = eye_origin + vec3_t( 0.0f, 0.0f, ( throw_strength * 12.f ) - 12.f );
-	thrown_direction = ( thrown_direction * new_velocity ) + ( g::local->vel( ).length_2d( ) < 5.0f ? vec3_t( 0.0f, 0.0f, 0.0f ) : g::local->vel( ) );
+	thrown_direction = thrown_direction * speed + ( g::local->vel ( ).length_2d( ) < 5.0f ? vec3_t ( 0.0f, 0.0f, 0.0f ) : g::local->vel ( ) ) * 1.25f;
 
 	cur_nade_track.clear( );
 
@@ -130,6 +112,8 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	}
 
 	//	let's go ahead and predict
+	vec3_t last_pos = start + thrown_direction * step;
+
 	for ( auto time = 0.0f; index < 500; time += step ) {
 		pos = start + thrown_direction * step;
 
@@ -140,16 +124,15 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 		//	modify path if we have hit something
 		if ( trace.m_fraction != 1.0f ) {
 			thrown_direction = trace.m_plane.m_normal * -2.0f * thrown_direction.dot_product( trace.m_plane.m_normal ) + thrown_direction;
-
-			thrown_direction *= restitution;
+			thrown_direction *= 0.45f;
 
 			pos = start + thrown_direction * trace.m_fraction * step;
 
-			time += ( step * ( 1.0f - trace.m_fraction ) );
+			time += step * ( 1.0f - trace.m_fraction );
 		}
 
 		//	check for detonation
-		auto detonate = detonated( g::local->weapon( ), time, trace );
+		auto detonate = detonated( g::local->weapon( ), time, trace, !index ? vec3_t( 1.0f, 1.0f, 1.0f ) : ( pos - last_pos ) );
 
 		//	emplace nade point
 		const auto nade_record = nade_record_t( start, pos, trace.m_fraction != 1.0f, true, trace.m_plane.m_normal, detonate, cs::i::globals->m_curtime + time * 2.0f, nade_radius );
@@ -161,11 +144,13 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 		//	apply gravity modifier
 		thrown_direction.z -= gravity * trace.m_fraction * step;
 
-		if ( detonate ) {
+		last_pos = pos;
+
+		if ( detonate )
 			break;
-		}
 	}
 
+	//index = 0;
 	for ( auto n = index; n < 500; ++n ) {
 		cur_nade_track_renderable.at( n ).m_valid = false;
 	}
@@ -173,20 +158,19 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 	nade_predicted = true;
 }
 
-bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t& trace ) {
-	if ( !weapon ) {
+bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t& trace, const vec3_t& vel ) {
+	if ( !weapon )
 		return true;
-	}
 
 	const auto index = weapon->item_definition_index( );
 
 	switch ( index ) {
 	case weapons_t::smoke:
-		if ( time > 1.5f )
+		if ( vel.length ( ) <= 0.1f )
 			return true;
 		break;
 	case weapons_t::decoy:
-		if ( time > 2.0f )
+		if ( vel.length ( ) <= 0.2f )
 			return true;
 		break;
 	case weapons_t::flashbang:
@@ -300,9 +284,8 @@ void features::nade_prediction::draw( ) {
 					continue;
 				}
 
-				if ( !p.m_valid ) {
+				if ( !p.m_valid )
 					break;
-				}
 
 				if ( cs::render::world_to_screen( start, p.m_start ) && cs::render::world_to_screen( end, p.m_end ) ) {
 					if ( grenade_trajectories ) {
@@ -328,11 +311,11 @@ void features::nade_prediction::draw( ) {
 	if ( nade_predicted ) {
 		auto base_time = cs::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp<int>( static_cast< int >( std::sinf( cs::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int>( static_cast< int >( std::sinf( cs::i::globals->m_curtime * cs::pi ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
-			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_bounce_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * cs::pi ) * 25.0f + grenade_trajectory_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * cs::pi ) * 25.0f + grenade_bounce_color.a * 255.0f ), 0, 255 );
 
 			if ( !p.m_valid ) {
 				break;
@@ -447,11 +430,11 @@ void features::nade_prediction::draw_beam( ) {
 	if ( nade_predicted ) {
 		auto base_time = cs::i::globals->m_curtime;
 
-		auto calc_alpha1 = std::clamp<int> ( static_cast< int >( std::sinf( cs::i::globals->m_curtime * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+		auto calc_alpha1 = std::clamp<int> ( static_cast< int >( std::sinf( cs::i::globals->m_curtime * cs::pi ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 		for ( auto& p : cur_nade_track_renderable ) {
-			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
-			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * 3.141f ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * cs::pi ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
+			auto calc_alpha2 = std::clamp<int> ( static_cast< int >( std::sinf( base_time * 2.0f * cs::pi ) * 25.0f + grenade_radii_color.a * 255.0f ), 0, 255 );
 
 			if ( !p.m_valid ) {
 				break;
