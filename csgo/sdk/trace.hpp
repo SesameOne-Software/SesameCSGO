@@ -264,6 +264,27 @@ public:
 	}
 };
 
+class trace_filter_world_and_props_only_t : public _trace_filter_t {
+public:
+	void* m_skip;
+
+	trace_filter_world_and_props_only_t ( ) {
+		m_skip = nullptr;
+	}
+
+	trace_filter_world_and_props_only_t ( void* ent ) {
+		m_skip = ent;
+	}
+
+	bool should_hit_ent ( entity_t* ent, std::uint32_t ) override {
+		return false;
+	}
+
+	std::uint32_t get_trace_type ( ) const override {
+		return 0;
+	}
+};
+
 struct ray_t {
 	vec_aligned_t start;
 	vec_aligned_t delta;

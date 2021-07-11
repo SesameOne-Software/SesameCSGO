@@ -12,7 +12,6 @@ public:
 	POFFSET( void*, renderable, 0x4 );
 	POFFSET( void*, networkable, 0x8 );
 	NETVAR( vec3_t, origin, "DT_BaseEntity->m_vecOrigin" );
-	NETVAR( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 	NETVAR( std::uint32_t, team, "DT_BaseEntity->m_iTeamNum" );
 	NETVAR( std::uint32_t, highlight_r, "DT_BaseAnimating->m_nHighlightColorR" );
 	NETVAR( std::uint32_t, highlight_g, "DT_BaseAnimating->m_nHighlightColorG" );
@@ -46,6 +45,12 @@ public:
 	NETVAR ( uint32_t, fog_color_secondary_lerp_to, "DT_FogController->m_fog.colorSecondaryLerpTo" );
 	NETVAR ( float, fog_start_lerp_to, "DT_FogController->m_fog.startLerpTo" );
 	NETVAR ( float, fog_end_lerp_to, "DT_FogController->m_fog.endLerpTo" );
+
+	NETVAR ( uint32_t, mdl_idx, "DT_BaseEntity->m_nModelIndex" );
+
+	void set_model_idx ( int i ) {
+		vfunc< void ( __thiscall* )( void*, int ) > ( this, 75 )( this, i );
+	}
 
 	void draw( ) {
 		using drawmodel_fn = int( __thiscall* )( void*, int, std::uint8_t );

@@ -25,6 +25,7 @@ c_cvar* cs::i::cvar = nullptr;
 c_game_event_mgr* cs::i::events = nullptr;
 c_view_render_beams* cs::i::beams = nullptr;
 IDirect3DDevice9* cs::i::dev = nullptr;
+c_network_string_table_container* cs::i::client_string_table_container = nullptr;
 
 c_mdl_cache_critical_section::c_mdl_cache_critical_section( ) {
 	cs::i::mdl_cache->begin_lock( );
@@ -131,9 +132,6 @@ t cs::create_interface( const char* module, const char* iname ) {
 }
 
 bool cs::init( ) {
-	CLEAR_START
-		VM_SHARK_BLACK_START
-
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 5E 8B 40 10" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );
 	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll" ), _( "VMaterialSystem080" ) );
@@ -157,10 +155,9 @@ bool cs::init( ) {
 	i::beams = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? 56 8B F1 B9 ? ? ? ? FF 50 08" ) ).add ( 1 ).deref ( ).get< c_view_render_beams* > ( );
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" ) ), _( "g_pMemAlloc" ) );
 	i::dev = pattern::search( _( "shaderapidx9.dll" ), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C" ) ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
+	i::client_string_table_container = create_interface< c_network_string_table_container* > ( _ ( "engine.dll" ), _ ( "VEngineClientStringTable001" ) );
 
 	g::cvars::init ( );
 
-	VM_SHARK_BLACK_END
-		CLEAR_END
 	return true;
 }

@@ -100,23 +100,22 @@ namespace features {
 				if ( abs( ent->view_offset( ).x - m_view_offset.x ) < 0.03125f && abs( ent->view_offset( ).y - m_view_offset.y ) < 0.03125f && abs( ent->view_offset( ).z - m_view_offset.z ) < 0.03125f )
 					ent->view_offset( ) = m_view_offset , updated = true;
 
-				if ( abs( ent->base_vel( ).x - m_base_velocity.x ) < 0.03125f && abs( ent->base_vel( ).y - m_base_velocity.y ) < 0.03125f && abs( ent->base_vel( ).z - m_base_velocity.z ) < 0.03125f )
-					ent->base_vel( ) = m_base_velocity , updated = true;
+				//if ( abs( ent->base_vel( ).x - m_base_velocity.x ) < 0.03125f && abs( ent->base_vel( ).y - m_base_velocity.y ) < 0.03125f && abs( ent->base_vel( ).z - m_base_velocity.z ) < 0.03125f )
+				//	ent->base_vel( ) = m_base_velocity , updated = true;
+				//
+				//if ( abs( ent->vel( ).x - m_velocity.x ) < 0.03125f && abs( ent->vel( ).y - m_velocity.y ) < 0.03125f && abs( ent->vel( ).z - m_velocity.z ) < 0.03125f )
+				//	ent->vel( ) = m_velocity , updated = true;
+				//
+				//if ( abs( ent->origin( ).x - m_origin.x ) < 0.03125f && abs( ent->origin( ).y - m_origin.y ) < 0.03125f && abs( ent->origin( ).z - m_origin.z ) < 0.03125f )
+				//	ent->origin( ) = m_origin , updated = true;
+				//
+				//if ( abs( ent->fall_vel( ) - m_fall_vel ) < 0.03125f )
+				//	ent->fall_vel( ) = m_fall_vel , updated = true;
 
-				if ( abs( ent->vel( ).x - m_velocity.x ) < 0.03125f && abs( ent->vel( ).y - m_velocity.y ) < 0.03125f && abs( ent->vel( ).z - m_velocity.z ) < 0.03125f )
-					ent->vel( ) = m_velocity , updated = true;
-
-				if ( abs( ent->origin( ).x - m_origin.x ) < 0.03125f && abs( ent->origin( ).y - m_origin.y ) < 0.03125f && abs( ent->origin( ).z - m_origin.z ) < 0.03125f )
-					ent->origin( ) = m_origin , updated = true;
-
-				if ( abs( ent->fall_vel( ) - m_fall_vel ) < 0.03125f )
-					ent->fall_vel( ) = m_fall_vel , updated = true;
-
-				if ( abs( ent->crouch_amount( ) - m_duck_amount ) < 0.03125f )
-					ent->crouch_amount( ) = m_duck_amount , updated = true;
-
-				if ( abs( ent->crouch_speed( ) - m_duck_speed ) < 0.03125f )
-					ent->crouch_speed( ) = m_duck_speed , updated = true;
+				if ( abs ( ent->crouch_amount ( ) - m_duck_amount ) < 0.03125f ) {
+					ent->crouch_amount ( ) = m_duck_amount, updated = true;
+					ent->crouch_speed ( ) = m_duck_speed, updated = true;
+				}
 
 				//if ( abs( ent->velocity_modifier( ) - m_vel_modifier ) < 0.03125f )
 				//	ent->velocity_modifier( ) = m_vel_modifier , updated = true;
@@ -130,13 +129,13 @@ namespace features {
 				//if ( ent->flags( ) != m_flags )
 				//	ent->flags( ) = m_flags , updated = true;
 
-				if ( weapon && m_weapon_valid ) {
-					if ( abs( weapon->accuracy_penalty( ) - m_accuracy_penalty ) < 0.03125f )
-						weapon->accuracy_penalty( ) = m_accuracy_penalty , updated = true;
-
-					if ( abs( weapon->recoil_index( ) - m_recoil_index ) < 0.03125f )
-						weapon->recoil_index( ) = m_recoil_index , updated = true;
-				}
+				//if ( weapon && m_weapon_valid ) {
+				//	if ( abs( weapon->accuracy_penalty( ) - m_accuracy_penalty ) < 0.03125f )
+				//		weapon->accuracy_penalty( ) = m_accuracy_penalty , updated = true;
+				//
+				//	if ( abs( weapon->recoil_index( ) - m_recoil_index ) < 0.03125f )
+				//		weapon->recoil_index( ) = m_recoil_index , updated = true;
+				//}
 
 				return updated;
 			}
@@ -150,6 +149,7 @@ namespace features {
 		float curtime( );
 		
 		int shift_tickbase ( );
+		void handle_prediction_errors ( );
 		void update( int stage );
 		void fix_viewmodel( bool store = false );
 		bool fix_netvars( int cmd, bool store = false );

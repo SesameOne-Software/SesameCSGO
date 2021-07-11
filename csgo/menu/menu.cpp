@@ -253,8 +253,6 @@ void gui::scale_dpi ( ) {
 	if ( g_last_dpi == options::vars [ _ ( "gui.dpi" ) ].val.f )
 		return;
 
-	VM_SHARK_BLACK_START
-
 	if ( !first_scale ) {
 		ImGui_ImplWin32_Shutdown ( );
 		ImGui_ImplDX9_Shutdown ( );
@@ -325,8 +323,6 @@ void gui::scale_dpi ( ) {
 	g_last_dpi = options::vars [ _ ( "gui.dpi" ) ].val.f;
 
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-
-	VM_SHARK_BLACK_END
 }
 
 void gui::init( ) {
@@ -351,8 +347,6 @@ std::vector< std::string > configs { };
 std::vector< std::string > scripts { };
 
 void gui::load_cfg_list( ) {
-	VM_SHARK_BLACK_START
-
 	char appdata [ MAX_PATH ];
 
 	if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
@@ -388,13 +382,9 @@ void gui::load_cfg_list( ) {
 			js_api::load_script ( dir.path ( ).filename ( ).string ( ).c_str() );
 		}
 	}
-
-	VM_SHARK_BLACK_END
 }
 
 void gui::weapon_controls( const std::string& weapon_name ) {
-	VM_TIGER_BLACK_START
-	//MUTATE_START
 	const auto ragebot_weapon = _( "ragebot." ) + weapon_name + _( "." );
 	
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Weapon Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -410,11 +400,8 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 			ImGui::Checkbox( _( "Auto Scope" ), &options::vars [ ragebot_weapon + _( "auto_scope" ) ].val.b );
 
 		ImGui::Checkbox( _( "Auto Slow" ), &options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
-		ImGui::Checkbox ( _ ( "Shift Tickbase" ), &options::vars [ ragebot_weapon + _ ( "dt_enabled" ) ].val.b );
-		ImGui::Checkbox ( _ ( "Teleport On Shift" ), &options::vars [ ragebot_weapon + _ ( "dt_teleport" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
 		ImGui::SliderInt ( _ ( "Tickbase Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
-		ImGui::SliderInt( _( "Tickbase Shift Amount" ), &options::vars [ ragebot_weapon + _( "dt_ticks" ) ].val.i, 0, 16, _( "%d ticks" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
 		ImGui::SliderFloat ( _ ( "Overrided Minimum Damage" ), &options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f > 100.0f ? ( _ ( "HP + " ) + std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f - 100.0f ) ) + _ ( " HP" ) ) : ( std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f ) ) + _ ( " HP" ) ) ).c_str ( ) );
 		//ImGui::SliderFloat( _( "Damage Accuracy" ), &options::vars [ ragebot_weapon + _( "dmg_accuracy" ) ].val.f, 0.0f, 100.0f, _( "%.1f%%" ) );
@@ -458,14 +445,9 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 
 		ImGui::EndChildFrame( );
 	}
-
-	//MUTATE_END
-		VM_TIGER_BLACK_END
 }
 
 void gui::antiaim_controls( const std::string& antiaim_name ) {
-	VM_TIGER_BLACK_START
-	//MUTATE_START
 	const auto antiaim_config = _( "antiaim." ) + antiaim_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Antiaim" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -475,7 +457,7 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 
 		ImGui::Checkbox( _( "Enable" ), &options::vars [ antiaim_config + _( "enabled" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderInt ( _( "Fakelag Factor" ), &options::vars [ antiaim_config + _( "fakelag_factor" ) ].val.i, 0, 16, _( "%d ticks" ) );
+		ImGui::SliderInt ( _( "Fakelag Factor" ), &options::vars [ antiaim_config + _( "fakelag_factor" ) ].val.i, 0, 14, _( "%d ticks" ) );
 		ImGui::PopItemWidth ( );
 
 		static std::vector<const char*> pitches { "None", "Down", "Up", "Zero" };
@@ -530,13 +512,9 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 
 		ImGui::EndChildFrame( );
 	}
-	//MUTATE_END
-		VM_TIGER_BLACK_END
 }
 
 void gui::player_visuals_controls( const std::string& visual_name ) {
-	VM_TIGER_BLACK_START
-	//MUTATE_START
 	const auto visuals_config = _( "visuals." ) + visual_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Player Visuals" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -681,17 +659,24 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 
 		ImGui::EndChildFrame( );
 	}
-
-	//MUTATE_END
-	VM_TIGER_BLACK_END
 }
 
 void gui::draw( ) {
 	/* HANDLE DPI */
 	//sesui::globals::dpi = options::vars [ _( "gui.dpi" ) ].val.f;
 
-	if ( ImGui::IsKeyReleased ( VK_INSERT ) )
+	/* set animation speed */
+	static auto& gui_anim_speed = options::vars [ _ ( "gui.animation_speed" ) ].val.i;
+	gui_anim_multiplier = static_cast< float >( gui_anim_speed ) / 100.0f;
+
+	/* toggle menu */
+	if ( ImGui::IsKeyReleased ( VK_INSERT ) ) {
 		opened = !opened;
+
+		/* reset animations on close */
+		if ( !opened )
+			ImGui::custom::reset_anims ( );
+	}
 
 	open_button_pressed = utils::key_state( VK_INSERT );
 	
@@ -702,15 +687,14 @@ void gui::draw( ) {
 		ImGui::PushFont ( gui_ui_font );
 
 		if ( ImGui::custom::Begin (_( SESAME_VERSION), &opened, gui_small_font ) ) {
-			VM_TIGER_BLACK_START
 			/* main menu objects */
 			if ( ImGui::custom::BeginTabs ( &current_tab_idx, gui_icons_font ) ) {
-				ImGui::custom::AddTab ( _("A"));
-				ImGui::custom::AddTab ( _("B"));
-				ImGui::custom::AddTab ( _("C"));
-				ImGui::custom::AddTab ( _("D"));
-				ImGui::custom::AddTab ( _("E"));
-				ImGui::custom::AddTab ( _("F"));
+				ImGui::custom::AddTab ( _ ( "A" ) );
+				ImGui::custom::AddTab ( _ ( "B" ) );
+				ImGui::custom::AddTab ( _ ( "C" ) );
+				ImGui::custom::AddTab ( _ ( "D" ) );
+				ImGui::custom::AddTab ( _ ( "E" ) );
+				ImGui::custom::AddTab ( _ ( "F" ) );
 
 				ImGui::custom::EndTabs ( );
 			}
@@ -745,7 +729,7 @@ void gui::draw( ) {
 
 				ImGui::SameLine ( );
 
-				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+				if ( ImGui::Button ( _("Cancel"), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
 					ImGui::CloseCurrentPopup ( );
 				}
 
@@ -781,7 +765,7 @@ void gui::draw( ) {
 
 				ImGui::SameLine ( );
 
-				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+				if ( ImGui::Button ( _("Cancel"), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
 					ImGui::CloseCurrentPopup ( );
 				}
 
@@ -817,7 +801,7 @@ void gui::draw( ) {
 
 				ImGui::SameLine ( );
 
-				if ( ImGui::Button ( "Cancel", ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
+				if ( ImGui::Button ( _("Cancel"), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
 					ImGui::CloseCurrentPopup ( );
 				}
 
@@ -827,17 +811,16 @@ void gui::draw( ) {
 			bool open_save_modal = false;
 			bool open_delete_modal = false;
 			bool open_delete_script_modal = false;
-			VM_TIGER_BLACK_END
+
 			switch ( current_tab_idx ) {
 				case tab_legit: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "General", "General legitbot and accuracy settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("General"), _("General legitbot and accuracy settings"), [ & ] ( ) {
 					} );
 
-					ImGui::custom::AddSubtab ( "Default", "Default settings used for unconfigured weapons", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "General Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General Settings" ).x * 0.5f );
-							ImGui::Text ( "General Settings" );
+					ImGui::custom::AddSubtab ( _("Default"), _("Default settings used for unconfigured weapons"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("General Settings") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("General Settings") ).x * 0.5f );
+							ImGui::Text ( _("General Settings") );
 							ImGui::Separator ( );
 
 							static std::vector<const char*> assist_type { "None", "Legit" ,  "Rage" };
@@ -850,9 +833,9 @@ void gui::draw( ) {
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Triggerbot" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Triggerbot" ).x * 0.5f );
-							ImGui::Text ( "Triggerbot" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Triggerbot" )), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("Triggerbot") ).x * 0.5f );
+							ImGui::Text ( _("Triggerbot" ));
 							ImGui::Separator ( );
 
 							ImGui::Checkbox ( _ ( "Triggerbot" ), &options::vars [ _ ( "legitbot.triggerbot" ) ].val.b );
@@ -860,11 +843,11 @@ void gui::draw( ) {
 							ImGui::Keybind ( _ ( "##Triggerbot Key" ), &options::vars [ _ ( "legitbot.triggerbot_key" ) ].val.i, &options::vars [ _ ( "legitbot.triggerbot_key_mode" ) ].val.i, ImVec2(-1.0f, 0.0f) );
 
 							static std::vector<const char*> hitboxes {
-										"Head" ,
-										"Neck" ,
-										"Chest" ,
-										"Pelvis" ,
-										"Arms" ,
+								"Head",
+								"Neck",
+								"Chest",
+								"Pelvis",
+								"Arms",
 							};
 
 							ImGui::MultiCombo ( _ ( "Hitboxes" ), options::vars [ _ ( "legitbot.triggerbot_hitboxes" ) ].val.l, hitboxes.data ( ), hitboxes.size ( ) );
@@ -873,26 +856,24 @@ void gui::draw( ) {
 						}
 					} );
 
-					ImGui::custom::AddSubtab ( "Pistol", "Pistol class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Pistol"),_( "Pistol class configuration"), [ & ] ( ) {
 					} );
-					ImGui::custom::AddSubtab ( "Revolver", "Revolver class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Revolver"),_( "Revolver class configuration"), [ & ] ( ) {
 					} );
-					ImGui::custom::AddSubtab ( "Rifle", "Rifle, SMG, and shotgun class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Rifle"), _("Rifle, SMG, and shotgun class configuration"), [ & ] ( ) {
 					} );
-					ImGui::custom::AddSubtab ( "AWP", "AWP class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("AWP"),_( "AWP class configuration"), [ & ] ( ) {
 					} );
-					ImGui::custom::AddSubtab ( "Auto", "Autosniper class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Auto"),_( "Autosniper class configuration"), [ & ] ( ) {
 					} );
-					ImGui::custom::AddSubtab ( "Scout", "Scout class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Scout"), _("Scout class configuration"), [ & ] ( ) {
 					} );
-					VM_TIGER_BLACK_END
 				} break;
 				case tab_rage: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "General", "General ragebot and accuracy settings", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "General Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General Settings" ).x * 0.5f );
-							ImGui::Text ( "General Settings" );
+					ImGui::custom::AddSubtab ( _("General"), _("General ragebot and accuracy settings"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("General Settings") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("General Settings" )).x * 0.5f );
+							ImGui::Text ( _("General Settings" ));
 							ImGui::Separator ( );
 
 							static std::vector<const char*> assist_type {  "None", "Legit", "Rage" };
@@ -905,15 +886,26 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Auto Peek" ), &options::vars [ _ ( "ragebot.autopeek" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Auto Peek Key" ), &options::vars [ _ ( "ragebot.autopeek_key" ) ].val.i, &options::vars [ _ ( "ragebot.autopeek_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
+							ImGui::Checkbox ( _ ( "Shift Tickbase" ), &options::vars [ _ ( "ragebot.dt_enabled" ) ].val.b );
+							ImGui::SameLine ( );
+							ImGui::Keybind ( _ ( "Tickbase Shift Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
+							ImGui::Checkbox ( _ ( "Teleport On Shift" ), &options::vars [ _ ( "ragebot.dt_teleport" ) ].val.b );
+							ImGui::PushItemWidth ( -1.0f );
+							ImGui::SliderInt ( _ ( "Tickbase Shift Amount" ), &options::vars [ _ ( "ragebot.dt_ticks" ) ].val.i, 0, 16, _ ( "%d ticks" ) );
+							ImGui::PopItemWidth ( );
+							ImGui::Checkbox ( _ ( "Extended Lagcomp" ), &options::vars [ _ ( "ragebot.extended_lagcomp_enabled" ) ].val.b );
+							ImGui::PushItemWidth ( -1.0f );
+							ImGui::SliderInt ( _ ( "Extended Lagcomp Time" ), &options::vars [ _ ( "ragebot.extended_lagcomp_ms" ) ].val.i, 0, 200, _ ( "+%dms" ) );
+							ImGui::PopItemWidth ( );
 
 							ImGui::EndChildFrame ( );
 						}
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Accuracy" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Accuracy" ).x * 0.5f );
-							ImGui::Text ( "Accuracy" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Accuracy") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "Accuracy") ).x * 0.5f );
+							ImGui::Text (_( "Accuracy") );
 							ImGui::Separator ( );
 
 							ImGui::Checkbox ( _ ( "Fix Fakelag" ), &options::vars [ _ ( "ragebot.fix_fakelag" ) ].val.b );
@@ -922,53 +914,50 @@ void gui::draw( ) {
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Safe Point Key" ), &options::vars [ _ ( "ragebot.safe_point_key" ) ].val.i, &options::vars [ _ ( "ragebot.safe_point_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Auto Revolver" ), &options::vars [ _ ( "ragebot.auto_revolver" ) ].val.b );
-							ImGui::Keybind ( _ ( "Tickbase Shift Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Damage Override Key" ), &options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i, &options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					ImGui::custom::AddSubtab ( "Default", "Default settings used for unconfigured weapons", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Default"),_( "Default settings used for unconfigured weapons"), [ & ] ( ) {
 						weapon_controls ( _ ( "default" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Pistol", "Pistol class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Pistol"), _("Pistol class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "pistol" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Revolver", "Revolver class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Revolver"), _("Revolver class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "revolver" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Rifle", "Rifle, SMG, and shotgun class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Rifle"),_( "Rifle, SMG, and shotgun class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "rifle" ) );
 					} );
-					ImGui::custom::AddSubtab ( "AWP", "AWP class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("AWP"), _("AWP class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "awp" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Auto", "Autosniper class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab (_( "Auto"), _("Autosniper class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "auto" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Scout", "Scout class configuration", [ & ] ( ) {
+					ImGui::custom::AddSubtab (_( "Scout"), _("Scout class configuration"), [ & ] ( ) {
 						weapon_controls ( _ ( "scout" ) );
 					} );
-					VM_TIGER_BLACK_END
 				} break;
 				case tab_antiaim: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "Air", "In air antiaim settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Air"), _("In air antiaim settings"), [ & ] ( ) {
 						antiaim_controls ( _ ( "air" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Moving", "Moving antiaim settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Moving"),_( "Moving antiaim settings"), [ & ] ( ) {
 						antiaim_controls ( _ ( "moving" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Slow Walk", "Slow walk antiaim settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab (_( "Slow Walk"), _("Slow walk antiaim settings"), [ & ] ( ) {
 						antiaim_controls ( _ ( "slow_walk" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Standing", "Standing antiaim settings", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Standing"), _("Standing antiaim settings"), [ & ] ( ) {
 						antiaim_controls ( _ ( "standing" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Other", "Fakelag, manual aa, and other antiaim features", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "General" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General" ).x * 0.5f );
-							ImGui::Text ( "General" );
+					ImGui::custom::AddSubtab ( _("Other"), _("Fakelag, manual aa, and other antiaim features"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID (_( "General") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "General" )).x * 0.5f );
+							ImGui::Text (_( "General") );
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
@@ -997,35 +986,37 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					VM_TIGER_BLACK_END
 				} break;
 				case tab_visuals: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "Local Player", "Visuals used on local player", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Local Player"), _("Visuals used on local player"), [ & ] ( ) {
 						player_visuals_controls ( _ ( "local" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Enemies", "Visuals used on filtered enemies", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Enemies"),_( "Visuals used on filtered enemies"), [ & ] ( ) {
 						player_visuals_controls ( _ ( "enemies" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Teammates", "Visuals used on filtered teammates", [ & ] ( ) {
+					ImGui::custom::AddSubtab ( _("Teammates"), _("Visuals used on filtered teammates"), [ & ] ( ) {
 						player_visuals_controls ( _ ( "teammates" ) );
 					} );
-					ImGui::custom::AddSubtab ( "Other", "Other visual options", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "World" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "World" ).x * 0.5f );
-							ImGui::Text ( "World" );
+					ImGui::custom::AddSubtab (_( "Other"), _("Other visual options"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID (_( "World") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "World") ).x * 0.5f );
+							ImGui::Text ( _("World" ));
 							ImGui::Separator ( );
 
 							ImGui::Checkbox ( _ ( "Fog" ), &options::vars [ _ ( "visuals.other.fog" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Fog Color" ), ( float* ) &options::vars [ _ ( "visuals.other.fog_color" ) ].val.c );
+							ImGui::PushItemWidth ( -1.0f );
 							ImGui::SliderFloat ( _ ( "Fog Distance" ), &options::vars [ _ ( "visuals.other.fog_distance" ) ].val.f, 0.0f, 6000.0f, _ ( "%.1f units" ) );
 							ImGui::SliderFloat ( _ ( "Fog Density" ), &options::vars [ _ ( "visuals.other.fog_density" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
+							ImGui::PopItemWidth ( );
 							ImGui::Checkbox ( _ ( "Bloom" ), &options::vars [ _ ( "visuals.other.bloom" ) ].val.b );
+							ImGui::PushItemWidth ( -1.0f );
 							ImGui::SliderFloat ( _ ( "Bloom Scale" ), &options::vars [ _ ( "visuals.other.bloom_scale" ) ].val.f, 0.0f, 10.0f, _ ( "x%.1f" ) );
 							ImGui::SliderFloat ( _ ( "Bloom Exponent" ), &options::vars [ _ ( "visuals.other.bloom_exponent" ) ].val.f, 0.0f, 10.0f,  _ ( "%.1f" ) );
 							ImGui::SliderFloat ( _ ( "Bloom Saturation" ), &options::vars [ _ ( "visuals.other.bloom_saturation" ) ].val.f, 0.0f, 10.0f,  _ ( "x%.1f" ) );
-							
+							ImGui::PopItemWidth ( );
+
 							ImGui::Checkbox ( _ ( "Bomb ESP" ), &options::vars [ _ ( "visuals.other.bomb_esp" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bomb Timer" ), &options::vars [ _ ( "visuals.other.bomb_timer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Bullet Tracers" ), &options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b );
@@ -1046,6 +1037,8 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Grenade Trajectories" ), &options::vars [ _ ( "visuals.other.grenade_trajectories" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Grenade Trajectories Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_trajectory_color" ) ].val.c );
+							ImGui::SameLine ( );
+							ImGui::ColorEdit4 ( _ ( "##Grenade Trajectories Hit Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_trajectory_color_hit" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Grenade Bounces" ), &options::vars [ _ ( "visuals.other.grenade_bounces" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Grenade Bounces Color" ), ( float* ) &options::vars [ _ ( "visuals.other.grenade_bounce_color" ) ].val.c );
@@ -1058,9 +1051,9 @@ void gui::draw( ) {
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Other" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Other" ).x * 0.5f );
-							ImGui::Text ( "Other" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Other") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "Other" )).x * 0.5f );
+							ImGui::Text ( _("Other") );
 							ImGui::Separator ( );
 
 							static std::vector<const char*> removals {
@@ -1073,6 +1066,7 @@ void gui::draw( ) {
 								"Occlusion" ,
 								"Killfeed Decay" ,
 								"Post Processing" ,
+								//"Landing Bob" ,
 							};
 
 							ImGui::MultiCombo ( _ ( "Removals" ), options::vars [ _ ( "visuals.other.removals" ) ].val.l, removals.data ( ), removals.size ( ) );
@@ -1127,12 +1121,10 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					VM_TIGER_BLACK_END
 				} break;
 				case tab_skins: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "Inventory Changer", "Add items to your inventory (Including custom skins!)", [ & ] ( ) {
-						if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
+					ImGui::custom::AddSubtab ( _("Inventory Changer"), _("Add items to your inventory (Including custom skins!)"), [ & ] ( ) {
+						/*if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
 							if ( ImGui::custom::InventoryButton ( _ ( "Add Item" ) ) ) {
 								features::skinchanger::add_item ( {
 									false,
@@ -1153,7 +1145,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::knife_skeleton,
@@ -1163,7 +1155,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::m4a4,
@@ -1173,7 +1165,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::revolver,
@@ -1183,7 +1175,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::knife_karambit,
@@ -1193,7 +1185,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::m4a1s,
@@ -1203,7 +1195,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::usps,
@@ -1213,7 +1205,7 @@ void gui::draw( ) {
 									0.0f,
 									{}
 									} );
-
+				
 								features::skinchanger::add_item ( {
 									false,
 									weapons_t::glove_motorcycle,
@@ -1224,38 +1216,85 @@ void gui::draw( ) {
 									{}
 									} );
 							}
-
+				
 							for ( auto& skin : features::skinchanger::skins ) {
 								const auto kit = skin.get_kit ( );
-
+				
 								if ( !kit )
 									continue;
 								
 								ImGui::custom::InventoryButton ( kit->name.c_str(), &skin );
 							}
-
+				
 							ImGui::custom::InventoryEnd ( );
+						}*/
+					} );
+				
+					ImGui::custom::AddSubtab ( _("Model Changer"), _("Replace game models with your own"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Player Models" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Player Models" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Player Models" ) );
+							ImGui::Separator ( );
+
+							std::vector<const char*> models {
+								_ ( "Default" ),
+								_ ( "Special Agent Ava | FBI" ),
+								_ ( "Operator | FBI SWAT" ),
+								_ ( "Markus Delrow | FBI HRT" ),
+								_ ( "Michael Syfers | FBI Sniper" ),
+								_ ( "B Squadron Officer | SAS" ),
+								_ ( "Seal Team 6 Soldier | NSWC SEAL" ),
+								_ ( "Buckshot | NSWC SEAL" ),
+								_ ( "Lt. Commander Ricksaw | NSWC SEAL" ),
+								_ ( "3rd Commando Company | KSK" ),
+								_ ( "'Two Times' McCoy | USAF TACP" ),
+								_ ( "Dragomir | Sabre" ),
+								_ ( "Rezan The Ready | Sabre" ),
+								_ ( "'The Doctor' Romanov | Sabre" ),
+								_ ( "Maximus | Sabre" ),
+								_ ( "Blackwolf | Sabre" ),
+								_ ( "The Elite Mr. Muhlik | Elite Crew" ),
+								_ ( "Ground Rebel | Elite Crew" ),
+								_ ( "Osiris | Elite Crew" ),
+								_ ( "Prof. Shahmat | Elite Crew" ),
+								_ ( "Enforcer | Phoenix" ),
+								_ ( "Slingshot | Phoenix" ),
+								_ ( "Soldier | Phoenix" ),
+								_ ( "Jumpsuit (Variant B)" ),
+							};
+
+							ImGui::PushItemWidth ( -1.0f );
+							ImGui::Combo ( _ ( "T Player Model" ), &options::vars [ _ ( "skins.models.player_model_t" ) ].val.i, models.data ( ), models.size ( ) );
+							ImGui::Combo ( _ ( "CT Player Model" ), &options::vars [ _ ( "skins.models.player_model_ct" ) ].val.i, models.data ( ), models.size ( ) );
+							ImGui::PopItemWidth ( );
+
+							ImGui::EndChildFrame ( );
+						}
+
+						ImGui::SameLine ( );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Weapon Models" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Weapon Models" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Weapon Models" ) );
+							ImGui::Separator ( );
+
+
+							ImGui::EndChildFrame ( );
 						}
 					} );
-
-					ImGui::custom::AddSubtab ( "Model Changer", "Replace game models with your own", [ & ] ( ) {
-
-					} );
-					VM_TIGER_BLACK_END
 				} break;
 				case tab_misc: {
-					VM_TIGER_BLACK_START
-					ImGui::custom::AddSubtab ( "Movement", "Movement related cheats", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "General" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General" ).x * 0.5f );
-							ImGui::Text ( "General" );
+					ImGui::custom::AddSubtab ( _("Movement"), _("Movement related cheats"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID (_( "General") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("General") ).x * 0.5f );
+							ImGui::Text (_( "General" ));
 							ImGui::Separator ( );
 
 							ImGui::Checkbox ( _ ( "Block Bot" ), &options::vars [ _ ( "misc.movement.block_bot" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Block Bot Key" ), &options::vars [ _ ( "misc.movement.block_bot_key" ) ].val.i, &options::vars [ _ ( "misc.movement.block_bot_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Auto Jump" ), &options::vars [ _ ( "misc.movement.bhop" ) ].val.b );
-							ImGui::Checkbox ( _ ( "Auto Forward" ), &options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b );
+							//ImGui::Checkbox ( _ ( "Auto Forward" ), &options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Auto Strafer" ), &options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Directional Auto Strafer" ), &options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Fast Stop" ), &options::vars [ _ ( "misc.movement.accurate_move" ) ].val.b );
@@ -1265,10 +1304,10 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					ImGui::custom::AddSubtab ( "Effects", "Miscellaneous visual effects", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "General" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "General" ).x * 0.5f );
-							ImGui::Text ( "General" );
+					ImGui::custom::AddSubtab ( _("Effects"),_( "Miscellaneous visual effects"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("General") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "General") ).x * 0.5f );
+							ImGui::Text ( _("General") );
 							ImGui::Separator ( );
 
 							ImGui::Checkbox ( _ ( "Third Person" ), &options::vars [ _ ( "misc.effects.third_person" ) ].val.b );
@@ -1279,7 +1318,7 @@ void gui::draw( ) {
 							ImGui::SliderFloat ( _ ( "Ragdoll Force Scale" ), &options::vars [ _ ( "misc.effects.ragdoll_force_scale" ) ].val.f, 0.0f, 10.0f, _ ( "x%.1f" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::Checkbox ( _ ( "Clan Tag" ), &options::vars [ _ ( "misc.effects.clantag" ) ].val.b );
-							static std::vector<const char*> tag_anims {  "Static",  "Marquee", "Capitalize" ,  "Heart" };
+							static std::vector<const char*> tag_anims {  "Static",  "Marquee", "Capitalize" ,  "Heart", "gamesense" };
 
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::Combo ( _ ( "Clan Tag Animation" ), &options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i, tag_anims.data ( ), tag_anims.size ( ) );
@@ -1292,10 +1331,10 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					ImGui::custom::AddSubtab ( "Player List", "Whitelist, clantag stealer, and bodyaim priority", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Players" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Players" ).x * 0.5f );
-							ImGui::Text ( "Players" );
+					ImGui::custom::AddSubtab ( _("Player List"),_( "Whitelist, clantag stealer, and bodyaim priority"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Players") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("Players") ).x * 0.5f );
+							ImGui::Text ( _("Players") );
 							ImGui::Separator ( );
 
 							for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
@@ -1318,9 +1357,9 @@ void gui::draw( ) {
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Player Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Player Actions" ).x * 0.5f );
-							ImGui::Text ( "Player Actions" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Player Actions") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("Player Actions") ).x * 0.5f );
+							ImGui::Text (_( "Player Actions") );
 							ImGui::Separator ( );
 
 							if ( current_plist_player ) {
@@ -1331,17 +1370,22 @@ void gui::draw( ) {
 							ImGui::EndChildFrame ( );
 						}
 					} );
-					ImGui::custom::AddSubtab ( "Cheat", "Cheat settings and panic button", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Menu" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Menu" ).x * 0.5f );
-							ImGui::Text ( "Menu" );
+					ImGui::custom::AddSubtab ( _("Cheat"), _("Cheat settings and panic button"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Menu") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "Menu" )).x * 0.5f );
+							ImGui::Text ( _("Menu" ));
 							ImGui::Separator ( );
+
+							ImGui::PushItemWidth ( -1.0f );
+							ImGui::SliderInt ( _ ( "GUI Animation Speed" ), &options::vars [ _ ( "gui.animation_speed" ) ].val.i, 10, 200, _ ( "%d%" ) );
+							ImGui::PopItemWidth ( );
 
 							//ImGui::SliderFloat ( _ ( "Low Tolerance" ), &anims::resolver::rdata::low_delta_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
 							//ImGui::SliderFloat ( _ ( "Middle Tolerance" ), &anims::resolver::rdata::middle_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
 							//ImGui::SliderFloat ( _ ( "Correct Tolerance" ), &anims::resolver::rdata::correct_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							//ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
-							//ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 20.0f, _ ( "%.6f" ) );
+							ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 200.0f, _ ( "%.3f" ) );
+							ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 50.0f, _ ( "%.3f" ) );
+							//ImGui::Checkbox ( _ ( "Test" ), &anims::test );
 
 							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
 							//ImGui::PushItemWidth ( -1.0f );
@@ -1367,9 +1411,9 @@ void gui::draw( ) {
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Cheat" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Cheat" ).x * 0.5f );
-							ImGui::Text ( "Cheat" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Cheat") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("Cheat") ).x * 0.5f );
+							ImGui::Text ( _("Cheat" ));
 							ImGui::Separator ( );
 
 							//static std::vector<const char*> angle_interp_mode { "None",  "Last Tick", "Lerp" };
@@ -1395,10 +1439,10 @@ void gui::draw( ) {
 						}
 					} );
 					
-					ImGui::custom::AddSubtab ( "Configuration", "Cheat configuration manager", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Configs" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Configs" ).x * 0.5f );
-							ImGui::Text ( "Configs" );
+					ImGui::custom::AddSubtab ( _("Configuration"), _("Cheat configuration manager"), [ & ] ( ) {
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Configs") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _("Configs") ).x * 0.5f );
+							ImGui::Text ( _("Configs") );
 							ImGui::Separator ( );
 
 							for ( const auto& config : configs ) {
@@ -1411,9 +1455,9 @@ void gui::draw( ) {
 
 						ImGui::SameLine ( );
 
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Config Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Config Actions" ).x * 0.5f );
-							ImGui::Text ( "Config Actions" );
+						ImGui::BeginChildFrame ( ImGui::GetID ( _("Config Actions") ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize (_( "Config Actions" )).x * 0.5f );
+							ImGui::Text ( _("Config Actions" ));
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
@@ -1514,72 +1558,71 @@ void gui::draw( ) {
 						}
 					} );
 
-					ImGui::custom::AddSubtab ( "Scripts", "Script manager", [ & ] ( ) {
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Scripts" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Scripts" ).x * 0.5f );
-							ImGui::Text ( "Scripts" );
-							ImGui::Separator ( );
-
-							for ( const auto& script : scripts ) {
-								if ( ImGui::Button ( script.data ( ), ImVec2 ( -1.0f, 0.0f ) ) )
-									strcpy_s ( selected_script, script.c_str ( ) );
-							}
-
-							ImGui::EndChildFrame ( );
-						}
-
-						ImGui::SameLine ( );
-
-						ImGui::BeginChildFrame ( ImGui::GetID ( "Script Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Script Actions" ).x * 0.5f );
-							ImGui::Text ( "Script Actions" );
-							ImGui::Separator ( );
-
-							ImGui::PushItemWidth ( -1.0f );
-							ImGui::InputText ( _ ( "Script Name" ), selected_script, sizeof ( selected_script ) );
-							ImGui::PopItemWidth ( );
-
-							if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-								char appdata [ MAX_PATH ];
-
-								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-								}
-
-								auto file_exists = [ ] ( const std::string& path ) {
-									std::ifstream file ( path );
-									return file.good ( );
-								};
-
-								const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
-
-								if ( file_exists ( file ) ) {
-									open_delete_script_modal = true;
-								}
-								else {
-									std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
-
-									gui_mutex.lock ( );
-									load_cfg_list ( );
-									gui_mutex.unlock ( );
-
-									cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
-								}
-							}
-
-							if ( ImGui::Button ( _ ( "Reload Scripts" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-								gui_mutex.lock ( );
-								load_cfg_list ( );
-								gui_mutex.unlock ( );
-								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
-							}
-
-							ImGui::EndChildFrame ( );
-						}
-					} );
-					VM_TIGER_BLACK_END
+					//ImGui::custom::AddSubtab ( "Scripts", "Script manager", [ & ] ( ) {
+					//	ImGui::BeginChildFrame ( ImGui::GetID ( "Scripts" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+					//		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Scripts" ).x * 0.5f );
+					//		ImGui::Text ( "Scripts" );
+					//		ImGui::Separator ( );
+					//
+					//		for ( const auto& script : scripts ) {
+					//			if ( ImGui::Button ( script.data ( ), ImVec2 ( -1.0f, 0.0f ) ) )
+					//				strcpy_s ( selected_script, script.c_str ( ) );
+					//		}
+					//
+					//		ImGui::EndChildFrame ( );
+					//	}
+					//
+					//	ImGui::SameLine ( );
+					//
+					//	ImGui::BeginChildFrame ( ImGui::GetID ( "Script Actions" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+					//		ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( "Script Actions" ).x * 0.5f );
+					//		ImGui::Text ( "Script Actions" );
+					//		ImGui::Separator ( );
+					//
+					//		ImGui::PushItemWidth ( -1.0f );
+					//		ImGui::InputText ( _ ( "Script Name" ), selected_script, sizeof ( selected_script ) );
+					//		ImGui::PopItemWidth ( );
+					//
+					//		if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+					//			char appdata [ MAX_PATH ];
+					//
+					//			if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
+					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
+					//			}
+					//
+					//			auto file_exists = [ ] ( const std::string& path ) {
+					//				std::ifstream file ( path );
+					//				return file.good ( );
+					//			};
+					//
+					//			const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
+					//
+					//			if ( file_exists ( file ) ) {
+					//				open_delete_script_modal = true;
+					//			}
+					//			else {
+					//				std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
+					//
+					//				gui_mutex.lock ( );
+					//				load_cfg_list ( );
+					//				gui_mutex.unlock ( );
+					//
+					//				cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+					//			}
+					//		}
+					//
+					//		if ( ImGui::Button ( _ ( "Reload Scripts" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+					//			gui_mutex.lock ( );
+					//			load_cfg_list ( );
+					//			gui_mutex.unlock ( );
+					//			cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+					//		}
+					//
+					//		ImGui::EndChildFrame ( );
+					//	}
+					//} );
 				} break;
 			}
 
@@ -1624,13 +1667,10 @@ void gui::draw( ) {
 }
 
 void gui::watermark::draw( ) {
-	VM_TIGER_BLACK_START
-		VM_TIGER_BLACK_END
+
 }
 
 void gui::keybinds::draw( ) {
-	VM_TIGER_BLACK_START
-	//MUTATE_START
 	std::vector< std::string > entries {
 
 	};
@@ -1741,5 +1781,4 @@ void gui::keybinds::draw( ) {
 
 		ImGui::End( );
 	}
-	VM_TIGER_BLACK_END
 }

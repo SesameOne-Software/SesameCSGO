@@ -47,15 +47,15 @@ public:
 	}
 
 	PAD( 8 );
-	bool m_in_prediction; //0x8
+	bool m_in_prediction;
 	PAD( 1 );
-	bool m_engine_paused; //0xA
+	bool m_engine_paused;
 	PAD( 1 );
-	int m_previous_start_frame; //0xC
+	int m_previous_start_frame;
 	PAD( 8 );
-	bool m_is_first_time_predicted; //0x18
+	bool m_is_first_time_predicted;
 	PAD ( 3 );
-	int m_commands_predicted; //0x1C
+	int m_commands_predicted;
 };
 
 class c_movement {
@@ -74,4 +74,84 @@ public:
 	virtual void* get_moving_player( void ) const = 0;
 	virtual void unblock_pusher( void* player, void* pusher ) = 0;
 	virtual void setup_movement_bounds( void* move ) = 0;
+};
+
+typedef enum {
+	field_void = 0,			// no type or value
+	field_float,			// any floating point value
+	field_string,			// a string id (return from alloc_string)
+	field_vector,			// any vector, qangle, or angularimpulse
+	field_quaternion,		// a quaternion
+	field_integer,			// any integer or enum
+	field_boolean,			// boolean, implemented as an int, i may use this as a hint for compression
+	field_short,			// 2 byte integer
+	field_character,		// a byte
+	field_color32,			// 8-bit per channel r,g,b,a (32bit color)
+	field_embedded,			// an embedded object with a datadesc, recursively traverse and embedded class/structure based on an additional typedescription
+	field_custom,			// special type that contains function pointers to it's read/write/parse functions
+
+	field_classptr,			// cbaseentity *
+	field_ehandle,			// entity handle
+	field_edict,			// edict_t *
+
+	field_position_vector,	// a world coordinate (these are fixed up across level transitions automagically)
+	field_time,				// a floating point time (these are fixed up automatically too!)
+	field_tick,				// an integer tick count( fixed up similarly to time)
+	field_modelname,		// engine string that is a model name (needs precache)
+	field_soundname,		// engine string that is a sound name (needs precache)
+
+	field_input,			// a list of inputed data fields (all derived from cmultiinputvar)
+	field_function,			// a class function pointer (think, use, etc)
+
+	field_vmatrix,			// a vmatrix (output coords are not worldspace)
+
+	// note: use float arrays for local transformations that don't need to be fixed up.
+	field_vmatrix_worldspace,// a vmatrix that maps some local space to world space (translation is fixed up on level transitions)
+	field_matrix3x4_worldspace,	// matrix3x4_t that maps some local space to world space (translation is fixed up on level transitions)
+
+	field_interval,			// a start and range floating point interval ( e.g., 3.2->3.6 == 3.2 and 0.4 )
+	field_modelindex,		// a model index
+	field_materialindex,	// a material index (using the material precache string table)
+
+	field_vector2d,			// 2 floats
+	field_integer64,		// 64bit integer
+
+	field_vector4d,			// 4 floats
+
+	field_typecount,		// must be last
+} fieldtype_t;
+
+enum {
+	td_offset_normal = 0,
+	td_offset_packed = 1,
+
+	td_offset_count,
+};
+
+struct typedescription_t {
+	fieldtype_t field_type;
+	const char* field_name;
+	int field_offset;
+	uint16_t field_size;
+	short flags;
+	const char* external_name;
+	void* save_restore_ops;
+	void* input_fn;
+	struct datamap_t* td;
+	int field_size_in_bytes;
+	typedescription_t* override_field;
+	int override_count;
+	float field_tolerance;
+	int flat_offset [ td_offset_count ];
+	uint16_t flat_group;
+};
+
+struct datamap_t {
+	typedescription_t* desc;
+	int num_fields;
+	char const* class_name;
+	datamap_t* base_map;
+	bool chains_validated;
+	bool packed_offsets_computed;
+	int packed_size;
 };

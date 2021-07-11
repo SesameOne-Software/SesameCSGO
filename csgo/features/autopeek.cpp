@@ -26,7 +26,7 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 
 	peek.m_fade = std::clamp ( peek.m_fade + ( peek.m_recorded ? 1.0f : -1.0f ) / 0.25f/* time to fade (sec)*/ * cs::i::globals->m_frametime, 0.0f, 1.0f );
 
-	if ( !enabled || !g::local || !g::local->alive ( ) || !(g::local->flags() & flags_t::on_ground) ) {
+	if ( !enabled || !g::local || !g::local->alive ( ) || !( g::local->flags ( ) & flags_t::on_ground ) ) {
 		peek.m_time = 0.0f;
 		peek.m_retrack = peek.m_recorded = false;
 		peek.m_fade = 0.0f;

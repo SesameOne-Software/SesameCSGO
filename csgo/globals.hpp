@@ -2,9 +2,11 @@
 #include <windows.h>
 #include <memory>
 #include <ThemidaSDK.h>
+#include <deque>
+#include <array>
 
 /* semantic versioning */
-#define SESAME_VERSION "Sesame v4 (DEPRECATED)"
+#define SESAME_VERSION "Sesame v4.5.0"
 
 template < typename type >
 constexpr uint32_t rgba ( type r, type g, type b, type a ) {
@@ -22,6 +24,11 @@ enum class round_t : int {
 	ending,
 };
 
+struct network_data_t {
+	int out_sequence;
+	int last_out_cmd;
+};
+
 namespace g {
 	extern bool unload;
 
@@ -35,6 +42,7 @@ namespace g {
 	extern bool can_fire_revolver;
 	extern round_t round;
 	inline uint32_t server_tick = 0;
+	inline std::array< network_data_t, 150 > network_data;
 
 	namespace resources {
 #include "base85.hpp"

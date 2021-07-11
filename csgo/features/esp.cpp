@@ -39,6 +39,8 @@ enum esp_type_t {
 };
 
 void draw_esp_widget( const ImRect& box , const options::option::colorf& widget_color , esp_type_t type , bool show_value , const int orientation , bool dormant , double value , double max , std::string to_print = _( "" ) ) {
+	int esp_bar_thickness = 2;
+
 	uint32_t clr1 = rgba( 0 , 0 , 0 , std::clamp< int >( static_cast< float >( widget_color.a * 255.0f ) / 2.0f , 0 , 125 ) );
 	uint32_t clr = rgba( static_cast< int > ( widget_color.r * 255.0f ) , static_cast< int > ( widget_color.g * 255.0f ) , static_cast< int > ( widget_color.b * 255.0f ) , static_cast< int > ( widget_color.a * 255.0f ) );
 
@@ -59,35 +61,35 @@ void draw_esp_widget( const ImRect& box , const options::option::colorf& widget_
 
 		switch ( orientation ) {
 		case features::esp_placement_t::esp_placement_left:
-			render::rect( box.Min.x - cur_offset_left - 5 + 1 , box.Min.y + ( box.Max.y - calc_height ) + 1 , 5 - 1 , calc_height , clr );
-			render::outline( box.Min.x - cur_offset_left - 5 , box.Min.y , 5 , box.Max.y , clr1 );
+			render::rect( box.Min.x - cur_offset_left - esp_bar_thickness , box.Min.y + ( box.Max.y - calc_height ) , esp_bar_thickness , calc_height , clr );
+			render::outline( box.Min.x - cur_offset_left - esp_bar_thickness - 1, box.Min.y - 1, esp_bar_thickness + 2, box.Max.y + 2, clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x - cur_offset_left - 5 + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast<int>( 255.0f * box_alpha ) ) , true );
+				render::text( box.Min.x - cur_offset_left - esp_bar_thickness + 1 + esp_bar_thickness / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast<int>( 255.0f * box_alpha ) ) , true );
 			cur_offset_left += 7;
 			break;
 		case features::esp_placement_t::esp_placement_right:
-			render::rect( box.Min.x + box.Max.x + cur_offset_right + 1 , box.Min.y + ( box.Max.y - calc_height ) + 1 , 5 - 1 , calc_height , clr );
-			render::outline( box.Min.x + box.Max.x + cur_offset_right , box.Min.y , 5 , box.Max.y , clr1 );
+			render::rect( box.Min.x + box.Max.x + cur_offset_right , box.Min.y + ( box.Max.y - calc_height ) , esp_bar_thickness , calc_height , clr );
+			render::outline( box.Min.x + box.Max.x + cur_offset_right - 1, box.Min.y - 1, esp_bar_thickness + 2, box.Max.y + 2, clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + box.Max.x + cur_offset_right + 1 + 5 / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
+				render::text( box.Min.x + box.Max.x + cur_offset_right + 1 + esp_bar_thickness / 2 - text_size.x / 2 , box.Min.y + ( box.Max.y - calc_height ) + 1 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_right += 7;
 			break;
 		case features::esp_placement_t::esp_placement_bottom:
-			render::rect( box.Min.x + 1 , box.Min.y + box.Max.y + cur_offset_bottom + 1 , static_cast< float >( box.Max.x ) * fraction + 1 , 5 - 1 , clr );
-			render::outline( box.Min.x , box.Min.y + box.Max.y + cur_offset_bottom , box.Max.x , 5 , clr1 );
+			render::rect( box.Min.x + 1 , box.Min.y + box.Max.y + cur_offset_bottom , static_cast< float >( box.Max.x ) * fraction , esp_bar_thickness , clr );
+			render::outline( box.Min.x - 1, box.Min.y + box.Max.y + cur_offset_bottom - 1, box.Max.x + 2, esp_bar_thickness + 2, clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
+				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y + box.Max.y + cur_offset_bottom + 1 + esp_bar_thickness / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_bottom += 7;
 			break;
 		case features::esp_placement_t::esp_placement_top:
-			render::rect( box.Min.x + 1 , box.Min.y - cur_offset_top - 5 + 1 , static_cast< float >( box.Max.x ) * fraction + 1 , 5 - 1 , clr );
-			render::outline( box.Min.x , box.Min.y - cur_offset_top - 5 , box.Max.x , 5 , clr1 );
+			render::rect( box.Min.x + 1 , box.Min.y - cur_offset_top - esp_bar_thickness , static_cast< float >( box.Max.x ) * fraction , esp_bar_thickness , clr );
+			render::outline( box.Min.x - 1, box.Min.y - cur_offset_top - esp_bar_thickness - 1, box.Max.x + 2, esp_bar_thickness + 2, clr1 );
 
 			if ( show_value )
-				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y - cur_offset_top - 5 + 1 + 5 / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
+				render::text( box.Min.x + 1 + static_cast< float >( box.Max.x ) * fraction + 1 - text_size.x / 2 , box.Min.y - cur_offset_top - esp_bar_thickness + 1 + esp_bar_thickness / 2 - text_size.y / 2 , sval , _( "esp_font" ) , rgba( 255 , 255 , 255 , static_cast< int >( 255.0f * box_alpha ) ) , true );
 			cur_offset_top += 7;
 			break;
 		}
@@ -166,10 +168,62 @@ struct snd_data_t {
 
 snd_data_t cached_data;
 
+struct radar_player_t {
+	vec3_t pos;
+	vec3_t angle;
+	vec3_t spotted_map_angle_related;
+	uint32_t tab_related;
+	PAD ( 12 );
+	float spotted_time;
+	float spotted_fraction;
+	float time;
+	PAD ( 4 );
+	int player_index;
+	int entity_index;
+	PAD ( 4 );
+	int health;
+	char name [ 32 ];
+	PAD ( 117 );
+	bool spotted;
+	PAD ( 138 );
+};
+
+struct hud_radar_t {
+	PAD ( 332 );
+	radar_player_t radar_info [ 65 ];
+};
+
+static void* find_hud_element ( const char* name ) {
+	static auto hud = pattern::search ( _ ( "client.dll" ), _ ( "B9 ? ? ? ? 68 ? ? ? ? E8 ? ? ? ? 89 46 24" ) ).add ( 1 ).deref ( ).get< void* > ( );
+	static auto find_hud_element_func = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 53 8B 5D 08 56 57 8B F9 33 F6 39 77 28" ) ).get< void* ( __thiscall* )( void*, const char* ) > ( );
+	return ( void* ) find_hud_element_func ( hud, name );
+}
+
 void features::esp::handle_dynamic_updates( ) {
 	if ( !g::local )
 		return;
 
+	/* update with radar */
+	//auto radar_base = find_hud_element ( _ ( "CCSGO_HudRadar" ) );
+	//
+	//if ( radar_base ) {
+	//	auto hud_radar = reinterpret_cast< hud_radar_t* > ( reinterpret_cast< uintptr_t >( radar_base ) - 20 );
+	//
+	//	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
+	//		auto player = cs::i::ent_list->get< player_t* > ( i );
+	//
+	//		if ( !player || !player->is_player ( ) || !player->alive ( ) || !player->dormant ( ) )
+	//			continue;
+	//
+	//		if ( esp_data [ i ].m_radar_pos != hud_radar->radar_info [ i ].pos ) {
+	//			esp_data [ i ].m_dormant = true;
+	//			esp_data [ i ].m_radar_pos = esp_data [ i ].m_sound_pos = hud_radar->radar_info [ i ].pos;
+	//			esp_data [ i ].m_last_seen = g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
+	//		}
+	//	}
+	//}
+
+	/* update with sounds */
 	static auto get_active_sounds = pattern::search( _( "engine.dll" ) , _( "55 8B EC 83 E4 F8 81 EC 44 03 00 00 53 56" ) ).get< void( __thiscall* )( snd_data_t* ) >( );
 
 	memset( &cached_data , 0 , sizeof cached_data );
@@ -203,11 +257,11 @@ void features::esp::handle_dynamic_updates( ) {
 		if ( !tr.is_visible( ) )
 			end_pos = tr.m_endpos;
 
-		esp_data[ pl->idx( ) ].m_sound_pos = end_pos;
-		esp_data[ pl->idx( ) ].m_dormant = true;
-		esp_data [ pl->idx ( ) ].m_last_seen = g::local ? cs::ticks2time( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
-
-		//dbg_print( _( "sound\n" ) );
+		if ( abs ( esp_data [ pl->idx ( ) ].m_last_seen - ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) ) > 1.0f ) {
+			esp_data [ pl->idx ( ) ].m_sound_pos = end_pos;
+			esp_data [ pl->idx ( ) ].m_dormant = true;
+			esp_data [ pl->idx ( ) ].m_last_seen = g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime;
+		}
 	}
 }
 
@@ -260,7 +314,7 @@ void features::esp::render( ) {
 		vec3_t flb , brt , blb , frt , frb , brb , blt , flt;
 		float left , top , right , bottom;
 		
-		auto abs_origin = (e->bone_cache( ) && !e->dormant()) ? e->bone_cache( )[ 1 ].origin( ) : e->abs_origin ( );
+		auto abs_origin = ( e->bone_cache ( ) && !e->dormant ( ) ) ? e->bone_cache ( ) [ 1 ].origin ( ) : e->abs_origin ( );
 
 		if ( e->dormant ( ) && esp_data[ e->idx( ) ].m_sound_pos != vec3_t( 0.f , 0.f , 0.f ) )
 			abs_origin = esp_data[ e->idx( ) ].m_sound_pos;
@@ -268,7 +322,7 @@ void features::esp::render( ) {
 		auto min = e->mins( ) + abs_origin;
 		auto max = e->maxs( ) + abs_origin;
 
-		if ( (e->crouch_amount( ) < 0.333f || e->crouch_amount( ) == 1.0f) && e->bone_cache( ) && !e->dormant( ) )
+		if ( ( e->crouch_amount ( ) < 0.333f || e->crouch_amount ( ) == 1.0f ) && e->bone_cache ( ) && !e->dormant ( ) )
 			max.z = e->bone_cache( )[ 8 ].origin( ).z + 12.0f;
 
 		vec3_t points [ ] = {
@@ -329,13 +383,14 @@ void features::esp::render( ) {
 		esp_data[ e->idx( ) ].m_box.top = top;
 		esp_data[ e->idx( ) ].m_dormant = e->dormant( );
 		esp_data [ e->idx ( ) ].m_scoped = e->scoped ( );
+		esp_data [ e->idx ( ) ].m_radar_pos = e->origin ( );
 
 		const auto clamped_health = std::clamp( static_cast< float >( e->health( ) ) , 0.0f , 100.0f );
-		esp_data[ e->idx( ) ].m_health += ( clamped_health - esp_data[ e->idx( ) ].m_health ) * 1.7f * cs::i::globals->m_frametime;
+		esp_data[ e->idx( ) ].m_health += ( clamped_health - esp_data[ e->idx( ) ].m_health ) * 2.0f * cs::i::globals->m_frametime;
 		esp_data[ e->idx( ) ].m_health = std::clamp( esp_data[ e->idx( ) ].m_health , clamped_health , 100.0f );
 
 		if ( g::round == round_t::starting )
-			esp_data[ e->idx( ) ].m_sound_pos = vec3_t( 0.f , 0.f , 0.f );
+			esp_data[ e->idx( ) ].m_sound_pos = vec3_t( 0.0f, 0.0f, 0.0f );
 
 		if ( !e->dormant( ) ) {
 			esp_data[ e->idx( ) ].m_sound_pos = abs_origin; // reset to our current origin since it will show our last sound origin
@@ -414,11 +469,11 @@ void features::esp::render( ) {
 			
 			if ( visuals.zoom_flag && esp_data [ e->idx ( ) ].m_scoped )
 				draw_esp_widget ( esp_rect, visuals.fatal_color, esp_type_text, visuals.value_text, visuals.fatal_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Zoom" ) );
-
+			
 			/* DEBUGGING STUFF */
 			//if ( e != g::local && e->team() != g::local->team() ) {
 			//	for ( auto i = 0; i < 13; i++ ) {
-			//		if ( i != 6 && i != 3 && i != 12 )
+			//		if ( i != 7 )
 			//			continue;
 			//
 			//		std::string output = "animlayer ";

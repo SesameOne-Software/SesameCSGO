@@ -124,7 +124,7 @@ c_econ_item* weapon_t::econ_item ( ) {
 
 c_econ_item* c_econ_item::soc_data ( ) {
 	using fn = c_econ_item * ( __thiscall* )( c_econ_item* );
-	static auto get_soc_data = pattern::search ( "client.dll", "55 8B EC 83 E4 F0 83 EC 18 56 8B F1 57 8B 86" ).get<fn> ( );
+	static auto get_soc_data = pattern::search ( _("client.dll"), _("55 8B EC 83 E4 F0 83 EC 18 56 8B F1 57 8B 86") ).get<fn> ( );
 	return get_soc_data ( this );
 }
 

@@ -18,7 +18,6 @@ namespace prediction_util {
 	bool in_pred;
 
 	void start( ucmd_t* ucmd ) {
-		VM_TIGER_BLACK_START
 			features::prediction::in_prediction = true;
 
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
@@ -83,7 +82,7 @@ namespace prediction_util {
 		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
 
 		// copy angles from command to player
-		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+		//cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
 		// run prethink
 		if ( g::local->physics_run_think ( 0 ) )
@@ -102,17 +101,20 @@ namespace prediction_util {
 		cs::i::pred->setup_move ( g::local, ucmd, cs::i::move_helper, movedata );
 		cs::i::move->process_movement ( g::local, movedata );
 		cs::i::pred->finish_move ( g::local, ucmd, movedata );
+		
+		const auto weapon = g::local->weapon ( );
+
+		if ( weapon )
+			weapon->update_accuracy ( );
 
 		//cs::i::move_helper->process_impacts ( );
 
 		// run post think
 		//g::local->post_think ( );
-		VM_TIGER_BLACK_END
 	}
 
 	void end( ucmd_t* ucmd ) {
-		VM_TIGER_BLACK_START
-			features::prediction::in_prediction = false;
+		features::prediction::in_prediction = false;
 
 		auto local = cs::i::ent_list->get< player_t* >( cs::i::engine->get_local_player( ) );
 
@@ -136,7 +138,6 @@ namespace prediction_util {
 
 		cs::i::pred->m_is_first_time_predicted = first_time_pred;
 		cs::i::pred->m_in_prediction = in_pred;
-		VM_TIGER_BLACK_END
 	}
 }
 
@@ -185,7 +186,7 @@ void features::prediction::fix_viewmodel ( bool store ) {
 std::array< features::prediction::netvars_t , 150> cmd_netvars {};
 
 bool features::prediction::fix_netvars( int cmd, bool store ) {
-	if ( !g::local || !g::local->alive ( ) ) {
+	if ( !g::local || !g::local->alive ( ) || !cs::i::client_state ) {
 		memset ( cmd_netvars.data(), 0, sizeof( cmd_netvars ) );
 		return false;
 	}
@@ -205,4 +206,14 @@ void features::prediction::run( const std::function< void( ) >& fn ) {
 	prediction_util::start( g::ucmd );
 	fn( );
 	prediction_util::end( g::ucmd );
+}
+
+typedescription_t* find_flat_field_by_name ( datamap_t* datamap, std::string_view field_name ) {
+	// E8 ?? ?? ?? ?? 89 47 24 + jmp
+	//return csgo::memory::prediction::find_flat_field_by_name.as<type_description_t* ( __fastcall* )( const char* field_name, datamap_t* datamap )> ( )( field_name.data ( ), datamap );
+	return nullptr;
+}
+
+void features::prediction::handle_prediction_errors ( ) {
+	
 }

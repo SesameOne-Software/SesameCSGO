@@ -34,6 +34,9 @@ Index of this file:
 */
 
 #pragma once
+
+inline float gui_anim_multiplier = 1.0f;
+
 #ifndef IMGUI_DISABLE
 
 //-----------------------------------------------------------------------------

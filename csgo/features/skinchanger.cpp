@@ -2,6 +2,7 @@
 
 #include "kit_parser.hpp"
 #include "../vpk/vpkparser.hpp"
+#include "../menu/options.hpp"
 
 /* XREF: "gc_connected"; function called in first do-while loop */
 bool features::inventory::c_inventory::add_econ_item ( c_econ_item* econ_item ) {
@@ -219,11 +220,11 @@ void features::skinchanger::run ( ) {
 
 	/* update all weapon equip status (sync with config if we equip in game) */
 	update_equipped ( );
-
-	/* apply skins in game */
+	
 	if ( !g::local || !g::local->alive() )
 		return;
 
+	/* start skinchanger */
 	player_info_t player_info;
 	cs::i::engine->get_player_info ( g::local->idx(), &player_info );
 
@@ -309,6 +310,7 @@ void features::skinchanger::run ( ) {
 		}
 	}
 
+	/* glove changer */
 	auto get_wearable_create_fn = [ ] ( ) -> create_client_class_t {
 		auto clazz = cs::i::client->get_all_classes ( );
 
@@ -318,7 +320,6 @@ void features::skinchanger::run ( ) {
 		return clazz->m_create_fn;
 	};
 
-	/* glove changer */
 	static auto wearables_offset = netvars::get_offset ( _ ( "DT_BaseCombatCharacter->m_hMyWearables" ) );
 	
 	auto wearables = reinterpret_cast<uint32_t*>(reinterpret_cast<uintptr_t>(g::local) + wearables_offset );

@@ -19,8 +19,8 @@ namespace anims {
 			inline float middle_tolerance = 0.0227f;
 			inline float low_delta_tolerance = 0.0227f;
 			inline float correct_tolerance = 0.0227f;
-			inline float lean_tolerance = 0.0151f;
-			inline float velocity_tolerance = 1.0f;
+			inline float lean_tolerance = 20.0f;
+			inline float velocity_tolerance = 20.0f;
 
 			inline std::array < std::array<animlayer_t, 13>, 65 > latest_layers { {} };
 			inline std::array < bool, 65 > new_resolve { false };
@@ -31,7 +31,10 @@ namespace anims {
 			inline std::array < bool, 65 > last_bad_weight { false };
 			inline std::array < bool, 65 > resolved_jitter { false };
 			inline std::array < int, 65 > jitter_sync { 0 };
-			inline std::array < anims::desync_side_t, 65 > resolved_side1 { anims::desync_side_t::desync_middle };
+			inline std::array < anims::desync_side_t, 65 > resolved_side_run { anims::desync_side_t::desync_middle };
+
+			inline std::array < anims::desync_side_t, 65 > resolved_side_jitter1 { anims::desync_side_t::desync_middle };
+			inline std::array < anims::desync_side_t, 65 > resolved_side_jitter2 { anims::desync_side_t::desync_middle };
 		}
 
 		struct hit_matrix_rec_t {
@@ -41,11 +44,15 @@ namespace anims {
 			uint32_t m_clr;
 		};
 		
+		bool process_blood ( const effect_data_t& effect_data );
 		void process_impact_clientside ( event_t* event );
 		void process_impact( event_t* event );
 		void process_hurt( event_t* event );
 		void process_event_buffer( int pl_idx );
-		bool resolve_desync( player_t* ent, anim_info_t& rec );
+		bool bruteforce ( int brute_mode /* 0 = none, 1 = opposite, 2 = close, 3 = fast, 4 = fast opposite*/, int target_side, anim_info_t& rec );
+		desync_side_t apply_antiaim ( player_t* player, float speed_2d, float max_speed );
+		bool is_spotted ( player_t* src, player_t* dst );
+		bool resolve_desync( player_t* ent, anim_info_t& rec, bool shot );
 		void create_beams( );
 		void render_impacts( );
 	}

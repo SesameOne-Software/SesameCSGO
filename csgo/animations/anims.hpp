@@ -76,7 +76,7 @@ namespace anims {
 		inline bool valid ( ) {
 			const auto nci = cs::i::engine->get_net_channel_info ( );
 
-			if ( !nci || !g::local /*|| m_invalid*/ || m_simtime < float ( int ( cs::ticks2time ( g::local->tick_base ( ) ) - g::cvars::sv_maxunlag->get_float ( ) ) ) )
+			if ( !nci || !g::local /*|| m_invalid  || m_simtime < float ( int ( cs::ticks2time ( g::local->tick_base ( ) ) - g::cvars::sv_maxunlag->get_float ( ) ) )*/ )
 				return false;
 
 			const auto lerp = lerp_time ( );
@@ -127,13 +127,16 @@ namespace anims {
 	};
 
 	inline std::array<std::array< matrix3x4_t, 128 >, 65> usable_bones {};
+	inline vec3_t usable_origin_real_local;
 	inline std::array<vec3_t, 65> usable_origin {};
 	inline std::array< int, 65> shot_count { 0 };
 	inline std::array< std::deque< anim_info_t >, 65> anim_info { {} };
+	inline std::array< std::deque< anim_info_t* >, 65> lagcomp_track { {} };
 	inline std::array< matrix3x4_t, 128 > real_matrix { {} };
 	inline std::array< matrix3x4_t, 128 > fake_matrix { {} };
 	inline animstate_t last_local_animstate { };
 	inline flags_t createmove_flags;
+	inline bool test = false;
 
 	void on_net_update_end ( int idx );
 	void on_render_start ( int idx );
@@ -143,35 +146,35 @@ namespace anims {
 
 	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );
 	
-	inline std::deque<anim_info_t> get_lagcomp_records( player_t* ent ) {
-		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || anim_info[ ent->idx( ) ].empty( ) )
+	inline std::deque<anim_info_t*> get_lagcomp_records( player_t* ent ) {
+		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) )
 			return {};
+		
+		std::deque<anim_info_t*> records {};
 
-		std::deque<anim_info_t> records {};
-
-		for ( auto& rec : anim_info[ ent->idx( ) ] )
-			if ( rec.valid( ) )
+		for ( auto& rec : lagcomp_track [ ent->idx( ) ] )
+			if ( rec->valid( ) )
 				records.push_back( rec );
 
 		return records;
 	}
 
-	inline std::optional<anim_info_t> get_simulated_record( player_t* ent ) {
-		if ( !ent->valid( ) || !ent->idx( ) || ent->idx( ) > cs::i::globals->m_max_clients || anim_info[ ent->idx( ) ].empty( ) )
+	inline std::optional<anim_info_t*> get_simulated_record( player_t* ent ) {
+		if ( !ent->valid( ) || !ent->idx( ) || ent->idx( ) > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) )
 			return std::nullopt;
 
 		return std::nullopt;
 
 		/* change later, this is a placeholder */
-		return anim_info[ ent->idx( ) ].front( );
+		return lagcomp_track [ ent->idx( ) ].front( );
 	}
 	
-	inline std::optional<anim_info_t> get_onshot( const std::deque<anim_info_t>& recs ) {
+	inline std::optional<anim_info_t*> get_onshot( const std::deque<anim_info_t*>& recs ) {
 		if ( recs.empty() )
 			return std::nullopt;
 
 		for ( auto& rec : recs )
-			if ( rec.m_shot )
+			if ( rec->m_shot )
 				return rec;
 
 		return std::nullopt;

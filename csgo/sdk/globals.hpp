@@ -11,4 +11,5 @@ struct c_globals {
 	int m_tickcount; // 28
 	float m_ipt; // 32
 	float m_interp;
+	int sim_ticks_this_frame;
 };

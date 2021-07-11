@@ -45,13 +45,86 @@ struct impact_rec_t {
 
 std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec { };
 std::deque< impact_rec_t > impact_recs { };
+uint32_t previous_blood_target = 0;
+
+bool anims::resolver::process_blood ( const effect_data_t& effect_data ) {
+	OBF_BEGIN
+
+	auto hit_player = cs::i::ent_list->get_by_handle< player_t* > ( effect_data.m_ent_handle );
+	
+	IF ( !hit_player || !hit_player->is_player ( ) )
+		RETURN ( false ); ENDIF;
+	
+	auto idx = hit_player->idx ( );
+
+	IF ( V ( idx ) != V( previous_blood_target ) )
+		RETURN ( false ); ENDIF;
+
+	auto to = features::ragebot::get_target_pos ( V ( idx ) );
+	auto target_rec = features::ragebot::get_lag_rec ( V ( idx ) );
+	auto target_hitbox = features::ragebot::get_hitbox ( V ( idx ) );
+
+	IF ( vec3_t ( target_rec.m_origin.x, target_rec.m_origin.y, N ( 0 ) ).dist_to ( vec3_t ( effect_data.m_origin.x, effect_data.m_origin.y, N ( 0 ) ) ) > N ( 64 )
+		|| V( target_hitbox ) == N ( static_cast< int >( hitbox_t::r_foot ) ) || V ( target_hitbox ) == N ( static_cast< int >( hitbox_t::l_foot ) ) || V ( target_hitbox ) == N ( static_cast< int >( hitbox_t::r_calf ) ) || V ( target_hitbox ) == N ( static_cast< int >( hitbox_t::l_calf ) ) )
+		RETURN ( false ); ENDIF;
+
+	auto mdl = hit_player->mdl ( );
+
+	IF ( !mdl )
+		RETURN ( false ); ENDIF;
+
+	auto studio_mdl = cs::i::mdl_info->studio_mdl ( mdl );
+
+	IF ( !studio_mdl )
+		RETURN ( false ); ENDIF;
+
+	auto set = studio_mdl->hitbox_set ( N( 0 ) );
+
+	IF ( !set )
+		RETURN ( false ); ENDIF;
+
+	auto hitbox = set->hitbox ( V( target_hitbox ) );
+
+	IF ( !hitbox )
+		RETURN ( false ); ENDIF;
+
+	vec3_t hitbox_pos_hit;
+
+	IF ( hitbox->m_radius > N(0) )
+		hitbox_pos_hit = effect_data.m_origin - effect_data.m_normal * hitbox->m_radius;
+	ELSE
+		hitbox_pos_hit = effect_data.m_origin;
+	ENDIF;
+
+	const auto angle_to_real_hitbox = cs::calc_angle ( g::local->eyes ( ), hitbox_pos_hit );
+	const auto angle_to_player = cs::calc_angle ( g::local->eyes ( ), target_rec.m_origin );
+
+	const auto delta_hitbox_angle = cs::normalize ( angle_to_real_hitbox.y - angle_to_player.y );
+
+	const auto real_hitbox_side = delta_hitbox_angle > N ( 0 ) ? desync_side_t::desync_right_max : desync_side_t::desync_left_max;
+
+	IF ( ( rdata::resolved_side_run [ V ( idx ) ] >= desync_side_t::desync_middle && real_hitbox_side < desync_side_t::desync_middle )
+		|| ( rdata::resolved_side_run [ V ( idx ) ] < desync_side_t::desync_middle && real_hitbox_side >= desync_side_t::desync_middle )) {
+		features::ragebot::get_misses ( V ( idx ) ).bad_resolve = N ( 0 );
+
+		rdata::resolved_side_run [ V ( idx ) ] = real_hitbox_side;
+		rdata::resolved_jitter [ V ( idx ) ] = false;
+		rdata::new_resolve [ V ( idx ) ] = true;
+		rdata::prefer_edge [ V ( idx ) ] = false;
+
+		//dbg_print ( _("-- BLOOD RESOLVED ACTIVE!! --") );
+	} ENDIF;
+
+	RETURN ( true );
+	OBF_END
+}
 
 void anims::resolver::process_impact_clientside ( event_t* event ) {
 	static auto& bullet_impacts_client = options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b;
 	static auto& bullet_impacts_client_color = options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c;
 
 	auto shooter = cs::i::ent_list->get< player_t* > ( cs::i::engine->get_player_for_userid ( event->get_int ( _ ( "userid" ) ) ) );
-	auto& target = features::ragebot::get_target ( );
+	auto target = features::ragebot::get_target ( );
 
 	if ( !g::local || !g::local->alive ( ) || !shooter || shooter != g::local )
 		return;
@@ -69,7 +142,7 @@ void anims::resolver::process_impact ( event_t* event ) {
 	static auto& bullet_impacts_server_color = options::vars [ _ ( "visuals.other.bullet_impacts_server_color" ) ].val.c;
 
 	auto shooter = cs::i::ent_list->get< player_t* > ( cs::i::engine->get_player_for_userid ( event->get_int ( _ ( "userid" ) ) ) );
-	auto& target = features::ragebot::get_target ( );
+	auto target = features::ragebot::get_target ( );
 
 	if ( !g::local || !g::local->alive ( ) || !shooter || shooter != g::local )
 		return;
@@ -180,6 +253,8 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 	}
 
 	if ( rdata::last_shots [ pl_idx ] != features::ragebot::get_shots ( pl_idx ) && rdata::impacts [ pl_idx ] != vec3_t ( 0.0f, 0.0f, 0.0f ) && !rdata::player_hurt [ pl_idx ] ) {
+		previous_blood_target = features::ragebot::get_target_idx ( );
+		
 		if ( rdata::impact_dmg [ pl_idx ] <= 0.0f && !g::cvars::weapon_accuracy_nospread->get_bool ( ) ) {
 			features::ragebot::get_misses ( pl_idx ).spread++;
 			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( "spread ( " ) + std::to_string ( features::ragebot::get_misses ( pl_idx ).spread ) + _ ( " )" ), cs::i::globals->m_curtime, false, rgba ( 161, 66, 245, 150 ) } );
@@ -197,9 +272,9 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 			//fix_cached_resolves( pl_idx );
 
 			if ( logs [ 2 ] ) {
-				auto& rec = features::ragebot::get_lag_rec ( pl_idx );
+				auto rec = features::ragebot::get_lag_rec ( pl_idx );
 				print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "sesame" ) );
-				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " ～ missed shot due to bad resolve at %.1f°" ), cs::normalize( cs::normalize( rec.m_abs_angles[rec.m_side].y )- cs::normalize( rec.m_angles.y) ) );
+				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " ～ missed shot due to animation desync at %.1f°" ), cs::normalize( cs::normalize( rec.m_abs_angles[rec.m_side].y )- cs::normalize( rec.m_angles.y) ) );
 
 				if ( rec.m_shot ) {
 					print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( ", " ) );
@@ -226,6 +301,8 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 		rdata::wrong_hitbox [ pl_idx ] = false;
 	}
 	else if ( rdata::wrong_hitbox [ pl_idx ] ) {
+		previous_blood_target = features::ragebot::get_target_idx ( );
+		
 		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
 
 		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data(), sizeof matrix3x4_t * 128 );
@@ -273,7 +350,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 
 			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " )" ) );
 
-			auto& rec = features::ragebot::get_lag_rec ( pl_idx );
+			auto rec = features::ragebot::get_lag_rec ( pl_idx );
 			if ( rec.m_shot ) {
 				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( ", " ) );
 				print_console ( { 0.678f, 1.0f, 0.996f, 1.0f }, _ ( "onshot" ) );
@@ -299,6 +376,8 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 		rdata::wrong_hitbox [ pl_idx ] = false;
 	}
 	else if ( rdata::player_hurt [ pl_idx ] ) {
+		previous_blood_target = features::ragebot::get_target_idx ( );
+	
 		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
 
 		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data ( ), sizeof matrix3x4_t * 128 );
@@ -329,7 +408,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 			print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " for " ) );
 			print_console ( { 1.0f, 0.34f, 0.34f, 1.0f }, _ ( "%d" ), rdata::player_dmg [ pl_idx ] );
 
-			auto& rec = features::ragebot::get_lag_rec ( pl_idx );
+			auto rec = features::ragebot::get_lag_rec ( pl_idx );
 			if ( rec.m_shot ) {
 				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( ", " ) );
 				print_console ( { 0.678f, 1.0f, 0.996f, 1.0f }, _ ( "onshot" ) );
@@ -601,11 +680,149 @@ float angle_diff1 ( float src, float dst ) {
 	return delta;
 }
 
-bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
+bool anims::resolver::bruteforce ( int brute_mode /* 0 = none, 1 = opposite, 2 = close, 3 = fast, 4 = fast opposite*/, int target_side, anim_info_t& rec ) {
+	//OBF_BEGIN;
+	//CASE ( brute_mode )
+	//	WHEN ( N ( 0 ) ) DO rec.m_side = static_cast< anims::desync_side_t >( target_side ); BREAK; DONE
+	//	WHEN ( N ( 1 ) ) DO {
+	//	CASE ( static_cast< anims::desync_side_t >( target_side ) )
+	//		WHEN ( anims::desync_side_t::desync_left_max ) DO rec.m_side = anims::desync_side_t::desync_right_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_left_half ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_max ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_half ) DO rec.m_side = anims::desync_side_t::desync_left_half; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_middle ) DO rec.m_side = anims::desync_side_t::desync_left_half; BREAK; DONE
+	//	ENDCASE;
+	//} BREAK; DONE
+	//	WHEN ( N ( 2 ) ) DO {
+	//	CASE ( static_cast< anims::desync_side_t >( target_side ) )
+	//		WHEN ( anims::desync_side_t::desync_left_max ) DO rec.m_side = anims::desync_side_t::desync_left_half; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_left_half ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_max ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_half ) DO rec.m_side = anims::desync_side_t::desync_right_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_middle ) DO rec.m_side = anims::desync_side_t::desync_right_max; BREAK; DONE
+	//		ENDCASE;
+	//} BREAK; DONE
+	//	WHEN ( N ( 3 ) ) DO {
+	//	CASE ( static_cast< anims::desync_side_t >( target_side ) )
+	//		WHEN ( anims::desync_side_t::desync_left_max ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_left_half ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_max ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_half ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_middle ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		ENDCASE;
+	//} BREAK; DONE
+	//	WHEN ( N ( 4 ) ) DO {
+	//	CASE ( static_cast< anims::desync_side_t >( target_side ) )
+	//		WHEN ( anims::desync_side_t::desync_left_max ) DO rec.m_side = anims::desync_side_t::desync_middle; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_left_half ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_max ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_right_half ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		WHEN ( anims::desync_side_t::desync_middle ) DO rec.m_side = anims::desync_side_t::desync_left_max; BREAK; DONE
+	//		ENDCASE;
+	//} BREAK; DONE
+	//	DEFAULT rec.m_side = static_cast< anims::desync_side_t >( target_side ); DONE
+	//	ENDCASE;
+	//OBF_END;
+
+	switch ( brute_mode ) {
+	case 0: {
+		rec.m_side = static_cast< anims::desync_side_t >( target_side );
+	} break;
+	case 1: {
+		switch ( target_side ) {
+		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_right_max; break;
+		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_half; break;
+		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_half; break;
+		}
+	} break;
+	case 2: {
+		switch ( target_side ) {
+		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
+		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
+		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
+		}
+	} break;
+	case 3: {
+		switch ( target_side ) {
+		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_middle; break;
+		}
+	} break;
+	case 4: {
+		switch ( target_side ) {
+		case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_middle; break;
+		case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_max; break;
+		}
+	} break;
+	default: rec.m_side = static_cast< anims::desync_side_t >( target_side ); break;
+	}
+
+	return true;
+}
+
+anims::desync_side_t anims::resolver::apply_antiaim ( player_t* player, float speed_2d, float max_speed ) {
+	OBF_BEGIN;
+	int idx = player->idx ( );
+
+	IF ( speed_2d < 5.0f ) {
+		IF ( rdata::resolved_jitter [ idx ] ) {
+			IF ( rdata::jitter_sync [ idx ] == cs::time2ticks ( player->simtime ( ) ) % 2 )
+				RETURN ( rdata::resolved_side_jitter1 [ idx ] );
+			ELSE
+				RETURN ( rdata::resolved_side_jitter2 [ idx ] );
+			ENDIF;
+		}
+		ELSE {
+			RETURN ( rdata::resolved_side_run [ idx ] );
+		} ENDIF;
+	}
+	ELSE {
+		IF ( speed_2d > max_speed * 0.34f )
+			RETURN ( rdata::resolved_side_run [ idx ] );
+		ELSE
+			RETURN ( rdata::resolved_side [ idx ] );
+		ENDIF;
+	} ENDIF;
+
+	RETURN ( desync_side_t::desync_middle );
+	OBF_END;
+}
+
+bool anims::resolver::is_spotted ( player_t* src, player_t* dst ) {
+	OBF_BEGIN;
+	static const auto spotted_by_mask_off = netvars::get_offset ( _ ( "DT_BaseEntity->m_bSpottedByMask[0]" ) );
+
+	auto idx = dst->idx ( );
+
+	IF ( idx > N( 0 ) && idx <= V( cs::i::globals->m_max_clients ) )
+		RETURN ( *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( dst ) + spotted_by_mask_off ) & ( N( 1 ) << src->idx ( ) ) ); ENDIF
+	
+	RETURN ( false );
+	OBF_END;
+}
+
+bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot ) {
+	OBF_BEGIN;
 	/* set default desync direction to middle (0 deg range) */
 	const auto idx = ent->idx ( );
 
-	rec.m_side = rdata::resolved_side [ idx ];
+	float max_speed = N ( 260 );
+	auto weapon_info = ent->weapon ( ) ? ent->weapon ( )->data ( ) : nullptr;
+
+	IF ( weapon_info )
+		V( max_speed ) = ent->scoped ( ) ? weapon_info->m_max_speed_alt : weapon_info->m_max_speed; ENDIF;
+
+	rec.m_side = apply_antiaim ( ent, rec.m_vel.length_2d ( ), max_speed );
 
 	static auto& resolver = options::vars [ _ ( "ragebot.resolve_desync" ) ].val.b;
 
@@ -613,10 +830,10 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 
 	const auto anim_layers = ent->layers ( );
 
-	if ( !resolver || !g::local || !anim_layers || ent->team ( ) == g::local->team ( ) || anim_info [ idx ].size ( ) <= 1 ) {
-		last_recorded_resolve [ idx ] = rdata::resolved_side [ idx ];
-		return false;
-	}
+	IF ( !resolver || !g::local || !anim_layers || ent->team ( ) == g::local->team ( ) || anim_info [ idx ].size ( ) <= N( 1 ) ) {
+		last_recorded_resolve [ idx ] = apply_antiaim ( ent, rec.m_vel.length_2d ( ), max_speed );
+		RETURN( false );
+	} ENDIF;
 
 	memcpy ( &rdata::latest_layers [ idx ], anim_layers, sizeof( rdata::latest_layers [ idx ] ) );
 
@@ -624,315 +841,280 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	cs::i::engine->get_player_info ( idx, &pl_info );
 
 	/* bot check */
-	if ( pl_info.m_fake_player ) {
-		last_recorded_resolve [ idx ] = rdata::resolved_side [ idx ];
-		return false;
-	}
+	IF ( pl_info.m_fake_player ) {
+		last_recorded_resolve [ idx ] = apply_antiaim ( ent, rec.m_vel.length_2d ( ), max_speed );
+		RETURN( false );
+	} ENDIF;
 
 	/* start of resolver */
 	const auto speed_2d = rec.m_vel.length_2d ( );
 	const auto delta_yaw = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
-	const auto delta_yaw_old = angle_diff1 ( anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
-	const auto delta_yaw_total = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw, anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
-	const auto delta_eye_yaw = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw );
-	const auto delta_at_target = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, cs::calc_angle( g::local->eyes(), rec.m_origin + vec3_t(0.0f, 0.0f, 64.0f) ).y );
+	const auto delta_yaw_old = angle_diff1 ( anim_info [ idx ][ N ( 0 ) ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, anim_info [ idx ][ N ( 0 ) ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
+	const auto delta_yaw_total = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw, anim_info [ idx ][ N ( 0 ) ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
+	const auto delta_eye_yaw = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, anim_info [ idx ][ N ( 0 ) ].m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw );
+	const auto delta_at_target = angle_diff1 ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw, cs::calc_angle ( g::local->eyes ( ), rec.m_origin + vec3_t ( N ( 0 ), N ( 0 ), N ( 64 ) ) ).y );
 
-	auto max_speed = 260.0f;
-	auto weapon_info = ent->weapon ( ) ? ent->weapon ( )->data ( ) : nullptr;
+	/* onshot desync */
+	IF ( shot && abs ( rec.m_angles.x ) < N ( 75 ) && abs ( anim_info [ idx ][ 0 ].m_angles.x ) > N ( 75 ) ) {
+		const desync_side_t new_desync_side = ( delta_yaw > N ( 0 ) ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
 
-	if ( weapon_info )
-		max_speed = ent->scoped ( ) ? weapon_info->m_max_speed_alt : weapon_info->m_max_speed;
-
-	/* jitter resolver */
-	if ( delta_yaw > 0.1f && delta_yaw_old > 0.1f
-		&& abs( delta_yaw - delta_yaw_old ) > abs( delta_eye_yaw )
-		&& abs ( delta_yaw ) > 45.0f && abs ( delta_yaw_old ) > 45.0f && delta_yaw * delta_yaw_old < 0.0f ) {
-		float some_yaw = 0.0f;
-
-		if ( delta_yaw - delta_yaw_old <= 0.0f )
-			some_yaw = rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw - 90.0f;
-		else
-			some_yaw = rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw + 90.0f;
+		IF ( ( new_desync_side < anims::desync_side_t::desync_middle && rdata::resolved_side_run [ idx ] > anims::desync_side_t::desync_middle )
+			|| ( new_desync_side > anims::desync_side_t::desync_middle && rdata::resolved_side_run [ idx ] < anims::desync_side_t::desync_middle ) )
+			features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 ); ENDIF;
 		
-		some_yaw = cs::normalize ( some_yaw );
+		rdata::resolved_side [ idx ] = rdata::resolved_side_run [ idx ] = ( delta_yaw <= N ( 0 ) ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
 
-		float v41 = angle_diff1 ( some_yaw, rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
-		float v42 = angle_diff1 ( some_yaw, anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
-		
-		rdata::resolved_side [ idx ] = (abs ( v41 ) <= abs ( v42 )) ? desync_side_t::desync_right_max : desync_side_t::desync_middle;
 		rdata::new_resolve [ idx ] = true;
-		rdata::prefer_edge [ idx ] = false;
 
-		if ( speed_2d > max_speed * 0.9f )
-			rdata::was_moving [ idx ] = true;
-
-		//dbg_print ( "JITTER\n" );
+		rdata::last_good_weight [ idx ] = false;
+		rdata::last_bad_weight [ idx ] = true;
 	}
-	/* on ground */
-	else if ( !!(rec.m_flags & flags_t::on_ground) && !!(anim_info [ idx ][ 0 ].m_flags & flags_t::on_ground) ) {
-		auto good_lean = false;
-		if ( anim_info [ idx ].size ( ) >= 4 ) {
-			const auto lean_delta1 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
-			const auto lean_delta2 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 1 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
-			const auto lean_delta3 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 2 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
-			const auto lean_delta4 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 3 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
+	/* jitter resolver */
+	ELSE {
+		IF ( !shot && delta_yaw > N ( 1 ) && delta_yaw_old > N ( 1 )
+			&& abs ( delta_yaw - delta_yaw_old ) > abs ( delta_eye_yaw )
+			&& abs ( delta_yaw ) > N ( 45 ) && abs ( delta_yaw_old ) > N ( 45 ) && delta_yaw * delta_yaw_old < N ( 0 ) ) {
+			float some_yaw = N ( 0 );
 
-			if ( abs ( lean_delta1 - lean_delta2 ) <= 1.0f || abs ( lean_delta1 - lean_delta3 ) <= 1.0f || abs ( lean_delta1 - lean_delta4 ) <= 1.0f )
-				good_lean = true;
+			IF ( delta_yaw - delta_yaw_old <= N ( 0 ) )
+				some_yaw = rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw - N ( 90 );
+			ELSE
+				some_yaw = rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw + N ( 90 );
+			ENDIF;
+
+			some_yaw = cs::normalize ( some_yaw );
+
+			float v41 = angle_diff1 ( some_yaw, rec.m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
+			float v42 = angle_diff1 ( some_yaw, anim_info [ idx ][ 0 ].m_anim_state [ anims::desync_side_t::desync_max ].m_abs_yaw );
+
+			rdata::resolved_side_run [ idx ] = ( abs ( v41 ) <= abs ( v42 ) ) ? desync_side_t::desync_right_max : desync_side_t::desync_middle;
+			rdata::new_resolve [ idx ] = true;
+			rdata::prefer_edge [ idx ] = false;
+
+			IF ( speed_2d > max_speed * 0.9f )
+				rdata::was_moving [ idx ] = true; ENDIF;
 		}
-		else if ( anim_info [ idx ].size() >= 3 ) {
-			const auto lean_delta1 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 0 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
-			const auto lean_delta2 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 1 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
-			const auto lean_delta3 = abs ( anim_layers [ 12 ].m_weight - anim_info [ idx ][ 2 ].m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f;
+		ELSE {
+			IF ( !!( rec.m_flags & flags_t::on_ground ) && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground ) ) {
+				IF ( speed_2d <= 0.1f ) {
+					IF ( rdata::was_moving [ idx ] ) {
+						IF ( !rdata::new_resolve [ idx ] )
+							rdata::prefer_edge [ idx ] = true; ENDIF;
 
-			if ( abs( lean_delta1 - lean_delta2 ) <= 1.0f || abs ( lean_delta1 - lean_delta3 ) <= 1.0f )
-				good_lean = true;
-		}
-		else if ( anim_layers [ 12 ].m_weight * 1000.0f <= 10.0f ) {
-			good_lean = true;
-		}
+						rdata::new_resolve [ idx ] = false;
+						rdata::was_moving [ idx ] = false;
+					} ENDIF;
 
-		/* sideways head -- try to go for zero desync first (highest chance to hit) */
-		/*
-		if ( abs ( delta_at_target ) > 60.0f && abs ( delta_at_target ) < 120.0f ) {
-			//rdata::resolved_side [ idx ] = anims::desync_side_t::desync_middle;
+					IF ( anim_layers [ N ( 3 ) ].m_weight <= N( 0 )
+						&& anim_layers [ N ( 3 ) ].m_cycle <= N ( 0 )
+						&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
+						&& anim_layers [ N ( 6 ) ].m_playback_rate <= N ( 0 )
+						&& abs ( delta_yaw ) > N ( 35 ) ) {
+						anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
 
-			//dbg_print ( "SIDEWAYS\n" );
-		}
-		*/
-		//if ( ((anim_layers [ 6 ].m_weight < 0.01f && anim_layers [ 6 ].m_playback_rate < 0.05f && anim_layers [ 6 ].m_playback_rate > 0.0f) /*standing with micro movements, no updates */
-		//	|| (rec.m_anim_state[ anims::desync_side_t::desync_max].m_time_since_move > 1.5f && !rdata::new_resolve [ idx ] && good_lean ) ) /* slow walking for a while with no good animation data */
-		//	&& abs( delta_eye_yaw ) < 12.0f
-		//	&& abs ( delta_at_target ) > 6.0f && abs ( delta_at_target ) < 16.0f ) {
-		//	anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
-		//
-		//	if ( delta_at_target > 0.0f && rdata::resolved_side [ idx ] < anims::desync_side_t::desync_middle )
-		//		new_desync_side = rdata::resolved_side [ idx ];
-		//	else if ( delta_at_target <= 0.0f && rdata::resolved_side [ idx ] >= anims::desync_side_t::desync_middle )
-		//		new_desync_side = rdata::resolved_side [ idx ];
-		//	else
-		//		new_desync_side = ( delta_at_target <= 0.0f ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
-		//
-		//	if ( !( anim_layers [ 6 ].m_weight < 0.01f && anim_layers [ 6 ].m_playback_rate < 0.05f && anim_layers [ 6 ].m_playback_rate > 0.0f ) ) {
-		//		if ( rdata::resolved_side [ idx ] != new_desync_side )
-		//			features::ragebot::get_misses ( idx ).bad_resolve = 0;
-		//
-		//		rdata::new_resolve [ idx ] = true;
-		//	}
-		//
-		//	rdata::resolved_side [ idx ] = new_desync_side;
-		//	rdata::prefer_edge [ idx ] = false;
-		//}
-		/* standing */
-		/*else*/
-		if ( speed_2d <= 0.1f ) {
-			if ( rdata::was_moving [ idx ] ) {
-				if ( !rdata::new_resolve [ idx ] )
-					rdata::prefer_edge [ idx ] = true;
+						IF ( delta_yaw > N ( 0 ) && rdata::resolved_side_run [ idx ] < anims::desync_side_t::desync_middle ) {
+							new_desync_side = rdata::resolved_side_run [ idx ];
+						} ELSE {
+							IF ( delta_yaw <= N ( 0 ) && rdata::resolved_side_run [ idx ] >= anims::desync_side_t::desync_middle )
+								new_desync_side = rdata::resolved_side_run [ idx ];
+							ELSE
+								new_desync_side = ( delta_yaw <= N ( 0 ) ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
+							ENDIF;
+						} ENDIF;
 
-				rdata::new_resolve [ idx ] = false;
-				rdata::was_moving [ idx ] = false;
-			}
+						IF ( rdata::resolved_side_run [ idx ] != new_desync_side )
+							features::ragebot::get_misses ( idx ).bad_resolve = N( 0 ); ENDIF;
 
-			if ( !anim_layers [ 3 ].m_weight
-				&& !anim_layers [ 3 ].m_cycle
-				&& !anim_layers [ 6 ].m_weight
-				&& !anim_layers [ 6 ].m_playback_rate
-				&& abs( delta_yaw ) > 35.0f ) {
-				anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
+						rdata::resolved_side_run [ idx ] = new_desync_side;
+						rdata::new_resolve [ idx ] = true;
+						rdata::prefer_edge [ idx ] = false;
+					}
+					ELSE {
+						/* resolve center-real / anti-alignment on standing */
+						IF ( !shot && !rdata::new_resolve [ idx ]
+							&& !features::ragebot::get_misses ( idx ).bad_resolve
+							&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
+							&& anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 )
+							&& anim_layers [ N ( 6 ) ].m_playback_rate <= 0.06f
+							&& abs ( delta_yaw ) < N ( 35 ) && abs ( delta_yaw_old ) < N ( 35 )
+							&& abs( delta_eye_yaw ) < N( 26 )
+							&& abs ( delta_at_target ) > N ( 12 ) && abs ( delta_at_target ) < N ( 76 ) ) {
+							anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
 
-				if ( delta_yaw > 0.0f && rdata::resolved_side [ idx ] < anims::desync_side_t::desync_middle )
-					new_desync_side = rdata::resolved_side [ idx ];
-				else if ( delta_yaw <= 0.0f && rdata::resolved_side [ idx ] >= anims::desync_side_t::desync_middle )
-					new_desync_side = rdata::resolved_side [ idx ];
-				else
-					new_desync_side = ( delta_yaw <= 0.0f ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
+							IF ( delta_at_target <= N ( 0 ) )
+								new_desync_side = delta_at_target >= -N ( 44 ) ? anims::desync_side_t::desync_right_half : anims::desync_side_t::desync_right_max;
+							ELSE
+								new_desync_side = delta_at_target <= N ( 44 ) ? anims::desync_side_t::desync_left_half : anims::desync_side_t::desync_left_max;
+							ENDIF;
 
-				if ( rdata::resolved_side [ idx ] != new_desync_side )
-					features::ragebot::get_misses ( idx ).bad_resolve = 0;
+							rdata::resolved_side_run [ idx ] = new_desync_side;
+							rdata::new_resolve [ idx ] = true;
+							rdata::prefer_edge [ idx ] = false;
+						} ENDIF;
+					} ENDIF;
 
-				rdata::resolved_side [ idx ] = new_desync_side;
-				rdata::new_resolve [ idx ] = true;
-				rdata::prefer_edge [ idx ] = false;
-
-				//dbg_print ( "LBY DELTA\n" );
-			}
-
-			rdata::last_good_weight [ idx ] = false;
-		}
-		/* moving */
-		else if ( anim_layers [ 6 ].m_weight > 0.05f
-			/* && abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 1000.0f < 6.0f */
-			/*&& ( abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 6 ].m_weight ) * 100.0f < 0.01f
-				|| good_lean
-				|| anim_layers [ 7 ].m_weight >= 0.99f )*/ ) {
-			const auto middle_delta_rate = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ 6 ].m_playback_rate ) * 1000.0f;
-			const auto left_delta_rate = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ 6 ].m_playback_rate ) * 1000.0f;
-			const auto left_half_delta_rate = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ 6 ].m_playback_rate ) * 1000.0f;
-			const auto right_delta_rate = abs ( anim_layers [ 6 ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ 6 ].m_playback_rate ) * 1000.0f;
-
-			bool side_changed = false;
-			const desync_side_t backup_desync_side = rdata::resolved_side [ idx ];
-
-			//dbg_print ( "RESOLVED\n" );
-			//dbg_print ( "WEIGHT: %.4f\n", abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 6 ].m_weight ) * 100.0f );
-			//dbg_print ( "LEAN: %.4f\n", abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 12 ].m_weight ) * 100.0f );
-			//dbg_print ( "mid: %.4f\n", middle_delta_rate );
-			//dbg_print ( "right: %.4f\n\n\n\n", right_delta_rate );
-
-			if ( middle_delta_rate < 1.0f && left_delta_rate < 1.0f && right_delta_rate < 1.0f ) {
-				if ( right_delta_rate < left_delta_rate && right_delta_rate < middle_delta_rate ) {
-					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_right_max )
-						side_changed = true;
-					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_right_max;
-					rdata::new_resolve [ idx ] = true;
-					rdata::prefer_edge [ idx ] = false;
+					rdata::last_good_weight [ idx ] = false;
 				}
-				else if ( !anim_layers [ 7 ].m_weight && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
-					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_half )
-						side_changed = true;
-					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_half;
-					rdata::new_resolve [ idx ] = true;
-					rdata::prefer_edge [ idx ] = false;
-				}
-				else if ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate ) {
-					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_max )
-						side_changed = true;
-					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_max;
-					rdata::new_resolve [ idx ] = true;
-					rdata::prefer_edge [ idx ] = false;
-				}
-				else if ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate ) {
-					if ( rdata::resolved_side [ idx ] != anims::desync_side_t::desync_left_half )
-						side_changed = true;
-					rdata::resolved_side [ idx ] = anims::desync_side_t::desync_left_half;
-					rdata::new_resolve [ idx ] = true;
-					rdata::prefer_edge [ idx ] = false;
-				}
-			}
+				/* moving */
+				ELSE {
+					const bool is_running = anim_layers [ N ( 11 ) ].m_weight <= 0.0f;
 
-			if ( side_changed )
-				features::ragebot::get_misses ( idx ).bad_resolve = 0;
-			
-			if ( speed_2d > max_speed * 0.9f )
-				rdata::was_moving [ idx ] = true;
+					const auto middle_delta_weight = abs ( anim_layers [ N ( 6 ) ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ N ( 6 ) ].m_weight ) * N ( 100 );
+					const auto left_delta_weight = abs ( anim_layers [ N ( 6 ) ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ N ( 6 ) ].m_weight ) * N ( 100 );
+					const auto left_half_delta_weight = abs ( anim_layers [ N ( 6 ) ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ N ( 6 ) ].m_weight ) * N ( 100 );
+					const auto right_delta_weight = abs ( anim_layers [ N ( 6 ) ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ N ( 6 ) ].m_weight ) * N ( 100 );
+					const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, right_delta_weight ) ) );
 
-			if ( /*( abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 6 ].m_weight ) * 100.0f < 0.01f
-				|| good_lean
-				|| anim_layers [ 7 ].m_weight >= 0.99f )
-				&&*/ side_changed ) {
-				if ( rdata::last_good_weight [ idx ] ) {
-					rdata::resolved_side1 [ idx ] = backup_desync_side;
-					rdata::resolved_jitter [ idx ] = true;
-					rdata::jitter_sync [ idx ] = anim_info [ idx ].size ( ) % 2;
-				}
+					//dbg_print ( "LEAN: %.4f\n", lean_weight );
+					//dbg_print ( "WEIGHT: %.4f\n", smallest_weight );
 
-				rdata::last_good_weight [ idx ] = true;
-			}
-			else {
-				rdata::last_good_weight [ idx ] = false;
-			}
+					IF ( anim_layers [ N ( 6 ) ].m_weight > 0.05f
+						&& ( anim_layers [ N ( 12 ) ].m_weight <= 0.0f || anim_layers [ N ( 7 ) ].m_weight >= 1.0f || smallest_weight <= 1.0f ) ) {
+						const auto middle_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
+						const auto left_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
+						const auto left_half_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
+						const auto right_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
+						
+						//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f ) {
+						//	dbg_print ( _ ( "MID: %.3f\n" ), middle_delta_rate );
+						//	dbg_print ( _ ( "LEFT: %.3f\n" ), left_delta_rate );
+						//	dbg_print ( _ ( "HALF: %.3f\n" ), left_half_delta_rate );
+						//	dbg_print ( _ ( "RIGHT: %.3f\n" ), right_delta_rate );
+						//} ENDIF;
 
-			if ( /*( abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_max ][ 6 ].m_weight ) * 100.0f < 0.01f
-				|| good_lean
-				|| anim_layers [ 7 ].m_weight >= 0.99f )
-				&&*/ !side_changed ) {
-				if ( rdata::last_bad_weight [ idx ] )
-					rdata::resolved_jitter [ idx ] = false;
+						bool side_changed = false;
+						desync_side_t& desync_side = is_running ? rdata::resolved_side_run [ idx ] : rdata::resolved_side [ idx ];
+						const desync_side_t backup_desync_side = desync_side;
 
-				rdata::last_bad_weight [ idx ] = true;
-			}
-			else {
-				rdata::last_bad_weight [ idx ] = false;
-			}
-		}
-	}
+						//IF ( middle_delta_rate < N ( 1 ) && left_delta_rate < N ( 1 ) && right_delta_rate < N ( 1 ) ) {
+							IF ( right_delta_rate < left_delta_rate && right_delta_rate < middle_delta_rate ) {
+								IF ( desync_side != anims::desync_side_t::desync_right_max )
+									side_changed = true; ENDIF;
+								desync_side = anims::desync_side_t::desync_right_max;
+								rdata::new_resolve [ idx ] = true;
+								rdata::prefer_edge [ idx ] = false;
+							}
+							ELSE {
+								//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
+								//	IF ( desync_side != anims::desync_side_t::desync_left_half )
+								//		side_changed = true; ENDIF;
+								//	desync_side = anims::desync_side_t::desync_left_half;
+								//	rdata::new_resolve [ idx ] = true;
+								//	rdata::prefer_edge [ idx ] = false;
+								//}
+								//ELSE {
+									IF ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate ) {
+										IF ( desync_side != anims::desync_side_t::desync_left_max )
+											side_changed = true; ENDIF;
+										desync_side = anims::desync_side_t::desync_left_max;
+										rdata::new_resolve [ idx ] = true;
+										rdata::prefer_edge [ idx ] = false;
+									} ELSE {
+										IF ( middle_delta_rate < left_delta_rate&& middle_delta_rate < right_delta_rate ) {
+											IF ( desync_side != anims::desync_side_t::desync_middle )
+												side_changed = true; ENDIF;
 
-	const auto src = g::local->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f ) + g::local->vel ( ) * cs::ticks2time ( 1 );
-	const auto eyes_max = ent->origin ( ) + vec3_t ( 0.0f, 0.0f, 64.0f ) + ent->vel ( ) * cs::ticks2time ( 1 );
-	auto fwd = ( eyes_max - src ).normalized();
+											desync_side = anims::desync_side_t::desync_middle;
+											rdata::new_resolve [ idx ] = true;
+											rdata::prefer_edge [ idx ] = false;
+										} ENDIF;
+									} ENDIF;
+								//} ENDIF;
+							} ENDIF;
+						//} ENDIF;
 
-	if ( !fwd.is_valid ( ) ) {
-		last_recorded_resolve [ idx ] = rdata::resolved_side [ idx ];
-		return false;
-	}
+						IF ( side_changed )
+							features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 ); ENDIF;
+
+						IF ( is_running )
+							rdata::was_moving [ idx ] = true; ENDIF;
+
+						IF ( side_changed && is_running ) {
+							IF ( rdata::last_good_weight [ idx ] ) {
+								rdata::resolved_jitter [ idx ] = true;
+								rdata::jitter_sync [ idx ] = cs::time2ticks ( ent->simtime ( ) ) % N ( 2 );
+							} ENDIF;
+
+							rdata::last_good_weight [ idx ] = true;
+						}
+						ELSE {
+							rdata::last_good_weight [ idx ] = false;
+						} ENDIF;
+
+						IF ( !side_changed && is_running ) {
+							IF ( rdata::last_bad_weight [ idx ] )
+								rdata::resolved_jitter [ idx ] = false; ENDIF;
+
+							rdata::last_bad_weight [ idx ] = true;
+						}
+						ELSE {
+							rdata::last_bad_weight [ idx ] = false;
+						} ENDIF;
+
+						IF ( rdata::resolved_jitter [ idx ] && is_running ) {
+							IF ( rdata::jitter_sync [ idx ] == cs::time2ticks ( ent->simtime ( ) ) % 2 )
+								rdata::resolved_side_jitter1 [ idx ] = desync_side;
+							ELSE
+								rdata::resolved_side_jitter2 [ idx ] = desync_side;
+							ENDIF;
+						} ENDIF;
+					} ENDIF;
+				} ENDIF;
+			} ENDIF;
+		} ENDIF;
+	} ENDIF;
+
+	const auto src = g::local->origin ( ) + vec3_t ( N ( 0 ), N ( 0 ), N ( 64 ) ) + g::local->vel ( ) * cs::ticks2time ( N( 1 ) );
+	const auto eyes_max = ent->origin ( ) + vec3_t ( N ( 0 ), N ( 0 ), N ( 64 ) ) + ent->vel ( ) * cs::ticks2time ( N( 1 ) );
+	auto fwd = ( eyes_max - src ).normalized ( );
+
+	IF ( !fwd.is_valid ( ) ) {
+		last_recorded_resolve [ idx ] = apply_antiaim ( ent, speed_2d, max_speed );
+		RETURN( false );
+	} ENDIF;
 
 	/* try to hide head */
-	const auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+	const auto right_dir = fwd.cross_product ( vec3_t ( N ( 0 ), N ( 0 ), N ( 1 ) ) );
 	const auto left_dir = -right_dir;
-	const auto dmg_left = autowall::dmg ( g::local, ent, src + left_dir * 35.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 ) + autowall::dmg ( g::local, ent, src - left_dir * 10.0f, eyes_max + fwd * 30.0f + left_dir * 10.0f, 0 /* pretend player would be there */ );
-	const auto dmg_right = autowall::dmg ( g::local, ent, src + right_dir * 35.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 ) + autowall::dmg ( g::local, ent, src - right_dir * 10.0f, eyes_max + fwd * 30.0f + right_dir * 10.0f, 0 /* pretend player would be there */ );
+	const auto dmg_left = autowall::dmg ( g::local, ent, src + left_dir * N ( 35 ), eyes_max + fwd * N ( 30 ) + left_dir * N ( 10 ), N( 0 ) ) + autowall::dmg ( g::local, ent, src - left_dir * N ( 10 ), eyes_max + fwd * N ( 35 ) + left_dir * N ( 10 ), N ( 0 ) /* pretend player would be there */ );
+	const auto dmg_right = autowall::dmg ( g::local, ent, src + right_dir * N ( 35 ), eyes_max + fwd * N ( 30 ) + right_dir * N ( 10 ), N ( 0 ) ) + autowall::dmg ( g::local, ent, src - right_dir * N ( 10 ), eyes_max + fwd * N ( 35 ) + right_dir * N ( 10 ), N ( 0 ) /* pretend player would be there */ );
 	const auto one_side_hittable = ( dmg_left && !dmg_right ) || ( !dmg_left && dmg_right );
 	const auto occluded_side = ( dmg_left > dmg_right ) ? anims::desync_side_t::desync_left_max : anims::desync_side_t::desync_right_max;
-	auto target_side_tmp = rdata::resolved_side [ idx ];
 
-	if ( rdata::resolved_jitter [ idx ] && rdata::jitter_sync [ idx ] == anim_info [ idx ].size ( ) % 2 )
-		target_side_tmp = rdata::resolved_side1 [ idx ];
+	/* resolve standing */
+	auto target_side_tmp = apply_antiaim ( ent, speed_2d, max_speed );
 
 	/* edging players */
-	if ( rdata::prefer_edge [ idx ] && one_side_hittable && autowall::dmg ( g::local, ent, src, rec.m_aim_bones[ anims::desync_side_t::desync_max][8].origin(), hitbox_head ) > 0.0f ) {
-		if ( occluded_side < anims::desync_side_t::desync_middle && target_side_tmp < anims::desync_side_t::desync_middle )
-			target_side_tmp = rdata::resolved_side [ idx ];
-		else if ( occluded_side > anims::desync_side_t::desync_middle && target_side_tmp > anims::desync_side_t::desync_middle )
-			target_side_tmp = rdata::resolved_side [ idx ];
-		else
-			target_side_tmp = occluded_side;
-	}
+	//IF ( rdata::prefer_edge [ idx ] && one_side_hittable && autowall::dmg ( g::local, ent, src, rec.m_aim_bones [ anims::desync_side_t::desync_max ][ N ( 8 ) ].origin ( ), hitbox_head ) > N ( 0 ) ) {
+	//	IF ( occluded_side < anims::desync_side_t::desync_middle && target_side_tmp < anims::desync_side_t::desync_middle ) {
+	//		target_side_tmp = rdata::resolved_side [ idx ];
+	//	}
+	//	ELSE {
+	//		IF ( occluded_side > anims::desync_side_t::desync_middle && target_side_tmp > anims::desync_side_t::desync_middle )
+	//			target_side_tmp = rdata::resolved_side [ idx ];
+	//		ELSE
+	//			target_side_tmp = occluded_side;
+	//		ENDIF;
+	//	} ENDIF;
+	//} ENDIF;
 
 	const auto has_accurate_weapon = g::local && g::local->weapon ( ) && g::local->weapon ( )->item_definition_index ( ) == weapons_t::ssg08;
 	const auto has_bad_desync = /*ent->desync_amount ( ) <= 34.0f*/ false;
 
-	auto bruteforce = [&](int brute_mode /* 0 = none, 1 = opposite, 2 = close, 3 = fast, 4 = fast opposite*/) {
-		switch (brute_mode) {
-		case 0: {
-			rec.m_side = target_side_tmp;
-		} break;
-		case 1: {
-			switch (target_side_tmp) {
-			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_right_max; break;
-			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_half; break;
-			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_half; break;
-			}
-		} break;
-		case 2: {
-			switch (target_side_tmp) {
-			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_half; break;
-			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_right_max; break;
-			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_right_max; break;
-			}
-		} break;
-		case 3: {
-			switch (target_side_tmp) {
-			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_middle; break;
-			}
-		} break;
-		case 4: {
-			switch (target_side_tmp) {
-			case anims::desync_side_t::desync_left_max: rec.m_side = anims::desync_side_t::desync_middle; break;
-			case anims::desync_side_t::desync_left_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_right_max: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_right_half: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			case anims::desync_side_t::desync_middle: rec.m_side = anims::desync_side_t::desync_left_max; break;
-			}
-		} break;
-		default: rec.m_side = target_side_tmp; break;
-		}
-	};
+	//CASE ( features::ragebot::get_misses ( idx ).bad_resolve % N( 4 ) )
+	//	WHEN ( N ( 0 ) ) DO bruteforce ( has_bad_desync ? N ( 3 ) : N ( 0 ), target_side_tmp, rec ); BREAK; DONE
+	//	WHEN ( N ( 1 ) ) DO bruteforce ( has_bad_desync ? N ( 4 ) : ( has_accurate_weapon ? N ( 1 ) : N ( 2 ) ), target_side_tmp, rec ); BREAK; DONE
+	//	WHEN ( N ( 2 ) ) DO bruteforce ( has_bad_desync ? N ( 3 ) : ( has_accurate_weapon ? N ( 2 ) : N ( 1 ) ), target_side_tmp, rec ); BREAK; DONE
+	//	WHEN ( N ( 3 ) ) DO bruteforce ( N ( 4 ), target_side_tmp, rec ); BREAK; DONE
+	//	DEFAULT bruteforce ( has_bad_desync ? N ( 3 ) : N ( 0 ), target_side_tmp, rec ); DONE
+	//ENDCASE;
 
-	switch (features::ragebot::get_misses(idx).bad_resolve % 4) {
-	case 0: bruteforce(has_bad_desync ? 3 : 0); break;
-	case 1: bruteforce(has_bad_desync ? 4 : (has_accurate_weapon ? 1 : 2)); break;
-	case 2: bruteforce(has_bad_desync ? 3 : (has_accurate_weapon ? 2 : 1)); break;
-	case 3: bruteforce ( 4 ); break;
-	default: bruteforce(has_bad_desync ? 3 : 0); break;
+	switch ( features::ragebot::get_misses ( idx ).bad_resolve % 4 ) {
+	case 0: bruteforce ( has_bad_desync ? 3 : 0, target_side_tmp, rec ); break;
+	case 1: bruteforce ( has_bad_desync ? 4 : ( has_accurate_weapon ? 1 : 2 ), target_side_tmp, rec ); break;
+	case 2: bruteforce ( has_bad_desync ? 3 : ( has_accurate_weapon ? 2 : 1 ), target_side_tmp, rec ); break;
+	case 3: bruteforce ( 4, target_side_tmp, rec ); break;
+	default: bruteforce ( has_bad_desync ? 3 : 0, target_side_tmp, rec ); break;
 	}
 
 	last_recorded_resolve [ idx ] = rec.m_side;
@@ -941,5 +1123,6 @@ bool anims::resolver::resolve_desync( player_t* ent , anim_info_t& rec ) {
 	const auto offset = -ent->desync_amount ( ) + static_cast< float >( rec.m_side ) * ( ent->desync_amount ( ) * 0.5f );
 	last_abs_yaw [ idx ] = cs::normalize ( cs::normalize ( rec.m_anim_state [ anims::desync_side_t::desync_max ].m_eye_yaw ) + offset );
 
-	return true;
+	RETURN( true );
+	OBF_END;
 }

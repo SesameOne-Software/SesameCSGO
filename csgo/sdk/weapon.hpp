@@ -267,7 +267,6 @@ public:
 class weapon_t : public entity_t {
 public:
 	NETVAR( weapons_t, item_definition_index, "DT_BaseAttributableItem->m_iItemDefinitionIndex" );
-	NETVAR ( int, mdl_idx, "DT_BaseAttributableItem->m_nModelIndex" );
 	NETVAR( float, next_primary_attack, "DT_BaseCombatWeapon->m_flNextPrimaryAttack" );
 	NETVAR( float, next_secondary_attack, "DT_BaseCombatWeapon->m_flNextSecondaryAttack" );
 	NETVAR( int, ammo, "DT_BaseCombatWeapon->m_iClip1" );

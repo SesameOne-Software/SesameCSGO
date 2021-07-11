@@ -26,7 +26,7 @@ std::unordered_map<int/*tab*/, std::string/*open_node*/> g_nodes_opened { };
 
 template <typename type>
 constexpr auto animate( float& t, float change_dir, const type& min, const type& max ) {
-    t = ImClamp( t + ImGui::GetIO( ).DeltaTime * ( change_dir * ( 1.0f / animation_time ) ), 0.0f, 1.0f );
+    t = ImClamp( t + ImGui::GetIO( ).DeltaTime * ( change_dir * ( 1.0f / ( animation_time * gui_anim_multiplier ) ) ), 0.0f, 1.0f );
     return ImLerp( min, max, t );
 }
 
@@ -95,7 +95,7 @@ void ImGui::custom::EndTabs( ) {
     const auto tab_idx_flt = static_cast< float >( *g_cur_tab_ptr );
 
     if ( animations.main_fraction != tab_idx_flt )
-        animations.main_fraction += ImGui::GetIO( ).DeltaTime * ( ( animations.main_fraction > tab_idx_flt ? -1.0f : 1.0f ) * ImClamp( abs( animations.main_fraction - tab_idx_flt ), 0.01f, static_cast< float >( g_cur_tab_idx ) ) * ( 1.0f / animation_time ) );
+        animations.main_fraction += ImGui::GetIO( ).DeltaTime * ( ( animations.main_fraction > tab_idx_flt ? -1.0f : 1.0f ) * ImClamp( abs( animations.main_fraction - tab_idx_flt ), 0.01f, static_cast< float >( g_cur_tab_idx ) ) * ( 1.0f / ( animation_time * gui_anim_multiplier ) ) );
 
     if ( ( animations.main_fraction > tab_idx_flt && old_main_fraction < tab_idx_flt )
         || ( animations.main_fraction < tab_idx_flt && old_main_fraction > tab_idx_flt ) )
@@ -625,4 +625,9 @@ void ImGui::custom::InventoryEnd ( ) {
 	inventory_rows = 0;
 	inventory_columns = 0;
 	inventory_column_counter = 0;
+}
+
+void ImGui::custom::reset_anims ( ) {
+    for ( auto& anims : animation_list )
+        memset ( &anims.second, 0, sizeof ( anims.second ) );
 }

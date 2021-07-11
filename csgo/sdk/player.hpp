@@ -237,6 +237,7 @@ public:
 	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
 	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
 	NETVAR ( int, body, "DT_CSPlayer->m_nBody" );
+	NETVAR ( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 
 	bool is_player( ) {
 		return client_class ( ) && client_class ( )->m_class_id == 40;
@@ -382,4 +383,8 @@ public:
 	int lookup_sequence ( const char* seq );
 	float sequence_duration ( int sequence );
 	float get_sequence_cycle_rate_server ( int sequence );
+
+	void* get_original_data ( );
+	void* get_predicted_frame ( int frame_num );
+	void* get_data_map ( int frame_num );
 };

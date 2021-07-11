@@ -29,9 +29,8 @@ features::ragebot::c_scan_points features::ragebot::scan_points;
 #pragma optimize( "2", on )
 
 void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
-	VM_TIGER_BLACK_START
-		if ( !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
-				return;
+	if ( !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
+		return;
 	}
 		
 	static auto& main_switch = options::vars [ _( "global.assistance_type" ) ].val.i;
@@ -45,6 +44,11 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 	static auto& safe_point_key = options::vars [ _( "ragebot.safe_point_key" ) ].val.i;
 	static auto& safe_point_key_mode = options::vars [ _( "ragebot.safe_point_key_mode" ) ].val.i;
 	static auto& auto_revolver = options::vars [ _( "ragebot.auto_revolver" ) ].val.b;
+	static auto& dt_teleport = options::vars [ _ ( "ragebot.dt_teleport" ) ].val.b;
+	static auto& dt_enabled = options::vars [ _ ( "ragebot.dt_enabled" ) ].val.b;
+	static auto& dt_ticks = options::vars [ _ ( "ragebot.dt_ticks" ) ].val.i;
+
+
 
 	/* reset all config options */
 	memset( &config, 0, sizeof config );
@@ -60,6 +64,10 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 	config.safe_point_key = safe_point_key;
 	config.safe_point_key_mode = safe_point_key_mode;
 	config.auto_revolver = auto_revolver;
+
+	config.dt_teleport = dt_teleport;
+	config.dt_enabled = dt_enabled;
+	config.max_dt_ticks = dt_ticks;
 
 	if ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver ) {
 		static auto& inherit_default = options::vars [ _( "ragebot.revolver.inherit_default" ) ].val.b;
@@ -77,12 +85,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& head_ps = options::vars [ _( "ragebot.revolver.head_pointscale" ) ].val.f;
 		static auto& body_ps = options::vars [ _( "ragebot.revolver.body_pointscale" ) ].val.f;
 		static auto& baim_after_misses = options::vars [ _( "ragebot.revolver.force_baim" ) ].val.i;
-		static auto& tickbase_shift_amount = options::vars [ _( "ragebot.revolver.dt_ticks" ) ].val.i;
 		static auto& auto_shoot = options::vars [ _( "ragebot.revolver.auto_shoot" ) ].val.b;
 		static auto& auto_slow = options::vars [ _( "ragebot.revolver.auto_slow" ) ].val.b;
 		static auto& auto_scope = options::vars [ _( "ragebot.revolver.auto_scope" ) ].val.b;
-		static auto& dt_teleport = options::vars [ _( "ragebot.revolver.dt_teleport" ) ].val.b;
-		static auto& dt_enabled = options::vars [ _( "ragebot.revolver.dt_enabled" ) ].val.b;
 		static auto& hit_chance = options::vars [ _( "ragebot.revolver.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.revolver.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.revolver.headshot_only" ) ].val.b;
@@ -109,12 +114,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.head_pointscale = head_ps;
 		config.body_pointscale = body_ps;
 		config.baim_after_misses = baim_after_misses;
-		config.max_dt_ticks = tickbase_shift_amount;
 		config.auto_scope = auto_scope;
 		config.auto_slow = auto_slow;
 		config.auto_shoot = auto_shoot;
-		config.dt_teleport = dt_teleport;
-		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
 		config.onshot_only = onshot_only;
@@ -137,12 +139,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& head_ps = options::vars [ _( "ragebot.pistol.head_pointscale" ) ].val.f;
 		static auto& body_ps = options::vars [ _( "ragebot.pistol.body_pointscale" ) ].val.f;
 		static auto& baim_after_misses = options::vars [ _( "ragebot.pistol.force_baim" ) ].val.i;
-		static auto& tickbase_shift_amount = options::vars [ _( "ragebot.pistol.dt_ticks" ) ].val.i;
 		static auto& auto_shoot = options::vars [ _( "ragebot.pistol.auto_shoot" ) ].val.b;
 		static auto& auto_slow = options::vars [ _( "ragebot.pistol.auto_slow" ) ].val.b;
 		static auto& auto_scope = options::vars [ _( "ragebot.pistol.auto_scope" ) ].val.b;
-		static auto& dt_teleport = options::vars [ _( "ragebot.pistol.dt_teleport" ) ].val.b;
-		static auto& dt_enabled = options::vars [ _( "ragebot.pistol.dt_enabled" ) ].val.b;
 		static auto& hit_chance = options::vars [ _( "ragebot.pistol.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.pistol.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.pistol.headshot_only" ) ].val.b;
@@ -169,12 +168,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.head_pointscale = head_ps;
 		config.body_pointscale = body_ps;
 		config.baim_after_misses = baim_after_misses;
-		config.max_dt_ticks = tickbase_shift_amount;
 		config.auto_scope = auto_scope;
 		config.auto_slow = auto_slow;
 		config.auto_shoot = auto_shoot;
-		config.dt_teleport = dt_teleport;
-		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
 		config.onshot_only = onshot_only;
@@ -197,12 +193,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		static auto& head_ps = options::vars [ _( "ragebot.rifle.head_pointscale" ) ].val.f;
 		static auto& body_ps = options::vars [ _( "ragebot.rifle.body_pointscale" ) ].val.f;
 		static auto& baim_after_misses = options::vars [ _( "ragebot.rifle.force_baim" ) ].val.i;
-		static auto& tickbase_shift_amount = options::vars [ _( "ragebot.rifle.dt_ticks" ) ].val.i;
 		static auto& auto_shoot = options::vars [ _( "ragebot.rifle.auto_shoot" ) ].val.b;
 		static auto& auto_slow = options::vars [ _( "ragebot.rifle.auto_slow" ) ].val.b;
 		static auto& auto_scope = options::vars [ _( "ragebot.rifle.auto_scope" ) ].val.b;
-		static auto& dt_teleport = options::vars [ _( "ragebot.rifle.dt_teleport" ) ].val.b;
-		static auto& dt_enabled = options::vars [ _( "ragebot.rifle.dt_enabled" ) ].val.b;
 		static auto& hit_chance = options::vars [ _( "ragebot.rifle.hit_chance" ) ].val.f;
 		static auto& dt_hit_chance = options::vars [ _( "ragebot.rifle.dt_hit_chance" ) ].val.f;
 		static auto& headshot_only = options::vars [ _( "ragebot.rifle.headshot_only" ) ].val.b;
@@ -229,12 +222,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 		config.head_pointscale = head_ps;
 		config.body_pointscale = body_ps;
 		config.baim_after_misses = baim_after_misses;
-		config.max_dt_ticks = tickbase_shift_amount;
 		config.auto_scope = auto_scope;
 		config.auto_slow = auto_slow;
 		config.auto_shoot = auto_shoot;
-		config.dt_teleport = dt_teleport;
-		config.dt_enabled = dt_enabled;
 		config.hit_chance = hit_chance;
 		config.dt_hit_chance = dt_hit_chance;
 		config.onshot_only = onshot_only;
@@ -258,12 +248,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& head_ps = options::vars [ _( "ragebot.awp.head_pointscale" ) ].val.f;
 			static auto& body_ps = options::vars [ _( "ragebot.awp.body_pointscale" ) ].val.f;
 			static auto& baim_after_misses = options::vars [ _( "ragebot.awp.force_baim" ) ].val.i;
-			static auto& tickbase_shift_amount = options::vars [ _( "ragebot.awp.dt_ticks" ) ].val.i;
 			static auto& auto_shoot = options::vars [ _( "ragebot.awp.auto_shoot" ) ].val.b;
 			static auto& auto_slow = options::vars [ _( "ragebot.awp.auto_slow" ) ].val.b;
 			static auto& auto_scope = options::vars [ _( "ragebot.awp.auto_scope" ) ].val.b;
-			static auto& dt_teleport = options::vars [ _( "ragebot.awp.dt_teleport" ) ].val.b;
-			static auto& dt_enabled = options::vars [ _( "ragebot.awp.dt_enabled" ) ].val.b;
 			static auto& hit_chance = options::vars [ _( "ragebot.awp.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.awp.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.awp.headshot_only" ) ].val.b;
@@ -290,12 +277,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.head_pointscale = head_ps;
 			config.body_pointscale = body_ps;
 			config.baim_after_misses = baim_after_misses;
-			config.max_dt_ticks = tickbase_shift_amount;
 			config.auto_scope = auto_scope;
 			config.auto_slow = auto_slow;
 			config.auto_shoot = auto_shoot;
-			config.dt_teleport = dt_teleport;
-			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
 			config.onshot_only = onshot_only;
@@ -318,12 +302,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& head_ps = options::vars [ _( "ragebot.auto.head_pointscale" ) ].val.f;
 			static auto& body_ps = options::vars [ _( "ragebot.auto.body_pointscale" ) ].val.f;
 			static auto& baim_after_misses = options::vars [ _( "ragebot.auto.force_baim" ) ].val.i;
-			static auto& tickbase_shift_amount = options::vars [ _( "ragebot.auto.dt_ticks" ) ].val.i;
 			static auto& auto_shoot = options::vars [ _( "ragebot.auto.auto_shoot" ) ].val.b;
 			static auto& auto_slow = options::vars [ _( "ragebot.auto.auto_slow" ) ].val.b;
 			static auto& auto_scope = options::vars [ _( "ragebot.auto.auto_scope" ) ].val.b;
-			static auto& dt_teleport = options::vars [ _( "ragebot.auto.dt_teleport" ) ].val.b;
-			static auto& dt_enabled = options::vars [ _( "ragebot.auto.dt_enabled" ) ].val.b;
 			static auto& hit_chance = options::vars [ _( "ragebot.auto.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.auto.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.auto.headshot_only" ) ].val.b;
@@ -350,12 +331,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.head_pointscale = head_ps;
 			config.body_pointscale = body_ps;
 			config.baim_after_misses = baim_after_misses;
-			config.max_dt_ticks = tickbase_shift_amount;
 			config.auto_scope = auto_scope;
 			config.auto_slow = auto_slow;
 			config.auto_shoot = auto_shoot;
-			config.dt_teleport = dt_teleport;
-			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
 			config.onshot_only = onshot_only;
@@ -378,12 +356,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			static auto& head_ps = options::vars [ _( "ragebot.scout.head_pointscale" ) ].val.f;
 			static auto& body_ps = options::vars [ _( "ragebot.scout.body_pointscale" ) ].val.f;
 			static auto& baim_after_misses = options::vars [ _( "ragebot.scout.force_baim" ) ].val.i;
-			static auto& tickbase_shift_amount = options::vars [ _( "ragebot.scout.dt_ticks" ) ].val.i;
 			static auto& auto_shoot = options::vars [ _( "ragebot.scout.auto_shoot" ) ].val.b;
 			static auto& auto_slow = options::vars [ _( "ragebot.scout.auto_slow" ) ].val.b;
 			static auto& auto_scope = options::vars [ _( "ragebot.scout.auto_scope" ) ].val.b;
-			static auto& dt_teleport = options::vars [ _( "ragebot.scout.dt_teleport" ) ].val.b;
-			static auto& dt_enabled = options::vars [ _( "ragebot.scout.dt_enabled" ) ].val.b;
 			static auto& hit_chance = options::vars [ _( "ragebot.scout.hit_chance" ) ].val.f;
 			static auto& dt_hit_chance = options::vars [ _( "ragebot.scout.dt_hit_chance" ) ].val.f;
 			static auto& headshot_only = options::vars [ _( "ragebot.scout.headshot_only" ) ].val.b;
@@ -410,12 +385,9 @@ void features::ragebot::get_weapon_config( weapon_config_t& const config ) {
 			config.head_pointscale = head_ps;
 			config.body_pointscale = body_ps;
 			config.baim_after_misses = baim_after_misses;
-			config.max_dt_ticks = tickbase_shift_amount;
 			config.auto_scope = auto_scope;
 			config.auto_slow = auto_slow;
 			config.auto_shoot = auto_shoot;
-			config.dt_teleport = dt_teleport;
-			config.dt_enabled = dt_enabled;
 			config.hit_chance = hit_chance;
 			config.dt_hit_chance = dt_hit_chance;
 			config.onshot_only = onshot_only;
@@ -446,12 +418,9 @@ set_default:
 	static auto& head_ps = options::vars [ _( "ragebot.default.head_pointscale" ) ].val.f;
 	static auto& body_ps = options::vars [ _( "ragebot.default.body_pointscale" ) ].val.f;
 	static auto& baim_after_misses = options::vars [ _( "ragebot.default.force_baim" ) ].val.i;
-	static auto& tickbase_shift_amount = options::vars [ _( "ragebot.default.dt_ticks" ) ].val.i;
 	static auto& auto_shoot = options::vars [ _( "ragebot.default.auto_shoot" ) ].val.b;
 	static auto& auto_slow = options::vars [ _( "ragebot.default.auto_slow" ) ].val.b;
 	static auto& auto_scope = options::vars [ _( "ragebot.default.auto_scope" ) ].val.b;
-	static auto& dt_teleport = options::vars [ _( "ragebot.default.dt_teleport" ) ].val.b;
-	static auto& dt_enabled = options::vars [ _( "ragebot.default.dt_enabled" ) ].val.b;
 	static auto& hit_chance = options::vars [ _( "ragebot.default.hit_chance" ) ].val.f;
 	static auto& dt_hit_chance = options::vars [ _( "ragebot.default.dt_hit_chance" ) ].val.f;
 	static auto& headshot_only = options::vars [ _( "ragebot.default.headshot_only" ) ].val.b;
@@ -478,18 +447,13 @@ set_default:
 	config.head_pointscale = head_ps;
 	config.body_pointscale = body_ps;
 	config.baim_after_misses = baim_after_misses;
-	config.max_dt_ticks = tickbase_shift_amount;
 	config.auto_scope = auto_scope;
 	config.auto_slow = auto_slow;
 	config.auto_shoot = auto_shoot;
 	config.auto_revolver = auto_revolver;
-	config.dt_teleport = dt_teleport;
-	config.dt_enabled = dt_enabled;
 	config.hit_chance = hit_chance;
 	config.dt_hit_chance = dt_hit_chance;
 	config.onshot_only = onshot_only;
-
-	VM_TIGER_BLACK_END
 }
 
 int& features::ragebot::get_target_idx( ) {
@@ -613,7 +577,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
 
-	if ( calc_chance < ( (exploits::has_shifted || exploits::in_exploit) ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
+	if ( calc_chance < ( ( exploits::has_shifted || exploits::in_exploit ) ? features::ragebot::active_config.dt_hit_chance : features::ragebot::active_config.hit_chance ) )
 		return false;
 
 	return true;
@@ -626,14 +590,15 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
-	const auto fire_rate = weapon_data ? weapon_data->m_fire_rate : 0.0f;
-	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - cs::i::client_state->choked() - 1 );
+	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - cs::i::client_state->choked ( ) );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
 
-	if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && tickbase_as_int && !!( ucmd->m_buttons & buttons_t::attack ) && exploits::can_shoot( ) && !( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == weapon_type_t::knife || g::local->weapon( )->data( )->m_type >= weapon_type_t::c4 ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
-		exploits::shift_tickbase( tickbase_as_int, cs::time2ticks( static_cast<float>( active_config.dt_recharge_delay ) / 1000.0f ) );
+	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( ) && tickbase_as_int && !!( ucmd->m_buttons & buttons_t::attack ) && exploits::can_shoot ( ) && g::local->weapon ( )->data ( )->m_type < weapon_type_t::c4 && !( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) ) ) {
+		exploits::shift_tickbase ( tickbase_as_int, cs::time2ticks ( static_cast< float >( active_config.dt_recharge_delay ) / 1000.0f ) );
+		exploits::will_shift = true;
+	}
 }
 
 void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out ) {
@@ -702,9 +667,10 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 	vec3_t engine_ang;
 	cs::i::engine->get_viewangles ( engine_ang );
 
-	static anims::anim_info_t best_rec {};
+	anims::anim_info_t* best_rec = nullptr;
 	player_t* best_pl = nullptr;
 	float best_fov = 180.0f;
+	float best_dist = FLT_MAX;
 	vec3_t best_point, best_ang;
 
 	cs::for_each_player ( [ & ] ( player_t* pl ) {
@@ -717,7 +683,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		if ( recs.empty ( ) && !simulated_rec )
 			return;
 
-		const anims::anim_info_t& rec = simulated_rec ? simulated_rec.value() : recs.front();
+		anims::anim_info_t* rec = simulated_rec ? simulated_rec.value() : recs.front();
 
 		auto mdl = pl->mdl ( );
 
@@ -739,7 +705,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		if ( !hitbox )
 			return;
 
-		const std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones[ rec.m_side ];
+		const std::array< matrix3x4_t, 128>& bone_matrix = rec->m_aim_bones[ rec->m_side ];
 
 		auto vmin = hitbox->m_bbmin;
 		auto vmax = hitbox->m_bbmax;
@@ -756,10 +722,14 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 
 		auto can_use = false;
 
-		if ( g::local->weapon ( )->item_definition_index ( ) == weapons_t::taser )
-			can_use = g::local->eyes ( ).dist_to ( hitbox_pos ) < 150.0f;
-		else
-			can_use = g::local->origin ( ).dist_to ( rec.m_origin ) < 48.0f;
+		if ( g::local->weapon ( )->item_definition_index ( ) == weapons_t::taser ) {
+			best_dist = g::local->eyes ( ).dist_to ( hitbox_pos );
+			can_use = best_dist < 150.0f;
+		}
+		else {
+			best_dist = g::local->eyes ( ).dist_to ( pl->eyes( ) );
+			can_use = best_dist < 65.0f;
+		}
 
 		if ( cs::is_visible ( hitbox_pos ) && fov < best_fov && can_use ) {
 			best_pl = pl;
@@ -778,55 +748,69 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 
 	cs::clamp ( best_ang );
 
-	ucmd->m_angs = best_ang;
-
-	if ( !features::ragebot::active_config.silent )
-		cs::i::engine->set_viewangles ( best_ang );
-
-	ucmd->m_tickcount = cs::time2ticks ( best_rec.m_simtime ) + cs::time2ticks( anims::lerp_time ( ) );
-
-	get_target_pos ( best_pl->idx ( ) ) = best_point;
-	get_target ( ) = best_pl;
-	get_shots ( best_pl->idx ( ) )++;
-	get_shot_pos ( best_pl->idx ( ) ) = g::local->eyes ( );
-	get_lag_rec ( best_pl->idx ( ) ) = best_rec;
-	get_target_idx ( ) = best_pl->idx ( );
-	get_hitbox ( best_pl->idx ( ) ) = 5;
-
 	if ( features::ragebot::active_config.auto_shoot && g::local->weapon ( )->item_definition_index ( ) != weapons_t::taser ) {
-		auto back = best_pl->angles ( );
-		back.y = cs::normalize ( back.y + 180.0f );
-		auto backstab = best_ang.dist_to ( back ) < 45.0f;
+		ucmd->m_angs = best_ang;
+		ucmd->m_tickcount = cs::time2ticks ( best_rec->m_simtime ) + cs::time2ticks ( anims::lerp_time ( ) );
 
-		if ( backstab ) {
-			ucmd->m_buttons |= buttons_t::attack2;
+		if ( !features::ragebot::active_config.silent )
+			cs::i::engine->set_viewangles ( best_ang );
+
+		get_target_pos ( best_pl->idx ( ) ) = best_point;
+		get_target ( ) = best_pl;
+		get_shots ( best_pl->idx ( ) )++;
+		get_shot_pos ( best_pl->idx ( ) ) = g::local->eyes ( );
+		get_lag_rec ( best_pl->idx ( ) ) = *best_rec;
+		get_target_idx ( ) = best_pl->idx ( );
+		get_hitbox ( best_pl->idx ( ) ) = 5;
+
+		if ( best_pl->health ( ) <= 35 && best_dist < 65.0f ) {
+			ucmd->m_buttons |= buttons_t::attack;
 		}
 		else {
-			auto hp = best_pl->health ( );
-			auto armor = best_pl->armor ( ) > 1;
-			auto min_dmg1 = armor ? 34 : 40;
-			auto min_dmg2 = armor ? 55 : 65;
-
-			if ( hp <= min_dmg2 )
-				ucmd->m_buttons |= buttons_t::attack2;
-			else
-				ucmd->m_buttons |= buttons_t::attack;
+			if ( abs ( cs::normalize ( cs::normalize ( best_rec->m_angles.y ) - ucmd->m_angs.y ) ) < 35.0f ) {
+				if ( best_dist < 50.0f ) {
+					ucmd->m_buttons |= buttons_t::attack2;
+					exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( active_config.dt_recharge_delay ) / 1000.0f ) );
+				}
+			}
+			else {
+				if ( best_dist < 50.0f ) {
+					ucmd->m_buttons |= buttons_t::attack2;
+					exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( active_config.dt_recharge_delay ) / 1000.0f ) );
+				}
+				else if ( best_dist < 65.0f )
+					ucmd->m_buttons |= buttons_t::attack;
+			}
 		}
 	}
 	else if ( features::ragebot::active_config.auto_shoot ) {
 		ucmd->m_buttons |= buttons_t::attack;
+		exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( active_config.dt_recharge_delay ) / 1000.0f ) );
+
+		ucmd->m_angs = best_ang;
+		ucmd->m_tickcount = cs::time2ticks ( best_rec->m_simtime ) + cs::time2ticks ( anims::lerp_time ( ) );
+
+		if ( !features::ragebot::active_config.silent )
+			cs::i::engine->set_viewangles ( best_ang );
+
+		get_target_pos ( best_pl->idx ( ) ) = best_point;
+		get_target ( ) = best_pl;
+		get_shots ( best_pl->idx ( ) )++;
+		get_shot_pos ( best_pl->idx ( ) ) = g::local->eyes ( );
+		get_lag_rec ( best_pl->idx ( ) ) = *best_rec;
+		get_target_idx ( ) = best_pl->idx ( );
+		get_hitbox ( best_pl->idx ( ) ) = 5;
 	}
 }
 
 void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs ) {
-	VM_TIGER_BLACK_START
-		static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
 	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
 	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
 
-		if ( !active_config.main_switch || !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
-			scan_points.clear ( );
-			return;
+	if ( !active_config.main_switch || !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
+		scan_points.clear ( );
+		return;
 	}
 
 	/* Don't knifebot without an actual knifebot lmao, currently the hack just fucking shoots the air constantly w/a knife */
@@ -838,9 +822,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 
 	if ( !exploits::can_shoot ( ) && g::local->weapon ( )->data ( ) && g::local->weapon ( )->data ( )->m_type > weapon_type_t::knife && g::local->weapon ( )->data ( )->m_type < weapon_type_t::c4 ) {
 		ucmd->m_buttons &= ~buttons_t::attack;
-
-		//if ( !g::local->weapon ( )->data ( )->m_full_auto )
-			return;
+		return;
 	}
 
 	/* get potential ragebot targets */
@@ -979,17 +961,15 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 		should_aim = !!( ucmd->m_buttons & buttons_t::attack ) && best.m_dmg;
 
 	if ( should_aim ) {
-		if ( active_config.auto_shoot ) {
+		if ( active_config.auto_shoot )
 			ucmd->m_buttons |= buttons_t::attack;
-			g::send_packet = true;
-		}
 
-		if ( active_config.auto_scope && !g::local->scoped( ) &&
-			( g::local->weapon( )->item_definition_index( ) == weapons_t::awp
-				|| g::local->weapon( )->item_definition_index( ) == weapons_t::scar20
-				|| g::local->weapon( )->item_definition_index( ) == weapons_t::g3sg1
+		if ( active_config.auto_scope && !g::local->scoped ( ) &&
+			( g::local->weapon ( )->item_definition_index ( ) == weapons_t::awp
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::scar20
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::g3sg1
 				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::ssg08
-				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::aug 
+				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::aug
 				|| g::local->weapon ( )->item_definition_index ( ) == weapons_t::sg553 ) )
 			ucmd->m_buttons |= buttons_t::attack2;
 
@@ -1024,8 +1004,6 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 				ucmd->m_buttons &= ~buttons_t::attack2;
 		}
 	}
-
-	VM_TIGER_BLACK_END
 }
 
 bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side ) {
@@ -1049,6 +1027,9 @@ bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, i
 			multipoint_mask &= ~multipoint_mode_t::center;
 
 		multipoint_mask |= multipoint_mode_t::top;
+		multipoint_mask |= multipoint_mode_t::left;
+		multipoint_mask |= multipoint_mode_t::right;
+
 		pointscale = active_config.head_pointscale;
 	}
 	else if ( i >= hitbox_pelvis && i <= hitbox_upper_chest ) {
@@ -1070,6 +1051,9 @@ bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, i
 
 	/* forgot this last time, we need a scalar, but pointscale goes from 0 - 100 */
 	pointscale /= 100.0f;
+
+	/* scale according to desync amount (moving also) */
+	pointscale *= ent->desync_amount ( ) / 58.0f;
 
 	auto fwd_vec = g::local->eyes( ) - hitbox_pos;
 	fwd_vec.normalize( );
@@ -1148,8 +1132,7 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, int 
 }
 
 bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg ) {
-	VM_TIGER_BLACK_START
-		static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
 	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
 	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
 
@@ -1185,9 +1168,10 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	auto dmg_center = autowall::dmg( g::local, pl, src, eyes_max, 0 /* pretend player would be there */ );
 	auto dmg_left = autowall::dmg( g::local, pl, src + left_dir * 35.0f, eyes_max + left_dir * 35.0f, 0 /* pretend player would be there */ );
 	auto dmg_right = autowall::dmg( g::local, pl, src + right_dir * 35.0f, eyes_max + right_dir * 35.0f, 0 /* pretend player would be there */ );
+	auto dmg_feet = autowall::dmg ( g::local, pl, src, rec.m_origin + vec3_t ( 0.0f, 0.0f, 2.0f ), 0 /* pretend player would be there */ );
 
 	/* will we most likely not do damage at all? then let's cancel target selection altogether i guess */
-	if ( !dmg_center && !dmg_left && !dmg_right )
+	if ( !dmg_center && !dmg_left && !dmg_right && !dmg_feet )
 		return false;
 
 	std::deque< int > hitboxes { };
@@ -1195,9 +1179,8 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	if ( active_config.scan_pelvis )
 		hitboxes.push_back( hitbox_pelvis );
 
-	if ( active_config.scan_chest ) {
+	if ( active_config.scan_chest )
 		hitboxes.push_back( hitbox_upper_chest );
-	}
 
 	if ( active_config.scan_head )
 		hitboxes.push_back( hitbox_head );
@@ -1306,7 +1289,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	const auto backup_maxs = pl->maxs ( );
 
 	pl->origin ( ) = rec.m_origin;
-	pl->set_abs_origin ( rec.m_origin );
+	//pl->set_abs_origin ( rec.m_origin );
 	pl->bone_cache ( ) = dmg_scan_matrix.data();
 	pl->mins ( ) = rec.m_mins;
 	pl->maxs ( ) = rec.m_maxs;
@@ -1331,7 +1314,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			const auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ) /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
+			auto dmg = autowall::dmg ( g::local, pl, src, point, -1 ); /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
 			//dbg_print ( _("calculated damage: %.1f"), dmg );
 
 			if ( dmg > best_points_damage ) {
@@ -1351,7 +1334,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* if we meet min dmg requirement or shot will be fatal, we can immediately break out */
 		if ( should_baim
 			&& hitbox != hitbox_head && hitbox != hitbox_neck
-			&& best_dmg_tmp >= ent->health ( ) )
+			&& /*( ( exploits::has_shifted || exploits::in_exploit ) ? best_dmg_tmp * 2.0f : best_dmg_tmp )*/ best_dmg_tmp >= ent->health ( ) )
 			break;
 
 		//if ( best_dmg_tmp > min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
@@ -1369,18 +1352,15 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	/* restore player data to what it was before so we dont mess up anything */
 	pl->origin ( ) = backup_origin;
-	pl->set_abs_origin ( backup_abs_origin );
+	//pl->set_abs_origin ( backup_abs_origin );
 	pl->bone_cache ( ) = backup_bone_cache;
 	pl->mins ( ) = backup_mins;
 	pl->maxs ( ) = backup_maxs;
-
-	VM_TIGER_BLACK_END
 
 	return best_dmg_tmp > 0.0f;
 }
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg ) {
-	VM_TIGER_BLACK_START
 	constexpr int SIMILAR_RECORD_THRESHOLD = 0;
 
 	if ( !ent->valid ( ) )
@@ -1394,44 +1374,44 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 
 	const auto shot = anims::get_onshot( recs );
 
-	std::deque < anims::anim_info_t > best_recs { };
+	std::deque < anims::anim_info_t* > best_recs { };
 
 	/* prefer onshot */
 	if ( shot ) {
 		best_recs.push_back( shot.value ( ) );
 
 		if ( !active_config.onshot_only ) {
-			if ( cs::time2ticks( shot.value ( ).m_simtime ) != cs::time2ticks( recs.back ( ).m_simtime ) )
+			if ( cs::time2ticks( shot.value ( )->m_simtime ) != cs::time2ticks( recs.back ( )->m_simtime ) )
 				best_recs.push_back ( recs.back ( ) );
 		}
 	}
 	else if ( !active_config.onshot_only ) {
 		if ( recs.empty ( ) ) {
-			best_recs.push_back ( simulated_rec.value() );
+			best_recs.push_back ( simulated_rec.value ( ) );
 		}
 		else {
 			float highest_speed = 0.0f;
 			float highest_sideways_amount = 0.0f;
 
-			const anims::anim_info_t* newest_rec = &recs.front ( );
-			const anims::anim_info_t* oldest_rec = &recs.back ( );
-			const anims::anim_info_t* speed_rec = nullptr;
-			const anims::anim_info_t* angdiff_rec = nullptr;
+			anims::anim_info_t* newest_rec = recs.front ( );
+			anims::anim_info_t* oldest_rec = recs.back ( );
+			anims::anim_info_t* speed_rec = nullptr;
+			anims::anim_info_t* angdiff_rec = nullptr;
 
 			const auto at_target_yaw = cs::normalize ( cs::calc_angle ( g::local->eyes ( ), ent->eyes ( ) ).y );
 
 			for ( auto& rec : recs ) {
-				const auto speed2d = rec.m_vel.length_2d ( );
+				const auto speed2d = rec->m_vel.length_2d ( );
 
-				if ( !!( rec.m_flags & flags_t::on_ground ) && speed2d > highest_speed ) {
-					speed_rec = &rec;
+				if ( !!( rec->m_flags & flags_t::on_ground ) && speed2d > highest_speed ) {
+					speed_rec = rec;
 					highest_speed = speed2d;
 				}
 
-				const auto ang_diff = abs ( cs::normalize ( at_target_yaw - cs::normalize ( rec.m_angles.y ) ) );
+				const auto ang_diff = abs ( cs::normalize ( at_target_yaw - cs::normalize ( rec->m_angles.y ) ) );
 
 				if ( ang_diff > highest_sideways_amount ) {
-					angdiff_rec = &rec;
+					angdiff_rec = rec;
 					highest_sideways_amount = ang_diff;
 				}
 			}
@@ -1447,7 +1427,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 				if ( oldest_rec && abs ( cs::time2ticks ( oldest_rec->m_simtime ) - cs::time2ticks ( angdiff_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 					oldest_rec = nullptr;
 
-				best_recs.push_back ( *angdiff_rec );
+				best_recs.push_back ( angdiff_rec );
 			}
 
 			if ( speed_rec ) {
@@ -1457,14 +1437,14 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 				if ( oldest_rec && abs ( cs::time2ticks ( oldest_rec->m_simtime ) - cs::time2ticks ( speed_rec->m_simtime ) ) <= SIMILAR_RECORD_THRESHOLD )
 					oldest_rec = nullptr;
 
-				best_recs.push_back ( *speed_rec );
+				best_recs.push_back ( speed_rec );
 			}
 
 			if ( newest_rec && oldest_rec && cs::time2ticks ( newest_rec->m_simtime ) != cs::time2ticks ( oldest_rec->m_simtime ) )
-				best_recs.push_back ( *newest_rec );
+				best_recs.push_back ( newest_rec );
 
 			if ( oldest_rec )
-				best_recs.push_back ( *oldest_rec );
+				best_recs.push_back ( oldest_rec );
 
 			if ( simulated_rec )
 				best_recs.push_back ( simulated_rec.value ( ) );
@@ -1476,13 +1456,11 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, int& hitb
 
 	/* scan for a good shot in one of the records we have */
 	for ( auto& record : best_recs ) {
-		if ( hitscan( ent, record, pos_out, hitbox_out, best_dmg ) ) {
-			rec_out = record;
+		if ( hitscan( ent, *record, pos_out, hitbox_out, best_dmg ) ) {
+			rec_out = *record;
 			break;
 		}
 	}
-
-	VM_TIGER_BLACK_END
 }
 
 #pragma optimize( "2", off )

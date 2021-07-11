@@ -11,6 +11,8 @@
 #include "../menu/options.hpp"
 #include "../features/prediction.hpp"
 
+#include "../features/exploits.hpp"
+
 #include "../features/skinchanger.hpp"
 
 #include <span>
@@ -49,35 +51,6 @@ void run_preserve_death_notices( ) {
 	}
 }
 
-void run_radar_esp ( ) {
-	const auto radar_hud = find_hud_element ( _ ( "CCSGO_HudRadar" ) );
-
-	if ( !radar_hud )
-		return;
-
-	struct radar_player_t {
-		vec3_t pos; //0x0000
-		vec3_t angle; //0x000C
-		vec3_t spotted_map_angle_related; //0x0018
-		uint32_t tab_related; //0x0024
-		PAD ( 12 );
-		float spotted_time; //0x0034
-		float spotted_fraction; //0x0038
-		float time; //0x003C
-		PAD ( 4 );
-		int player_index; //0x0044
-		int entity_index; //0x0048
-		char pad_0x004C [ 0x4 ]; //0x004C
-		int health; //0x0050
-		char name [ 32 ]; //0x785888
-		char pad_0x0074 [ 0x75 ]; //0x0074
-		bool spotted; //0x00E9
-		char pad_0x00EA [ 0x8A ]; //0x00EA
-	};
-
-	auto radar_players = ( radar_player_t* ) ( reinterpret_cast<uintptr_t>( radar_hud ) - 20 );
-}
-
 void set_aspect_ratio( ) {
 	static auto& aspect_ratio = options::vars [ _( "visuals.other.aspect_ratio" ) ].val.f;
 	static auto& prop_color = options::vars [ _( "visuals.other.prop_color" ) ].val.c;
@@ -92,6 +65,90 @@ void set_aspect_ratio( ) {
 }
 
 decltype( &hooks::frame_stage_notify ) hooks::old::frame_stage_notify = nullptr;
+
+bool precache_model ( const char* mdl_name ) {
+	const auto mdl_precache_table = cs::i::client_string_table_container->find_table ( _("modelprecache" ));
+
+	if ( mdl_precache_table ) {
+		cs::i::mdl_info->find_or_load_mdl ( mdl_name );
+
+		if ( mdl_precache_table->add_string ( false, mdl_name ) == -1 )
+			return false;
+	}
+
+	return true;
+}
+
+void player_model ( int stage ) {
+	static bool was_in_game = false;
+	static int backup_player_mdl_idx = 0;
+
+	if ( cs::i::engine->is_in_game ( ) && !was_in_game ) {
+		precache_model ( _ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" ) );
+	}
+
+	was_in_game = cs::i::engine->is_in_game ( );
+
+	if ( !g::local || !g::local->alive ( ) ) {
+		backup_player_mdl_idx = 0;
+		return;
+	}
+
+	if ( stage != 5 )
+		return;
+
+	/* player model changer */
+	std::vector<std::string> models {
+		_ ( "Default" ),
+		_ ( "models/player/custom_player/legacy/ctm_fbi_variantb.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_fbi_variantf.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_fbi_variantg.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_fbi_varianth.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_sas_variantf.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_st6_variante.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_st6_variantg.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_st6_varianti.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_st6_variantk.mdl" ),
+		_ ( "models/player/custom_player/legacy/ctm_st6_variantm.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_balkan_variantf.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_balkan_variantg.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_balkan_varianth.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_balkan_varianti.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_balkan_variantj.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_leet_variantf.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_leet_variantg.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_leet_varianth.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_leet_varianti.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_phoenix_variantf.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_phoenix_variantg.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_phoenix_varianth.mdl" ),
+		_ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" )
+	};
+	
+	/* force update if player model changes */
+	static auto& player_model_t = options::vars [ _ ( "skins.models.player_model_t" ) ].val.i;
+	static auto& player_model_ct = options::vars [ _ ( "skins.models.player_model_ct" ) ].val.i;
+	static auto last_player_model_t = player_model_t;
+	static auto last_player_model_ct = player_model_ct;
+
+	if ( player_model_t != last_player_model_t || player_model_ct != last_player_model_ct ) {
+		cs::i::client_state->delta_tick ( ) = -1;
+		last_player_model_t = player_model_t;
+		last_player_model_ct = player_model_ct;
+	}
+
+	if ( !backup_player_mdl_idx )
+		backup_player_mdl_idx = g::local->mdl_idx ( );
+
+	std::string& model = models [ g::local->team ( ) == 2 ? player_model_t : player_model_ct ];
+
+	const auto new_idx = model == _ ( "Default" ) ? backup_player_mdl_idx : cs::i::mdl_info->mdl_idx ( model.c_str ( ) );
+
+	g::local->set_model_idx ( new_idx );
+
+	if ( const auto ragdoll = cs::i::ent_list->get_by_handle<entity_t*> ( g::local->ragdoll_handle ( ) ) )
+		ragdoll->set_model_idx ( new_idx );
+}
 
 void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	//dbg_print ( fmt::format("stage: {}", stage).c_str());
@@ -117,6 +174,11 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		g::cvars::cl_cmdrate->set_value ( rate );
 	}
 
+	if ( stage == 4 /* FRAME_NET_UPDATE_END */ )
+		g::server_tick = cs::time2ticks ( cs::i::globals->m_curtime );
+
+	exploits::update_incoming_sequences ( stage );
+
 	set_aspect_ratio ( );
 
 	security_handler::update( );
@@ -125,35 +187,37 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	vec3_t old_viewpunch;
 	
 	/* reset resolver data when not in game */
-	if ( !cs::i::engine->is_in_game ( ) || !cs::i::engine->is_connected() ) {
+	if ( !cs::i::engine->is_in_game ( ) || !cs::i::engine->is_connected ( ) ) {
+		/* reset resolver */
 		anims::resolver::rdata::new_resolve.fill ( false );
+		anims::resolver::rdata::was_moving.fill ( false );
+		anims::resolver::rdata::prefer_edge.fill ( false );
+		anims::resolver::rdata::last_good_weight.fill ( false );
+		anims::resolver::rdata::last_bad_weight.fill ( false );
+		anims::resolver::rdata::resolved_jitter.fill ( false );
+		anims::resolver::rdata::jitter_sync.fill ( 0 );
 		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_run.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_jitter1.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_jitter2.fill ( anims::desync_side_t::desync_middle );
+
+		/* reset fake ping */
+		exploits::last_incoming_seq_num = 0;
+		
+		if ( !exploits::incoming_seqs.empty ( ) )
+			exploits::incoming_seqs.clear ( );
 	}
 
-	/* remove event delay */ {
-		static auto event_off = pattern::search ( _ ( "engine.dll" ), _ ( "8B BB ? ? ? ? 85 FF 0F 84" ) ).add ( 2 ).deref ( ).get<uint32_t> ( );
+	if ( g::local && g::local->alive ( ) && stage == 4 ) {
+		if ( features::prediction::vel_modifier < 1.0f )
+			features::prediction::vel_modifier = std::clamp ( features::prediction::vel_modifier + cs::ticks2time( 1 ) * 0.4f, 0.0f, 1.0f );
 
-		if ( cs::i::client_state )
-			for ( auto ei = *reinterpret_cast< void** >( uintptr_t ( cs::i::client_state ) + event_off ); ei; ei = *reinterpret_cast< void** >( uintptr_t ( ei ) + 56 ) )
-				*reinterpret_cast< float* >( uintptr_t ( ei ) + 4 ) = 0.0f;
-	}
-
-	if ( g::local && cs::i::client_state ) {
-		static auto last_cmd_time = cs::i::client_state->next_cmd_time ( );
-		static auto last_ack_cmd = cs::i::client_state->last_command_ack ( );
-
-		if ( last_cmd_time != cs::i::client_state->next_cmd_time ( )
-			|| last_ack_cmd != cs::i::client_state->last_command_ack ( ) ) {
-			if ( /*g::local->velocity_modifier ( ) < features::prediction::vel_modifier*/ g::local->velocity_modifier ( ) != features::prediction::vel_modifier ) {
-				*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
-				*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
-			}
-
-			features::prediction::vel_modifier = g::local->velocity_modifier ( );
-
-			last_cmd_time = cs::i::client_state->next_cmd_time ( );
-			last_ack_cmd = cs::i::client_state->last_command_ack ( );
+		if ( g::local->velocity_modifier ( ) < features::prediction::vel_modifier ) {
+			*reinterpret_cast< bool* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x24 ) = true;
+			*reinterpret_cast< int* > ( reinterpret_cast< uintptr_t >( cs::i::pred ) + 0x1C ) = 0;
 		}
+
+		features::prediction::vel_modifier = g::local->velocity_modifier ( );
 	}
 
 	if ( cs::i::engine->is_in_game( ) && cs::i::engine->is_connected( ) ) {
@@ -282,8 +346,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			features::skinchanger::run ( );
 		);
 
-		if ( g::local )
-			features::prediction::fix_netvars ( g::local->tick_base ( ) );
+		//if ( g::local )
+		//	features::prediction::fix_netvars ( cs::i::client_state->last_command_ack( ) );
 
 		features::prediction::fix_viewmodel ( );
 	}
@@ -309,6 +373,8 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	//		}
 	//	}
 	//}
+
+	player_model ( stage );
 
 	old::frame_stage_notify( REG_OUT, stage );
 

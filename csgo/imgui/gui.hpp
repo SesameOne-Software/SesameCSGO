@@ -35,5 +35,7 @@ namespace ImGui {
 		bool InventoryBegin ( int rows, int columns );
 		bool InventoryButton ( const char* label, features::skinchanger::c_skin* skin = nullptr );
 		void InventoryEnd ( );
+
+        void reset_anims ( );
     }
 }

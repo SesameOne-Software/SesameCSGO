@@ -12,11 +12,11 @@ bool __fastcall hooks::in_prediction( REG ) {
 	if ( !cs::i::engine->is_in_game( ) || !cs::i::engine->is_connected( ) )
 		return old::in_prediction( REG_OUT );
 
-	if ( _ReturnAddress( ) == return_to_maintain_sequence_transitions && g::local->valid( ) )
-		return true;
+	if ( _ReturnAddress( ) == return_to_maintain_sequence_transitions )
+		return false;
 
-	if ( _ReturnAddress( ) == return_to_play_step_sound && hooks::prediction::disable_sounds )
-		return true;
+	//if ( _ReturnAddress( ) == return_to_play_step_sound && hooks::prediction::disable_sounds )
+	//	return true;
 
 	return old::in_prediction( REG_OUT );
 }

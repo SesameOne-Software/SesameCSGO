@@ -26,31 +26,21 @@ std::vector< std::string > split( std::string to_split, std::string delimeter ) 
 }
 
 bool netvars::init( ) {
-	// sanity check on client->
-		if ( !cs::i::client ) {
-				return false;
-	}
+	if ( !cs::i::client )
+		return false;
 
-	// grab linked list.
 	auto list = cs::i::client->get_all_classes( );
 
-	if ( !list ) {
-		
-			return false;
-	}
+	if ( !list )
+		return false;
 
-	//CLEAR_START
-	// iterate list of netvars.
 	for ( ; list != nullptr; list = list->m_next )
 		store_table( list->m_recv_table->m_net_table_name, list->m_recv_table );
-	//CLEAR_END
 
 	return true;
 }
 
 void netvars::store_table( const std::string& name, recv_table_t* table, std::size_t offset ) {
-	MUTATE_START
-	// iterate props
 	for ( int i { }; i < table->m_num_props; ++i ) {
 		auto prop = &table->m_props [ i ];
 		auto child = prop->m_data_table;
@@ -66,16 +56,12 @@ void netvars::store_table( const std::string& name, recv_table_t* table, std::si
 			m_offsets [ name ][ prop->m_var_name ].m_offset = static_cast< size_t >( prop->m_offset + offset );
 		}
 	}
-	
-	MUTATE_END
 }
 
-// get client id.
 int netvars::get_client_id( const std::string& network_name ) {
 	return m_client_ids [ network_name ];
 }
 
-// get netvar offset.
 int netvars::get( const std::string& table, const std::string& prop ) {
 	return m_offsets [ table ][ prop ].m_offset;
 }

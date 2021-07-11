@@ -10,7 +10,6 @@ uint64_t current_plist_player = 0;
 uint64_t player_to_steal_tag_from = 0;
 
 void features::clantag::run( ucmd_t* ucmd ) {
-	VM_TIGER_BLACK_START
 	static auto& clantag = options::vars [ _ ( "misc.effects.clantag" ) ].val.b;
 	static auto& clantag_animation = options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i;
 	static auto& clantag_text = options::vars [ _("misc.effects.clantag_text")].val.s;
@@ -21,10 +20,11 @@ void features::clantag::run( ucmd_t* ucmd ) {
 	using fn = int( __fastcall* )( const char*, const char* );
 	static auto change_clantag = pattern::search( _( "engine.dll" ), _( "53 56 57 8B DA 8B F9 FF 15" ) ).get< fn >( );
 
-		/* remove players if they leave the game or do no longer exist */
-		bool found_current_plist_player = false;
-		bool found_player_to_steal_tag_from = false;
-		int player_to_steal_tag_from_idx = 0;
+	/* remove players if they leave the game or do no longer exist */
+	bool found_current_plist_player = false;
+	bool found_player_to_steal_tag_from = false;
+	int player_to_steal_tag_from_idx = 0;
+
 	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 		const auto ent = cs::i::ent_list->get<player_t*> ( i );
 
@@ -61,13 +61,10 @@ void features::clantag::run( ucmd_t* ucmd ) {
 		return;
 	}
 
-	auto iter = static_cast< int >( cs::ticks2time(g::local->tick_base()) * 4.0f );
+	auto iter = g::server_tick * 4;
 	const std::string tag = clantag_text;
 
-	VM_TIGER_BLACK_END
-
 	if ( player_to_steal_tag_from_idx ) {
-		VM_TIGER_BLACK_START
 		const auto player_rsc = *reinterpret_cast< uintptr_t* > ( player_rsc_ptr );
 
 		if ( player_rsc ) {
@@ -87,39 +84,54 @@ void features::clantag::run( ucmd_t* ucmd ) {
 
 			last_tag = "";
 		}
-		VM_TIGER_BLACK_END
 	}
 	else {
 		switch ( clantag_animation ) {
 		case 0: {
-			VM_TIGER_BLACK_START
 			if ( last_tag != tag ) { change_clantag ( tag.c_str ( ), tag.c_str ( ) ); }
 			last_tag = tag;
-			VM_TIGER_BLACK_END
 		} break;
 		case 1: {
-			VM_TIGER_BLACK_START
 			auto marquee_tag = tag + _ ( "    " );
 			std::rotate ( marquee_tag.rbegin ( ), marquee_tag.rbegin ( ) + ( iter % ( tag.length ( ) - 1 + 4 ) ), marquee_tag.rend ( ) );
 			if ( last_tag != marquee_tag ) { change_clantag ( marquee_tag.c_str ( ), marquee_tag.c_str ( ) ); }
 			last_tag = marquee_tag;
-			VM_TIGER_BLACK_END
 		} break;
 		case 2: {
-			VM_TIGER_BLACK_START
 			auto dynamic_tag = tag;
 			iter %= tag.length ( ) + 4;
 			if ( iter < tag.length ( ) ) dynamic_tag [ iter ] = toupper ( dynamic_tag [ iter ] );
 			if ( last_tag != dynamic_tag ) { change_clantag ( dynamic_tag.c_str ( ), dynamic_tag.c_str ( ) ); }
 			last_tag = dynamic_tag;
-			VM_TIGER_BLACK_END
 		} break;
 		case 3: {
-			VM_TIGER_BLACK_START
 			const std::string tag = !( iter % 4 ) ? _ ( "❤" ) : _ ( "♡" );
 			if ( tag != last_tag ) { change_clantag ( tag.c_str ( ), tag.c_str ( ) ); }
 			last_tag = tag;
-			VM_TIGER_BLACK_END
+		} break;
+		case 4: {
+			static int prev_array_stage = 0;
+			static char tag_stages [ ] = {
+				0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0b,
+				0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
+				0x12, 0x13, 0x14, 0x15, 0x16
+			};
+
+			auto time = 0.3f / cs::i::globals->m_ipt;
+			auto iter = ( g::server_tick - 1 ) / ( int ) ( time + 0.5f ) % 30;
+			auto new_array_stage = tag_stages [ iter ];
+
+			if ( prev_array_stage != new_array_stage ) {
+				char gamesense [ 40 ] = { 0 };
+				strcpy ( gamesense, _("             gamesense                ") );
+
+				char* current_tag = &gamesense [ new_array_stage ];
+				current_tag [ 15 ] = '\0';
+				change_clantag ( current_tag, current_tag );
+				prev_array_stage = new_array_stage;
+
+				last_tag = current_tag;
+			}
 		} break;
 		}
 	}

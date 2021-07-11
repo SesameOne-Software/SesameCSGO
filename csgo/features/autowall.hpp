@@ -138,7 +138,7 @@ namespace autowall {
 		return ret;
 	}
 
-	inline bool trace_to_exit( trace_t* tr, player_t* src_entity, player_t* dst_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
+	inline bool trace_to_exit( trace_t* tr, player_t* src_entity, vec3_t start, vec3_t dir, trace_t* exit_tr ) {
 		vec3_t end;
 		float dist = 0.0f;
 		int first_contents = 0;
@@ -148,9 +148,8 @@ namespace autowall {
 		filter.m_skip = src_entity;
 
 		while ( dist <= 90.0f ) {
-			// GHETTO OPTIMIZATION
 			dist += 4.0f;
-			//dist += 6.0f;
+
 			start = start + dir * dist;
 
 			const auto point_contents = cs::i::trace->get_point_contents( start, mask_shot_hull | contents_hitbox, nullptr );
@@ -200,70 +199,104 @@ namespace autowall {
 		return false;
 	}
 
-	inline bool hbp( player_t* entity, player_t* dst_entity, weapon_info_t* wpn_data, fire_bullet_data_t& data ) {
-		if ( !entity->valid( ) || !wpn_data )
-			return false;
+	inline bool hbp( float& penetration, int& enter_material, bool& hit_grate, trace_t& tr, vec3_t& vecDir, surfacedata_t* pSurfaceData, float penetration_modifier, float damage_modifier, bool bDoEffects, int iDamageType, float pen_power, int& penetration_count, vec3_t& vec_src, float distance, float current_distance, float& current_damage, player_t* shooter ) {
+		const bool is_nodraw = tr.m_surface.m_flags & surf_nodraw;
 
-		trace_t trace_exit;
-		const auto enter_m_surface_data = cs::i::phys->surface( data.enter_trace.m_surface.m_surface_props );
+		if ( penetration_count == 0 && !hit_grate && !is_nodraw && enter_material != 'Y' && enter_material != 'G' )
+			return true;
 
-		const bool is_solid_m_surface = ( ( data.enter_trace.m_contents >> 3 ) & 1 );
-		const bool is_light_m_surface = ( ( data.enter_trace.m_surface.m_flags >> 7 ) & 1 );
+		if ( penetration <= 0.0f || penetration_count <= 0 )
+			return true;
 
-		float final_damage_modifier = 0.16f;
-		float combined_penetration_modifier = 0.0f;
+		vec3_t penetration_end;
+		trace_t exit_trace;
 
-		if ( !data.penetrate_count && !is_light_m_surface && !is_solid_m_surface && enter_m_surface_data->m_game.m_material != 89 ) {
-			if ( enter_m_surface_data->m_game.m_material != 71 )
-				return false;
-		}
+		if ( !trace_to_exit ( &tr, shooter, tr.m_endpos, vecDir, &exit_trace ) )
+			if ( ( cs::i::trace->get_point_contents ( tr.m_endpos, mask_shot_hull ) & mask_shot_hull ) == 0 )
+				return true;
 
-		if ( data.penetrate_count <= 0 || wpn_data->m_penetration <= 0.0f )
-			return false;
+		const auto exit_surface_data = cs::i::phys->surface ( exit_trace.m_surface.m_surface_props );
+		const auto exit_material = exit_surface_data->m_game.m_material;
 
-		if ( !trace_to_exit( &data.enter_trace, entity, dst_entity, data.enter_trace.m_endpos, data.direction, &trace_exit ) ) {
-			if ( !( cs::i::trace->get_point_contents( data.enter_trace.m_endpos, 0x600400B, nullptr ) & 0x600400B ) )
-				return false;
-		}
+		static auto sv_penetration_type = cs::i::cvar->find ( _ ( "sv_penetration_type" ) );
+		static auto ff_damage_reduction_bullets = cs::i::cvar->find ( _ ( "ff_damage_reduction_bullets" ) );
+		static auto ff_damage_bullet_penetration = cs::i::cvar->find ( _ ( "ff_damage_bullet_penetration" ) );
+		static auto mp_teammates_are_enemies = cs::i::cvar->find ( _ ( "mp_teammates_are_enemies" ) );
 
-		const auto exit_m_surface_data = cs::i::phys->surface( trace_exit.m_surface.m_surface_props );
+		if ( sv_penetration_type->get_int ( ) == 1 ) {
+			damage_modifier = 0.16f;
 
-		if ( enter_m_surface_data->m_game.m_material == 'Y' || enter_m_surface_data->m_game.m_material == 'G' ) {
-			combined_penetration_modifier = 3.0f;
-			final_damage_modifier = 0.05f;
-		}
-		else if ( is_light_m_surface || is_solid_m_surface ) {
-			combined_penetration_modifier = 1.0f;
-			final_damage_modifier = 0.16f;
+			if ( !hit_grate && !is_nodraw ) {
+				if ( enter_material == 'Y' ) {
+					penetration_modifier = 3.0f;
+					damage_modifier = 0.05f;
+				}
+				else if ( enter_material != 'G' ) {
+					if ( enter_material == 'F' && ff_damage_reduction_bullets->get_float ( ) == 0.0
+						&& tr.m_hit_entity && reinterpret_cast< player_t* >( tr.m_hit_entity )->is_player ( ) && reinterpret_cast< player_t* >( tr.m_hit_entity )->team ( ) == shooter->team ( ) && !mp_teammates_are_enemies->get_bool ( ) ) {
+						penetration_modifier = ff_damage_bullet_penetration->get_float ( );
+
+						if ( penetration_modifier == 0.0f )
+							return true;
+					}
+					else
+						penetration_modifier = ( exit_surface_data->m_game.m_penetration_modifier + penetration_modifier ) * 0.5f;
+				}
+			}
+			else if ( enter_material != 'G' && enter_material != 'Y' ) {
+				penetration_modifier = 1.0f;
+			}
+
+			if ( enter_material == exit_material ) {
+				if ( exit_material == 'W' || exit_material == 'U' )
+					penetration_modifier = 3.0f;
+				else if ( exit_material == 'L' )
+					penetration_modifier = 2.0f;
+			}
+
+			const auto trace_distance = ( exit_trace.m_endpos - tr.m_endpos ).length ( );
+			const auto pen_mod = std::max< float > ( 0.0f, 1.0f / penetration_modifier );
+			const auto pen_wep_mod = std::max< float > ( 0.0f, ( 3.0f / pen_power ) * 1.25f ) * ( pen_mod * 3.0f ) + ( current_damage * damage_modifier );
+			const auto lost_damage = ( ( pen_mod * ( trace_distance * trace_distance ) ) / 24.0f ) + pen_wep_mod;
+
+			current_damage -= std::max< float > ( 0.0f, lost_damage );
+
+			if ( current_damage < 1.0f )
+				return true;
 		}
 		else {
-			combined_penetration_modifier = ( enter_m_surface_data->m_game.m_penetration_modifier + exit_m_surface_data->m_game.m_penetration_modifier ) * 0.5f;
-			final_damage_modifier = 0.16f;
+			if ( hit_grate || is_nodraw ) {
+				penetration_modifier = 1.0f;
+				damage_modifier = 0.99f;
+			}
+			else {
+				const auto exit_penetration_modifier = exit_surface_data->m_game.m_penetration_modifier;
+				const auto exit_damage_modifier = exit_surface_data->m_game.m_damage_modifier;
+
+				if ( exit_penetration_modifier < penetration_modifier )
+					penetration_modifier = exit_penetration_modifier;
+
+				if ( exit_damage_modifier < damage_modifier )
+					damage_modifier = exit_damage_modifier;
+			}
+
+			if ( enter_material == exit_material ) {
+				if ( exit_material == 'W' || exit_material == 'M' )
+					penetration_modifier *= 2.0f;
+			}
+
+			const auto trace_distance = ( exit_trace.m_endpos - tr.m_endpos ).length ( );
+
+			if ( trace_distance > pen_power * penetration_modifier )
+				return true;
+
+			current_damage *= damage_modifier;
 		}
 
-		if ( enter_m_surface_data->m_game.m_material == exit_m_surface_data->m_game.m_material ) {
-			if ( exit_m_surface_data->m_game.m_material == 'U' || exit_m_surface_data->m_game.m_material == 'W' )
-				combined_penetration_modifier = 3.0f;
-			else if ( exit_m_surface_data->m_game.m_material == 'L' )
-				combined_penetration_modifier = 2.0f;
-		}
+		vec_src = exit_trace.m_endpos;
+		penetration_count--;
 
-		const auto modifier = std::max< float >( 0.0f, 1.0f / combined_penetration_modifier );
-		auto lost_damage = std::max< float >( ( modifier * ( trace_exit.m_endpos - data.enter_trace.m_endpos ).length_sqr( ) * 0.041666f ) + ( ( data.current_damage * final_damage_modifier ) + ( std::max< float >( 3.75f / wpn_data->m_penetration, 0.0f ) * 3.0f * modifier ) ), 0.0f );
-
-		if ( lost_damage > data.current_damage )
-			return false;
-
-		if ( lost_damage > 0.0f )
-			data.current_damage -= lost_damage;
-
-		if ( data.current_damage < 1.0f )
-			return false;
-
-		data.src = trace_exit.m_endpos;
-		data.penetrate_count--;
-
-		return true;
+		return false;
 	}
 
 	inline bool is_armored( player_t* player, int armor, int hitgroup ) {
@@ -274,14 +307,14 @@ namespace autowall {
 
 		if ( armor > 0 ) {
 			switch ( hitgroup ) {
-				case ( int )0:
-				case ( int )2:
-				case ( int )3:
-				case ( int )4:
-				case ( int )5:
+				case hitgroup_generic:
+				case hitgroup_chest:
+				case hitgroup_stomach:
+				case hitgroup_leftarm:
+				case hitgroup_rightarm:
 					result = true;
 					break;
-				case ( int )1:
+				case hitgroup_head:
 					result = player->has_helmet( );
 					break;
 			}
@@ -333,7 +366,7 @@ namespace autowall {
 			data.current_damage *= pow ( weapon_data->m_range_modifier, data.trace_length / 500.0f );
 
 			if ( data.enter_trace.m_hit_entity
-				&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3)
+				&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3 )
 				&& hitgroup == -1
 				&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
 				if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
@@ -345,7 +378,13 @@ namespace autowall {
 				}
 			}
 
-			if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f || !hbp( entity, dst_entity, weapon_data, data ) )
+			float penetration = weapon_data->m_penetration;
+			surfacedata_t* surface_data = cs::i::phys->surface ( data.enter_trace.m_surface.m_surface_props );
+			int enter_material = surface_data->m_game.m_material;
+			bool hit_grate = ( data.enter_trace.m_contents & contents_grate ) != 0;
+
+			if ( data.trace_length > 3000.0f || enter_surface_penetration_modifier < 0.1f
+				|| hbp( penetration, enter_material, hit_grate, data.enter_trace, data.direction, surface_data, weapon_data->m_range_modifier, weapon_data->m_range_modifier, false, 0, surface_data->m_game.m_penetration_modifier, data.penetrate_count, data.src, trace_len, data.trace_length, data.current_damage, entity ) )
 				return false;
 		}
 

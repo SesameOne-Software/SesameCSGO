@@ -45,17 +45,19 @@ public:
 
 class net_channel_t {
 public:
-	char m_pad_0000 [ 20 ];
-	bool m_is_processing_messages;
-	bool m_should_delete;
-	char m_pad_0016 [ 2 ];
-	int m_out_sequence_nr;
-	int m_in_sequence_nr;
-	int m_out_sequence_nr_ack;
-	int m_out_reliable_state_count;
-	int m_in_reliable_state_count;
-	int m_choked_packets;
-	char m_pad_0030 [ 1044 ];
+	PAD ( 23 );
+	bool should_delete;
+	int out_seq_nr;
+	int in_seq_nr;
+	int out_seq_nr_ack;
+	int out_reliable_state;
+	int in_reliable_state;
+	int choked_packets;
+
+	int send_datagram ( void* datagram ) {
+		using send_datagram_fn = int ( __thiscall* )( void*, void* );
+		return vfunc< send_datagram_fn > ( this, 46 )( this, datagram );
+	}
 };
 
 class c_clientstate {
@@ -84,8 +86,12 @@ public:
 		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x174 );
 	}
 
+	uint32_t& cur_seq ( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
+	}
+
 	float& next_cmd_time( ) {
-		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
+		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x100 );
 	}
 
 	uint32_t& out_seq_num( ) {

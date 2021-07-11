@@ -590,7 +590,19 @@
     <ClInclude Include="hooks\draw_cube_overlay.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="hooks\get_client_interp_amount.hpp">
+    <ClInclude Include="sdk\network_string_table_container.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\calc_view.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\adjust_interp_amount.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\post_network_data_received.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\packet_start.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -856,7 +868,16 @@
     <ClCompile Include="hooks\draw_cube_overlay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\get_client_interp_amount.cpp">
+    <ClCompile Include="hooks\calc_view.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\adjust_interp_amount.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\post_network_data_received.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\packet_start.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

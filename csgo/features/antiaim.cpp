@@ -6,6 +6,8 @@
 #include "autowall.hpp"
 #include "../menu/options.hpp"
 
+#include "esp.hpp"
+
 #include "exploits.hpp"
 
 bool features::antiaim::antiaiming = false;
@@ -75,11 +77,22 @@ player_t* looking_at( ) {
 		if ( !pl || !pl->is_player ( ) || !pl->alive ( ) || pl->team ( ) == g::local->team ( ) )
 			continue;
 
-		auto angle_to = cs::calc_angle ( g::local->origin ( ), pl->origin ( ) );
+		auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
+			auto dormant_time = std::max< float > ( 9.0f/*esp_fade_time*/, 0.1f );
+			return ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ), 0.0f, dormant_time ) ) : std::fabsf ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
+		};
+
+		int box_alpha = 0;
+		if ( !features::esp::esp_data [ i ].m_dormant )
+			box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_first_seen, 0.6f, true );
+		else
+			box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_last_seen, 2.0f );
+
+		auto angle_to = cs::calc_angle ( g::local->origin ( ), features::esp::esp_data [ i ].m_pos );
 		cs::clamp ( angle_to );
 		auto fov = cs::calc_fov ( angle_to, angs );
 
-		if ( fov < best_fov ) {
+		if ( box_alpha > 0 && fov < best_fov ) {
 			ret = pl;
 			best_fov = fov;
 		}
@@ -100,7 +113,7 @@ int find_freestand_side( player_t* pl, float range ) {
 	bool hit_wall = false;
 
 	for ( float i = 0.0f; i < cs::pi * 2.0f; i += cs::pi * 0.25f ) {
-		vec3_t location ( src.x + cos ( i ) * 35.0f, src.y + sin ( i ) * 35.0f, src.z );
+		vec3_t location ( src.x + cos ( i ) * 45.0f, src.y + sin ( i ) * 45.0f, src.z );
 
 		ray_t ray;
 		trace_t tr;
@@ -125,8 +138,7 @@ int find_freestand_side( player_t* pl, float range ) {
 
 int ducked_ticks = 0;
 
-void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) {
-	VM_TIGER_BLACK_START
+void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, bool was_shooting ) {
 	/* toggle */
 	static auto& air = options::vars [ _( "antiaim.air.enabled" ) ].val.b;
 	static auto& move = options::vars [ _( "antiaim.moving.enabled" ) ].val.b;
@@ -317,13 +329,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		if ( !features::ragebot::active_config.dt_enabled || !utils::keybind_active( features::ragebot::active_config.dt_key, features::ragebot::active_config.dt_key_mode ) )
 			final_shift_amount_max = 0;
 
-		/* dont shift tickbase with revolver */
-		if ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) && ( g::local->weapon( )->item_definition_index( ) == weapons_t::revolver || g::local->weapon( )->data( )->m_type == 0 || g::local->weapon( )->data( )->m_type >= 7 ) )
-			final_shift_amount_max = 0;
-
 		/* amount of ticks to shift increased */
 		if ( final_shift_amount_max > last_final_shift_amount )
-			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, cs::time2ticks ( std::max<float>( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f, 0.100f ) ) );
+			exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, 0.0f );
 
 		last_final_shift_amount = final_shift_amount_max;
 
@@ -346,8 +354,11 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 		g::send_packet = cs::i::client_state->choked( ) >= max_lag;
 
-		if ( !!(g::local->flags( ) & flags_t::on_ground) && !aa::was_on_ground && g::local->weapon( )->item_definition_index( ) != weapons_t::revolver )
+		if ( !!(g::local->flags( ) & flags_t::on_ground) && !aa::was_on_ground && g::local->weapon( )->item_definition_index( ) != weapons_t::revolver && cs::i::client_state->choked ( ) < max_lag )
 			g::send_packet = false;
+
+		if ( exploits::will_shift || was_shooting )
+			g::send_packet = true;
 
 		aa::was_on_ground = !!(g::local->flags( ) & flags_t::on_ground);
 
@@ -380,6 +391,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 			reached_choke_limit = false;
 			ducked_ticks = 0;
 			aa::was_fd = false;
+
+			if ( features::ragebot::active_config.dt_enabled && utils::keybind_active ( features::ragebot::active_config.dt_key, features::ragebot::active_config.dt_key_mode ) )
+				exploits::force_recharge ( features::ragebot::active_config.max_dt_ticks, 0.0f );
 		}
 
 		auto approach_speed = [ & ] ( float target_speed ) {
@@ -434,15 +448,20 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		aa::flip = !aa::flip;
 
 	const auto pressing_use = !!( ucmd->m_buttons & buttons_t::use ) && g::local->weapon ( ) && g::local->weapon ( )->item_definition_index ( ) != weapons_t::c4;
+	const auto should_shoot = ( exploits::can_shoot ( ) && !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) );
 
 	if ( !g::local->valid( )
 		|| g::local->movetype( ) == movetypes_t::noclip
 		|| g::local->movetype( ) == movetypes_t::ladder
 		|| !g::local->weapon( )
 		|| !g::local->weapon( )->data( )
-		|| ( exploits::can_shoot ( ) && !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) )
+		|| should_shoot
 		|| g::round == round_t::starting ) {
 		antiaiming = false;	
+
+		if ( should_shoot && g::local && g::local->alive() && !aa::was_fd )
+			g::send_packet = true;
+
 		return;
 	}
 
@@ -495,8 +514,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 		}
 	};
 
-	VM_TIGER_BLACK_END
-
 	/* manage antiaim */ {
 		if ( !( g::local->flags( ) & flags_t::on_ground ) ) {
 			if ( air ) {
@@ -526,7 +543,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_air ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_air );
 
@@ -569,7 +585,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += fmod( cs::i::globals->m_curtime * rotation_range_air * rotation_speed_air, rotation_range_air ) - rotation_range_air * 0.5f;
 
 				antiaiming = true;
-				VM_TIGER_BLACK_END
 			}
 			else {
 				antiaiming = false;
@@ -603,7 +618,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_slow_walk ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_slow_walk );
 
@@ -646,7 +660,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += fmod( cs::i::globals->m_curtime * rotation_range_slow_walk * rotation_speed_slow_walk, rotation_range_slow_walk ) - rotation_range_slow_walk * 0.5f;
 
 				antiaiming = true;
-				VM_TIGER_BLACK_END
 			}
 			else if ( move ) {
 				if ( !pressing_use ) {
@@ -675,7 +688,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					}
 				}
 
-				VM_TIGER_BLACK_START
 				if ( target_player && anti_freestand_prediction_move ) {
 					const auto desync_side = find_freestand_side( target_player, auto_direction_range_move );
 
@@ -718,7 +730,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 					ucmd->m_angs.y += fmod( cs::i::globals->m_curtime * rotation_range_move * rotation_speed_move, rotation_range_move ) - rotation_range_move * 0.5f;
 
 				antiaiming = true;
-				VM_TIGER_BLACK_END
 			}
 			else {
 				antiaiming = false;
@@ -751,7 +762,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 				}
 			}
 
-			VM_TIGER_BLACK_START
 			if ( target_player && anti_freestand_prediction_stand ) {
 				const auto desync_side = find_freestand_side( target_player, auto_direction_range_stand );
 
@@ -761,7 +771,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 			if ( anti_bruteforce_stand && target_player )
 				desync_amnt = ( anims::shot_count [ target_player->idx( ) ] % 2 ) ? -desync_amnt : desync_amnt;
-			VM_TIGER_BLACK_END
+
 			if ( desync_stand ) {
 				auto selected_desync_type = 0;
 
@@ -772,13 +782,12 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 				switch ( selected_desync_type ) {
 					case 0: /* real around fake */ {
-						VM_TIGER_BLACK_START
-							if ( g::send_packet ) {
-								/* micro movements */
-								const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
-								old_fmove += aa::move_flip ? -move_amount : move_amount;
-								aa::move_flip = !aa::move_flip;
-							}
+						if ( g::send_packet ) {
+							/* micro movements */
+							const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
+							old_fmove += aa::move_flip ? -move_amount : move_amount;
+							aa::move_flip = !aa::move_flip;
+						}
 
 						static float last_update_time = cs::i::globals->m_curtime;
 
@@ -798,10 +807,8 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 
 							ucmd->m_angs.y += desync_side_stand ? -desync_amnt : desync_amnt;
 						}
-						VM_TIGER_BLACK_END
 					}break;
 					case 1: /* fake real around */ {
-						VM_TIGER_BLACK_START
 						if ( jitter_stand ) {
 							/* go 180 from update location to trigger 979 activity */
 							if ( lby::in_update || !g::send_packet ) {
@@ -825,30 +832,25 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove ) 
 								ucmd->m_angs.y += copysignf( fabsf( desync_amnt ) * 110.0f, desync_side_stand ? -desync_amnt : desync_amnt );
 							}
 						}
-						VM_TIGER_BLACK_END
 					}break;
 				}
-
-				VM_TIGER_BLACK_START
-				if ( center_real_stand ) {
-					if ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f )
-						desync_amnt *= desync_amount_stand / 30.0f;
-					else
-						desync_amnt *= desync_amount_inverted_stand / 30.0f;
-
-					ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount( ) : -g::local->desync_amount( ) ) * abs ( desync_amnt / 120.0f ) * 0.5f;
-				}
-				VM_TIGER_BLACK_END
 			}
 
-			VM_TIGER_BLACK_START
+			if ( desync_stand && center_real_stand ) {
+				if ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f )
+					desync_amnt *= desync_amount_stand / 60.0f;
+				else
+					desync_amnt *= desync_amount_inverted_stand / 60.0f;
+
+				ucmd->m_angs.y += ( ( ( desync_side_stand ? desync_amnt : -desync_amnt ) > 0.0f ) ? g::local->desync_amount ( ) : -g::local->desync_amount ( ) ) * abs ( desync_amnt / 120.0f ) * 0.5f;
+			}
+
 			ucmd->m_angs.y += aa::flip ? -jitter_amount_stand : jitter_amount_stand;
 
 			if ( rotation_range_stand )
 				ucmd->m_angs.y += fmod( cs::i::globals->m_curtime * rotation_range_stand * rotation_speed_stand, rotation_range_stand ) - rotation_range_stand * 0.5f;
 
 			antiaiming = true;
-			VM_TIGER_BLACK_END
 		}
 		else {
 			antiaiming = false;

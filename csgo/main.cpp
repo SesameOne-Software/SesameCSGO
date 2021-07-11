@@ -46,20 +46,25 @@ extern bool download_config_code;
 
 std::string last_config_user;
 
-void do_heartbeat( ) {
-	while ( true ) {
-		std::this_thread::sleep_for( std::chrono::seconds( ph_heartbeat::PH_SECONDS_INTERVAL ) );
+unsigned __stdcall do_heartbeat( void* data ) {
+	OBF_BEGIN;
 
-		ph_heartbeat::send_heartbeat( );
-	}
+	WHILE ( true ) {
+		std::this_thread::sleep_for ( std::chrono::seconds ( ph_heartbeat::PH_SECONDS_INTERVAL ) );
+
+		ph_heartbeat::send_heartbeat ( );
+	} ENDWHILE;
+
+	RETURN ( 0 );
+	OBF_END;
 }
 
-int __stdcall init_proxy( void* data ) {
-	VM_SHARK_BLACK_START
+unsigned __stdcall init_proxy( void* data ) {
+	OBF_BEGIN;
 
 	/* wait for all modules to load */
-	while ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
-		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
+	WHILE ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
+		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) ); ENDWHILE;
 
 	/* initialize hack */
 	cs::init ( );
@@ -69,8 +74,8 @@ int __stdcall init_proxy( void* data ) {
 	
 	//security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
-	while ( !g::unload )
-		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
+	WHILE ( !g::unload )
+		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) ); ENDWHILE;
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
 
@@ -86,8 +91,8 @@ int __stdcall init_proxy( void* data ) {
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 200 ) ) );
 
-	if ( g::local )
-		g::local->animate( ) = true;
+	IF ( g::local )
+		g::local->animate ( ) = true; ENDIF;
 
 	cs::i::input->m_camera_in_thirdperson = false;
 
@@ -99,20 +104,19 @@ int __stdcall init_proxy( void* data ) {
 
 		load_named_sky( _( "nukeblank" ) );
 
-		for ( auto i = cs::i::mat_sys->first_material( ); i != cs::i::mat_sys->invalid_material( ); i = cs::i::mat_sys->next_material( i ) ) {
-			auto mat = cs::i::mat_sys->get_material( i );
+		int i = 0;
+		FOR ( i = cs::i::mat_sys->first_material ( ), i != cs::i::mat_sys->invalid_material ( ), i = cs::i::mat_sys->next_material ( i ) ) {
+			auto mat = cs::i::mat_sys->get_material ( i );
 
-			if ( !mat || mat->is_error_material( ) )
-				continue;
+			IF ( !mat || mat->is_error_material ( ) )
+				CONTINUE; ENDIF;
 
-			if ( strstr( mat->get_texture_group_name( ), _( "StaticProp" ) ) || strstr( mat->get_texture_group_name( ), _( "World" ) ) ) {
-				mat->color_modulate( 255, 255, 255 );
-				mat->alpha_modulate( 255 );
-			}
-		}
+			IF ( strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) ) || strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) ) {
+				mat->color_modulate ( 255, 255, 255 );
+				mat->alpha_modulate ( 255 );
+			} ENDIF;
+		} ENDFOR;
 	}
-
-	VM_SHARK_BLACK_END
 
 #ifndef DEV_BUILD
 	//mmunload( loader_info->hMod );
@@ -120,18 +124,21 @@ int __stdcall init_proxy( void* data ) {
 	FreeLibraryAndExitThread( HMODULE( data ), 0 );
 #endif
 
-	return 0;
+	RETURN( 0 );
+	OBF_END;
 }
 
 int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved ) {
-	if ( reason == DLL_PROCESS_ATTACH ) {
-		_beginthreadex( nullptr , 0 , reinterpret_cast< _beginthreadex_proc_type >( init_proxy ) , loader_data , 0 , nullptr );
-		
+	OBF_BEGIN;
+	IF ( reason == DLL_PROCESS_ATTACH ) {
+		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( init_proxy ), loader_data, 0, nullptr );
+
 #ifndef DEV_BUILD
-		ph_heartbeat::initialize_heartbeat( reinterpret_cast< ph_heartbeat::heartbeat_info* >( loader_data ) );
-		_beginthreadex( nullptr , 0 , reinterpret_cast< _beginthreadex_proc_type >( do_heartbeat ) , nullptr , 0 , nullptr );
+		ph_heartbeat::initialize_heartbeat ( reinterpret_cast< ph_heartbeat::heartbeat_info* >( loader_data ) );
+		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( do_heartbeat ), nullptr, 0, nullptr );
 #endif
-	}
+	} ENDIF;
 		
-	return TRUE;
+	RETURN( TRUE );
+	OBF_END;
 }

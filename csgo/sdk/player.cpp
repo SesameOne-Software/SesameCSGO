@@ -177,14 +177,13 @@ animstate_t* player_t::animstate( ) {
 vec3_t player_t::eyes( ) {
 	static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 
-	vec3_t pos = vec3_t( 0.0f, 0.0f, 0.0f );
+	vec3_t pos = this->origin( ) + this->view_offset( );
 
 	/* eye position */
 	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 168 ) ( this, pos );
 
 	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x3AC8 ) && animstate ( ) )
-		/*hooks::modify_eye_pos( animstate( ), nullptr, pos );*/
-		reinterpret_cast< void ( __thiscall* )( animstate_t*, vec3_t& ) >( modify_eye_position ) ( animstate ( ), pos );
+		hooks::modify_eye_pos( animstate( ), nullptr, pos );
 
 	return pos;
 }
@@ -239,4 +238,14 @@ std::vector<weapon_t*> player_t::wearables ( ) {
 	}
 
 	return ret;
+}
+
+void* player_t::get_original_data ( ) {
+	static auto offset = pattern::search ( _ ( "client.dll" ), _ ( "8B 8F ? ? ? ? 33 D2 85 C9 74 0F 48 BE" ) ).add ( 2 ).deref ( ).get< uint32_t > ( );
+	return *reinterpret_cast<void**> ( reinterpret_cast< uintptr_t >( this ) + offset );
+}
+
+void* player_t::get_predicted_frame ( int frame_num ) {
+	static auto offset = pattern::search ( _ ( "client.dll" ), _ ( "8B 94 97 ? ? ? ? 33 C0" ) ).add ( 3 ).deref ( ).get< uint32_t > ( );
+	return reinterpret_cast< void** >( this ) [ ( frame_num % 150 ) + ( offset / 4 ) ];
 }

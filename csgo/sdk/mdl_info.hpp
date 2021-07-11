@@ -149,4 +149,9 @@ public:
 		using getstudiomdl_fn = studiohdr_t * ( __thiscall* )( void*, void* );
 		return vfunc< getstudiomdl_fn >( this, 32 )( this, mdl );
 	}
+
+	void* find_or_load_mdl ( const char* name ) {
+		using find_or_load_mdl_fn = void* ( __thiscall* )( void*, const char* );
+		return vfunc< find_or_load_mdl_fn > ( this, 41 )( this, name );
+	}
 };

@@ -83,7 +83,7 @@ bool create_materials( ) {
 			set_string( kv , _( "$envmaptint" ) , _( "[ 0 0 0 ]" ) );
 			set_string( kv , _( "$envmapfresnelminmaxexp" ) , _( "[ 0 1 2 ]" ) );
 			set_string( kv , _( "$alpha" ) , _( "1" ) );
-			set_int( kv , _( "$znearer" ) , 0 );
+			set_int( kv , _( "$znearer" ) , 1 );
 		}
 		else {
 			set_string( kv , _( "$basetexture" ) , _( "vgui/white_additive" ) );
@@ -102,7 +102,7 @@ bool create_materials( ) {
 			set_int( kv , _( "$selfillum" ) , 1 );
 			set_int( kv , _( "$halflambert" ) , 1 );
 			set_int( kv , _( "$ignorez" ) , 1 );
-			set_int( kv , _( "$znearer" ) , 0 );
+			set_int( kv , _( "$znearer" ) , 1 );
 		}
 
 		auto matname = _( "mat_" ) + std::to_string( created );
@@ -216,8 +216,11 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 
 	auto e = cs::i::ent_list->get< player_t* >( info.m_entity_index );
 
-	auto mdl_name = cs::i::mdl_info->mdl_name( info.m_model );
-	auto is_arms = std::strstr( mdl_name , _( "models/weapons/" ) ) || std::strstr( mdl_name , _( "arms" ) );
+	auto mdl_name = cs::i::mdl_info->mdl_name ( info.m_model );
+	auto is_player = strstr ( mdl_name, _ ( "models/player" ) );
+	auto is_weapon = strstr ( mdl_name, _ ( "weapons/v_" ) ) && !strstr ( mdl_name, _ ( "arms" ) );
+	auto is_arms = strstr ( mdl_name, _ ( "arms" ) );
+	auto is_sleeve = strstr ( mdl_name, _ ( "sleeve" ) );
 
 	visual_config_t visuals;
 	if ( !get_visuals( e , visuals ) ) {
@@ -236,26 +239,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 		if ( is_arms ) {
 			hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
 		}
-		else if ( e->is_player( ) || features::chams::in_model ) {
-			/* TEMP flag pred chams */
-			/*if ( !anims::predicted_anim_info [ e->idx ( ) ].empty() ) {
-				cs::i::render_view->set_alpha ( 255 );
-				cs::i::render_view->set_color ( 255, 0, 0 );
-				// mat->set_material_var_flag( 268435456, false );
-
-				bool found = false;
-				auto envmap = m_mat_glow->find_var ( _ ( "$envmaptint" ), &found );
-				set_vec ( envmap, 1.0f, 0.0f, 0.0f );
-
-				auto rimlight_exponent = m_mat_glow->find_var ( _ ( "$envmapfresnelminmaxexp" ), &found );
-				set_vec ( rimlight_exponent, 0.0f, 1.0f, 20.0f );
-
-				m_mat_glow->set_material_var_flag ( 0x8000, visuals.backtrack_chams );
-				m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
-				cs::i::mdl_render->force_mat ( m_mat_glow );
-				hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, anims::predicted_anim_info [ e->idx ( ) ].front ( ).m_aim_bones[0].data() );
-			}*/
-
+		else if ( ( is_player && e->alive ( ) ) || features::chams::in_model ) {
 			/* hit matrix chams */
 			if ( features::chams::in_model ) {
 				bool found = false;
@@ -268,7 +252,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 				cs::i::render_view->set_alpha( 255 );
 				cs::i::render_view->set_color( 255 , 255 , 255 );
 				// mat->set_material_var_flag( 268435456, false );
-				m_mat_glow->set_material_var_flag( 0x8000 , visuals.backtrack_chams );
+				m_mat_glow->set_material_var_flag( 0x8000 , visuals.chams_xqz );
 				m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
 				cs::i::mdl_render->force_mat( m_mat_glow );
 				hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
@@ -281,7 +265,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 					cs::i::render_view->set_color( visuals.backtrack_chams_color.r * 255.0f , visuals.backtrack_chams_color.g * 255.0f , visuals.backtrack_chams_color.b * 255.0f );
 
 					auto mat = visuals.chams_flat ? m_matflat : m_mat;
-					mat->set_material_var_flag( 0x8000 , visuals.backtrack_chams );
+					mat->set_material_var_flag( 0x8000 , visuals.chams_xqz );
 					mat->set_material_var_flag( 0x1000 , visuals.chams_flat );
 
 					cs::i::mdl_render->force_mat( mat );
@@ -309,29 +293,29 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 					}
 
 					if ( visuals.desync_chams_rimlight ) {
-						update_mats( visuals , visuals.desync_rimlight_color );
-						cs::i::render_view->set_alpha( 255 );
-						cs::i::render_view->set_color( 255 , 255 , 255 );
-						m_mat_glow->set_material_var_flag( 0x8000 , true );
-						m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
-						cs::i::mdl_render->force_mat( m_mat_glow );
-						hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , backup_matrix.data( ) );
-						cs::i::mdl_render->force_mat( nullptr );
+						update_mats ( visuals, visuals.desync_rimlight_color );
+						cs::i::render_view->set_alpha ( 255 );
+						cs::i::render_view->set_color ( 255, 255, 255 );
+						m_mat_glow->set_material_var_flag ( 0x8000, false );
+						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( m_mat_glow );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, backup_matrix.data ( ) );
+						cs::i::mdl_render->force_mat ( nullptr );
 					}
 				}
 
 				if ( visuals.chams ) {
 					/* occluded */
 					if ( e == g::local ? false : visuals.chams_xqz ) {
-						cs::i::render_view->set_alpha( visuals.chams_xqz_color.a * 255.0f );
-						cs::i::render_view->set_color( visuals.chams_xqz_color.r * 255.0f , visuals.chams_xqz_color.g * 255.0f , visuals.chams_xqz_color.b * 255.0f );
+						cs::i::render_view->set_alpha ( visuals.chams_xqz_color.a * 255.0f );
+						cs::i::render_view->set_color ( visuals.chams_xqz_color.r * 255.0f, visuals.chams_xqz_color.g * 255.0f, visuals.chams_xqz_color.b * 255.0f );
 						auto mat = visuals.chams_flat ? m_matflat : m_mat;
 						// mat->set_material_var_flag( 268435456, false );
-						mat->set_material_var_flag( 0x8000 , true );
-						mat->set_material_var_flag( 0x1000 , visuals.chams_flat );
-						cs::i::mdl_render->force_mat( mat );
-						hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
-						cs::i::mdl_render->force_mat( nullptr );
+						mat->set_material_var_flag ( 0x8000, true );
+						mat->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( mat );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+						cs::i::mdl_render->force_mat ( nullptr );
 					}
 
 					/* normal chams */
@@ -350,6 +334,19 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 
 					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
 					cs::i::mdl_render->force_mat( nullptr );
+
+					/* glow overlay */
+					if ( visuals.rimlight_overlay ) {
+						update_mats ( visuals, visuals.rimlight_color );
+						cs::i::render_view->set_alpha ( 255 );
+						cs::i::render_view->set_color ( 255, 255, 255 );
+						// mat->set_material_var_flag( 268435456, false );
+						m_mat_glow->set_material_var_flag ( 0x8000, visuals.chams_xqz );
+						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+						cs::i::mdl_render->force_mat ( m_mat_glow );
+						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+						cs::i::mdl_render->force_mat ( nullptr );
+					}
 				}
 				else {
 					cs::i::render_view->set_alpha( 255 );
@@ -360,19 +357,6 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 						cs::i::render_view->set_alpha( blend_opacity );
 
 					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
-				}
-
-				/* glow overlay */
-				if ( visuals.rimlight_overlay ) {
-					update_mats( visuals , visuals.rimlight_color );
-					cs::i::render_view->set_alpha( 255 );
-					cs::i::render_view->set_color( 255 , 255 , 255 );
-					// mat->set_material_var_flag( 268435456, false );
-					m_mat_glow->set_material_var_flag( 0x8000 , visuals.chams_xqz );
-					m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
-					cs::i::mdl_render->force_mat( m_mat_glow );
-					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
-					cs::i::mdl_render->force_mat( nullptr );
 				}
 			}
 		}

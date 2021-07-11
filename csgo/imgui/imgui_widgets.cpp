@@ -126,7 +126,7 @@ std::unordered_map< uintptr_t/*option_address*/, animation_data_t/*animation_dat
 
 template <typename type>
 constexpr auto animate( float& t, float change_dir, const type& min, const type& max ) {
-    constexpr auto animation_time = 0.35f;
+    auto animation_time = 0.100f * gui_anim_multiplier;
 
     t = ImClamp( t + ImGui::GetIO( ).DeltaTime * ( change_dir * ( 1.0f / animation_time ) ), 0.0f, 1.0f );
     return ImLerp( min, max, t );

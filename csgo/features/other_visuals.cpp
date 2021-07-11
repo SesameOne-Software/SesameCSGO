@@ -325,7 +325,7 @@ void features::offscreen_esp::draw( ) {
 					}
 				}
 			} break;
-			case 128: {
+			case 129: {
 				const auto as_bomb = reinterpret_cast< planted_c4_t* >( pl );
 
 				if ( as_bomb ) {
@@ -345,7 +345,7 @@ void features::offscreen_esp::draw( ) {
 
 								vec3_t text_dim;
 								render::text_size ( time_left, _("esp_font"), text_dim );
-								render ::text( w / 2 - text_dim.x / 2, 65, time_left, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ) ,true);
+								render::text ( w / 2 - text_dim.x / 2, 65, time_left, _ ( "esp_font" ), rgba ( 255, 255, 255, 255 ), true );
 							}
 
 							if ( bomb_esp ) {
@@ -382,7 +382,8 @@ void features::offscreen_esp::draw( ) {
 									calc_pos = bomb_screen;
 
 									vec3_t text_dim;
-									
+									render::text_size ( _ ( "!" ), _ ( "indicator_font" ), text_dim );
+
 									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 19, 19, 19, 255 ) );
 									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 32, rgba ( 255, 0, 0, 255 ), true );
 									render::circle( calc_pos.x, calc_pos.y - text_dim.y / 2.0f, 18.0f, 31, rgba ( 255, 0, 0, 255 ), true );

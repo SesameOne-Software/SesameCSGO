@@ -61,7 +61,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		ray.init ( start, end );
 		filter.m_skip = g::local;
 		
-		cs::i::trace->trace_ray ( ray, mask_shot & ~contents_monster & ~contents_hitbox, &filter, &trace );
+		cs::i::trace->trace_ray ( ray, mask_shot_hull, &filter, &trace );
 
 		return ( ideal_distance * trace.m_fraction ) - 10.0f;
 	};

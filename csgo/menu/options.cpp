@@ -266,9 +266,6 @@ __forceinline void add_weapon_config( const std::string& weapon_category ) {
 	option::add_bool( prefix + _( "auto_shoot" ), false );
 	option::add_bool( prefix + _( "auto_scope" ), false );
 	option::add_bool( prefix + _( "auto_slow" ), false );
-	option::add_bool( prefix + _( "dt_teleport" ), false );
-	option::add_bool( prefix + _( "dt_enabled" ), false );
-	option::add_int( prefix + _( "dt_ticks" ), 0 );
 	option::add_int ( prefix + _ ( "dt_recharge_delay" ), 0 );
 	option::add_float( prefix + _( "min_dmg" ), 0.0f );
 	option::add_float ( prefix + _ ( "min_dmg_override" ), 0.0f );
@@ -355,8 +352,6 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 }
 
 void options::init( ) {
-	CLEAR_START
-		VM_SHARK_BLACK_START
 	/* options should be structered in the following format: */
 	/* TAB.GROUP.OPTION */
 
@@ -384,6 +379,13 @@ void options::init( ) {
 	option::add_int( _( "ragebot.safe_point_key_mode" ), 0 );
 	option::add_int( _( "ragebot.dt_key" ), 0 );
 	option::add_int( _( "ragebot.dt_key_mode" ), 0 );
+
+	option::add_bool ( _ ( "ragebot.dt_teleport" ), false );
+	option::add_bool ( _ ( "ragebot.dt_enabled" ), false );
+	option::add_int ( _ ( "ragebot.dt_ticks" ), 0 );
+	option::add_bool ( _ ( "ragebot.extended_lagcomp_enabled" ), false );
+	option::add_int ( _ ( "ragebot.extended_lagcomp_ms" ), 0 );
+	
 	option::add_int ( _ ( "ragebot.min_dmg_override_key" ), 0 );
 	option::add_int ( _ ( "ragebot.min_dmg_override_key_mode" ), 0 );
 
@@ -437,7 +439,7 @@ void options::init( ) {
 	add_player_visual_config( _( "enemies" ) );
 	add_player_visual_config( _( "teammates" ) );
 	/* other visuals */
-	option::add_list( _( "visuals.other.removals" ), 9 ); /* smoke, flash, scope, aimpunch, viewpunch, zoom, occlusion, killfeed decay, post processing */
+	option::add_list( _( "visuals.other.removals" ), 10 ); /* smoke, flash, scope, aimpunch, viewpunch, zoom, occlusion, killfeed decay, post processing, landing bob */
 	option::add_bool ( _ ( "visuals.other.fog" ), true );
 	option::add_bool ( _ ( "visuals.other.bloom" ), true );
 	option::add_bool( _( "visuals.other.blend" ) , true );
@@ -480,6 +482,7 @@ void options::init( ) {
 	option::add_color ( _ ( "visuals.other.bullet_impacts_client_color" ), { 1.0f, 0.0f, 0.0f, 0.68f } );
 	option::add_color ( _ ( "visuals.other.bullet_impacts_server_color" ), { 0.0f, 0.0f, 1.0f, 0.68f } );
 	option::add_color( _( "visuals.other.grenade_trajectory_color" ), { 0.86f, 0.98f, 1.0f, 0.24f } );
+	option::add_color ( _ ( "visuals.other.grenade_trajectory_color_hit" ), { 1.0f, 1.0f, 1.0f, 0.24f } );
 	option::add_color( _( "visuals.other.grenade_bounce_color" ), { 0.86f, 0.987f, 1.0f, 0.52f } );
 	option::add_color( _( "visuals.other.grenade_radii_color" ), { 1.0f, 0.343f, 0.343f, 0.217f } );
 	option::add_color( _( "visuals.other.spread_circle_color" ), { 0.56f, 0.858f, 0.90f, 0.333f } );
@@ -493,7 +496,8 @@ void options::init( ) {
 	option::add_color( _( "visuals.other.logo_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 
 	/* SKINS */
-
+	option::add_int ( _ ( "skins.models.player_model_t" ), 0 );
+	option::add_int ( _ ( "skins.models.player_model_ct" ), 0 );
 
 	/* MISC */
 	option::add_bool( _( "misc.movement.bhop" ), false );
@@ -503,7 +507,7 @@ void options::init( ) {
 	option::add_bool ( _ ( "misc.movement.airstuck" ), false );
 	option::add_int ( _ ( "misc.movement.airstuck_key" ), 0 );
 	option::add_int ( _ ( "misc.movement.airstuck_key_mode" ), 0 );
-	option::add_bool( _( "misc.movement.auto_forward" ), false );
+	//option::add_bool( _( "misc.movement.auto_forward" ), false );
 	option::add_bool( _( "misc.movement.auto_strafer" ), false );
 	option::add_bool( _( "misc.movement.omnidirectional_auto_strafer" ), false );
 	option::add_bool ( _ ( "misc.movement.accurate_move" ), false );
@@ -513,15 +517,14 @@ void options::init( ) {
 	option::add_int( _( "misc.effects.third_person_key_mode" ), 0 );
 	option::add_float( _( "misc.effects.ragdoll_force_scale" ), 1.0f );
 	option::add_bool( _( "misc.effects.clantag" ), false );
-	option::add_int( _( "misc.effects.clantag_animation" ), 0 ); /* static, marquee, capitalize, heart */
+	option::add_int( _( "misc.effects.clantag_animation" ), 0 ); /* static, marquee, capitalize, heart, gamesense */
 	option::add_str( _( "misc.effects.clantag_text" ), _( "sesame" ) );
 	option::add_float( _( "misc.effects.revolver_cock_volume" ), 1.0f );
 	option::add_float( _( "misc.effects.weapon_volume" ), 1.0f );
 	option::add_int ( _ ( "misc.effects.view_interpolation" ), -1 );
 
 	option::add_float( _( "gui.dpi" ), 1.0f );
-	
+	option::add_int ( _ ( "gui.animation_speed" ), 100 );
+
 	//option::add_int ( _ ( "debug.angle_mode" ), 0 ); /* set yaw auto, approach yaw auto, set yaw static, approach yaw static */
-	VM_SHARK_BLACK_END
-		CLEAR_END
 }

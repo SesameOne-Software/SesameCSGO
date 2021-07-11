@@ -29,6 +29,7 @@
 #include "effects.hpp"
 #include "beams.hpp"
 #include "cvar.hpp"
+#include "network_string_table_container.hpp"
 
 namespace cs {
 	constexpr auto pi = 3.14159265358979f;
@@ -57,6 +58,7 @@ namespace cs {
 		extern c_game_event_mgr* events;
 		extern c_view_render_beams* beams;
 		extern IDirect3DDevice9* dev;
+		extern c_network_string_table_container* client_string_table_container;
 	}
 
 	namespace render {

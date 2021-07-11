@@ -1851,13 +1851,6 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 			vecAbsVelocity = vecAbsVelocity.normalized( ) * 312.0f;
 	}
 
-	if ( abs ( vecAbsVelocity.x ) < 0.001f )
-		vecAbsVelocity.x = 0.0f;
-	if ( abs ( vecAbsVelocity.y ) < 0.001f )
-		vecAbsVelocity.y = 0.0f;
-	if ( abs ( vecAbsVelocity.z ) < 0.001f )
-		vecAbsVelocity.z = 0.0f;
-
 	// save vertical velocity component
 	anim_state->m_up_vel = vecAbsVelocity.z;
 
@@ -1952,7 +1945,7 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 	anim_state->m_abs_yaw = valve_math::AngleNormalize( anim_state->m_abs_yaw );
 
 	// pull the lower body direction towards the eye direction, but only when the player is moving
-	if ( anim_state->m_on_ground ) {
+	if ( anim_state->m_on_ground && !force_feet_yaw ) {
 		//if ( !CLIENT_DLL_ANIMS && player == g::local )
 		//	lby::in_update = false;
 
@@ -1965,7 +1958,7 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 			}
 		}
 		else {
-			anim_state->m_abs_yaw = valve_math::ApproachAngle ( ( player == g::local ) ? player->lby ( ) : ( force_feet_yaw ? anim_state->m_eye_yaw : player->lby ( ) ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
+			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
 			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
 				if ( cs::i::globals->m_curtime > lby::last_breaker_time && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {

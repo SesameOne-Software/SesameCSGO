@@ -51,7 +51,7 @@ void fix_slide( ucmd_t* ucmd ) {
 				ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
 				ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
 			}
-
+			
 			if ( ucmd->m_smove ) {
 				ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
 				ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
@@ -64,7 +64,7 @@ void fix_slide( ucmd_t* ucmd ) {
 
 	fix_legs( jittermove ? flip_slide : should_slide );
 
-	if ( ucmd->m_cmdnum % 4 == 0 )
+	if ( g::send_packet )
 		flip_slide = !flip_slide;
 }
 
@@ -75,15 +75,15 @@ void fix_event_delay( ucmd_t* ucmd ) {
 
 	/* choke packets if requested */
 	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( )
-		&& (!!(ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon()->data()->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t>(0) ) )) && exploits::can_shoot())
+		&& ( !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) && exploits::can_shoot ( ) )
 		&& !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		g::send_packet = true;
 
 	/* reset pitch as fast as possible after shot so our on-shot doesn't get completely raped */
-	//if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & buttons_t::attack ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) && !cs::is_valve_server( ) )
+	//if ( !features::ragebot::active_config.choke_on_shot && last_attack && !( ucmd->m_buttons & buttons_t::attack ) && !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 	//	g::send_packet = true;
 
-	last_attack = !!(ucmd->m_buttons & buttons_t::attack);
+	last_attack = !!( ucmd->m_buttons & buttons_t::attack );
 }
 
 decltype( &hooks::create_move ) hooks::old::create_move = nullptr;
@@ -122,27 +122,23 @@ void fd_crouch ( ucmd_t* ucmd ) {
 int last_send_cmd = 0;
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
-	if ( !exploits::in_exploit ) {
-		const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
+	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
 
-		if ( ucmd ) {
-			cs::i::engine->set_viewangles ( ucmd->m_angs );
-			cs::i::pred->set_local_viewangles ( ucmd->m_angs );
-		}
+	if ( !ucmd || !ucmd->m_cmdnum )
+		return ret;
 
-		if ( !ucmd || !ucmd->m_cmdnum )
-			return ret;
+	if ( !exploits::in_exploit && ret ) {
+		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
+		cs::i::engine->set_viewangles ( ucmd->m_angs );
 	}
-
-	in_cm = true;
 
 	utils::update_key_toggles( );
 
 	/* recharge if we need, and return */
-	if ( !exploits::in_exploit && exploits::recharge( ucmd ) ) {
-		in_cm = false;
+	if ( !exploits::in_exploit && exploits::recharge( ucmd ) ) 
 		return false;
-	}
+
+	in_cm = true;
 
 	fd_crouch ( ucmd );
 
@@ -157,15 +153,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		g::cock_time = 0.0f;
 
 	security_handler::update( );
-
-	if ( g::local && g::local->weapon( ) ) {
-		const auto weapon = g::local->weapon( );
-		weapon->update_accuracy( );
-		features::spread_circle::total_spread = weapon->inaccuracy( ) + weapon->spread( );
-	}
-	else {
-		features::spread_circle::total_spread = 0.0f;
-	}
 
 	if ( !exploits::in_exploit )
 		features::esp::handle_dynamic_updates( );
@@ -205,39 +192,63 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::nade_prediction::trace( ucmd );
 
 	features::prediction::run ( [ & ] ( ) {
+		const auto weapon = g::local->weapon ( );
+
+		if ( weapon ) {
+			if ( g::local && g::local->weapon ( ) )
+				features::spread_circle::total_spread = weapon->inaccuracy ( ) + weapon->spread ( );
+			else
+				features::spread_circle::total_spread = 0.0f;
+		}
+
 		features::antiaim::simulate_lby ( );
 
-		features::legitbot::run ( ucmd );
-		features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
-		features::antiaim::run ( ucmd, old_smove, old_fmove );
+		if ( !exploits::in_exploit ) {
+			features::legitbot::run ( ucmd );
+
+			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
+				exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
+
+			features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
+
+			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
+				exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
+
+			features::ragebot::tickbase_controller ( ucmd );
+		}
+
+		features::antiaim::run ( ucmd, old_smove, old_fmove, last_attack );
 		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
 
-		if ( !!( ucmd->m_buttons & buttons_t::attack ) )
-			exploits::has_shifted = false;
+		if ( !exploits::in_exploit ) {
+			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
+				exploits::has_shifted = false;
 
-		if ( !exploits::in_exploit )
-			fix_event_delay ( ucmd );
+			exploits::will_shift = false;
 
-		/* recreate what holdaim var does */
-		/* part of anims */ {
-			if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
-				if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
-					g::angles = ucmd->m_angs;
-					g::hold_aim = true;
+			/* recreate what holdaim var does */
+			/* part of anims */ {
+				if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+					if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
+						g::angles = ucmd->m_angs;
+						g::hold_aim = true;
+					}
 				}
-			}
-			else {
-				g::hold_aim = false;
-			}
+				else {
+					g::hold_aim = false;
+				}
 
-			if ( !g::hold_aim ) {
-				g::angles = ucmd->m_angs;
-			}
+				if ( !g::hold_aim )
+					g::angles = ucmd->m_angs;
 
-			if ( g::send_packet )
-				g::hold_aim = false;
+				if ( g::send_packet )
+					g::hold_aim = false;
+			}
 		}
 	} );
+
+	if ( !exploits::in_exploit )
+		fix_event_delay ( ucmd );
 
 	/* auto-revolver */
 	if ( g::local && g::local->weapon ( ) ) {
@@ -293,17 +304,10 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	cs::rotate_movement( ucmd, old_smove, old_fmove, old_angs );
 
 	//break_bt ( ucmd );
-
-	if ( !exploits::in_exploit )
-		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t * >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress( ) ) - 4 ) - 28 ) = g::send_packet;
+	fix_slide ( ucmd );
 
 	if ( g::send_packet )
 		last_send_cmd = ucmd->m_cmdnum;
-
-	fix_slide( ucmd );
-
-	if ( !exploits::in_exploit )
-		features::ragebot::tickbase_controller( ucmd );
 
 	if ( g::send_packet ) {
 		g::sent_cmd = *ucmd;
@@ -313,13 +317,49 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
 	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -g::cvars::cl_sidespeed->get_float(), g::cvars::cl_sidespeed->get_float ( ) );
 
-	in_cm = false;
-
 	/* airstuck (only on community servers) */
 	airstuck ( ucmd );
+	
+	/* event delay fix */
+	if ( cs::i::client_state ) {
+		auto nc = cs::i::client_state->net_channel ( );
+	
+		if ( nc ) {
+			auto& current_data = g::network_data [ ucmd->m_cmdnum % g::network_data.size ( ) ];
+
+			current_data.out_sequence = ucmd->m_cmdnum;
+			current_data.last_out_cmd = cs::i::client_state->last_outgoing_cmd ( );
+	
+			//nc->send_datagram ( nullptr );
+			//
+			//nc->choked_packets--;
+			//nc->out_seq_nr--;
+		}
+	}
+
+	//if ( g::send_packet && !cs::is_valve_server ( ) )
+	//	g::outgoing_cmd_nums.push_front ( ucmd->m_cmdnum );
+	//
+	//if ( cs::i::client_state && !g::send_packet && !cs::is_valve_server ( ) ) {
+	//	auto nc = cs::i::client_state->net_channel ( );
+	//
+	//	if ( nc ) {
+	//		const auto backup_choked = nc->choked_packets;
+	//
+	//		nc->choked_packets = 0;
+	//		nc->send_datagram ( nullptr );
+	//		nc->out_seq_nr--;
+	//		nc->choked_packets = backup_choked;
+	//	}
+	//}
+
+	if ( !exploits::in_exploit )
+		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = g::send_packet;
 
 	if ( !exploits::in_exploit )
 		exploits::run ( ucmd );
+
+	in_cm = false;
 
 	return false;
 }
