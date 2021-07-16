@@ -191,6 +191,92 @@ long long refresh_time = 0;
 
 extern std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec;
 
+void features::chams::add_shot ( player_t* player, const anims::anim_info_t& anim_info ) {
+	auto renderable = player->renderable();
+
+	if ( !renderable )
+		return;
+
+	auto model = player->mdl();
+
+	if ( !model )
+		return;
+
+	auto hdr = cs::i::mdl_info->studio_mdl ( model );
+
+	if ( !hdr )
+		return;
+
+	anims::resolver::hit_matrix_rec_t rec {};
+
+	memcpy ( rec.m_bones.data ( ), anim_info.m_aim_bones [ anim_info.m_side ].data ( ), sizeof ( rec.m_bones ) );
+
+	rec.m_render_info.m_origin = anim_info.m_origin;
+	rec.m_render_info.m_angles = anim_info.m_abs_angles [ anim_info.m_side ];
+	rec.m_render_info.m_renderable = renderable;
+	rec.m_render_info.m_model = model;
+	rec.m_render_info.m_lighting_offset = nullptr;
+	rec.m_render_info.m_lighting_origin = nullptr;
+	rec.m_render_info.m_hitbox_set = player->hitbox_set ( );
+	rec.m_render_info.m_skin = player->get_skin ( );
+	rec.m_render_info.m_body = player->body ( );
+	rec.m_render_info.m_entity_index = player->idx ( );
+	rec.m_render_info.m_instance = vfunc<uint16_t ( __thiscall* )( void* )> ( renderable, 30 )( renderable );
+	rec.m_render_info.m_flags = 0x1;
+	rec.m_render_info.m_model_to_world = rec.m_bones.data ( );
+
+	rec.m_mdl_state.decals = 0;
+	rec.m_mdl_state.lod = 0;
+	rec.m_mdl_state.draw_flags = 0;
+	rec.m_mdl_state.studiohdr = hdr;
+	rec.m_mdl_state.studio_hw_data = vfunc<void* ( __thiscall* )( void*, uint16_t )> ( cs::i::mdl_cache, 15 )( cs::i::mdl_cache, cs::i::mdl_info->cache_handle( model ) );
+	rec.m_mdl_state.renderable = renderable;
+	rec.m_mdl_state.mdl_to_world = rec.m_bones.data ( );
+	
+	for ( auto& mat : rec.m_bones )
+		cs::angle_matrix ( rec.m_render_info.m_angles, rec.m_render_info.m_origin, mat );
+
+	rec.m_time = cs::i::globals->m_curtime;
+	rec.m_pl = player->idx ( );
+	rec.m_color = { 1.0f ,1.0f ,1.0f ,1.0f };
+
+	hit_matrix_rec.push_back ( rec );
+}
+
+void features::chams::cull_shots ( ) {
+	if ( !g::local || !g::local->alive( ) ) {
+		if ( !hit_matrix_rec.empty ( ) )
+			hit_matrix_rec.clear ( );
+
+		return;
+	}
+
+	while ( !hit_matrix_rec.empty ( ) && hit_matrix_rec.back ( ).m_time + 4.0f < cs::i::globals->m_curtime )
+		hit_matrix_rec.pop_back ( );
+}
+
+anims::resolver::hit_matrix_rec_t* cur_hit_rec = nullptr;
+void features::chams::render_shots ( ) {
+	cull_shots ( );
+
+	auto ctx = cs::i::mat_sys->get_context ( );
+
+	for ( auto& rec : hit_matrix_rec ) {
+		cur_hit_rec = &rec;
+
+		in_model = true;
+		drawmodelexecute ( ctx, &rec.m_mdl_state, rec.m_render_info, rec.m_bones.data ( ) );
+		in_model = false;
+
+		cur_hit_rec = nullptr;
+
+		rec.m_color [ 0 ] -= 0.25f * cs::i::globals->m_frametime;
+		rec.m_color [ 1 ] -= 0.25f * cs::i::globals->m_frametime;
+		rec.m_color [ 2 ] -= 0.25f * cs::i::globals->m_frametime;
+		rec.m_color [ 3 ] -= 0.25f * cs::i::globals->m_frametime;
+	}
+}
+
 void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrender_info_t& info , matrix3x4_t* bone_to_world ) {
 	if ( !m_mat )
 		create_materials( );
@@ -244,10 +330,10 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 			if ( features::chams::in_model ) {
 				bool found = false;
 				auto envmap = m_mat_glow->find_var( _( "$envmaptint" ) , &found );
-				set_vec( envmap , visuals.hit_matrix_color.r , visuals.hit_matrix_color.g , visuals.hit_matrix_color.b );
+				set_vec( envmap , cur_hit_rec->m_color [ 0 ], cur_hit_rec->m_color [ 1 ], cur_hit_rec->m_color [ 2 ] );
 
 				auto rimlight_exponent = m_mat_glow->find_var( _( "$envmapfresnelminmaxexp" ) , &found );
-				set_vec( rimlight_exponent , 0.0f , 1.0f , 1.0f + ( 14.0f - visuals.hit_matrix_color.a * 14.0f ) );
+				set_vec( rimlight_exponent , 0.0f , 1.0f , 1.0f + ( 14.0f - cur_hit_rec->m_color [ 3 ] * 14.0f ) );
 
 				cs::i::render_view->set_alpha( 255 );
 				cs::i::render_view->set_color( 255 , 255 , 255 );

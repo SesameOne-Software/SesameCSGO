@@ -6,6 +6,8 @@
 #include "autowall.hpp"
 #include "../menu/options.hpp"
 
+#include "../animations/rebuilt.hpp"
+
 #include "esp.hpp"
 
 #include "exploits.hpp"
@@ -62,43 +64,69 @@ void features::antiaim::simulate_lby( ) {
 	}
 }
 
-player_t* looking_at( ) {
-	player_t* ret = nullptr;
+player_t* looking_at( bool& hittable ) {
+	hittable = false;
+
+	player_t* at_target = nullptr;
+	player_t* closest_to_crosshair = nullptr;
+
+	std::deque<player_t*> attackers {};
+
+	auto best_target_fov = std::numeric_limits<float>::max ( );
+	auto best_fov = std::numeric_limits<float>::max ( );
 
 	vec3_t angs;
-	cs::i::engine->get_viewangles( angs );
-	cs::clamp( angs );
+	cs::i::engine->get_viewangles ( angs );
+	cs::clamp ( angs );
 
-	auto best_fov = 180.0f;
+	for ( auto i = 0; i < cs::i::globals->m_max_clients; i++ ) {
+		const auto ent = cs::i::ent_list->get<player_t*> ( i );
 
-	for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
-		auto pl = cs::i::ent_list->get< player_t* > ( i );
+		if ( ent && ent->is_player ( ) && ent->alive ( ) && !ent->immune ( ) && ent->team ( ) != g::local->team ( ) ) {
+			auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
+				auto dormant_time = std::max< float > ( 9.0f/*esp_fade_time*/, 0.1f );
+				return ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ), 0.0f, dormant_time ) ) : std::fabsf ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
+			};
 
-		if ( !pl || !pl->is_player ( ) || !pl->alive ( ) || pl->team ( ) == g::local->team ( ) )
-			continue;
+			int box_alpha = 0;
+			if ( !features::esp::esp_data [ i ].m_dormant )
+				box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_first_seen, 0.6f, true );
+			else
+				box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_last_seen, 2.0f );
 
-		auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
-			auto dormant_time = std::max< float > ( 9.0f/*esp_fade_time*/, 0.1f );
-			return ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( std::fabsf ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ), 0.0f, dormant_time ) ) : std::fabsf ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time );
-		};
+			if ( box_alpha > 0 ) {
+				auto angle_to = cs::calc_angle ( g::local->origin ( ), features::esp::esp_data [ i ].m_pos );
+				cs::clamp ( angle_to );
+				auto fov = cs::calc_fov ( angle_to, angs );
 
-		int box_alpha = 0;
-		if ( !features::esp::esp_data [ i ].m_dormant )
-			box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_first_seen, 0.6f, true );
-		else
-			box_alpha = calc_alpha ( features::esp::esp_data [ i ].m_last_seen, 2.0f );
+				if ( fov < best_fov ) {
+					closest_to_crosshair = ent;
+					best_fov = fov;
+				}
 
-		auto angle_to = cs::calc_angle ( g::local->origin ( ), features::esp::esp_data [ i ].m_pos );
-		cs::clamp ( angle_to );
-		auto fov = cs::calc_fov ( angle_to, angs );
+				const auto pred_ent_pos = features::esp::esp_data [ i ].m_pos + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) );
+				const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+				const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 2 );
 
-		if ( box_alpha > 0 && fov < best_fov ) {
-			ret = pl;
-			best_fov = fov;
+				const auto dmg_l = autowall::dmg ( g::local, ent, src, pred_ent_pos + cross * 35.0f, hitboxes_t::hitbox_head );
+				const auto dmg_r = autowall::dmg ( g::local, ent, src, pred_ent_pos - cross * 35.0f, hitboxes_t::hitbox_head );
+
+				if ( dmg_l > 0.0f || dmg_r > 0.0f ) {
+					if ( fov < best_target_fov ) {
+						at_target = ent;
+						best_target_fov = fov;
+					}
+
+					if ( !ent->dormant ( ) )
+						hittable = true;
+
+					break;
+				}
+			}
 		}
 	}
 
-	return ret;
+	return at_target ? at_target : closest_to_crosshair;
 }
 
 int find_freestand_side( player_t* pl, float range ) {
@@ -107,13 +135,13 @@ int find_freestand_side( player_t* pl, float range ) {
 	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
-	const auto l_dmg = autowall::dmg( g::local, pl, src + cross * range, dst /*+ cross * range*/, hitbox_head );
-	const auto r_dmg = autowall::dmg( g::local, pl, src - cross * range, dst /*- cross * range*/, hitbox_head );
+	const auto l_dmg = autowall::dmg( g::local, pl, src, dst + cross * range, hitbox_head );
+	const auto r_dmg = autowall::dmg( g::local, pl, src, dst - cross * range, hitbox_head );
 
 	bool hit_wall = false;
 
 	for ( float i = 0.0f; i < cs::pi * 2.0f; i += cs::pi * 0.25f ) {
-		vec3_t location ( src.x + cos ( i ) * 45.0f, src.y + sin ( i ) * 45.0f, src.z );
+		vec3_t location ( src.x + cos ( i ) * 64.0f, src.y + sin ( i ) * 64.0f, src.z );
 
 		ray_t ray;
 		trace_t tr;
@@ -137,6 +165,118 @@ int find_freestand_side( player_t* pl, float range ) {
 }
 
 int ducked_ticks = 0;
+
+void features::antiaim::fakelag ( ucmd_t* ucmd, player_t* target ) {
+	static auto& fakelag_enabled = options::vars [ _ ( "antiaim.fakelag" ) ].val.b;
+	static auto& fakelag_limit = options::vars [ _ ( "antiaim.fakelag_limit" ) ].val.i;
+	static auto& fakelag_jitter = options::vars [ _ ( "antiaim.fakelag_jitter" ) ].val.i;
+	static auto& fakelag_trigger_limit = options::vars [ _ ( "antiaim.fakelag_trigger_limit" ) ].val.i;
+	static auto& fakelag_triggers = options::vars [ _ ( "antiaim.fakelag_triggers" ) ].val.l;
+
+	static auto& fd_enabled = options::vars [ _ ( "antiaim.fakeduck" ) ].val.b;
+	static auto& fd_key = options::vars [ _ ( "antiaim.fakeduck_key" ) ].val.i;
+	static auto& fd_key_mode = options::vars [ _ ( "antiaim.fakeduck_key_mode" ) ].val.i;
+
+	static auto& slowwalk_key = options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i;
+	static auto& slowwalk_key_mode = options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i;
+	static auto& slow_walk_speed = options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f;
+	static auto& fakewalk = options::vars [ _ ( "antiaim.fakewalk" ) ].val.b;
+
+	const auto choke_limit = cs::is_valve_server ( ) ? 8 : g::cvars::sv_maxusrcmdprocessticks->get_int ( );
+	
+	auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
+
+	if ( !features::ragebot::active_config.dt_enabled || !utils::keybind_active ( features::ragebot::active_config.dt_key, features::ragebot::active_config.dt_key_mode ) )
+		final_shift_amount_max = 0;
+
+	auto max_lag = std::clamp< int > ( choke_limit, 1, choke_limit + 1 - final_shift_amount_max );
+
+	if ( fakewalk && utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && !cs::is_valve_server ( ) )
+		max_lag = 14;
+
+	if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) )
+		max_lag = cs::is_valve_server ( ) ? 8 : 16;
+
+	static bool last_on_ground = true;
+	static int next_choke = fakelag_limit;
+	static weapon_t* last_weapon = nullptr;
+	static vec3_t last_vel = vec3_t ( 0.0f, 0.0f, 0.0f );
+
+	if ( !fakelag_enabled || !g::local || !g::local->alive ( ) ) {
+		g::send_packet = cs::i::client_state->choked ( ) >= ( ( !g::local || !g::local->alive ( ) ) ? 0 : 1 );
+
+		next_choke = fakelag_limit;
+		last_on_ground = true;
+		last_weapon = nullptr;
+		last_vel = vec3_t ( 0.0f, 0.0f, 0.0f );
+		g::just_shot = false;
+
+		return;
+	}
+
+	const auto is_reloading = g::local->weapon ( ) && *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( &g::local->weapon ( )->next_primary_attack() ) + 0x6D);
+
+	/* select new choke amount every choke cycle */
+	if ( !cs::i::client_state->choked ( ) )
+		next_choke = std::clamp ( fakelag_limit - static_cast< int >( (static_cast< float >( fakelag_jitter ) / 100.0f * static_cast< float >( fakelag_limit )) * ( static_cast< float >( rand ( ) ) / static_cast< float >( RAND_MAX ) ) ), 1, max_lag );
+
+	/* fakelag triggers */
+	const auto trigger_lag_clamped = std::clamp ( fakelag_trigger_limit, 1, max_lag );
+
+	if ( fakelag_triggers [ 0 /* in air */ ]
+		&& !( g::local->flags ( ) & flags_t::on_ground ) )
+		next_choke = trigger_lag_clamped;
+
+	/* on peek */
+	if ( fakelag_triggers [ 1 /* on peek */ ] && target ) {
+		const auto pred_ent_pos = target->origin ( ) + target->view_offset ( ) + target->vel ( ) * std::clamp ( target->simtime ( ) - target->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
+		const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+		const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 1 );
+
+		const auto dmg_l = autowall::dmg ( g::local, target, src + cross * 12.0f, pred_ent_pos, hitboxes_t::hitbox_head );
+		const auto dmg_r = autowall::dmg ( g::local, target, src - cross * 12.0f, pred_ent_pos, hitboxes_t::hitbox_head );
+
+		if ( dmg_l > 0.0f || dmg_r > 0.0f )
+			next_choke = trigger_lag_clamped;
+	}
+
+	if ( fakelag_triggers [ 2 /* on shot */ ]
+		&& g::just_shot )
+		next_choke = trigger_lag_clamped;
+
+	g::just_shot = false;
+
+	if ( fakelag_triggers [ 3 /* on land */ ]
+		&& !last_on_ground && !!( g::local->flags ( ) & flags_t::on_ground ) )
+		next_choke = trigger_lag_clamped;
+
+	last_on_ground = !!( g::local->flags ( ) & flags_t::on_ground );
+
+	if ( fakelag_triggers [ 4 /* while reloading */ ]
+		&& is_reloading )
+		next_choke = trigger_lag_clamped;
+
+	if ( fakelag_triggers [ 5 /* on weapon switch */ ]
+		&& last_weapon != g::local->weapon ( ) )
+		next_choke = trigger_lag_clamped;
+
+	last_weapon = g::local->weapon ( );
+
+	if ( fakelag_triggers [ 6 /* on velocity change */ ]
+		&& !!( g::local->flags ( ) & flags_t::on_ground )
+		&& prediction::vel.length_2d( ) > 5.0f
+		&& abs( cs::normalize ( cs::vec_angle ( prediction::vel ).y - cs::vec_angle ( last_vel ).y ) ) > 10.0f )
+		next_choke = trigger_lag_clamped;
+
+	last_vel = prediction::vel;
+
+	if ( fakelag_triggers [ 7 /* break lagcomp */ ]
+		&& prediction::vel.length_2d ( ) > 5.0f
+		&& trigger_lag_clamped >= static_cast< int >( ceil( 64.0f / ( prediction::vel.length_2d ( ) * cs::ticks2time ( 1 ) ) ) ) )
+		next_choke = trigger_lag_clamped;
+
+	g::send_packet = cs::i::client_state->choked ( ) >= next_choke;
+}
 
 void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, bool was_shooting ) {
 	/* toggle */
@@ -309,20 +449,10 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 		}
 	}
 
+	bool hittable = false;
+	const auto target_player = looking_at ( hittable );
+
 	if ( g::local->valid( ) && ( g::round == round_t::in_progress || ( g::round == round_t::ending /*&& found_enemy*/ ) ) ) {
-		auto max_lag = 1;
-
-		if ( air && !( g::local->flags( ) & flags_t::on_ground ) )
-			max_lag = lag_air;
-		else if ( slow_walk && prediction::vel.length_2d( ) > 5.0f && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) )
-			max_lag = lag_slow_walk;
-		else if ( move && prediction::vel.length_2d( ) > 5.0f )
-			max_lag = lag_move;
-		else if ( stand )
-			max_lag = lag_stand;
-
-		max_lag = std::clamp( max_lag, 1, choke_limit );
-
 		static auto last_final_shift_amount = 0;
 		auto final_shift_amount_max = static_cast< int >( features::ragebot::active_config.max_dt_ticks );
 
@@ -335,30 +465,15 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 
 		last_final_shift_amount = final_shift_amount_max;
 
-		max_lag = std::clamp< int >( max_lag, 1, choke_limit + 1 - final_shift_amount_max );
+		/* fakelag */
+		fakelag ( ucmd, hittable ? target_player : nullptr );
 
-		/* allow 1 extra tick just for when we land (if we are in air) */
-		if ( !( g::local->flags( ) & flags_t::on_ground ) )
-			max_lag = std::clamp< int >( max_lag, 1, g::cvars::sv_maxusrcmdprocessticks->get_int() - 1 );
+		auto max_lag = cs::is_valve_server ( ) ? 8 : g::cvars::sv_maxusrcmdprocessticks->get_int ( );
 
-		if ( fakewalk && utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && !cs::is_valve_server ( ) )
-			max_lag = 14;
-
-		if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) )
-			max_lag = cs::is_valve_server ( ) ? 8 : 16;
-
-		//if ( g::local && g::local->alive ( ) && break_bt && utils::keybind_active ( break_bt_key, break_bt_mode ) && !cs::is_valve_server ( ) ) {
-		//	if ( max_lag < 2 )
-		//		max_lag = 2;
-		//}
-
-		g::send_packet = cs::i::client_state->choked( ) >= max_lag;
-
-		if ( !!(g::local->flags( ) & flags_t::on_ground) && !aa::was_on_ground && g::local->weapon( )->item_definition_index( ) != weapons_t::revolver && cs::i::client_state->choked ( ) < max_lag )
-			g::send_packet = false;
-
-		if ( exploits::will_shift || was_shooting )
+		if ( exploits::will_shift || was_shooting /*|| exploits::has_shifted*/ ) {
 			g::send_packet = true;
+			g::just_shot = true;
+		}
 
 		aa::was_on_ground = !!(g::local->flags( ) & flags_t::on_ground);
 
@@ -459,7 +574,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 		|| g::round == round_t::starting ) {
 		antiaiming = false;	
 
-		if ( should_shoot && g::local && g::local->alive() && !aa::was_fd )
+		if ( should_shoot && g::local && g::local->alive ( ) && !aa::was_fd )
 			g::send_packet = true;
 
 		return;
@@ -470,7 +585,6 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 		return;
 	}
 
-	const auto target_player = looking_at( );
 	//update_anti_bruteforce ( );
 	auto desync_amnt = ( desync_side || desync_side == -1 ) ? 120.0f : -120.0f;
 

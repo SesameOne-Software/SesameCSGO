@@ -416,64 +416,63 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		if ( animlayers [ 6 ].m_weight <= 0.0f ) {
 			vel.x = vel.y = 0.0f;
 		}
-		else if ( animlayers [ 6 ].m_playback_rate > 0.0f ) {
-			auto max_speed = 260.0f;
-			const auto weapon = ent->weapon ( );
+		else if ( time_difference > cs::ticks2time ( 3 ) ) {
+			if ( animlayers [ 6 ].m_playback_rate > 0.0f ) {
+				auto max_speed = 260.0f;
+				const auto weapon = ent->weapon ( );
 
-			if ( weapon && weapon->data ( ) )
-				max_speed = ent->scoped ( ) ? weapon->data ( )->m_max_speed_alt : weapon->data ( )->m_max_speed;
+				if ( weapon && weapon->data ( ) )
+					max_speed = ent->scoped ( ) ? weapon->data ( )->m_max_speed_alt : weapon->data ( )->m_max_speed;
 
-			auto origin_delta_vel_norm = vel.normalized ( );
-			auto origin_delta_vel_len = vel.length_2d ( );
+				auto origin_delta_vel_norm = vel.normalized ( );
+				auto origin_delta_vel_len = vel.length_2d ( );
 
-			const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight / std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f );
+				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight / std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f );
+				const auto flTargetMoveWeight_to_speed2d = std::lerp ( max_speed * 0.52f, max_speed * 0.34f, ent->crouch_amount ( ) ) * flMoveWeightWithAirSmooth;
 
-			auto flTargetMoveWeight_to_speed2d = std::lerp ( max_speed * 0.52f, max_speed * 0.34f, ent->crouch_amount ( ) ) * flMoveWeightWithAirSmooth;
+				const auto speed_as_portion_of_run_top_speed = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
 
-			auto speed_layer11 = origin_delta_vel_norm.length_2d ( );
-			auto modifier = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
+				if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f ) {
+					const auto speed_layer11 = ( speed_as_portion_of_run_top_speed + 0.55f ) * max_speed;
 
-			if ( modifier > 0.0f && modifier < 1.0f )
-				speed_layer11 = max_speed * ( modifier + 0.55f );
+					vel.x = origin_delta_vel_norm.x * speed_layer11;
+					vel.y = origin_delta_vel_norm.y * speed_layer11;
 
-			if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f && animlayers [ 11 ].m_cycle > previous_record.m_anim_layers [ desync_side_t::desync_max ][ 11 ].m_cycle ) {
-				vel.x = origin_delta_vel_norm.x * speed_layer11;
-				vel.y = origin_delta_vel_norm.y * speed_layer11;
-
-				new_vel = true;
-			}
-			else if ( flMoveWeightWithAirSmooth < 0.95f ) {
-				vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_to_speed2d;
-				vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_to_speed2d;
-
-				new_vel = true;
-			}
-			else {
-				static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
-
-				auto flTargetMoveWeight_adjusted_speed2d = std::min ( max_speed, deployable_limited_max_speed ( ent ) );
-
-				if ( !!( ent->flags ( ) & flags_t::ducking ) )
-					flTargetMoveWeight_adjusted_speed2d *= 0.34f;
-				else if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( ent ) + 0x3929 ) )
-					flTargetMoveWeight_adjusted_speed2d *= 0.52f;
-
-				if ( origin_delta_vel_len > flTargetMoveWeight_adjusted_speed2d ) {
-					vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_adjusted_speed2d;
-					vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_adjusted_speed2d;
+					new_vel = true;
 				}
+				else if ( flMoveWeightWithAirSmooth < 0.95f ) {
+					vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_to_speed2d;
+					vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_to_speed2d;
 
-				new_vel = true;
+					new_vel = true;
+				}
+				else {
+					static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
+
+					auto flTargetMoveWeight_adjusted_speed2d = std::min ( max_speed, deployable_limited_max_speed ( ent ) );
+
+					if ( !!( ent->flags ( ) & flags_t::ducking ) )
+						flTargetMoveWeight_adjusted_speed2d *= 0.34f;
+					else if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( ent ) + 0x3929 ) )
+						flTargetMoveWeight_adjusted_speed2d *= 0.52f;
+
+					if ( origin_delta_vel_len > flTargetMoveWeight_adjusted_speed2d ) {
+						vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_adjusted_speed2d;
+						vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_adjusted_speed2d;
+					}
+
+					new_vel = true;
+				}
 			}
 		}
 	}
 	else {
-		//if ( animlayers [ 6 ].m_weight > 0.0f
-		//	&& animlayers [ 6 ].m_playback_rate > 0.0f
-		//	&& rebuilt::get_layer_activity ( ent->animstate ( ), 6 ) == 985 ) {
-		//	vel.z = ( ( animlayers [ 6 ].m_cycle / animlayers [ 6 ].m_playback_rate ) / cs::ticks2time ( 1 ) + 0.5f ) * cs::ticks2time ( 1 );
-		//	vel.z = g::cvars::sv_jump_impulse->get_float ( ) - vel.z * g::cvars::sv_gravity->get_float ( );
-		//}
+		if ( animlayers [ 4 ].m_weight > 0.0f
+			&& animlayers [ 4 ].m_playback_rate > 0.0f
+			&& rebuilt::get_layer_activity ( ent->animstate ( ), 4 ) == 985 /* act_csgo_jump */ ) {
+			vel.z = ( ( animlayers [ 4 ].m_cycle / animlayers [ 4 ].m_playback_rate ) / cs::ticks2time ( 1 ) + 0.5f ) * cs::ticks2time ( 1 );
+			vel.z = g::cvars::sv_jump_impulse->get_float ( ) - vel.z * g::cvars::sv_gravity->get_float ( );
+		}
 
 		vel.x = origin_delta.x / time_difference;
 		vel.y = origin_delta.y / time_difference;
@@ -515,6 +514,8 @@ void anims::update_from( player_t* ent , anim_info_t& from , anim_info_t& to, st
 	const auto delta_tick_hit_ground = cs::time2ticks ( to.m_simtime - from.m_simtime ) - ticks_ago_hit_ground;
 	const auto twice_in_air = !( from.m_flags & flags_t::on_ground ) && !( to.m_flags & flags_t::on_ground );
 	const auto jumped = !!( from.m_flags & flags_t::on_ground ) && !( to.m_flags & flags_t::on_ground );
+	const auto landed = !( from.m_flags & flags_t::on_ground ) && !!( to.m_flags & flags_t::on_ground );
+	const auto on_ground = !!( from.m_flags & flags_t::on_ground ) && !!( to.m_flags & flags_t::on_ground );
 	auto shot = false;
 
 	for ( auto i = 0; i < delta_ticks; i++ ) {
@@ -554,19 +555,16 @@ void anims::update_from( player_t* ent , anim_info_t& from , anim_info_t& to, st
 
 		ent->set_abs_origin ( ent->origin ( ) );
 
-		if ( twice_in_air ) {
-			if ( i + 1 == delta_tick_hit_ground )
-				ent->flags ( ) |= flags_t::on_ground;
-			else
-				ent->flags ( ) &= ~flags_t::on_ground;
-		}
-
-		if ( jumped && !!( ent->flags ( ) & flags_t::on_ground ) )
-			ent->vel ( ).z = g::cvars::sv_jump_impulse->get_float ( );
-		else if ( !( ent->flags ( ) & flags_t::on_ground ) )
-			ent->vel ( ).z -= g::cvars::sv_gravity->get_float ( ) * cs::ticks2time( 1 ) * 0.5f;
+		if ( landed && i + 1 >= delta_tick_hit_ground )
+			ent->flags ( ) |= flags_t::on_ground;
+		else if ( jumped && i + 1 <= delta_tick_hit_ground )
+			ent->flags ( ) |= flags_t::on_ground;
+		else if ( twice_in_air && i + 1 == delta_tick_hit_ground )
+			ent->flags ( ) |= flags_t::on_ground;
+		else if ( on_ground )
+			ent->flags ( ) |= flags_t::on_ground;
 		else
-			ent->vel ( ).z = 0.0f;
+			ent->flags ( ) &= ~flags_t::on_ground;
 
 		/* set simtime */
 		const float backup_simtime = ent->simtime( );

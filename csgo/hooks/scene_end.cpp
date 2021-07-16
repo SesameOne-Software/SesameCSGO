@@ -92,6 +92,7 @@ void __fastcall hooks::scene_end ( REG ) {
 		}
 	}
 
+	features::chams::render_shots ( );
 	/*
 	if ( !g::local || !g::local->alive( ) )
 		hit_matrix_rec.clear( );

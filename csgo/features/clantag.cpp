@@ -118,7 +118,7 @@ void features::clantag::run( ucmd_t* ucmd ) {
 			};
 
 			auto time = 0.3f / cs::i::globals->m_ipt;
-			auto iter = ( g::server_tick - 1 ) / ( int ) ( time + 0.5f ) % 30;
+			auto iter = ( g::server_tick - 1 ) / static_cast<int> ( time + 0.5f ) % 30;
 			auto new_array_stage = tag_stages [ iter ];
 
 			if ( prev_array_stage != new_array_stage ) {

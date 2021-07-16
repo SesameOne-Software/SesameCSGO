@@ -75,9 +75,9 @@ void hooks::init( ) {
 	/* initialize cheat config */
 	gui::init( );
 
-	const auto cl_extrapolate = cs::i::cvar->find (_("cl_extrapolate") );
-	cl_extrapolate->no_callback ( );
-	cl_extrapolate->set_value ( 0 );
+	//const auto cl_extrapolate = cs::i::cvar->find (_("cl_extrapolate") );
+	//cl_extrapolate->no_callback ( );
+	//cl_extrapolate->set_value ( 0 );
 
 	features::skinchanger::init ( );
 
@@ -202,7 +202,7 @@ void hooks::init( ) {
 	dbg_hook( _list_leaves_in_box, list_leaves_in_box, ( void** )&old::list_leaves_in_box );
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
 	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
-	//dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
+	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
 	dbg_hook( _send_net_msg, send_net_msg, ( void** )&old::send_net_msg );
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );

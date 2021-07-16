@@ -468,12 +468,14 @@ void features::esp::render( ) {
 				draw_esp_widget( esp_rect , visuals.fatal_color , esp_type_text , visuals.value_text , visuals.fatal_flag_placement , esp_data[ e->idx( ) ].m_dormant , 0.0 , 0.0 , _( "Fatal" ) );
 			
 			if ( visuals.zoom_flag && esp_data [ e->idx ( ) ].m_scoped )
-				draw_esp_widget ( esp_rect, visuals.fatal_color, esp_type_text, visuals.value_text, visuals.fatal_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Zoom" ) );
+				draw_esp_widget ( esp_rect, visuals.zoom_color, esp_type_text, visuals.value_text, visuals.zoom_flag_placement, esp_data [ e->idx ( ) ].m_dormant, 0.0, 0.0, _ ( "Zoom" ) );
 			
+			//if ( e == g::local && g::local )
+			//	dbg_print ( _("desync_amount: %.2f\n"), g::local->desync_amount() );
 			/* DEBUGGING STUFF */
 			//if ( e != g::local && e->team() != g::local->team() ) {
 			//	for ( auto i = 0; i < 13; i++ ) {
-			//		if ( i != 7 )
+			//		if ( i != 6 )
 			//			continue;
 			//
 			//		std::string output = "animlayer ";

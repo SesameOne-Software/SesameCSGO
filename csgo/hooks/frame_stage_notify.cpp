@@ -81,6 +81,7 @@ bool precache_model ( const char* mdl_name ) {
 
 void player_model ( int stage ) {
 	static bool was_in_game = false;
+	static bool was_dead = true;
 	static int backup_player_mdl_idx = 0;
 
 	if ( cs::i::engine->is_in_game ( ) && !was_in_game ) {
@@ -91,6 +92,7 @@ void player_model ( int stage ) {
 
 	if ( !g::local || !g::local->alive ( ) ) {
 		backup_player_mdl_idx = 0;
+		was_dead = true;
 		return;
 	}
 
@@ -131,12 +133,6 @@ void player_model ( int stage ) {
 	static auto last_player_model_t = player_model_t;
 	static auto last_player_model_ct = player_model_ct;
 
-	if ( player_model_t != last_player_model_t || player_model_ct != last_player_model_ct ) {
-		cs::i::client_state->delta_tick ( ) = -1;
-		last_player_model_t = player_model_t;
-		last_player_model_ct = player_model_ct;
-	}
-
 	if ( !backup_player_mdl_idx )
 		backup_player_mdl_idx = g::local->mdl_idx ( );
 
@@ -148,12 +144,21 @@ void player_model ( int stage ) {
 
 	if ( const auto ragdoll = cs::i::ent_list->get_by_handle<entity_t*> ( g::local->ragdoll_handle ( ) ) )
 		ragdoll->set_model_idx ( new_idx );
+
+	if ( player_model_t != last_player_model_t || player_model_ct != last_player_model_ct /*|| was_dead*/ ) {
+		cs::i::client_state->delta_tick ( ) = -1;
+		last_player_model_t = player_model_t;
+		last_player_model_ct = player_model_ct;
+
+		was_dead = false;
+	}
 }
 
 void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 	//dbg_print ( fmt::format("stage: {}", stage).c_str());
 
-	static auto m_vecBulletVerifyListClient = pattern::search ( _ ( "client.dll" ), _ ( "F3 0F 10 86 ? ? ? ? F3 0F 58 44 24 0C" ) ).add ( 4 ).deref ( ).add ( 0x274 ).get< uint32_t > ( );
+	static auto m_vecBulletVerifyListClient = pattern::search ( _ ( "client.dll" ), _ ( "8B 86 ? ? ? ? F3 0F 10 17" ) ).add ( 2 ).deref ( ).get< ptrdiff_t > ( );
+	static auto m_vecBulletVerifyListServer = m_vecBulletVerifyListClient + 0x14;
 	static auto& bullet_impacts_client = options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b;
 	static auto& bullet_impacts_client_color = options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c;
 
@@ -225,16 +230,16 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			/* bullet impacts */
 			if ( g::local && bullet_impacts_client ) {
 				static int last_num_impacts = 0;
-
+			
 				struct client_hit_verify_t {
 					vec3_t pos;
 					float time;
 					float duration;
 				};
-
+			
 				const auto num_impacts = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( g::local ) + m_vecBulletVerifyListClient );
 				const auto impacts = *reinterpret_cast< client_hit_verify_t** >( reinterpret_cast< uintptr_t >( g::local ) + m_vecBulletVerifyListClient + 4 );
-
+			
 				if ( num_impacts > last_num_impacts ) {
 					for ( auto i = 0; i <= num_impacts - last_num_impacts - 1; i++ ) {
 						auto& impact = impacts [ num_impacts - ( num_impacts - last_num_impacts ) + i ];
@@ -242,7 +247,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 						anims::resolver::rdata::clientside_shot = true;
 					}
 				}
-
+			
 				last_num_impacts = num_impacts;
 			}
 
@@ -302,7 +307,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			if ( g::local && ( g::local->alive( ) != last_alive || ( last_clr.r != world_color.r || last_clr.g != world_color.g || last_clr.b != world_color.b || last_clr.a != world_color.a ) || ( last_prop_clr.r != prop_color.r || last_prop_clr.g != prop_color.g || last_prop_clr.b != prop_color.b || last_prop_clr.a != prop_color.a ) ) ) {
 				static auto load_named_sky = pattern::search( _( "engine.dll" ), _( "55 8B EC 81 EC ? ? ? ? 56 57 8B F9 C7 45" ) ).get< void( __fastcall* )( const char* ) >( );
 
-				load_named_sky( _( "sky_csgo_night02" ) );
+				load_named_sky( _( "cs_baggage_skybox" ) );
 
 				for ( auto i = cs::i::mat_sys->first_material( ); i != cs::i::mat_sys->invalid_material( ); i = cs::i::mat_sys->next_material( i ) ) {
 					auto mat = cs::i::mat_sys->get_material( i );

@@ -17,7 +17,17 @@ struct mdlrender_info_t {
 	int m_skin;
 	int m_body;
 	int m_hitbox_set;
-	std::uint16_t m_instance;
+	uint16_t m_instance;
+};
+
+struct mdlstate_t {
+	studiohdr_t* studiohdr;
+	void* studio_hw_data;
+	void* renderable;
+	const matrix3x4_t* mdl_to_world;
+	void* decals;
+	int draw_flags;
+	int lod;
 };
 
 class c_renderview {

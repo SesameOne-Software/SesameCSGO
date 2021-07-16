@@ -215,15 +215,15 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 				exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
 
 			features::ragebot::tickbase_controller ( ucmd );
+
+			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
+				exploits::has_shifted = false;
 		}
 
 		features::antiaim::run ( ucmd, old_smove, old_fmove, last_attack );
 		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
 
 		if ( !exploits::in_exploit ) {
-			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
-				exploits::has_shifted = false;
-
 			exploits::will_shift = false;
 
 			/* recreate what holdaim var does */
@@ -321,23 +321,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	airstuck ( ucmd );
 	
 	/* event delay fix */
-	if ( cs::i::client_state ) {
-		auto nc = cs::i::client_state->net_channel ( );
-	
-		if ( nc ) {
-			auto& current_data = g::network_data [ ucmd->m_cmdnum % g::network_data.size ( ) ];
-
-			current_data.out_sequence = ucmd->m_cmdnum;
-			current_data.last_out_cmd = cs::i::client_state->last_outgoing_cmd ( );
-	
-			//nc->send_datagram ( nullptr );
-			//
-			//nc->choked_packets--;
-			//nc->out_seq_nr--;
-		}
-	}
-
-	//if ( g::send_packet && !cs::is_valve_server ( ) )
+	//if ( g::send_packet )
 	//	g::outgoing_cmd_nums.push_front ( ucmd->m_cmdnum );
 	//
 	//if ( cs::i::client_state && !g::send_packet && !cs::is_valve_server ( ) ) {
@@ -358,6 +342,15 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	if ( !exploits::in_exploit )
 		exploits::run ( ucmd );
+
+	if ( g::send_packet ) {
+		g::send_cmds++;
+		g::choked_cmds = 0;
+	}
+	else {
+		g::send_cmds = 0;
+		g::choked_cmds++;
+	}
 
 	in_cm = false;
 

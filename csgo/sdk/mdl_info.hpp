@@ -131,27 +131,32 @@ struct studiohdr_t {
 class c_mdlinfo {
 public:
 	void* mdl( int idx ) {
-		using getmdl_fn = void* ( __thiscall* )( void*, int );
+		using getmdl_fn = void* ( __thiscall* )( c_mdlinfo*, int );
 		return vfunc< getmdl_fn >( this, 1 )( this, idx );
 	}
 
 	std::uint32_t mdl_idx( const char* name ) {
-		using getmdlidx_fn = std::uint32_t( __thiscall* )( void*, const char* );
+		using getmdlidx_fn = std::uint32_t( __thiscall* )( c_mdlinfo*, const char* );
 		return vfunc< getmdlidx_fn >( this, 2 )( this, name );
 	}
 
 	const char* mdl_name( const void* mdl ) {
-		using getmdlname_fn = const char* ( __thiscall* )( void*, const void* );
+		using getmdlname_fn = const char* ( __thiscall* )( c_mdlinfo*, const void* );
 		return vfunc< getmdlname_fn >( this, 3 )( this, mdl );
 	}
 
 	studiohdr_t* studio_mdl( void* mdl ) {
-		using getstudiomdl_fn = studiohdr_t * ( __thiscall* )( void*, void* );
+		using getstudiomdl_fn = studiohdr_t * ( __thiscall* )( c_mdlinfo*, void* );
 		return vfunc< getstudiomdl_fn >( this, 32 )( this, mdl );
 	}
 
 	void* find_or_load_mdl ( const char* name ) {
-		using find_or_load_mdl_fn = void* ( __thiscall* )( void*, const char* );
+		using find_or_load_mdl_fn = void* ( __thiscall* )( c_mdlinfo*, const char* );
 		return vfunc< find_or_load_mdl_fn > ( this, 41 )( this, name );
+	}
+
+	uint16_t cache_handle ( void* mdl ) {
+		using cache_handle_fn = uint16_t ( __thiscall* )( c_mdlinfo*, void* );
+		return vfunc< cache_handle_fn > ( this, 44 )( this, mdl );
 	}
 };

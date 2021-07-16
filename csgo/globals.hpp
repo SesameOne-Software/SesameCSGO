@@ -42,7 +42,10 @@ namespace g {
 	extern bool can_fire_revolver;
 	extern round_t round;
 	inline uint32_t server_tick = 0;
-	inline std::array< network_data_t, 150 > network_data;
+	inline std::deque< int > outgoing_cmd_nums { };
+	inline int choked_cmds = 0;
+	inline int send_cmds = 0;
+	inline bool just_shot = false;
 
 	namespace resources {
 #include "base85.hpp"

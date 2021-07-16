@@ -18,7 +18,7 @@ namespace prediction_util {
 	bool in_pred;
 
 	void start( ucmd_t* ucmd ) {
-			features::prediction::in_prediction = true;
+		features::prediction::in_prediction = true;
 
 		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
 				return;

@@ -10,6 +10,7 @@
 #include "../hitsounds.h"
 #include "../features/other_visuals.hpp"
 #include "../menu/options.hpp"
+#include "../features/chams.hpp"
 
 #include "anims.hpp"
 
@@ -235,9 +236,8 @@ void anims::resolver::process_hurt ( event_t* event ) {
 void anims::resolver::process_event_buffer ( int pl_idx ) {
 	static auto& logs = options::vars [ _ ( "visuals.other.logs" ) ].val.l;
 
-	if ( !g::local ) {
-			return;
-	}
+	if ( !g::local )
+		return;
 
 	auto ray_intersects_sphere = [ ] ( const vec3_t& from, const vec3_t& to, const vec3_t& sphere, float rad ) -> bool {
 		auto q = sphere - from;
@@ -265,6 +265,9 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 			}
 		}
 		else {
+			if ( auto player = cs::i::ent_list->get<player_t*> ( pl_idx ) )
+				features::chams::add_shot ( player, features::ragebot::get_lag_rec ( pl_idx ) );
+
 			features::ragebot::get_misses ( pl_idx ).bad_resolve++;
 			impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), rdata::impacts [ pl_idx ], _ ( "resolve ( " ) + std::to_string ( features::ragebot::get_misses ( pl_idx ).bad_resolve ) + _ ( " )" ), cs::i::globals->m_curtime, false, rgba ( 161, 66, 245, 150 ) } );
 
@@ -273,6 +276,7 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 
 			if ( logs [ 2 ] ) {
 				auto rec = features::ragebot::get_lag_rec ( pl_idx );
+
 				print_console ( { 0.85f, 0.31f, 0.83f, 1.0f }, _ ( "sesame" ) );
 				print_console ( { 1.0f, 1.0f, 1.0f, 1.0f }, _ ( " ～ missed shot due to animation desync at %.1f°" ), cs::normalize( cs::normalize( rec.m_abs_angles[rec.m_side].y )- cs::normalize( rec.m_angles.y) ) );
 
@@ -303,9 +307,8 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 	else if ( rdata::wrong_hitbox [ pl_idx ] ) {
 		previous_blood_target = features::ragebot::get_target_idx ( );
 		
-		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
-
-		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data(), sizeof matrix3x4_t * 128 );
+		if ( auto player = cs::i::ent_list->get<player_t*>( pl_idx ) )
+			features::chams::add_shot ( player, features::ragebot::get_lag_rec ( pl_idx ) );
 
 		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos ( pl_idx ), std::to_string ( rdata::player_dmg [ pl_idx ] ), cs::i::globals->m_curtime, true, rgba ( 161, 66, 245, 150 ) } );
 
@@ -378,9 +381,8 @@ void anims::resolver::process_event_buffer ( int pl_idx ) {
 	else if ( rdata::player_hurt [ pl_idx ] ) {
 		previous_blood_target = features::ragebot::get_target_idx ( );
 	
-		hit_matrix_rec.push_back ( { uint32_t ( pl_idx ), { }, cs::i::globals->m_curtime, rgba ( 202, 252, 3, 255 ) } );
-
-		memcpy ( hit_matrix_rec.back ( ).m_bones.data ( ), features::ragebot::get_lag_rec ( pl_idx ).m_aim_bones.data ( ), sizeof matrix3x4_t * 128 );
+		if ( auto player = cs::i::ent_list->get<player_t*> ( pl_idx ) )
+			features::chams::add_shot ( player, features::ragebot::get_lag_rec ( pl_idx ) );
 
 		impact_recs.push_back ( impact_rec_t { features::ragebot::get_shot_pos ( pl_idx ), features::ragebot::get_target_pos ( pl_idx ), std::to_string ( rdata::player_dmg [ pl_idx ] ), cs::i::globals->m_curtime, true, rgba ( 161, 66, 245, 150 ) } );
 
@@ -450,9 +452,6 @@ void anims::resolver::create_beams ( ) {
 	if ( !g::local || !g::local->alive ( ) ) {
 		if ( !impact_recs.empty ( ) )
 			impact_recs.clear ( );
-
-		if ( !hit_matrix_rec.empty ( ) )
-			hit_matrix_rec.clear ( );
 
 		return;
 	}
@@ -533,9 +532,6 @@ void anims::resolver::render_impacts ( ) {
 		if ( !impact_recs.empty ( ) )
 			impact_recs.clear ( );
 
-		if ( !hit_matrix_rec.empty ( ) )
-			hit_matrix_rec.clear ( );
-
 		return;
 	}
 
@@ -543,40 +539,6 @@ void anims::resolver::render_impacts ( ) {
 		const auto dormant_time = 4.0f;
 		return static_cast< int >( ( std::clamp< float > ( dormant_time - ( std::clamp< float > ( add ? ( dormant_time - std::clamp< float > ( abs ( ( g::local ? cs::ticks2time ( g::local->tick_base ( ) ) : cs::i::globals->m_curtime ) - time ), 0.0f, dormant_time ) ) : abs ( cs::i::globals->m_curtime - time ), std::max< float > ( dormant_time - fade_time, 0.0f ), dormant_time ) ), 0.0f, fade_time ) / fade_time ) * base_alpha );
 	};
-
-	if ( !hit_matrix_rec.empty ( ) ) {
-		int cur_matrix = 0;
-
-		for ( auto& hit_matrix : hit_matrix_rec ) {
-			const auto pl = cs::i::ent_list->get< player_t* > ( hit_matrix.m_pl );
-
-			if ( !pl || !pl->alive ( ) ) {
-				hit_matrix_rec.erase ( hit_matrix_rec.begin ( ) + cur_matrix );
-				continue;
-			}
-
-			features::visual_config_t visuals;
-
-			if ( !features::get_visuals ( pl, visuals ) )
-				continue;
-
-			const auto alpha = calc_alpha ( hit_matrix.m_time, 2.0f, visuals.hit_matrix_color.a * 255.0f );
-
-			if ( !alpha ) {
-				hit_matrix_rec.erase ( hit_matrix_rec.begin ( ) + cur_matrix );
-				continue;
-			}
-
-			hit_matrix.m_clr = rgba (
-				static_cast< int >( visuals.hit_matrix_color.r * 255.0f ),
-				static_cast< int >( visuals.hit_matrix_color.g * 255.0f ),
-				static_cast< int >( visuals.hit_matrix_color.b * 255.0f ),
-				alpha
-			);
-
-			cur_matrix++;
-		}
-	}
 
 	if ( impact_recs.empty ( ) )
 		return;
@@ -793,7 +755,7 @@ anims::desync_side_t anims::resolver::apply_antiaim ( player_t* player, float sp
 			RETURN ( rdata::resolved_side [ idx ] );
 		ENDIF;
 	} ENDIF;
-
+	
 	RETURN ( desync_side_t::desync_middle );
 	OBF_END;
 }
@@ -896,7 +858,7 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 		}
 		ELSE {
 			IF ( !!( rec.m_flags & flags_t::on_ground ) && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground ) ) {
-				IF ( speed_2d <= 0.1f ) {
+				IF ( speed_2d <= 5.0f ) {
 					IF ( rdata::was_moving [ idx ] ) {
 						IF ( !rdata::new_resolve [ idx ] )
 							rdata::prefer_edge [ idx ] = true; ENDIF;
@@ -904,52 +866,84 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 						rdata::new_resolve [ idx ] = false;
 						rdata::was_moving [ idx ] = false;
 					} ENDIF;
+					
+					IF ( anim_layers [ N ( 6 ) ].m_weight < 0.01f && anim_layers [ N ( 6 ) ].m_playback_rate > N( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate < 0.0001f && anim_info [ idx ].size( ) >= N( 2 ) ) {
+						const auto rate_delta_1 = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
+						const auto rate_delta_2 = abs ( anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
 
-					IF ( anim_layers [ N ( 3 ) ].m_weight <= N( 0 )
+						IF ( rate_delta_1 >= 0.000002f && rate_delta_2 >= 0.000002f ) {
+							const auto side1 = anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
+							const auto side2 = anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ anims::desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
+
+							IF ( side1 || side2 ) {
+								rdata::resolved_jitter [ idx ] = true;
+								rdata::jitter_sync [ idx ] = side1;
+
+								rdata::resolved_side_jitter1 [ idx ] = rdata::resolved_side_run [ idx ];
+
+								IF ( rdata::resolved_side_jitter1 [ idx ] >= desync_side_t::desync_middle )
+									rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_left_max;
+								ELSE
+									rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_right_max;
+								ENDIF;
+							} ENDIF;
+						}
+						ELSE {
+							IF ( rate_delta_1 < 0.000002f && rate_delta_2 < 0.000002f )
+								rdata::resolved_jitter [ idx ] = false; ENDIF;
+						} ENDIF;
+					}
+					ELSE {
+						IF ( anim_layers [ N ( 3 ) ].m_weight <= N ( 0 )
 						&& anim_layers [ N ( 3 ) ].m_cycle <= N ( 0 )
 						&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
 						&& anim_layers [ N ( 6 ) ].m_playback_rate <= N ( 0 )
 						&& abs ( delta_yaw ) > N ( 35 ) ) {
-						anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
-
-						IF ( delta_yaw > N ( 0 ) && rdata::resolved_side_run [ idx ] < anims::desync_side_t::desync_middle ) {
-							new_desync_side = rdata::resolved_side_run [ idx ];
-						} ELSE {
-							IF ( delta_yaw <= N ( 0 ) && rdata::resolved_side_run [ idx ] >= anims::desync_side_t::desync_middle )
-								new_desync_side = rdata::resolved_side_run [ idx ];
-							ELSE
-								new_desync_side = ( delta_yaw <= N ( 0 ) ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
-							ENDIF;
-						} ENDIF;
-
-						IF ( rdata::resolved_side_run [ idx ] != new_desync_side )
-							features::ragebot::get_misses ( idx ).bad_resolve = N( 0 ); ENDIF;
-
-						rdata::resolved_side_run [ idx ] = new_desync_side;
-						rdata::new_resolve [ idx ] = true;
-						rdata::prefer_edge [ idx ] = false;
-					}
-					ELSE {
-						/* resolve center-real / anti-alignment on standing */
-						IF ( !shot && !rdata::new_resolve [ idx ]
-							&& !features::ragebot::get_misses ( idx ).bad_resolve
-							&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
-							&& anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 )
-							&& anim_layers [ N ( 6 ) ].m_playback_rate <= 0.06f
-							&& abs ( delta_yaw ) < N ( 35 ) && abs ( delta_yaw_old ) < N ( 35 )
-							&& abs( delta_eye_yaw ) < N( 26 )
-							&& abs ( delta_at_target ) > N ( 12 ) && abs ( delta_at_target ) < N ( 76 ) ) {
 							anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
 
-							IF ( delta_at_target <= N ( 0 ) )
-								new_desync_side = delta_at_target >= -N ( 44 ) ? anims::desync_side_t::desync_right_half : anims::desync_side_t::desync_right_max;
-							ELSE
-								new_desync_side = delta_at_target <= N ( 44 ) ? anims::desync_side_t::desync_left_half : anims::desync_side_t::desync_left_max;
-							ENDIF;
+							IF ( delta_yaw > N ( 0 ) && rdata::resolved_side_run [ idx ] < anims::desync_side_t::desync_middle ) {
+								new_desync_side = rdata::resolved_side_run [ idx ];
+							} ELSE {
+								IF ( delta_yaw <= N ( 0 ) && rdata::resolved_side_run [ idx ] >= anims::desync_side_t::desync_middle )
+									new_desync_side = rdata::resolved_side_run [ idx ];
+								ELSE
+									new_desync_side = ( delta_yaw <= N ( 0 ) ) ? anims::desync_side_t::desync_right_max : anims::desync_side_t::desync_left_max;
+								ENDIF;
+							} ENDIF;
+
+							IF ( rdata::resolved_side_run [ idx ] != new_desync_side )
+								features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 ); ENDIF;
 
 							rdata::resolved_side_run [ idx ] = new_desync_side;
 							rdata::new_resolve [ idx ] = true;
 							rdata::prefer_edge [ idx ] = false;
+						}
+						ELSE {
+							/* resolve center-real / anti-alignment on standing */
+							IF ( !shot && !rdata::new_resolve [ idx ]
+								&& !features::ragebot::get_misses ( idx ).bad_resolve
+								&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
+								&& anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 )
+								&& anim_layers [ N ( 6 ) ].m_playback_rate <= 0.06f
+								&& abs ( delta_yaw ) < N ( 35 ) && abs ( delta_yaw_old ) < N ( 35 )
+								&& abs ( delta_eye_yaw ) < N ( 26 )
+								&& abs ( delta_at_target ) > N ( 12 ) && abs ( delta_at_target ) < N ( 76 ) ) {
+								anims::desync_side_t new_desync_side = anims::desync_side_t::desync_middle;
+
+								IF ( delta_at_target <= N ( 0 ) )
+									new_desync_side = delta_at_target >= -N ( 44 ) ? anims::desync_side_t::desync_right_half : anims::desync_side_t::desync_right_max;
+								ELSE
+									new_desync_side = delta_at_target <= N ( 44 ) ? anims::desync_side_t::desync_left_half : anims::desync_side_t::desync_left_max;
+								ENDIF;
+
+								rdata::resolved_side_run [ idx ] = new_desync_side;
+								rdata::new_resolve [ idx ] = true;
+								rdata::prefer_edge [ idx ] = false;
+							} ENDIF;
 						} ENDIF;
 					} ENDIF;
 
@@ -965,11 +959,8 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 					const auto right_delta_weight = abs ( anim_layers [ N ( 6 ) ].m_weight - rec.m_anim_layers [ anims::desync_side_t::desync_right_max ][ N ( 6 ) ].m_weight ) * N ( 100 );
 					const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, right_delta_weight ) ) );
 
-					//dbg_print ( "LEAN: %.4f\n", lean_weight );
-					//dbg_print ( "WEIGHT: %.4f\n", smallest_weight );
-
-					IF ( anim_layers [ N ( 6 ) ].m_weight > 0.05f
-						&& ( anim_layers [ N ( 12 ) ].m_weight <= 0.0f || anim_layers [ N ( 7 ) ].m_weight >= 1.0f || smallest_weight <= 1.0f ) ) {
+					IF ( anim_layers [ N ( 6 ) ].m_weight > 0.01f
+						/*&& ( anim_layers [ N ( 12 ) ].m_weight <= 0.0f || anim_layers [ N ( 7 ) ].m_weight >= 1.0f || smallest_weight <= 1.0f )*/ ) {
 						const auto middle_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_half_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
@@ -995,7 +986,8 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 								rdata::prefer_edge [ idx ] = false;
 							}
 							ELSE {
-								//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
+								//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f
+								//&& left_half_delta_rate < right_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
 								//	IF ( desync_side != anims::desync_side_t::desync_left_half )
 								//		side_changed = true; ENDIF;
 								//	desync_side = anims::desync_side_t::desync_left_half;
@@ -1010,7 +1002,7 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 										rdata::new_resolve [ idx ] = true;
 										rdata::prefer_edge [ idx ] = false;
 									} ELSE {
-										IF ( middle_delta_rate < left_delta_rate&& middle_delta_rate < right_delta_rate ) {
+										IF ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate ) {
 											IF ( desync_side != anims::desync_side_t::desync_middle )
 												side_changed = true; ENDIF;
 
@@ -1028,36 +1020,6 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 
 						IF ( is_running )
 							rdata::was_moving [ idx ] = true; ENDIF;
-
-						IF ( side_changed && is_running ) {
-							IF ( rdata::last_good_weight [ idx ] ) {
-								rdata::resolved_jitter [ idx ] = true;
-								rdata::jitter_sync [ idx ] = cs::time2ticks ( ent->simtime ( ) ) % N ( 2 );
-							} ENDIF;
-
-							rdata::last_good_weight [ idx ] = true;
-						}
-						ELSE {
-							rdata::last_good_weight [ idx ] = false;
-						} ENDIF;
-
-						IF ( !side_changed && is_running ) {
-							IF ( rdata::last_bad_weight [ idx ] )
-								rdata::resolved_jitter [ idx ] = false; ENDIF;
-
-							rdata::last_bad_weight [ idx ] = true;
-						}
-						ELSE {
-							rdata::last_bad_weight [ idx ] = false;
-						} ENDIF;
-
-						IF ( rdata::resolved_jitter [ idx ] && is_running ) {
-							IF ( rdata::jitter_sync [ idx ] == cs::time2ticks ( ent->simtime ( ) ) % 2 )
-								rdata::resolved_side_jitter1 [ idx ] = desync_side;
-							ELSE
-								rdata::resolved_side_jitter2 [ idx ] = desync_side;
-							ENDIF;
-						} ENDIF;
 					} ENDIF;
 				} ENDIF;
 			} ENDIF;

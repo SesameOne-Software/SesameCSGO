@@ -238,6 +238,7 @@ public:
 	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
 	NETVAR ( int, body, "DT_CSPlayer->m_nBody" );
 	NETVAR ( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
+	NETVAR ( int, hitbox_set, "DT_BaseAnimating->m_nHitboxSet" );
 
 	bool is_player( ) {
 		return client_class ( ) && client_class ( )->m_class_id == 40;
@@ -387,4 +388,10 @@ public:
 	void* get_original_data ( );
 	void* get_predicted_frame ( int frame_num );
 	void* get_data_map ( int frame_num );
+
+	/* XREF: above "placementOrigin" in 2 nested if statements */
+	int get_skin ( ) {
+		using fn = int ( __thiscall* )( void* );
+		return vfunc< fn > ( renderable ( ), 38 )( renderable( ) );
+	}
 };

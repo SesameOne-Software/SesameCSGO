@@ -565,15 +565,38 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	const auto weapon_range = weapon->data ( )->m_range;
 	const auto hitbox_as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
 
+	const auto backup_origin = pl->origin ( );
+	auto backup_abs_origin = pl->abs_origin ( );
+	const auto backup_bone_cache = pl->bone_cache ( );
+	const auto backup_mins = pl->mins ( );
+	const auto backup_maxs = pl->maxs ( );
+
+	pl->origin ( ) = rec.m_origin;
+	//pl->set_abs_origin ( rec.m_origin );
+	pl->bone_cache ( ) = bone_matrix.data ( );
+	pl->mins ( ) = rec.m_mins;
+	pl->maxs ( ) = rec.m_maxs;
+
 	for ( auto i = 0; i < rays; i++ ) {
 		const auto spread_x = -weap_spread * 0.5f + ( rand_components [ 0 ][ i ] * weap_spread );
 		const auto spread_y = -weap_spread * 0.5f + ( rand_components [ 1 ][ i ] * weap_spread );
 		const auto spread_z = -weap_spread * 0.5f + ( rand_components [ 2 ][ i ] * weap_spread );
 		const auto final_pos = src + ( forward + vec3_t( spread_x, spread_y, spread_z ) ) * weapon_range;
 
-		if ( autowall::trace_ray( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius == -1.0f ? 4.0f : hhitbox->m_radius, src, final_pos ) )
+		trace_t tr;
+		ray_t ray;
+		ray.init ( src, final_pos );
+		cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
+
+		if ( tr.m_hit_entity == pl && tr.m_hitbox == hitbox )
 			hits++;
 	}
+
+	pl->origin ( ) = backup_origin;
+	//pl->set_abs_origin ( rec.m_origin );
+	pl->bone_cache ( ) = backup_bone_cache;
+	pl->mins ( ) = backup_mins;
+	pl->maxs ( ) = backup_maxs;
 
 	const auto calc_chance = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
 
@@ -910,7 +933,7 @@ void features::ragebot::run ( ucmd_t* ucmd, float& old_smove, float& old_fmove, 
 			const auto ent = cs::i::ent_list->get<player_t*> ( i );
 
 			if ( ent->valid ( ) && !ent->immune() && ent->team ( ) != g::local->team ( ) ) {
-				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) );
+				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) /*+ ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) )*/;
 				const auto dmg = autowall::dmg ( g::local, ent, predicted_eyes, pred_ent_pos, hitboxes_t::hitbox_head );
 
 				if ( dmg >= 1.0f && dmg >= ( static_cast< float >( min_dmg ) > 100.0f ? static_cast< float >( ent->health ( ) + ( min_dmg - 100 ) ) : std::min ( static_cast< float >( ent->health ( ) + 5.0f ), static_cast< float >( min_dmg ) ) ) ) {

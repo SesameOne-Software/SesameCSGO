@@ -456,10 +456,6 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 		ImGui::Separator ( );
 
 		ImGui::Checkbox( _( "Enable" ), &options::vars [ antiaim_config + _( "enabled" ) ].val.b );
-		ImGui::PushItemWidth ( -1.0f );
-		ImGui::SliderInt ( _( "Fakelag Factor" ), &options::vars [ antiaim_config + _( "fakelag_factor" ) ].val.i, 0, 14, _( "%d ticks" ) );
-		ImGui::PopItemWidth ( );
-
 		static std::vector<const char*> pitches { "None", "Down", "Up", "Zero" };
 		ImGui::PushItemWidth ( -1.0f );
 		ImGui::Combo( _( "Base Pitch" ), &options::vars [ antiaim_config + _( "pitch" ) ].val.i, pitches.data(), pitches.size() );
@@ -982,6 +978,25 @@ void gui::draw( ) {
 							ImGui::Keybind ( _ ( "Manual Right Key" ), &options::vars [ _ ( "antiaim.manual_right_key" ) ].val.i, &options::vars [ _ ( "antiaim.manual_right_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Manual Back Key" ), &options::vars [ _ ( "antiaim.manual_back_key" ) ].val.i, &options::vars [ _ ( "antiaim.manual_back_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Keybind ( _ ( "Desync Inverter Key" ), &options::vars [ _ ( "antiaim.desync_invert_key" ) ].val.i, &options::vars [ _ ( "antiaim.desync_invert_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
+
+							ImGui::EndChildFrame ( );
+						}
+
+						ImGui::SameLine ( );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Fakelag" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Fakelag" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Fakelag" ) );
+							ImGui::Separator ( );
+
+							ImGui::Checkbox ( _ ( "Enable Fakelag" ), &options::vars [ _ ( "antiaim.fakelag" ) ].val.b );
+							ImGui::PushItemWidth ( -1.0f );
+							ImGui::SliderInt ( _ ( "Fakelag Limit" ), &options::vars [ _ ( "antiaim.fakelag_limit" ) ].val.i, 0, 16, _ ( "%d ticks" ) );
+							ImGui::SliderInt ( _ ( "Fakelag Jitter" ), &options::vars [ _ ( "antiaim.fakelag_jitter" ) ].val.i, 0, 100, _ ( "%d%%" ) );
+							static std::vector<const char*> fakelag_triggers { "In Air", "On Peek", "On Shot", "On Land", "Reloading", "Weapon Switch", "Velocity Change", "Break Lagcomp" };
+							ImGui::MultiCombo ( _ ( "Fakelag Triggers" ), options::vars [ _ ( "antiaim.fakelag_triggers" ) ].val.l, fakelag_triggers.data ( ), fakelag_triggers.size ( ) );
+							ImGui::SliderInt ( _ ( "Fakelag Trigger Limit" ), &options::vars [ _ ( "antiaim.fakelag_trigger_limit" ) ].val.i, 0, 16, _ ( "%d ticks" ) );
+							ImGui::PopItemWidth ( );
 
 							ImGui::EndChildFrame ( );
 						}

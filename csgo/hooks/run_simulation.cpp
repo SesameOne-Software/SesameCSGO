@@ -45,10 +45,7 @@ void __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, p
 
 	if ( current_command == exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].first ) {
 		localplayer->tick_base ( ) -= exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].second;
-		//localplayer->tick_base ( ) = exploits::shifted_tickbase ( );
-		//localplayer->tick_base ( ) -= exploits::last_shifted_amount ( );
-		//exploits::adjust_player_time_base ( localplayer, exploits::last_shifted_amount ( ) );
-		//dbg_print ( "FIXED TICKBASE!\n" );
+		//exploits::adjust_player_time_base ( localplayer, exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].second );
 	}
 
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );

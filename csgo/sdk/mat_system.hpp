@@ -48,32 +48,37 @@ public:
 class c_matsys {
 public:
 	material_t* createmat( const char* name, void* kv ) {
-		using creatematerial_fn = material_t * ( __thiscall* )( void*, const char*, void* );
+		using creatematerial_fn = material_t * ( __thiscall* )( c_matsys*, const char*, void* );
 		return vfunc< creatematerial_fn >( this, 83 )( this, name, kv );
 	}
 
 	material_t* findmat( char const* name, const char* group_name, bool complain = true, const char* complain_prefix = nullptr ) {
-		using findmaterial_fn = material_t * ( __thiscall* )( void*, char const*, const char*, bool, const char* );
+		using findmaterial_fn = material_t * ( __thiscall* )( c_matsys*, char const*, const char*, bool, const char* );
 		return vfunc< findmaterial_fn >( this, 84 )( this, name, group_name, complain, complain_prefix );
 	}
 
 	material_t* get_material ( int handle ) {
-		using get_material_fn = material_t * ( __thiscall* )( void*, int );
+		using get_material_fn = material_t * ( __thiscall* )( c_matsys*, int );
 		return vfunc< get_material_fn > ( this, 89 )( this, handle );
 	}
 
 	int first_material ( ) {
-		using first_material_fn = int ( __thiscall* )( void* );
+		using first_material_fn = int ( __thiscall* )( c_matsys* );
 		return vfunc< first_material_fn > ( this, 86 )( this );
 	}
 
 	int next_material ( int handle ) {
-		using next_material_fn = int ( __thiscall* )( void*, int );
+		using next_material_fn = int ( __thiscall* )( c_matsys*, int );
 		return vfunc< next_material_fn > ( this, 87 )( this, handle );
 	}
 
 	int invalid_material ( ) {
-		using invalid_material_fn = int ( __thiscall* )( void* );
+		using invalid_material_fn = int ( __thiscall* )( c_matsys* );
 		return vfunc< invalid_material_fn > ( this, 88 )( this );
+	}
+
+	void* get_context ( ) {
+		using get_context_fn = void * ( __thiscall* )( c_matsys* );
+		return vfunc< get_context_fn > ( this, 115 )( this );
 	}
 };

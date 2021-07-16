@@ -286,7 +286,6 @@ __forceinline void add_antiaim_config( const std::string& antiaim_category ) {
 
 	const std::string prefix = _( "antiaim." ) + antiaim_category + _( "." );
 
-	option::add_int( prefix + _( "fakelag_factor" ), 0 );
 	option::add_bool( prefix + _( "enabled" ), false );
 	option::add_int( prefix + _( "pitch" ), 0 ); /* none, down, up, zero */
 	option::add_float( prefix + _( "yaw_offset" ), 0.0f );
@@ -428,6 +427,12 @@ void options::init( ) {
 	add_antiaim_config( _( "standing" ) );
 	option::add_int( _( "antiaim.standing.desync_type" ), 0 ); /* real around fake, fake around real */
 	option::add_int( _( "antiaim.standing.desync_type_inverted" ), 0 ); /* real around fake, fake around real */
+
+	option::add_bool ( _ ( "antiaim.fakelag" ), false );
+	option::add_int ( _ ( "antiaim.fakelag_limit" ), 0 );
+	option::add_int ( _ ( "antiaim.fakelag_jitter" ), 0 );
+	option::add_list ( _ ( "antiaim.fakelag_triggers" ), 8 ); /* in air, on peek, on shot, on land, while reloading, on weapon switch, on velocity change, break lagcomp */
+	option::add_int ( _ ( "antiaim.fakelag_trigger_limit" ), 0 );
 
 	/* VISUALS */
 	/* global visuals */

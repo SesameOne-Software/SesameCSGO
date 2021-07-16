@@ -41,7 +41,10 @@ namespace anims {
 			uint32_t m_pl;
 			std::array < matrix3x4_t, 128 > m_bones;
 			float m_time;
-			uint32_t m_clr;
+			std::array<float, 4> m_color;
+
+			mdlrender_info_t m_render_info;
+			mdlstate_t m_mdl_state;
 		};
 		
 		bool process_blood ( const effect_data_t& effect_data );
