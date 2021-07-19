@@ -56,7 +56,7 @@ public:
 
 	int send_datagram ( void* datagram ) {
 		using send_datagram_fn = int ( __thiscall* )( void*, void* );
-		return vfunc< send_datagram_fn > ( this, 46 )( this, datagram );
+		return vfunc< send_datagram_fn > ( this, g::is_legacy ? 48 : 46 )( this, datagram );
 	}
 };
 
@@ -67,19 +67,19 @@ public:
 	}
 
 	uint32_t& choked( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D30 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CB0 : 0x4D30 ) );
 	}
 
 	uint32_t& last_command_ack( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D34 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CB4 : 0x4D34 ) );
 	}
 
 	uint32_t& last_outgoing_cmd( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D2C );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CAC : 0x4D2C ) );
 	}
 
 	uint32_t& server_tickcount( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x164 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x16C : 0x164 ) );
 	}
 
 	uint32_t& delta_tick( ) {
@@ -91,11 +91,11 @@ public:
 	}
 
 	float& next_cmd_time( ) {
-		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x100 );
+		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
 	}
 
 	uint32_t& out_seq_num( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4D24 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CA4 : 0x4D24 ) );
 	}
 };
 

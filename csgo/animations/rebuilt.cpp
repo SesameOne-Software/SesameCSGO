@@ -2195,7 +2195,7 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	update_layer ( anim_state, 6, nWeaponMoveSeq, flLocalCycleIncrement, flMoveWeightWithAirSmooth, anim_state->m_feet_cycle );
 
 	if ( !CLIENT_DLL_ANIMS && player == g::local && g::local ) {
-		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + 0x31F8 );
+		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + ( g::is_legacy ? 0x31E8 : 0x31F8 ) );
 
 		const auto moveRight = !!( buttons & buttons_t::right );
 		const auto moveLeft = !!( buttons & buttons_t::left );
@@ -2577,7 +2577,6 @@ void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t or
 	static auto m_flThirdpersonRecoil = pattern::search( _( "client.dll" ) , _( "F3 0F 10 86 ? ? ? ? F3 0F 58 44 24 0C" ) ).add(4).deref().get< uint32_t >( );
 	static auto CCSGOPlayerAnimState__CacheSequences = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 34 53 56 8B F1 57 8B" ) ).get< bool( __thiscall* )( animstate_t* ) >( );
 	static auto& s_bEnableInvalidateBoneCache = *pattern::search( _( "client.dll" ) , _( "C6 05 ? ? ? ? 00 F3 0F 5F 05 ? ? ? ? F3 0F 11 47 74" ) ).add(2).deref().get< bool* >( );
-	static auto IsPreCrouchUpdateDemo = pattern::search( _( "client.dll" ) , _( "8B 0D 94 01 2C 15 8B 01 8B 80 ? ? ? ? FF D0 84 C0 75 14" ) ).get< bool( * )( ) >( );
 
 	if ( !anim_state )
 		return;

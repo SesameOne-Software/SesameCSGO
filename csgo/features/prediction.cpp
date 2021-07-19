@@ -43,8 +43,8 @@ namespace prediction_util {
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
 		*reinterpret_cast< uintptr_t* >( prediction_player ) = reinterpret_cast< uintptr_t >( g::local );
 
-		*reinterpret_cast< uint32_t* >( std::uintptr_t ( g::local ) + 0x3338 ) = reinterpret_cast< uintptr_t >( ucmd );
-		*reinterpret_cast< ucmd_t* >( std::uintptr_t ( g::local ) + 0x3288 ) = *ucmd;
+		*reinterpret_cast< uint32_t* >( std::uintptr_t ( g::local ) + ( g::is_legacy ? 0x3314 : 0x3338 ) ) = reinterpret_cast< uintptr_t >( ucmd );
+		*reinterpret_cast< ucmd_t* >( std::uintptr_t ( g::local ) + ( g::is_legacy ? 0x326C : 0x3288 ) ) = *ucmd;
 
 		flags = g::local->flags( );
 		features::prediction::crouch_amount = g::local->crouch_amount ( );
@@ -62,17 +62,18 @@ namespace prediction_util {
 		cs::i::pred->m_in_prediction = true;
 
 		if ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 52 ) )
-			*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + 0x31FC ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 52 );
+			*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? 0x31EC : 0x31FC ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 52 );
 
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3334 );
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3330 );
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? 0x3310 : 0x3334 ));
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast< uintptr_t >( ucmd ) + 48 ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? 0x330C : 0x3330 ));
 
 		const auto v16 = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + 48 );
-		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31EC ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31F8 );
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F8 ) = v16;
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F0 ) = v16 & v17;
-		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) + 0x31F4 ) = v17 & ~v16;
+		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? 0x31E8 : 0x31F8 ));
+
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) +( g::is_legacy ? 0x31DC : 0x31EC) ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? 0x31E8 : 0x31F8 ));
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) +( g::is_legacy ? 0x31E8 : 0x31F8) ) = v16;
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) +( g::is_legacy ? 0x31E0 : 0x31F0) ) = v16 & v17;
+		*reinterpret_cast<uint32_t*> ( reinterpret_cast<uintptr_t>(g::local) +( g::is_legacy ? 0x31E4 : 0x31F4) ) = v17 & ~v16;
 		
 		// set host player
 		cs::i::move_helper->set_host ( g::local );
@@ -129,7 +130,7 @@ namespace prediction_util {
 		cs::i::globals->m_frametime = frametime;
 		cs::i::globals->m_tickcount = tickcount;
 
-		*reinterpret_cast< uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + 0x3338 ) = 0;
+		*reinterpret_cast< uint32_t* >( reinterpret_cast< std::uintptr_t >( local ) + ( g::is_legacy ? 0x3314 : 0x3338) ) = 0;
 		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;
 

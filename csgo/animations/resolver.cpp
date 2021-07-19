@@ -960,7 +960,7 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 					const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, right_delta_weight ) ) );
 
 					IF ( anim_layers [ N ( 6 ) ].m_weight > 0.01f
-						/*&& ( anim_layers [ N ( 12 ) ].m_weight <= 0.0f || anim_layers [ N ( 7 ) ].m_weight >= 1.0f || smallest_weight <= 1.0f )*/ ) {
+						&& ( anim_layers [ N ( 12 ) ].m_weight <= 0.0f || anim_layers [ N ( 7 ) ].m_weight >= 1.0f || smallest_weight <= 1.0f ) ) {
 						const auto middle_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_half_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );

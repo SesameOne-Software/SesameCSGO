@@ -605,6 +605,9 @@
     <ClInclude Include="hooks\packet_start.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="hooks\get_client_interp_amount.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -878,6 +881,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\packet_start.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\get_client_interp_amount.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

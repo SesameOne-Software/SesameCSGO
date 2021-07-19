@@ -19,12 +19,12 @@ t& func( ) { \
 
 #define OFFSET( t, func, offset ) \
 t& func( ) { \
-	return *( t* ) ( std::uintptr_t( this ) + N( offset ) ); \
+	return *reinterpret_cast< t* > ( reinterpret_cast<uintptr_t>( this ) + ( offset ) ); \
 }
 
 #define POFFSET( t, func, offset ) \
 t func( ) { \
-	return ( t ) ( std::uintptr_t( this ) + N( offset ) ); \
+	return reinterpret_cast< t > ( reinterpret_cast<uintptr_t>( this ) + ( offset ) ); \
 }
 
 struct recv_table_t;

@@ -6,6 +6,7 @@
 #include "../utils/vfunc.hpp"
 #include "entity.hpp"
 #include "client.hpp"
+#include "../globals.hpp"
 
 enum class flags_t : uint32_t {
 	on_ground = ( 1 << 0 ),
@@ -227,8 +228,8 @@ public:
 	NETVAR ( vec3_t, ladder_norm, "DT_CSPlayer->m_vecLadderNormal" );
 	NETVAR ( uint32_t*, wearables_handle, "DT_BaseCombatCharacter->m_hMyWearables" );
 	NETVAR ( bool, strafing, "DT_CSPlayer->m_bStrafing" );
-	OFFSET( int, effects, 0xE8 );
-	OFFSET( int, eflags, 0xF0 );
+	OFFSET( int, effects, g::is_legacy ? 0xE4 : 0xE8 ); // TODO: FIX LATER
+	OFFSET( int, eflags, g::is_legacy ? 0xEC : 0xF0 );
 	OFFSET( void*, iks, 0x266C );
 	OFFSET( bool, should_update, 0x289C );
 	OFFSET( uint32_t, num_overlays, 0x298C );

@@ -66,6 +66,8 @@ unsigned __stdcall init_proxy( void* data ) {
 	WHILE ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
 		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) ); ENDWHILE;
 
+	g::is_legacy = *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( LI_FN ( GetModuleHandleA )( _ ( "csgo.exe" ) ) ) + N( 0x120 ) ) == N( 0x5A2F1C6A ) /* Tuesday, 12.12.2017 00:01:46 UTC */;
+
 	/* initialize hack */
 	cs::init ( );
 	netvars::init ( );

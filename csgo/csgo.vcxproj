@@ -58,6 +58,7 @@
     <ClCompile Include="hooks\frame_stage_notify.cpp" />
     <ClCompile Include="hooks\get_bool.cpp" />
     <ClCompile Include="hooks\adjust_interp_amount.cpp" />
+    <ClCompile Include="hooks\get_client_interp_amount.cpp" />
     <ClCompile Include="hooks\get_eye_angles.cpp" />
     <ClCompile Include="hooks\get_viewmodel_fov.cpp" />
     <ClCompile Include="hooks\hooks.cpp" />
@@ -167,6 +168,7 @@
     <ClInclude Include="hooks\frame_stage_notify.hpp" />
     <ClInclude Include="hooks\get_bool.hpp" />
     <ClInclude Include="hooks\adjust_interp_amount.hpp" />
+    <ClInclude Include="hooks\get_client_interp_amount.hpp" />
     <ClInclude Include="hooks\get_eye_angles.hpp" />
     <ClInclude Include="hooks\get_viewmodel_fov.hpp" />
     <ClInclude Include="hooks\hooks.hpp" />

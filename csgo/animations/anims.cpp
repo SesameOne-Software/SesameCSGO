@@ -416,7 +416,7 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		if ( animlayers [ 6 ].m_weight <= 0.0f ) {
 			vel.x = vel.y = 0.0f;
 		}
-		else if ( time_difference > cs::ticks2time ( 3 ) ) {
+		else {
 			if ( animlayers [ 6 ].m_playback_rate > 0.0f ) {
 				auto max_speed = 260.0f;
 				const auto weapon = ent->weapon ( );
@@ -859,7 +859,7 @@ void anims::on_net_update_end ( int idx ) {
 		return;
 	}
 
-	if ( ent->simtime ( ) > ent->old_simtime ( ) ) {
+	if ( ent->simtime ( ) > ent->old_simtime ( ) || anim_info [ idx ].empty ( ) ) {
 		if ( !anim_info[ idx ].empty( ) && ent->origin( ).dist_to_sqr( anim_info[ idx ].front( ).m_origin ) > 4096.0f )
 			for ( auto& rec : anim_info[ idx ] )
 				rec.m_invalid = true;

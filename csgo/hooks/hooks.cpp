@@ -52,6 +52,7 @@
 #include "calc_view.hpp"
 #include "post_network_data_received.hpp"
 #include "packet_start.hpp"
+#include "get_client_interp_amount.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -160,6 +161,7 @@ void hooks::init( ) {
 	const auto _calc_view = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 14 53 56 57 FF 75 18" ) ).get< void* > ( );
 	const auto _post_network_data_received = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 33 F6 6A 02" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _packet_start = pattern::search ( _ ( "engine.dll" ), _ ( "56 8B F1 E8 ? ? ? ? 8B 8E ? ? ? ? 3B" ) ).sub ( 32 ).get< void* > ( );
+	const auto _get_client_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 A1 ? ? ? ? A8 01 75 1F" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -228,6 +230,7 @@ void hooks::init( ) {
 	dbg_hook ( _calc_view, calc_view, ( void** ) &old::calc_view );
 	dbg_hook ( _post_network_data_received, post_network_data_received, ( void** ) &old::post_network_data_received );
 	//dbg_hook ( _packet_start, packet_start, ( void** ) &old::packet_start );
+	dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
 
 	event_handler = std::make_unique< c_event_handler > ( );
 
