@@ -15,35 +15,35 @@ class pattern {
 
 public:
 	__forceinline pattern( std::uintptr_t addr ) {
-		this->m_addr = addr;
+		m_addr = addr;
 	}
 
 	template < typename t >
 	__forceinline t get( ) {
-		return t( this->m_addr );
+		return t( m_addr );
 	}
 
 	__forceinline pattern sub( uintptr_t bytes ) {
-		return pattern( this->m_addr - bytes );
+		return pattern( m_addr - bytes );
 	}
 
 	__forceinline pattern add( std::uintptr_t bytes ) {
-		return pattern( this->m_addr + bytes );
+		return pattern( m_addr + bytes );
 	}
 
 	__forceinline pattern deref( ) {
-		return pattern( *( uintptr_t* ) this->m_addr );
+		return pattern( *reinterpret_cast< uintptr_t* >( m_addr ) );
 	}
 
 	__forceinline pattern resolve_rip( ) {
-		return pattern( this->m_addr + *( int* ) ( this->m_addr + 1 ) + 5 );
+		return pattern( m_addr + *reinterpret_cast< int* > ( m_addr + 1 ) + 5 );
 	}
 
 	__forceinline static void dbg_print ( const char* msg, ... ) {
 		if ( !msg )
 			return;
 
-		static void ( __cdecl * msg_fn )( const char*, va_list ) = ( decltype( msg_fn ) ) ( LI_FN ( GetProcAddress )( LI_FN ( GetModuleHandleA )( _ ( "tier0.dll" ) ), _ ( "Msg" ) ) );
+		static void ( __cdecl* msg_fn )( const char*, va_list ) = ( decltype( msg_fn ) ) ( LI_FN ( GetProcAddress )( LI_FN ( GetModuleHandleA )( _ ( "tier0.dll" ) ), _ ( "Msg" ) ) );
 		char buffer [ 989 ];
 		va_list list;
 		va_start ( list, msg );
