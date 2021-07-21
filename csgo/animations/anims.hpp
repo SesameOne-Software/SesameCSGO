@@ -182,10 +182,6 @@ namespace anims {
 
 	bool get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out );
 
-	float angle_diff( float dst , float src );
-	void calc_poses( player_t* ent , std::array<float , 24>& poses , float feet_yaw );
-	void simulate_movement( player_t* ent , flags_t& flags , vec3_t& origin , vec3_t& vel, flags_t& old_flags );
-
 	void reset_data ( int idx );
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
