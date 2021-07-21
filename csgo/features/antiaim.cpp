@@ -554,6 +554,9 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 					approach_speed ( 0.0f );
 			}
 		}
+
+		//if ( g::local->weapon ( ) && g::local->weapon ( )->data ( ) && abs ( prediction::vel.length_2d ( ) - ( ( g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed ) * 0.33f * ( slow_walk_speed / 100.0f ) ) ) < 1.0f )
+		//	approach_speed ( 0.0f );
 	}
 	else {
 		g::send_packet = true;

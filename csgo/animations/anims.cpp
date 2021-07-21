@@ -306,46 +306,44 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 	if ( origin_delta.is_zero ( ) || cs::time2ticks ( time_difference ) <= 0 )
 		return;
 
-	bool new_vel = false;
-
 	/* skeet */
 	if ( !!( ent->flags ( ) & flags_t::on_ground ) ) {
+		bool new_vel = false;
+
 		vel.z = 0.0f;
 
-		vel.x = origin_delta.x / time_difference;
-		vel.y = origin_delta.y / time_difference;
+		vel = origin_delta / time_difference;
+
+		auto max_speed = 260.0f;
+		const auto weapon = ent->weapon ( );
+
+		if ( weapon && weapon->data ( ) )
+			max_speed = ent->scoped ( ) ? weapon->data ( )->m_max_speed_alt : weapon->data ( )->m_max_speed;
 
 		if ( animlayers [ 6 ].m_weight <= 0.0f ) {
-			vel.x = vel.y = 0.0f;
+			vel.zero ( );
+			new_vel = true;
 		}
 		else {
 			if ( animlayers [ 6 ].m_playback_rate > 0.0f ) {
-				auto max_speed = 260.0f;
-				const auto weapon = ent->weapon ( );
-
-				if ( weapon && weapon->data ( ) )
-					max_speed = ent->scoped ( ) ? weapon->data ( )->m_max_speed_alt : weapon->data ( )->m_max_speed;
-
 				auto origin_delta_vel_norm = vel.normalized ( );
+				origin_delta_vel_norm.z = 0.0f;
+
 				auto origin_delta_vel_len = vel.length_2d ( );
 
-				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight / std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f );
+				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight /*/ std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f )*/;
 				const auto flTargetMoveWeight_to_speed2d = std::lerp ( max_speed * 0.52f, max_speed * 0.34f, ent->crouch_amount ( ) ) * flMoveWeightWithAirSmooth;
 
 				const auto speed_as_portion_of_run_top_speed = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
 
-				if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f ) {
-					const auto speed_layer11 = ( speed_as_portion_of_run_top_speed + 0.55f ) * max_speed;
-
-					vel.x = origin_delta_vel_norm.x * speed_layer11;
-					vel.y = origin_delta_vel_norm.y * speed_layer11;
-
+				if ( speed_as_portion_of_run_top_speed > 0.0f && speed_as_portion_of_run_top_speed < 1.0f
+					&& animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f /* make sure weight is not capped out */
+					&& animlayers [ 11 ].m_cycle > previous_record.m_anim_layers [ desync_side_t::desync_max ][ 11 ].m_cycle /* make sure layer weight keeps updating */ ) {
+					vel = origin_delta_vel_norm * ( max_speed * ( speed_as_portion_of_run_top_speed + 0.55f ) );
 					new_vel = true;
 				}
-				else if ( flMoveWeightWithAirSmooth < 0.95f ) {
-					vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_to_speed2d;
-					vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_to_speed2d;
-
+				else if ( flMoveWeightWithAirSmooth < 0.95f || flTargetMoveWeight_to_speed2d > origin_delta_vel_len ) {
+					vel = origin_delta_vel_norm * flTargetMoveWeight_to_speed2d;
 					new_vel = true;
 				}
 				else {
@@ -359,13 +357,34 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 						flTargetMoveWeight_adjusted_speed2d *= 0.52f;
 
 					if ( origin_delta_vel_len > flTargetMoveWeight_adjusted_speed2d ) {
-						vel.x = origin_delta_vel_norm.x * flTargetMoveWeight_adjusted_speed2d;
-						vel.y = origin_delta_vel_norm.y * flTargetMoveWeight_adjusted_speed2d;
+						vel = origin_delta_vel_norm * flTargetMoveWeight_adjusted_speed2d;
+						new_vel = true;
 					}
-
-					new_vel = true;
 				}
 			}
+		}
+
+		/* if we can't fix velocity, predict what it probably would be based on previous fixes */
+		if ( !new_vel ) {
+			auto origin_delta_vel_norm = vel.normalized ( );
+			origin_delta_vel_norm.z = 0.0f;
+
+			/* handle acceleration */
+			auto vel_per_sec = vec3_t( 0.0f, 0.0f, 0.0f );
+
+			if ( records.size ( ) >= 2 ) {
+				vel_per_sec = ( previous_record.m_vel - records [ 1 ].m_vel ) / ( previous_record.m_simtime - records [ 1 ].m_simtime );
+				vel_per_sec.z = 0.0f;
+			}
+
+			/* set new velocity */
+			vel = origin_delta_vel_norm * previous_record.m_vel.length_2d ( );
+			vel += vel_per_sec * time_difference;
+			vel.z = 0.0f;
+
+			/* make sure predicted velocity doesn't get too high */
+			if ( vel.length_2d ( ) > max_speed )
+				vel = vel.normalized ( ) * max_speed;
 		}
 	}
 	else {
@@ -867,23 +886,25 @@ void anims::pre_fsn ( int stage ) {
 	}
 
 	if ( !g::local ) {
-		g::round = round_t::in_progress;
-
 		anims::manage_fake ( );
 
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
 			reset_data ( i );
 
+		memset ( last_anim_layers_server.data ( ), 0, sizeof ( last_anim_layers_server ) );
+		memset ( last_anim_layers_queued.data ( ), 0, sizeof ( last_anim_layers_queued ) );
+		memset ( last_anim_layers.data ( ), 0, sizeof ( last_anim_layers ) );
+
 		return;
 	}
 	else if ( !g::local->alive ( ) ) {
-		g::round = round_t::in_progress;
-
 		anims::manage_fake ( );
 
-		memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
-		memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
-		memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
+		if ( g::local->layers ( ) ) {
+			memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
+			memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
+			memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
+		}
 	}
 
 	switch ( stage ) {
@@ -899,23 +920,25 @@ void anims::pre_fsn ( int stage ) {
 
 void anims::fsn ( int stage ) {
 	if ( !g::local ) {
-		g::round = round_t::in_progress;
-
-		anims::manage_fake( );
+		anims::manage_fake ( );
 
 		for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ )
-			reset_data( i );
+			reset_data ( i );
+
+		memset ( last_anim_layers_server.data ( ), 0, sizeof ( last_anim_layers_server ) );
+		memset ( last_anim_layers_queued.data ( ), 0, sizeof ( last_anim_layers_queued ) );
+		memset ( last_anim_layers.data ( ), 0, sizeof ( last_anim_layers ) );
 
 		return;
 	}
 	else if ( !g::local->alive ( ) ) {
-		g::round = round_t::in_progress;
-
 		anims::manage_fake ( );
 
-		memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
-		memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
-		memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
+		if ( g::local->layers ( ) ) {
+			memcpy ( last_anim_layers_server.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_server ) );
+			memcpy ( last_anim_layers_queued.data ( ), g::local->layers ( ), sizeof ( last_anim_layers_queued ) );
+			memcpy ( last_anim_layers.data ( ), g::local->layers ( ), sizeof ( last_anim_layers ) );
+		}
 	}
 
 	using update_all_viewmodel_addons_t = int( __fastcall* )( void* );

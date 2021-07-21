@@ -11,13 +11,14 @@
 enum class flags_t : uint32_t {
 	on_ground = ( 1 << 0 ),
 	ducking = ( 1 << 1 ),
-	water_jump = ( 1 << 2 ),
-	on_train = ( 1 << 3 ),
-	in_rain = ( 1 << 4 ),
-	frozen = ( 1 << 5 ),
-	at_controls = ( 1 << 6 ),
-	client = ( 1 << 7 ),
-	fake_client = ( 1 << 8 )
+	anim_ducking = ( 1 << 2 ),
+	water_jump = ( 1 << 3 ),
+	on_train = ( 1 << 4 ),
+	in_rain = ( 1 << 5 ),
+	frozen = ( 1 << 6 ),
+	at_controls = ( 1 << 7 ),
+	client = ( 1 << 8 ),
+	fake_client = ( 1 << 9 )
 };
 
 ENUM_BITMASK ( flags_t );

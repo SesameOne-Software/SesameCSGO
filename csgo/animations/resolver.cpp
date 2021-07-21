@@ -969,8 +969,8 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 					
 					IF ( anim_layers [ N ( 6 ) ].m_weight > 0.01f
 						&& anim_layers [ 6 ].m_sequence == prev_rec.m_anim_layers [ desync_side_t::desync_max ][ 6 ].m_sequence
-						&& rec.m_duck_amount == prev_rec.m_duck_amount
-						&& smallest_weight <= 1.0f ) {
+						&& abs( rec.m_duck_amount - prev_rec.m_duck_amount ) < 0.05f
+						&& smallest_weight < N( 5 ) ) {
 						const auto middle_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_middle ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
 						const auto left_half_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ anims::desync_side_t::desync_left_half ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
@@ -983,43 +983,41 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 						//	dbg_print ( _ ( "RIGHT: %.3f\n" ), right_delta_rate );
 						//} ENDIF;
 					
-						//IF ( middle_delta_rate < N ( 1 ) && left_delta_rate < N ( 1 ) && right_delta_rate < N ( 1 ) ) {
-							IF ( right_delta_rate < left_delta_rate && right_delta_rate < middle_delta_rate && right_delta_rate < 1.0f ) {
-								IF ( desync_side != desync_side_t::desync_right_max )
-									side_changed = true; ENDIF;
-								desync_side = desync_side_t::desync_right_max;
-								rdata::new_resolve [ idx ] = true;
-								rdata::prefer_edge [ idx ] = false;
-							}
-							ELSE {
-								//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f
-								//&& left_half_delta_rate < right_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
-								//	IF ( desync_side != anims::desync_side_t::desync_left_half )
-								//		side_changed = true; ENDIF;
-								//	desync_side = anims::desync_side_t::desync_left_half;
-								//	rdata::new_resolve [ idx ] = true;
-								//	rdata::prefer_edge [ idx ] = false;
-								//}
-								//ELSE {
-									IF ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate && left_delta_rate < 1.0f ) {
-										IF ( desync_side != desync_side_t::desync_left_max )
+						IF ( right_delta_rate < left_delta_rate && right_delta_rate < middle_delta_rate && right_delta_rate < N ( 1 ) ) {
+							IF ( desync_side != desync_side_t::desync_right_max )
+								side_changed = true; ENDIF;
+							desync_side = desync_side_t::desync_right_max;
+							rdata::new_resolve [ idx ] = true;
+							rdata::prefer_edge [ idx ] = false;
+						}
+						ELSE {
+							//IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f
+							//&& left_half_delta_rate < right_delta_rate && left_half_delta_rate < middle_delta_rate && left_half_delta_rate < left_delta_rate ) {
+							//	IF ( desync_side != anims::desync_side_t::desync_left_half )
+							//		side_changed = true; ENDIF;
+							//	desync_side = anims::desync_side_t::desync_left_half;
+							//	rdata::new_resolve [ idx ] = true;
+							//	rdata::prefer_edge [ idx ] = false;
+							//}
+							//ELSE {
+								IF ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate && left_delta_rate < N ( 1 ) ) {
+									IF ( desync_side != desync_side_t::desync_left_max )
+										side_changed = true; ENDIF;
+									desync_side = desync_side_t::desync_left_max;
+									rdata::new_resolve [ idx ] = true;
+									rdata::prefer_edge [ idx ] = false;
+								} ELSE {
+									IF ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate && middle_delta_rate < N ( 1 ) ) {
+										IF ( desync_side != anims::desync_side_t::desync_middle )
 											side_changed = true; ENDIF;
-										desync_side = desync_side_t::desync_left_max;
+					
+										desync_side = desync_side_t::desync_middle;
 										rdata::new_resolve [ idx ] = true;
 										rdata::prefer_edge [ idx ] = false;
-									} ELSE {
-										IF ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate && middle_delta_rate < 1.0f ) {
-											IF ( desync_side != anims::desync_side_t::desync_middle )
-												side_changed = true; ENDIF;
-					
-											desync_side = desync_side_t::desync_middle;
-											rdata::new_resolve [ idx ] = true;
-											rdata::prefer_edge [ idx ] = false;
-										} ENDIF;
 									} ENDIF;
-								//} ENDIF;
-							} ENDIF;
-						//} ENDIF;
+								} ENDIF;
+							//} ENDIF;
+						} ENDIF;
 					
 						IF ( side_changed )
 							features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 ); ENDIF;

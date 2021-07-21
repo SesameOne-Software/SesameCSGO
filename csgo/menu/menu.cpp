@@ -957,8 +957,8 @@ void gui::draw( ) {
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::Checkbox( _( "Slide on Run" ) , &options::vars[ _( "antiaim.slide" ) ].val.b );
-							ImGui::Checkbox( _( "Jitter on Run" ) , &options::vars[ _( "antiaim.jittermove" ) ].val.b );
+							static std::vector<const char*> leg_movement { "Normal", "Never Slide", "Always Slide", "Jitter" };
+							ImGui::Combo( _( "Leg Movement" ) , &options::vars[ _( "antiaim.leg_movement" ) ].val.i, leg_movement.data(), leg_movement.size() );
 							ImGui::SliderFloat ( _ ( "Slow Walk Speed" ), &options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f, 0.0f, 100.0f, _ ( "%.1f%%" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::Keybind ( _ ( "Slow Walk Key" ), &options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i, &options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );

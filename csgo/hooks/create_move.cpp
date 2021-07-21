@@ -35,37 +35,53 @@ bool last_attack = false;
 bool delay_tick = false;
 vec3_t old_angles;
 
-bool flip_slide = false;
 void fix_slide( ucmd_t* ucmd ) {
+	static int leg_movement_counter = 0;
+
 	if ( !g::local
 		|| g::local->movetype( ) == movetypes_t::noclip
 		|| g::local->movetype( ) == movetypes_t::ladder )
 		return;
 
-	static auto& should_slide = options::vars[ _( "antiaim.slide" ) ].val.b;
-	static auto& jittermove = options::vars[ _( "antiaim.jittermove" ) ].val.b;
+	static auto& leg_movement = options::vars[ _( "antiaim.leg_movement" ) ].val.i;
 
-	auto fix_legs = [ & ] ( bool slide ) {
-		if ( slide ) {
-			if ( ucmd->m_fmove ) {
-				ucmd->m_buttons &= ~( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
-				ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
-			}
-			
-			if ( ucmd->m_smove ) {
-				ucmd->m_buttons &= ~( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
-				ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
-			}
-			return;
+	auto wanted_leg_movement = leg_movement;
+
+redo_leg_movement:
+	ucmd->m_buttons &= ~( buttons_t::right | buttons_t::left | buttons_t::back | buttons_t::forward );
+
+	switch ( wanted_leg_movement ) {
+	case 0: {
+		if ( ucmd->m_fmove )
+			ucmd->m_buttons |= ( ucmd->m_fmove < 0.0f ? buttons_t::back : buttons_t::forward );
+
+		if ( ucmd->m_smove )
+			ucmd->m_buttons |= ( ucmd->m_smove < 0.0f ? buttons_t::left : buttons_t::right );
+	} break;
+	case 1: {
+
+	} break;
+	case 2: {
+		if ( ucmd->m_fmove )
+			ucmd->m_buttons |= ( ucmd->m_fmove > 0.0f ? buttons_t::back : buttons_t::forward );
+
+		if ( ucmd->m_smove )
+			ucmd->m_buttons |= ( ucmd->m_smove > 0.0f ? buttons_t::left : buttons_t::right );
+	} break;
+	case 3: {
+		if ( g::send_packet )
+			leg_movement_counter++;
+
+		switch ( leg_movement_counter % 4 ) {
+		case 0: wanted_leg_movement = 0; break;
+		case 1: wanted_leg_movement = 1; break;
+		case 2: wanted_leg_movement = 2; break;
+		case 3: wanted_leg_movement = 1; break;
 		}
 
-		ucmd->m_buttons &= ~( buttons_t::right | buttons_t::left | buttons_t::back | buttons_t::forward );
-	};
-
-	fix_legs( jittermove ? flip_slide : should_slide );
-
-	if ( g::send_packet )
-		flip_slide = !flip_slide;
+		goto redo_leg_movement;
+	} break;
+	}
 }
 
 void fix_event_delay( ucmd_t* ucmd ) {
