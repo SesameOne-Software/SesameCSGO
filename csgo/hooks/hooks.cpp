@@ -29,14 +29,13 @@
 #include "reset.hpp"
 #include "scene_end.hpp"
 #include "send_datagram.hpp"
-#include "send_net_msg.hpp"
 #include "should_skip_anim_frame.hpp"
 #include "write_usercmd_delta_to_buffer.hpp"
 #include "setup_bones.hpp"
 #include "run_simulation.hpp"
 #include "build_transformations.hpp"
 #include "base_interpolate_part1.hpp"
-#include "cl_fireevents.hpp"
+#include "temp_entities.hpp"
 #include "update_clientside_animations.hpp"
 #include "netmsg_tick.hpp"
 #include "process_interp_list.hpp"
@@ -53,6 +52,8 @@
 #include "post_network_data_received.hpp"
 #include "packet_start.hpp"
 #include "get_client_interp_amount.hpp"
+#include "svc_msg_voice_data.hpp"
+#include "get_client_model_renderable.hpp"
 
 #include "events.hpp"
 #include "wnd_proc.hpp"
@@ -70,6 +71,8 @@
 /* resources */
 
 std::unique_ptr< c_entity_listener_mgr > ent_listener;
+
+#pragma optimize( "2", off )
 
 void hooks::init( ) {
 	g::resources::init ( );
@@ -89,33 +92,33 @@ void hooks::init( ) {
 
 	/* remove max processing ticks clamp */
 	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
-
-	unsigned long old_prot = 0;
-	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, PAGE_EXECUTE_READWRITE, &old_prot );
-	memset ( clsm_numUsrCmdProcessTicksMax_clamp, 0x90, 3 );
-	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, 3, old_prot, &old_prot );
+	
+	unsigned long old_prot = N( 0 );
+	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), N( PAGE_EXECUTE_READWRITE ), &old_prot );
+	memset ( clsm_numUsrCmdProcessTicksMax_clamp, N( 0x90 ), N ( 3 ) );
+	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), old_prot, &old_prot );
 
 	/* remove breakpoints */
 	const auto client_bp = pattern::search ( _ ( "client.dll" ), _ ( "CC F3 0F 10 4D 18" ) ).get< void* > ( );
 
-	old_prot = 0;
-	LI_FN ( VirtualProtect )( client_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
-	memset ( client_bp, 0x90, 1 );
-	LI_FN ( VirtualProtect )( client_bp, 1, old_prot, &old_prot );
+	old_prot = N ( 0 );
+	LI_FN ( VirtualProtect )( client_bp, N ( 1 ), N ( PAGE_EXECUTE_READWRITE ), &old_prot );
+	memset ( client_bp, N ( 0x90 ), N ( 1 ) );
+	LI_FN ( VirtualProtect )( client_bp, N ( 1 ), old_prot, &old_prot );
 
 	const auto server_bp = pattern::search ( _ ( "server.dll" ), _ ( "CC F3 0F 10 4D 18" ) ).get< void* > ( );
 
-	old_prot = 0;
-	LI_FN ( VirtualProtect )( server_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
-	memset ( server_bp, 0x90, 1 );
-	LI_FN ( VirtualProtect )( server_bp, 1, old_prot, &old_prot );
+	old_prot = N ( 0 );
+	LI_FN ( VirtualProtect )( server_bp, N ( 1 ), N ( PAGE_EXECUTE_READWRITE ), &old_prot );
+	memset ( server_bp, N ( 0x90 ), N ( 1 ) );
+	LI_FN ( VirtualProtect )( server_bp, N ( 1 ), old_prot, &old_prot );
 
 	const auto engine_bp = pattern::search ( _ ( "engine.dll" ), _ ( "CC FF 15 ? ? ? ? 8B D0 BB" ) ).get< void* > ( );
 
-	old_prot = 0;
-	LI_FN ( VirtualProtect )( engine_bp, 1, PAGE_EXECUTE_READWRITE, &old_prot );
-	memset ( engine_bp, 0x90, 1 );
-	LI_FN ( VirtualProtect )( engine_bp, 1, old_prot, &old_prot );
+	old_prot = N ( 0 );
+	LI_FN ( VirtualProtect )( engine_bp, N ( 1 ), N ( PAGE_EXECUTE_READWRITE ), &old_prot );
+	memset ( engine_bp, N ( 0x90 ), N ( 1 ) );
+	LI_FN ( VirtualProtect )( engine_bp, N ( 1 ), old_prot, &old_prot );
 
 	/* hook functions */
 	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< void* >( );
@@ -136,8 +139,7 @@ void hooks::init( ) {
 	const auto _list_leaves_in_box = vfunc< void* >( cs::i::engine->get_bsp_tree_query( ), N( 6 ) );
 	const auto _paint_traverse = vfunc< void* >( cs::i::panel, N( 41 ) );
 	const auto _get_viewmodel_fov = vfunc< void* >( **( void*** )( ( *( uintptr_t** )cs::i::client ) [ 10 ] + 5 ), N( 35 ) );
-	const auto _in_prediction = vfunc< void* >( cs::i::pred, N( 14 ) );
-	const auto _send_net_msg = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 EC 08 56 8B F1 8B 86 ? ? ? ? 85 C0" ) ).get<void*>( );
+	const auto _in_prediction = vfunc< void* >( cs::i::pred, N( 14 ) );	
 	const auto _emit_sound = pattern::search( _( "engine.dll" ), _( "E8 ? ? ? ? 8B E5 5D C2 3C 00 55" ) ).resolve_rip( ).get<void*>( );
 	const auto _cs_blood_spray_callback = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 4D 08 F3 0F 10 51 ? 8D 51 18" ) ).get<void*>( );
 	const auto _modify_eye_pos = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
@@ -146,7 +148,7 @@ void hooks::init( ) {
 	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? A1 ? ? ? ? F3 0F 10 45 ? F3 0F 11 40" ) ).resolve_rip().get< void* >( );
 	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
-	const auto _cl_fireevents = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 84 DB 0F 84 ? ? ? ? 8B 0D" ) ).resolve_rip().get< void* > ( );
+	const auto _temp_entities = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 E4 F8 83 EC 4C A1 ? ? ? ? 80 B8" ) ).get< void* > ( );
 	const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _netmsg_tick = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 53 56 8B F1 8B 0D ? ? ? ? 57" ) ).get< void* > ( );
 	const auto _process_interp_list = pattern::search( _( "client.dll" ) , _( "53 0F B7 1D ? ? ? ? 56" ) ).get< void* >( );
@@ -161,7 +163,9 @@ void hooks::init( ) {
 	const auto _calc_view = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 14 53 56 57 FF 75 18" ) ).get< void* > ( );
 	const auto _post_network_data_received = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 33 F6 6A 02" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _packet_start = pattern::search ( _ ( "engine.dll" ), _ ( "56 8B F1 E8 ? ? ? ? 8B 8E ? ? ? ? 3B" ) ).sub ( 32 ).get< void* > ( );
-	const auto _get_client_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 A1 ? ? ? ? A8 01 75 1F" ) ).get< void* > ( );
+	const auto _get_client_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? F3 0F 58 44 24" ) ).resolve_rip ( ).get< void* > ( );
+	const auto _svc_msg_voice_data = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 E4 F8 A1 ? ? ? ? 81 EC ? ? ? ? 53 56 8B F1 B9 ? ? ? ? 57 FF 50 34 8B 7D 08 85 C0 74 13 8B 47 08" ) ).get< void* > ( );
+	const auto _get_client_model_renderable = pattern::search ( _ ( "client.dll" ), _ ( "56 8B F1 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 80 BE ? ? ? ? ? 0F 85 ? ? ? ? 8B 0D" ) ).get< void* > ( );
 
 	MH_Initialize( );
 
@@ -203,10 +207,9 @@ void hooks::init( ) {
 	//dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
 	dbg_hook( _list_leaves_in_box, list_leaves_in_box, ( void** )&old::list_leaves_in_box );
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
-	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
+	//dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
-	dbg_hook( _send_net_msg, send_net_msg, ( void** )&old::send_net_msg );
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
 	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
@@ -214,7 +217,7 @@ void hooks::init( ) {
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
-	dbg_hook ( _cl_fireevents, cl_fireevents, ( void** ) &old::cl_fireevents );
+	dbg_hook ( _temp_entities, temp_entities, ( void** ) &old::temp_entities );
 	dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
@@ -231,12 +234,16 @@ void hooks::init( ) {
 	dbg_hook ( _post_network_data_received, post_network_data_received, ( void** ) &old::post_network_data_received );
 	//dbg_hook ( _packet_start, packet_start, ( void** ) &old::packet_start );
 	dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
+	dbg_hook ( _svc_msg_voice_data, svc_msg_voice_data, ( void** ) &old::svc_msg_voice_data );
+	dbg_hook ( _get_client_model_renderable, get_client_model_renderable, ( void** ) &old::get_client_model_renderable );
 
 	event_handler = std::make_unique< c_event_handler > ( );
 
 	ent_listener = std::make_unique< c_entity_listener_mgr > ( );
 	ent_listener->add ( );
 
-	cs::i::engine->client_cmd_unrestricted (_( "clear") );
-	dbg_print ( _("Success.\n" ));
+	//cs::i::engine->client_cmd_unrestricted (_( "clear") );
+	//dbg_print ( _("Success.\n" ));
 }
+
+#pragma optimize( "2", on )

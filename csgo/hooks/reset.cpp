@@ -15,12 +15,10 @@ decltype( &hooks::reset ) hooks::old::reset = nullptr;
 
 long __fastcall hooks::reset( REG, IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentation_params ) {
 	ImGui_ImplDX9_InvalidateDeviceObjects ( );
-	features::skinchanger::release_previews ( );
 
 	auto hr = old::reset( REG_OUT, device, presentation_params );
 
 	if ( SUCCEEDED( hr ) ) {
-		features::skinchanger::rebuild_previews ( );
 		ImGui_ImplDX9_CreateDeviceObjects ( );
 	}
 

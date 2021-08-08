@@ -46,6 +46,8 @@ extern bool download_config_code;
 
 std::string last_config_user;
 
+#pragma optimize( "2", off )
+
 unsigned __stdcall do_heartbeat( void* data ) {
 	OBF_BEGIN;
 
@@ -144,3 +146,5 @@ int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved )
 	RETURN( TRUE );
 	OBF_END;
 }
+
+#pragma optimize( "2", on )

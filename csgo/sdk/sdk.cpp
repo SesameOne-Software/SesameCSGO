@@ -35,6 +35,11 @@ c_mdl_cache_critical_section::~c_mdl_cache_critical_section( ) {
 	cs::i::mdl_cache->end_lock( );
 }
 
+event_info_t* c_clientstate::events ( ) {
+	static auto event_off = pattern::search ( _ ( "engine.dll" ), _ ( "8B BB ? ? ? ? 85 FF 0F 84" ) ).add ( 2 ).deref ( ).get<uint32_t> ( );
+	return *reinterpret_cast< event_info_t** >( reinterpret_cast< uintptr_t >( this ) + event_off );
+}
+
 bool cs::render::screen_transform( vec3_t& screen, vec3_t& origin ) {
 	static auto view_matrix = pattern::search( _( "client.dll" ), _( "0F 10 05 ? ? ? ? 8D 85 ? ? ? ? B9" ) ).add( 3 ).deref( ).add( 176 ).get< std::uintptr_t >( );
 
@@ -120,6 +125,54 @@ void cs::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, st
 		call util_cliptracetoplayers
 		add esp, 0xC
 	}
+}
+
+void cs::rotate_movement ( ucmd_t* cmd, const vec3_t& angles ) {
+	vec3_t view_fwd, view_right, view_up, cmd_fwd, cmd_right, cmd_up;
+	auto view_angles = cmd->m_angs;
+
+	cs::angle_vec ( angles, &view_fwd, &view_right, &view_up );
+	cs::angle_vec ( view_angles, &cmd_fwd, &cmd_right, &cmd_up );
+
+	const float v8 = view_fwd.length_2d ( );
+	const float v10 = view_right.length_2d ( );
+	const float v12 = sqrt ( view_up.z * view_up.z );
+
+	const vec3_t norm_view_fwd ( ( 1.0f / v8 ) * view_fwd.x, ( 1.0f / v8 ) * view_fwd.y, 0.0f );
+	const vec3_t norm_view_right ( ( 1.0f / v10 ) * view_right.x, ( 1.0f / v10 ) * view_right.y, 0.0f );
+	const vec3_t norm_view_up ( 0.0f, 0.0f, ( 1.0f / v12 ) * view_up.z );
+
+	const float v14 = cmd_fwd.length_2d ( );
+	const float v16 = cmd_right.length_2d ( );
+	const float v18 = sqrt ( cmd_up.z * cmd_up.z );
+
+	const vec3_t norm_cmd_fwd ( ( 1.0f / v14 ) * cmd_fwd.x, ( 1.0f / v14 ) * cmd_fwd.y, 0.0f );
+	const vec3_t norm_cmd_right ( ( 1.0f / v16 ) * cmd_right.x, ( 1.0f / v16 ) * cmd_right.y, 0.0f );
+	const vec3_t norm_cmd_up ( 0.0f, 0.0f, ( 1.0f / v18 ) * cmd_up.z );
+
+	const float v22 = norm_view_fwd.x * cmd->m_fmove;
+	const float v26 = norm_view_fwd.y * cmd->m_fmove;
+	const float v28 = norm_view_fwd.z * cmd->m_fmove;
+	const float v24 = norm_view_right.x * cmd->m_smove;
+	const float v23 = norm_view_right.y * cmd->m_smove;
+	const float v25 = norm_view_right.z * cmd->m_smove;
+	const float v30 = norm_view_up.x * cmd->m_umove;
+	const float v27 = norm_view_up.z * cmd->m_umove;
+	const float v29 = norm_view_up.y * cmd->m_umove;
+
+	cmd->m_fmove = ( ( ( ( norm_cmd_fwd.x * v24 ) + ( norm_cmd_fwd.y * v23 ) ) + ( norm_cmd_fwd.z * v25 ) )
+		+ ( ( ( norm_cmd_fwd.x * v22 ) + ( norm_cmd_fwd.y * v26 ) ) + ( norm_cmd_fwd.z * v28 ) ) )
+		+ ( ( ( norm_cmd_fwd.y * v30 ) + ( norm_cmd_fwd.x * v29 ) ) + ( norm_cmd_fwd.z * v27 ) );
+	cmd->m_smove = ( ( ( ( norm_cmd_right.x * v24 ) + ( norm_cmd_right.y * v23 ) ) + ( norm_cmd_right.z * v25 ) )
+		+ ( ( ( norm_cmd_right.x * v22 ) + ( norm_cmd_right.y * v26 ) ) + ( norm_cmd_right.z * v28 ) ) )
+		+ ( ( ( norm_cmd_right.x * v29 ) + ( norm_cmd_right.y * v30 ) ) + ( norm_cmd_right.z * v27 ) );
+	cmd->m_umove = ( ( ( ( norm_cmd_up.x * v23 ) + ( norm_cmd_up.y * v24 ) ) + ( norm_cmd_up.z * v25 ) )
+		+ ( ( ( norm_cmd_up.x * v26 ) + ( norm_cmd_up.y * v22 ) ) + ( norm_cmd_up.z * v28 ) ) )
+		+ ( ( ( norm_cmd_up.x * v30 ) + ( norm_cmd_up.y * v29 ) ) + ( norm_cmd_up.z * v27 ) );
+
+	cmd->m_fmove = std::clamp ( cmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
+	cmd->m_smove = std::clamp ( cmd->m_smove, -g::cvars::cl_sidespeed->get_float ( ), g::cvars::cl_sidespeed->get_float ( ) );
+	cmd->m_umove = std::clamp ( cmd->m_umove, -g::cvars::cl_upspeed->get_float ( ), g::cvars::cl_upspeed->get_float ( ) );
 }
 
 template < typename t >

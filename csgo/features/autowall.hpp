@@ -14,8 +14,6 @@ struct fire_bullet_data_t {
 };
 
 namespace autowall {
-#pragma optimize( "2", on )
-
 	inline void scale_dmg( player_t* entity, weapon_info_t* weapon_info, int hitgroup, float& current_damage ) {
 		if ( !entity->valid( ) )
 			return;
@@ -391,10 +389,10 @@ namespace autowall {
 		return false;
 	}
 
-	inline int hitbox_to_hitgroup( int hitbox ) {
+	inline int hitbox_to_hitgroup( hitbox_t hitbox ) {
 		int result = 0; // eax
 
-		switch ( hitbox ) {
+		switch ( static_cast<int>( hitbox ) ) {
 			case 0:
 				result = 1;
 				break;
@@ -424,7 +422,7 @@ namespace autowall {
 		return result;
 	}
 
-	inline float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, int hitbox, vec3_t* impact_out = nullptr, int* hitgroup_out = nullptr ) {
+	inline float dmg( player_t* entity, player_t* dst_entity, vec3_t src, vec3_t dst, hitbox_t hitbox, vec3_t* impact_out = nullptr, int* hitgroup_out = nullptr ) {
 		if ( !entity->valid( ) )
 			return 0.0f;
 
@@ -574,6 +572,4 @@ namespace autowall {
 
 		return false;
 	}
-
-#pragma optimize( "2", off )
 }

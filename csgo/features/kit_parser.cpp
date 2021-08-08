@@ -139,11 +139,8 @@ void features::skinchanger::dump_kits ( )
 	// Dump paint kits
 	{
 		const auto get_paint_kit_definition_fn = pattern.add(11).resolve_rip ( ).get<CPaintKit * ( __thiscall* )( CCStrike15ItemSchema*, int )> ( );
-
 		const auto start_element_offset = *reinterpret_cast< intptr_t* >( uintptr_t ( get_paint_kit_definition_fn ) + 8 + 2 );
-
 		const auto head_offset = start_element_offset - 12;
-
 		const auto map_head = reinterpret_cast< Head_t<int, CPaintKit*>* >( uintptr_t ( item_schema ) + head_offset );
 
 		for ( auto i = 0; i <= map_head->last_element; ++i ) {
@@ -163,12 +160,10 @@ void features::skinchanger::dump_kits ( )
 				return *reinterpret_cast< CEconItemDefinition** >( *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>( item_schema ) + 0xD0) + 4 * ( i * 3 ) + 4 );
 			};
 
-			if ( paint_kit->id < 10000 ) {
+			if ( paint_kit->id < 10000 )
 				skin_kits.push_back ( { paint_kit->id, name, paint_kit->name.buffer, *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
-			}
-			else {
+			else
 				glove_kits.push_back ( { paint_kit->id, name, paint_kit->name.buffer, *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 101 ),* reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( paint_kit ) + 105 ) } );
-			}
 		}
 		
 		std::sort ( skin_kits.begin ( ), skin_kits.end ( ) );

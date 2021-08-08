@@ -5,21 +5,22 @@
 #include "../sdk/sdk.hpp"
 
 namespace anims {
+	/* https://github.com/perilouswithadollarsign/cstrike15_src/blob/f82112a2388b841d72cb62ca48ab1846dfcc11c8/game/client/cdll_bounded_cvars.cpp#L112 */
 	inline float lerp_time ( ) {
-		auto ud_rate = static_cast< float >( g::cvars::cl_updaterate->get_int ( ) );
+		int ud_rate = g::cvars::cl_updaterate->get_int();
 
 		if ( g::cvars::sv_minupdaterate && g::cvars::sv_maxupdaterate )
-			ud_rate = static_cast< float >( g::cvars::sv_maxupdaterate->get_int ( ) );
+			ud_rate = g::cvars::sv_maxupdaterate->get_int ( );
 
 		auto ratio = g::cvars::cl_interp_ratio->get_float ( );
 
-		if ( ratio == 0 )
+		if ( !ratio )
 			ratio = 1.0f;
 
-		if ( g::cvars::sv_client_min_interp_ratio && g::cvars::sv_client_max_interp_ratio && g::cvars::sv_client_min_interp_ratio->get_float ( ) != 1 )
+		if ( g::cvars::sv_client_min_interp_ratio && g::cvars::sv_client_max_interp_ratio && g::cvars::sv_client_min_interp_ratio->get_float ( ) != 1.0f )
 			ratio = std::clamp ( ratio, g::cvars::sv_client_min_interp_ratio->get_float ( ), g::cvars::sv_client_max_interp_ratio->get_float ( ) );
 
-		return std::max<float> ( g::cvars::cl_interp->get_float ( ), ratio / ud_rate );
+		return std::max<float> ( g::cvars::cl_interp->get_float(), ( ratio / ud_rate ) );
 	}
 
 	enum pose_param_t : int {
@@ -55,6 +56,8 @@ namespace anims {
 
 	struct anim_info_t {
 		bool m_shot, m_invalid;
+		bool m_forward_track;
+		bool m_resolved;
 		vec3_t m_angles;
 		vec3_t m_origin;
 		vec3_t m_mins;
@@ -76,7 +79,7 @@ namespace anims {
 		inline bool valid ( ) {
 			const auto nci = cs::i::engine->get_net_channel_info ( );
 
-			if ( !nci || !g::local /*|| m_invalid  || m_simtime < float ( int ( cs::ticks2time ( g::local->tick_base ( ) ) - g::cvars::sv_maxunlag->get_float ( ) ) )*/ )
+			if ( !nci || !g::local || m_invalid )
 				return false;
 
 			const auto lerp = lerp_time ( );
@@ -89,41 +92,7 @@ namespace anims {
 
 		}
 
-		anim_info_t ( player_t* ent ) {
-			m_invalid = false;
-			m_shot = ent->weapon() && ent->weapon( )->last_shot_time() > ent->old_simtime() && ent->weapon( )->last_shot_time( ) <= ent->simtime();
-			m_angles = ent->angles ( );
-			m_origin = ent->origin ( );
-			m_mins = ent->mins ( );
-			m_maxs = ent->maxs ( );
-			m_lby = ent->lby ( );
-			m_simtime = ent->simtime ( );
-			m_old_simtime = ent->old_simtime ( );
-			m_duck_amount = ent->crouch_amount( );
-			m_choked_commands = std::clamp ( cs::time2ticks ( ent->simtime ( ) - ent->old_simtime ( ) ) - 1, 0, g::cvars::sv_maxusrcmdprocessticks->get_int() );
-			m_flags = ent->flags ( );
-			m_vel = ent->vel( );
-
-			for ( auto& anim_layers : m_anim_layers )
-				memcpy( anim_layers.data( ) , ent->layers( ) , sizeof( anim_layers ) );
-
-			for (auto& cur_pose : m_poses )
-				cur_pose = ent->poses( );
-
-			for ( auto& abs_angles : m_abs_angles )
-				abs_angles = ent->abs_angles( );
-
-			for ( auto& anim_state : m_anim_state ) {
-				anim_state = *ent->animstate ( );
-				anim_state.m_feet_cycle = ent->layers ( ) [ 6 ].m_cycle;
-				anim_state.m_feet_yaw_rate = ent->layers ( ) [ 6 ].m_weight;
-			}
-
-			for ( auto& aim_bones : m_aim_bones )
-				memcpy( aim_bones.data( ) , ent->bone_cache( ) , ent->bone_count( ) * sizeof( matrix3x4_t ) );
-
-			m_side = desync_middle;
-		}
+		anim_info_t ( player_t* ent );
 	};
 
 	inline std::array<std::array< matrix3x4_t, 128 >, 65> usable_bones {};
@@ -135,13 +104,12 @@ namespace anims {
 	inline std::array< matrix3x4_t, 128 > real_matrix { {} };
 	inline std::array< matrix3x4_t, 128 > fake_matrix { {} };
 	inline animstate_t last_local_animstate { };
-	inline flags_t createmove_flags;
-	inline bool test = false;
+
+	void recalc_poses ( std::array<float, 24>& poses, float ladder_yaw, float move_yaw, float eye_yaw, float feet_yaw );
 
 	void on_net_update_end ( int idx );
 	void on_render_start ( int idx );
 
-	void build_real_bones ( player_t* target );
 	void manage_fake ( );
 
 	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );

@@ -12,7 +12,7 @@ namespace features {
 
 		inline peek_data_t peek {};
 
-		void run ( ucmd_t* ucmd, float& side_move, float& fwd_move, vec3_t& move_ang );
+		void run ( ucmd_t* ucmd, vec3_t& move_ang );
 		void draw ( );
 	}
 }

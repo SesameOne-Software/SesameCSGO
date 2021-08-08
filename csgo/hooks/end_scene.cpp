@@ -32,7 +32,6 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 	if ( ret != _ReturnAddress ( ) )
 		return old::end_scene( REG_OUT, device );
 
-	MUTATE_START
 	D3DVIEWPORT9 d3d_viewport;
 	device->GetViewport ( &d3d_viewport );
 
@@ -204,10 +203,6 @@ long __fastcall hooks::end_scene( REG, IDirect3DDevice9* device ) {
 
 	pixel_state->Apply ( );
 	pixel_state->Release ( );
-
-	//truetype::end ( );
-
-	MUTATE_END
 
 	return old::end_scene( REG_OUT, device );
 }

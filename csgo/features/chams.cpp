@@ -15,7 +15,6 @@ material_t* m_mat = nullptr ,
 * m_matflat_wireframe = nullptr ,
 * m_mat_glow;
 
-anims::resolver::hit_matrix_rec_t cur_hit_matrix_rec;
 vec3_t features::chams::old_origin;
 bool features::chams::in_model = false;
 
@@ -189,15 +188,13 @@ void update_mats( const features::visual_config_t& visuals , const options::opti
 std::array < mdlrender_info_t , 65 > mdl_render_info;
 long long refresh_time = 0;
 
-extern std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec;
-
 void features::chams::add_shot ( player_t* player, const anims::anim_info_t& anim_info ) {
-	auto renderable = player->renderable();
+	auto renderable = player->renderable( );
 
 	if ( !renderable )
 		return;
 
-	auto model = player->mdl();
+	auto model = player->mdl( );
 
 	if ( !model )
 		return;
@@ -209,7 +206,7 @@ void features::chams::add_shot ( player_t* player, const anims::anim_info_t& ani
 
 	anims::resolver::hit_matrix_rec_t rec {};
 
-	memcpy ( rec.m_bones.data ( ), anim_info.m_aim_bones [ anim_info.m_side ].data ( ), sizeof ( rec.m_bones ) );
+	rec.m_bones = anim_info.m_aim_bones [ anim_info.m_side ];
 
 	rec.m_render_info.m_origin = anim_info.m_origin;
 	rec.m_render_info.m_angles = anim_info.m_abs_angles [ anim_info.m_side ];
@@ -238,21 +235,24 @@ void features::chams::add_shot ( player_t* player, const anims::anim_info_t& ani
 
 	rec.m_time = cs::i::globals->m_curtime;
 	rec.m_pl = player->idx ( );
-	rec.m_color = { 1.0f ,1.0f ,1.0f ,1.0f };
+	rec.m_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-	hit_matrix_rec.push_back ( rec );
+	anims::resolver::hit_matrix_rec.push_back ( rec );
+
+	anims::resolver::hit_matrix_rec.back ( ).m_render_info.m_model_to_world = rec.m_bones.data ( );
+	anims::resolver::hit_matrix_rec.back ( ).m_mdl_state.mdl_to_world = rec.m_bones.data ( );
 }
 
 void features::chams::cull_shots ( ) {
 	if ( !g::local || !g::local->alive( ) ) {
-		if ( !hit_matrix_rec.empty ( ) )
-			hit_matrix_rec.clear ( );
+		if ( !anims::resolver::hit_matrix_rec.empty ( ) )
+			anims::resolver::hit_matrix_rec.clear ( );
 
 		return;
 	}
 
-	while ( !hit_matrix_rec.empty ( ) && hit_matrix_rec.back ( ).m_time + 4.0f < cs::i::globals->m_curtime )
-		hit_matrix_rec.pop_back ( );
+	while ( !anims::resolver::hit_matrix_rec.empty ( ) && anims::resolver::hit_matrix_rec.back ( ).m_time + 4.0f < cs::i::globals->m_curtime )
+		anims::resolver::hit_matrix_rec.pop_back ( );
 }
 
 anims::resolver::hit_matrix_rec_t* cur_hit_rec = nullptr;
@@ -261,7 +261,7 @@ void features::chams::render_shots ( ) {
 
 	auto ctx = cs::i::mat_sys->get_context ( );
 
-	for ( auto& rec : hit_matrix_rec ) {
+	for ( auto& rec : anims::resolver::hit_matrix_rec ) {
 		cur_hit_rec = &rec;
 
 		in_model = true;
@@ -285,14 +285,14 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 		vfunc< void( __thiscall* )( void* , float , float , float ) >( var , 11 )( var , x , y , z );
 	};
 
-	if ( cs::i::mdl_render->is_forced_mat_override( ) ) {
+	if ( cs::i::mdl_render->is_forced_mat_override( ) && !features::chams::in_model ) {
 		//csgo::i::render_view->set_color ( 255, 255, 255 );
 		//csgo::i::render_view->set_alpha ( 255 );
 		hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
 		return;
 	}
 
-	if ( !g::local || !info.m_model || !cs::i::engine->is_connected( ) || !cs::i::engine->is_in_game( ) ) {
+	if ( ( !g::local || !info.m_model || !cs::i::engine->is_connected ( ) || !cs::i::engine->is_in_game ( ) ) && !features::chams::in_model ) {
 		cs::i::render_view->set_color( 255 , 255 , 255 );
 		cs::i::render_view->set_alpha( 255 );
 		hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
@@ -309,7 +309,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 	auto is_sleeve = strstr ( mdl_name, _ ( "sleeve" ) );
 
 	visual_config_t visuals;
-	if ( !get_visuals( e , visuals ) ) {
+	if ( !get_visuals( e , visuals ) && !features::chams::in_model ) {
 		cs::i::render_view->set_color( 255 , 255 , 255 );
 		cs::i::render_view->set_alpha( 255 );
 		hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
@@ -341,7 +341,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 				m_mat_glow->set_material_var_flag( 0x8000 , visuals.chams_xqz );
 				m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
 				cs::i::mdl_render->force_mat( m_mat_glow );
-				hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , ( matrix3x4_t* ) &cur_hit_matrix_rec.m_bones );
+				hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
 			}
 			else {
 				std::array< matrix3x4_t , 128> matrix {};
@@ -371,7 +371,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 						cs::i::render_view->set_alpha( visuals.desync_chams_color.a * 255.0f );
 						cs::i::render_view->set_color( visuals.desync_chams_color.r * 255.0f , visuals.desync_chams_color.g * 255.0f , visuals.desync_chams_color.b * 255.0f );
 						auto mat = visuals.chams_flat ? m_matflat : m_mat;
-						mat->set_material_var_flag( 0x8000 , false );
+						mat->set_material_var_flag( 0x8000 , visuals.chams_xqz );
 						mat->set_material_var_flag( 0x1000 , visuals.chams_flat );
 						cs::i::mdl_render->force_mat( mat );
 						hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , backup_matrix.data( ) );
@@ -382,7 +382,7 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 						update_mats ( visuals, visuals.desync_rimlight_color );
 						cs::i::render_view->set_alpha ( 255 );
 						cs::i::render_view->set_color ( 255, 255, 255 );
-						m_mat_glow->set_material_var_flag ( 0x8000, false );
+						m_mat_glow->set_material_var_flag ( 0x8000, visuals.chams_xqz );
 						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
 						cs::i::mdl_render->force_mat ( m_mat_glow );
 						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, backup_matrix.data ( ) );
@@ -420,19 +420,6 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 
 					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
 					cs::i::mdl_render->force_mat( nullptr );
-
-					/* glow overlay */
-					if ( visuals.rimlight_overlay ) {
-						update_mats ( visuals, visuals.rimlight_color );
-						cs::i::render_view->set_alpha ( 255 );
-						cs::i::render_view->set_color ( 255, 255, 255 );
-						// mat->set_material_var_flag( 268435456, false );
-						m_mat_glow->set_material_var_flag ( 0x8000, visuals.chams_xqz );
-						m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
-						cs::i::mdl_render->force_mat ( m_mat_glow );
-						hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
-						cs::i::mdl_render->force_mat ( nullptr );
-					}
 				}
 				else {
 					cs::i::render_view->set_alpha( 255 );
@@ -443,6 +430,19 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 						cs::i::render_view->set_alpha( blend_opacity );
 
 					hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
+				}
+
+				/* glow overlay */
+				if ( visuals.rimlight_overlay ) {
+					update_mats ( visuals, visuals.rimlight_color );
+					cs::i::render_view->set_alpha ( 255 );
+					cs::i::render_view->set_color ( 255, 255, 255 );
+					// mat->set_material_var_flag( 268435456, false );
+					m_mat_glow->set_material_var_flag ( 0x8000, visuals.chams_xqz );
+					m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+					cs::i::mdl_render->force_mat ( m_mat_glow );
+					hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+					cs::i::mdl_render->force_mat ( nullptr );
 				}
 			}
 		}

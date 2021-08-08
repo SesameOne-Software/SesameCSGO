@@ -3,8 +3,7 @@
 #include "../security/security_handler.hpp"
 #include "../tinyxml2/tinyxml2.h"
 
-std::unordered_map< std::string, options::option > options::vars { };
-std::unordered_map< std::string, options::option > options::script_vars { };
+#pragma optimize( "2", off )
 
 void options::option::add_bool( const std::string& id, bool val ) {
 	vars [ id ].type = option_type_t::boolean;
@@ -35,6 +34,22 @@ void options::option::add_str( const std::string& id, const char* val ) {
 void options::option::add_color( const std::string& id, const colorf& val ) {
 	vars [ id ].type = option_type_t::color;
 	vars [ id ].val.c = val;
+}
+
+void options::option::add_skin ( const std::string& id ) {
+	skin_vars [ id ].type = option_type_t::skin;
+	skin_vars [ id ].val.skin = { 0 };
+	skin_vars [ id ].val.skin.wear = 100.0f;
+}
+
+void options::option::add_skin_int ( const std::string& id, int val ) {
+	skin_vars [ id ].type = option_type_t::integer;
+	skin_vars [ id ].val.i = val;
+}
+
+void options::option::add_skin_bool ( const std::string& id, bool val ) {
+	skin_vars [ id ].type = option_type_t::boolean;
+	skin_vars [ id ].val.b = val;
 }
 
 void options::option::add_script_bool( const std::string& id, bool val ) {
@@ -117,7 +132,7 @@ void options::save( const std::unordered_map< std::string, option >& options, co
 				element->SetText( option.second.val.f );
 			} break;
 			case option_type_t::string: {
-				element->SetText( ( char* )option.second.val.s );
+				element->SetText( option.second.val.s );
 			} break;
 			case option_type_t::color: {
 				const auto r_element = doc.NewElement( _( "r" ) );
@@ -134,6 +149,28 @@ void options::save( const std::unordered_map< std::string, option >& options, co
 				element->InsertEndChild( g_element );
 				element->InsertEndChild( b_element );
 				element->InsertEndChild( a_element );
+			} break;
+			case option_type_t::skin: {
+				const auto paintkit_element = doc.NewElement ( _ ( "paintkit" ) );
+				const auto seed_element = doc.NewElement ( _ ( "seed" ) );
+				const auto stattrak_element = doc.NewElement ( _ ( "stattrak" ) );
+				const auto wear_element = doc.NewElement ( _ ( "wear" ) );
+				const auto is_stattrak_element = doc.NewElement ( _ ( "is_stattrak" ) );
+				const auto nametag_element = doc.NewElement ( _ ( "nametag" ) );
+
+				paintkit_element->SetText ( option.second.val.skin.paintkit );
+				seed_element->SetText ( option.second.val.skin.seed );
+				stattrak_element->SetText ( option.second.val.skin.stattrak );
+				wear_element->SetText ( option.second.val.skin.wear );
+				is_stattrak_element->SetText ( option.second.val.skin.is_stattrak );
+				nametag_element->SetText ( option.second.val.skin.nametag );
+
+				element->InsertEndChild ( paintkit_element );
+				element->InsertEndChild ( seed_element );
+				element->InsertEndChild ( stattrak_element );
+				element->InsertEndChild ( wear_element );
+				element->InsertEndChild ( is_stattrak_element );
+				element->InsertEndChild ( nametag_element );
 			} break;
 		}
 
@@ -245,6 +282,28 @@ void options::load( std::unordered_map< std::string, option >& options, const st
 
 				err = a_element->QueryFloatText( &option.second.val.c.a );
 			} break;
+			case option_type_t::skin: {
+				const auto paintkit_element = element->FirstChildElement ( _ ( "paintkit" ) );
+				const auto seed_element = element->FirstChildElement ( _ ( "seed" ) );
+				const auto stattrak_element = element->FirstChildElement ( _ ( "stattrak" ) );
+				const auto wear_element = element->FirstChildElement ( _ ( "wear" ) );
+				const auto is_stattrak_element = element->FirstChildElement ( _ ( "is_stattrak" ) );
+				const auto nametag_element = element->FirstChildElement ( _ ( "nametag" ) );
+
+				if ( !paintkit_element || !seed_element || !stattrak_element || !wear_element || !is_stattrak_element || !nametag_element ) {
+					dbg_print ( _ ( "Element found had invalid value.\n" ) );
+					continue;
+				}
+
+				err = paintkit_element->QueryIntText ( &option.second.val.skin.paintkit );
+				err = seed_element->QueryIntText ( &option.second.val.skin.seed );
+				err = stattrak_element->QueryIntText ( &option.second.val.skin.stattrak );
+				err = wear_element->QueryFloatText ( &option.second.val.skin.wear );
+				err = is_stattrak_element->QueryBoolText ( &option.second.val.skin.is_stattrak );
+
+				if ( const auto str = nametag_element->GetText ( ) )
+					strcpy_s ( option.second.val.skin.nametag, str );
+			} break;
 		}
 
 		if ( err != tinyxml2::XML_SUCCESS ) {
@@ -267,6 +326,7 @@ __forceinline void add_weapon_config( const std::string& weapon_category ) {
 	option::add_bool( prefix + _( "auto_scope" ), false );
 	option::add_bool( prefix + _( "auto_slow" ), false );
 	option::add_int ( prefix + _ ( "dt_recharge_delay" ), 0 );
+	option::add_bool ( prefix + _ ( "dt_smooth_recharge" ), false );
 	option::add_float( prefix + _( "min_dmg" ), 0.0f );
 	option::add_float ( prefix + _ ( "min_dmg_override" ), 0.0f );
 	option::add_float( prefix + _( "dmg_accuracy" ), 0.0f );
@@ -348,6 +408,28 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 	option::add_color ( prefix + _ ( "reloading_color" ), { 0.5f, 1.0f, 0.3f, 0.72f } );
 	option::add_color ( prefix + _ ( "fatal_color" ), { 1.0f, 0.2f, 0.2f, 0.72f } );
 	option::add_color ( prefix + _ ( "zoom_color" ), { 0.5f, 1.0f, 0.3f, 0.72f } );
+}
+
+void options::init_skins ( ) {
+	struct weapon_arr_entry_t {
+		const char* weapon_name;
+		PAD ( 12 );
+	};
+
+	static auto weapon_name_info = pattern::search ( _ ( "client.dll" ), _ ( "C1 E7 04 8B 87" ) ).add ( 5 ).deref ( ).get< weapon_arr_entry_t* > ( );
+
+	for ( auto i = 0; strcmp ( weapon_name_info [ i ].weapon_name, _ ( "weapon_none" ) ) != 0; i++ )
+		option::add_skin ( std::string ( _ ( "skins.skin." ) ).append ( weapon_name_info [ i ].weapon_name ) );
+
+	option::add_skin_bool ( _ ( "skins.skin.override_knife" ), false );
+	option::add_skin_int ( _ ( "skins.skin.knife" ), 0 );
+	option::add_skin_bool ( _ ( "skins.skin.override_gloves" ), false );
+	option::add_skin_int ( _ ( "skins.skin.glove" ), 0 );
+	option::add_skin_bool ( _ ( "skins.skin.override_weapon" ), false );
+	option::add_skin_bool ( _ ( "skins.skin.filter_by_weapon" ), false );
+
+	option::add_skin_int ( _ ( "skins.models.player_model_t" ), 0 );
+	option::add_skin_int ( _ ( "skins.models.player_model_ct" ), 0 );
 }
 
 void options::init( ) {
@@ -466,7 +548,7 @@ void options::init( ) {
 	option::add_bool ( _ ( "visuals.other.player_hits" ), false );
 	option::add_bool ( _ ( "visuals.other.bullet_impacts_client" ), false );
 	option::add_bool ( _ ( "visuals.other.bullet_impacts_server" ), false );
-	option::add_list( _( "visuals.other.logs" ), 4 ); /* hits, spread misses, resolver misses, wrong hitbox, manuals */
+	option::add_list( _( "visuals.other.logs" ), 1 ); /* ragebot */
 	option::add_bool( _( "visuals.other.grenade_trajectories" ), false );
 	option::add_bool( _( "visuals.other.grenade_bounces" ), false );
 	option::add_bool( _( "visuals.other.grenade_blast_radii" ), false );
@@ -499,10 +581,6 @@ void options::init( ) {
 	option::add_color( _( "visuals.other.secondary_accent_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 	option::add_color( _( "visuals.other.logo_color" ), { 1.0f, 1.0f, 1.0f, 1.0f } );
 
-	/* SKINS */
-	option::add_int ( _ ( "skins.models.player_model_t" ), 0 );
-	option::add_int ( _ ( "skins.models.player_model_ct" ), 0 );
-
 	/* MISC */
 	option::add_bool( _( "misc.movement.bhop" ), false );
 	option::add_bool( _( "misc.movement.block_bot" ), false );
@@ -515,6 +593,9 @@ void options::init( ) {
 	option::add_bool( _( "misc.movement.auto_strafer" ), false );
 	option::add_bool( _( "misc.movement.omnidirectional_auto_strafer" ), false );
 	option::add_bool ( _ ( "misc.movement.accurate_move" ), false );
+	option::add_bool ( _ ( "misc.effects.static_legs" ), false );
+	option::add_bool ( _ ( "misc.effects.slowwalk_slide" ), false );
+	option::add_bool ( _ ( "misc.effects.no_pitch_on_land" ), false );
 	option::add_bool( _( "misc.effects.third_person" ), false );
 	option::add_float( _( "misc.effects.third_person_range" ), 0.0f );
 	option::add_int( _( "misc.effects.third_person_key" ), 0 );
@@ -531,4 +612,9 @@ void options::init( ) {
 	option::add_int ( _ ( "gui.animation_speed" ), 100 );
 
 	//option::add_int ( _ ( "debug.angle_mode" ), 0 ); /* set yaw auto, approach yaw auto, set yaw static, approach yaw static */
+
+	/* skins */
+	init_skins ( );
 }
+
+#pragma optimize( "2", on )

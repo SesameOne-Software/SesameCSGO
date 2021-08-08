@@ -1,6 +1,7 @@
 ﻿#include "rebuilt.hpp"
 #include "anims.hpp"
 #include "../menu/options.hpp"
+#include "../sdk/netvar.hpp"
 
 #include <numbers>
 
@@ -13,15 +14,6 @@ constexpr auto ANIMATION_LAYER_COUNT = 13;
 
 constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_DOWN = 3.1f;
 constexpr auto CSGO_ANIM_DUCK_APPROACH_SPEED_UP = 6.0f;
-
-namespace lby {
-	extern float spawn_time;
-	extern float last_breaker_time;
-	extern bool tick_before_update;
-	extern bool in_update;
-	extern bool broken;
-	extern bool balance_update;
-}
 
 namespace valve_math {
 	//-----------------------------------------------------------------------------
@@ -1814,6 +1806,8 @@ void anims::rebuilt::trigger_animation_events ( animstate_t* anim_state ) {
 	}
 }
 
+std::array<float, 65> last_lby_update_time { 0.0f };
+
 void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_yaw ) {
 	//static auto& angle_mode = options::vars [ _ ( "debug.angle_mode" ) ].val.i;
 
@@ -1952,21 +1946,20 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 		if ( anim_state->m_speed2d > 0.1f ) {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( anim_state->m_eye_yaw, anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * ( 30.0f + 20.0f * anim_state->m_ground_fraction ) );
 
-			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
-				//lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
-				player->lby ( ) = anim_state->m_eye_yaw;
-			}
+			//if ( !CLIENT_DLL_ANIMS ) {
+			//	last_lby_update_time [ player->idx ( ) ] = cs::i::globals->m_realtime + 0.22f;
+			//	player->lby ( ) = anim_state->m_eye_yaw;
+			//}
 		}
 		else {
 			anim_state->m_abs_yaw = valve_math::ApproachAngle ( player->lby ( ), anim_state->m_abs_yaw, anim_state->m_last_clientside_anim_update_time_delta * 100.0f );
 
-			if ( !CLIENT_DLL_ANIMS && player == g::local ) {
-				if ( cs::i::globals->m_curtime > lby::last_breaker_time && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
-					//lby::last_breaker_time = cs::i::globals->m_curtime + 1.1f;
-					//lby::in_update = true;
-					player->lby ( ) = anim_state->m_eye_yaw;
-				}
-			}
+			//if ( !CLIENT_DLL_ANIMS ) {
+			//	if ( cs::i::globals->m_realtime > last_lby_update_time [ player->idx ( ) ] && abs ( valve_math::AngleDiff ( anim_state->m_abs_yaw, anim_state->m_eye_yaw ) ) > 35.0f ) {
+			//		last_lby_update_time [ player->idx ( ) ] = cs::i::globals->m_realtime + 1.1f;
+			//		player->lby ( ) = anim_state->m_eye_yaw;
+			//	}
+			//}
 		}
 	}
 

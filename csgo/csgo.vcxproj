@@ -46,7 +46,9 @@
     <ClCompile Include="hooks\base_interpolate_part1.cpp" />
     <ClCompile Include="hooks\build_transformations.cpp" />
     <ClCompile Include="hooks\calc_view.cpp" />
-    <ClCompile Include="hooks\cl_fireevents.cpp" />
+    <ClCompile Include="hooks\get_client_model_renderable.cpp" />
+    <ClCompile Include="hooks\svc_msg_voice_data.cpp" />
+    <ClCompile Include="hooks\temp_entities.cpp" />
     <ClCompile Include="hooks\create_move.cpp" />
     <ClCompile Include="hooks\cs_blood_spray_callback.cpp" />
     <ClCompile Include="hooks\do_extra_bone_processing.cpp" />
@@ -155,7 +157,9 @@
     <ClInclude Include="hooks\base_interpolate_part1.hpp" />
     <ClInclude Include="hooks\build_transformations.hpp" />
     <ClInclude Include="hooks\calc_view.hpp" />
-    <ClInclude Include="hooks\cl_fireevents.hpp" />
+    <ClInclude Include="hooks\get_client_model_renderable.hpp" />
+    <ClInclude Include="hooks\svc_msg_voice_data.hpp" />
+    <ClInclude Include="hooks\temp_entities.hpp" />
     <ClInclude Include="hooks\create_move.hpp" />
     <ClInclude Include="hooks\cs_blood_spray_callback.hpp" />
     <ClInclude Include="hooks\do_extra_bone_processing.hpp" />
@@ -216,6 +220,12 @@
     <ClInclude Include="menu\sesui.hpp" />
     <ClInclude Include="menu\sesui_custom.hpp" />
     <ClInclude Include="minhook\minhook.h" />
+    <ClInclude Include="multithreading\atomic_lock.h" />
+    <ClInclude Include="multithreading\mutex.h" />
+    <ClInclude Include="multithreading\packed_heap.h" />
+    <ClInclude Include="multithreading\semaphores.h" />
+    <ClInclude Include="multithreading\shared_mutex.h" />
+    <ClInclude Include="multithreading\threading.h" />
     <ClInclude Include="PH\AES\AES.h" />
     <ClInclude Include="PH\Base64.h" />
     <ClInclude Include="PH\PH_API.hpp" />
@@ -273,6 +283,7 @@
     <ClInclude Include="utils\base64.hpp" />
     <ClInclude Include="utils\detours.hpp" />
     <ClInclude Include="utils\miniz.h" />
+    <ClInclude Include="utils\multithreading.hpp" />
     <ClInclude Include="utils\networking.hpp" />
     <ClInclude Include="utils\padding.hpp" />
     <ClInclude Include="utils\patternscanner.hpp" />
@@ -380,7 +391,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;NDEBUG;DEV_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;JM_XORSTR_DISABLE_AVX_INTRINSICS;STBTT_STATIC;STBRP_STATIC;NDEBUG;DEV_BUILD;OBF_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <EnableModules>false</EnableModules>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -391,10 +402,11 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <FloatingPointModel>Precise</FloatingPointModel>
-      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <SupportJustMyCode>false</SupportJustMyCode>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <AdditionalOptions>/utf-8 /Zm2000 %(AdditionalOptions)</AdditionalOptions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>NotSet</SubSystem>

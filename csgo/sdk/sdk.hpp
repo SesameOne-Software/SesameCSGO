@@ -182,6 +182,32 @@ namespace cs {
 		return ret;
 	}
 
+	__forceinline void angle_vec ( const vec3_t& angles, vec3_t* forward, vec3_t* right, vec3_t* up ) {
+		float sr, sp, sy, cr, cp, cy;
+
+		sin_cos ( deg2rad ( angles.y ), &sy, &cy );
+		sin_cos ( deg2rad ( angles.x ), &sp, &cp );
+		sin_cos ( deg2rad ( angles.z ), &sr, &cr );
+
+		if ( forward ) {
+			forward->x = cp * cy;
+			forward->y = cp * sy;
+			forward->z = -sp;
+		}
+
+		if ( right ) {
+			right->x = -1.0f * sr * sp * cy + -1.0f * cr * -sy;
+			right->y = -1.0f * sr * sp * sy + -1.0f * cr * cy;
+			right->z = -1.0f * sr * cp;
+		}
+
+		if ( up ) {
+			up->x = ( cr * sp * cy + -sr * -sy );
+			up->y = ( cr * sp * sy + -sr * cy );
+			up->z = cr * cp;
+		}
+	}
+
 	__forceinline float calc_fov( const vec3_t& src, const vec3_t& dst ) {
 		vec3_t ang = angle_vec( src ), aim = angle_vec( dst );
 		return rad2deg( acosf( aim.dot_product( ang ) / aim.length_sqr( ) ) );
@@ -209,31 +235,7 @@ namespace cs {
 		return tr.m_fraction > 0.97f || ( reinterpret_cast< player_t* >( tr.m_hit_entity )->valid( ) && reinterpret_cast< player_t* >( tr.m_hit_entity )->team( ) != g::local->team( ) );
 	}
 
-	__forceinline void rotate_movement( ucmd_t* ucmd, float old_smove, float old_fmove, const vec3_t& old_angs ) {
-		auto dv = 0.0f;
-		auto f1 = 0.0f;
-		auto f2 = 0.0f;
-
-		if ( old_angs.y < 0.f )
-			f1 = 360.0f + old_angs.y;
-		else
-			f1 = old_angs.y;
-
-		if ( ucmd->m_angs.y < 0.0f )
-			f2 = 360.0f + ucmd->m_angs.y;
-		else
-			f2 = ucmd->m_angs.y;
-
-		if ( f2 < f1 )
-			dv = abs( f2 - f1 );
-		else
-			dv = 360.0f - abs( f1 - f2 );
-
-		dv = 360.0f - dv;
-
-		ucmd->m_fmove = std::cosf( cs::deg2rad( dv ) ) * old_fmove + std::cosf( cs::deg2rad( dv + 90.0f ) ) * old_smove;
-		ucmd->m_smove = std::sinf( cs::deg2rad( dv ) ) * old_fmove + std::sinf( cs::deg2rad( dv + 90.0f ) ) * old_smove;
-	}
+	void rotate_movement ( ucmd_t* cmd, const vec3_t& angles );
 
 	__forceinline void angle_matrix( const vec3_t& angles, matrix3x4_t& matrix ) {
 		float sr, sp, sy, cr, cp, cy;

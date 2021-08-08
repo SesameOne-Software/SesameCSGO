@@ -87,30 +87,6 @@ enum mask_t : uint32_t {
 	mask_deadsolid = ( contents_solid | contents_playerclip | contents_window | contents_grate )
 };
 
-enum hitboxes_t : int
-{
-	hitbox_head,
-	hitbox_neck,
-	hitbox_pelvis,
-	hitbox_stomach,
-	hitbox_lower_chest,
-	hitbox_chest,
-	hitbox_upper_chest,
-	hitbox_right_thigh,
-	hitbox_left_thigh,
-	hitbox_right_calf,
-	hitbox_left_calf,
-	hitbox_right_foot,
-	hitbox_left_foot,
-	hitbox_right_hand,
-	hitbox_left_hand,
-	hitbox_right_upper_arm,
-	hitbox_right_forearm,
-	hitbox_left_upper_arm,
-	hitbox_left_forearm,
-	hitbox_max
-};
-
 enum hitgroup_t : int {
 	hitgroup_generic = 0,
 	hitgroup_head = 1,

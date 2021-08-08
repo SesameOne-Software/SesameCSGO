@@ -2,6 +2,7 @@
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
 #include "other_visuals.hpp"
+#include "../sdk/netvar.hpp"
 
 enum stencil_operation_t {
 	stencil_operation_keep = 1,

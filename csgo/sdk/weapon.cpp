@@ -103,13 +103,13 @@ void c_econ_item::set_custom_desc ( const char* name ) {
 }
 
 void c_econ_item::set_attribute ( int index, int val ) {
-	auto v15 = reinterpret_cast< uint32_t* >( features::inventory::get_item_schema ( ) );
-	auto v16 = *reinterpret_cast< uint32_t* > ( v15 [ 72 ] + 4 * index );
-
-	using fn = int ( __thiscall* )( c_econ_item*, uint32_t, void* );
-	static auto set_dynamic_attribute_val = pattern::search (_( "client.dll"),_( "55 8B EC 83 E4 F8 83 EC 3C 53 8B 5D 08 56 57 6A 00") ).get< fn > ( );
-
-	set_dynamic_attribute_val ( this, v16, &val );
+	//auto v15 = reinterpret_cast< uint32_t* >( features::inventory::get_item_schema ( ) );
+	//auto v16 = *reinterpret_cast< uint32_t* > ( v15 [ 72 ] + 4 * index );
+	//
+	//using fn = int ( __thiscall* )( c_econ_item*, uint32_t, void* );
+	//static auto set_dynamic_attribute_val = pattern::search (_( "client.dll"),_( "55 8B EC 83 E4 F8 83 EC 3C 53 8B 5D 08 56 57 6A 00") ).get< fn > ( );
+	//
+	//set_dynamic_attribute_val ( this, v16, &val );
 }
 
 void c_econ_item::set_attribute ( int index, float val ) {

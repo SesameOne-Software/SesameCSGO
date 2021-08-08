@@ -130,10 +130,10 @@ void player_t::create_animstate( animstate_t* state ) {
 }
 
 void player_t::inval_bone_cache( ) {
-	static auto invalidate_bone_cache = pattern::search( _( "client.dll" ), _( "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ) ).add( 10 ).get< std::uintptr_t >( );
+	static auto invalidate_bone_cache = pattern::search( _( "client.dll" ), _( "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ) ).add( 10 ).get< uintptr_t >( );
 
-	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2924 ) = 0xFF7FFFFF;
-	*( std::uint32_t* ) ( ( std::uintptr_t ) this + 0x2690 ) = **( std::uintptr_t** ) invalidate_bone_cache - 1;
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2924 ) ) = N( 0xFF7FFFFF );
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2690 ) ) = **( uintptr_t** ) invalidate_bone_cache - 1;
 }
 
 void player_t::set_abs_angles( const vec3_t& ang ) {

@@ -9,7 +9,7 @@ struct recv_table_t {
 	int m_num_props;
 	void* m_decoder;
 	char* m_net_table_name;
-	PAD( 2 );
+	char pad[ 2 ];
 };
 
 struct recv_prop_t {

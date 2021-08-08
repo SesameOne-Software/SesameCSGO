@@ -19,7 +19,7 @@ void features::autopeek::draw ( ) {
 	render::circle3d ( peek.m_pos, fade_radius, 48, rgba ( static_cast< int >( color.r * 255.0f ), static_cast< int >( color.g * 255.0f ), static_cast< int >( color.b * 255.0f ), static_cast< int >( peek.m_fade * 255.0f ) ), true, std::lerp ( 1.5f, 3.0f, fade_amount ) );
 }
 
-void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, vec3_t& move_ang ) {
+void features::autopeek::run ( ucmd_t* ucmd, vec3_t& move_ang ) {
 	static auto& enabled = options::vars [ _ ( "ragebot.autopeek" ) ].val.b;
 	static auto& autopeek_key = options::vars [ _ ( "ragebot.autopeek_key" ) ].val.i;
 	static auto& autopeek_key_mode = options::vars [ _ ( "ragebot.autopeek_key_mode" ) ].val.i;
@@ -58,8 +58,8 @@ void features::autopeek::run ( ucmd_t* ucmd, float& side_move, float& fwd_move, 
 		move_ang.y = cs::normalize ( cs::calc_angle ( g::local->abs_origin ( ), peek.m_pos ).y );
 
 		/* move with full speed */
-		fwd_move = 450.0f;
-		side_move = 0.0f;
+		ucmd->m_fmove = 450.0f;
+		ucmd->m_smove = 0.0f;
 
 		const auto dist_to_target = ( peek.m_pos - g::local->abs_origin ( ) ).length_2d ( );
 

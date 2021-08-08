@@ -5,18 +5,6 @@
 
 #include "sdk/sdk.hpp"
 
-bool g::unload = false;
-
-round_t g::round = round_t::in_progress;
-player_t* g::local = nullptr;
-ucmd_t* g::ucmd = nullptr;
-ucmd_t g::sent_cmd { };
-vec3_t g::angles = vec3_t ( 0.0f, 0.0f, 0.0f );
-bool g::hold_aim = false;
-bool g::send_packet = true;
-float g::cock_time = 0.0f;
-bool g::can_fire_revolver = false;
-
 void g::resources::init ( ) {
 	sesame_icons = ( uint8_t* ) sesame_icons_data;
 }
@@ -34,6 +22,7 @@ void g::cvars::init ( ) {
 	weapon_molotov_maxdetonateslope = cs::i::cvar->find ( _ ( "weapon_molotov_maxdetonateslope" ) );
 	weapon_accuracy_nospread = cs::i::cvar->find ( _ ( "weapon_accuracy_nospread" ) );
 	cl_sidespeed = cs::i::cvar->find ( _ ( "cl_sidespeed" ) );
+	cl_upspeed = cs::i::cvar->find ( _ ( "cl_upspeed" ) );
 	cl_forwardspeed = cs::i::cvar->find ( _ ( "cl_forwardspeed" ) );
 	mp_solid_teammates = cs::i::cvar->find ( _ ( "mp_solid_teammates" ) );
 	sv_clockcorrection_msecs = cs::i::cvar->find ( _ ( "sv_clockcorrection_msecs" ) );

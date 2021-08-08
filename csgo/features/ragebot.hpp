@@ -35,7 +35,8 @@ namespace features {
 				legit_mode,
 				triggerbot,
 				dt_enabled,
-				onshot_only;
+				onshot_only,
+				dt_smooth_recharge;
 
 			double min_dmg,
 				min_dmg_override,
@@ -59,6 +60,7 @@ namespace features {
 
 		struct misses_t {
 			int spread = 0;
+			int pred_error = 0;
 			int bad_resolve = 0;
 			int occlusion = 0;
 		};
@@ -70,16 +72,44 @@ namespace features {
 			int m_health;
 		};
 
+		struct shot_t {
+			uint32_t idx;
+			anims::anim_info_t rec;
+			int backtrack;
+			hitbox_t hitbox;
+			vec3_t src, dst;
+			float hitchance;
+			float body_yaw;
+			int dmg;
+			float vel_modifier;
+
+			vec3_t processed_impact_pos;
+			int processed_hitgroup;
+			int processed_dmg, processed_impact_dmg;
+			bool processed_impact, processed_hurt;
+			int processed_tick;
+		};
+
+		inline std::vector<shot_t> shots {};
+
 		void get_weapon_config( weapon_config_t& const config );
-		anims::anim_info_t& get_lag_rec( int pl );
 		int& get_target_idx( );
-		player_t*& get_target( );
 		misses_t& get_misses( int pl );
-		vec3_t& get_target_pos( int pl );
-		vec3_t& get_shot_pos( int pl );
 		int& get_hits( int pl );
-		int& get_shots( int pl );
-		int& get_hitbox( int pl );
+
+		inline void get_shots ( int pl, std::vector<const features::ragebot::shot_t*>& shots_out ) {
+			for ( auto& shot : shots )
+				if ( shot.idx == pl )
+					shots_out.push_back ( &shot );
+		}
+
+		inline features::ragebot::shot_t* get_unprocessed_shot ( ) {
+			for ( auto& shot : shots )
+				if ( !shot.processed_tick || g::server_tick == shot.processed_tick )
+					return &shot;
+
+			return nullptr;
+		}
 
 		class c_scan_points {
 			std::deque< vec3_t > m_points;
@@ -107,57 +137,11 @@ namespace features {
 			void draw( ) {
 				std::lock_guard< std::mutex > guard( m_mutex );
 
-				vec3_t screen;
-
 				for ( auto& point : m_synced_points ) {
+					vec3_t screen;
+
 					if ( cs::render::world_to_screen ( screen, point ) ) {
-						const auto radius = 8.0f;
-						const auto x = screen.x;
-						const auto y = screen.y;
-						const auto verticies = 16;
-
-						struct vtx_t {
-							float x, y, z, rhw;
-							std::uint32_t color;
-						};
-
-						std::vector< vtx_t > circle ( verticies + 2 );
-
-						const auto angle = 0.0f;
-
-						circle [ 0 ].x = static_cast< float > ( x ) - 0.5f;
-						circle [ 0 ].y = static_cast< float > ( y ) - 0.5f;
-						circle [ 0 ].z = 0;
-						circle [ 0 ].rhw = 1;
-						circle [ 0 ].color = D3DCOLOR_RGBA ( 255, 0, 0, 255 );
-
-						for ( auto i = 1; i < verticies + 2; i++ ) {
-							circle [ i ].x = ( float ) ( x - radius * std::cosf ( std::numbers::pi * ( ( i - 1 ) / ( static_cast<float>( verticies ) / 2.0f ) ) ) ) - 0.5f;
-							circle [ i ].y = ( float ) ( y - radius * std::sinf ( std::numbers::pi * ( ( i - 1 ) / ( static_cast<float>( verticies ) / 2.0f ) ) ) ) - 0.5f;
-							circle [ i ].z = 0;
-							circle [ i ].rhw = 1;
-							circle [ i ].color = D3DCOLOR_RGBA ( 255, 0 , 0, 0 );
-						}
-
-						for ( auto i = 0; i < verticies + 2; i++ ) {
-							circle [ i ].x = x + std::cosf ( angle ) * ( circle [ i ].x - x ) - std::sinf ( angle ) * ( circle [ i ].y - y ) - 0.5f;
-							circle [ i ].y = y + std::sinf ( angle ) * ( circle [ i ].x - x ) + std::cosf ( angle ) * ( circle [ i ].y - y ) - 0.5f;
-						}
-
-						IDirect3DVertexBuffer9* vb = nullptr;
-
-						cs::i::dev->CreateVertexBuffer ( ( verticies + 2 ) * sizeof ( vtx_t ), D3DUSAGE_WRITEONLY, D3DFVF_XYZRHW | D3DFVF_DIFFUSE, D3DPOOL_DEFAULT, &vb, nullptr );
-
-						void* verticies_ptr;
-						vb->Lock ( 0, ( verticies + 2 ) * sizeof ( vtx_t ), ( void** ) &verticies_ptr, 0 );
-						std::memcpy ( verticies_ptr, &circle [ 0 ], ( verticies + 2 ) * sizeof ( vtx_t ) );
-						vb->Unlock ( );
-
-						cs::i::dev->SetStreamSource ( 0, vb, 0, sizeof ( vtx_t ) );
-						cs::i::dev->DrawPrimitive ( D3DPT_TRIANGLEFAN, 0, verticies );
-
-						if ( vb )
-							vb->Release ( );
+						render::circle ( screen.x, screen.y, 1.5f, 6, rgba ( 255, 0, 0, 255 ), false );
 					}
 				}
 			}
@@ -165,10 +149,10 @@ namespace features {
 
 		extern c_scan_points scan_points;
 
-		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, int hitbox, anims::anim_info_t& rec );
-		void slow ( ucmd_t* ucmd, float& old_smove, float& old_fmove );
+		bool hitchance( vec3_t ang, player_t* pl, vec3_t point, int rays, hitbox_t hitbox, anims::anim_info_t& rec, float& hc_out );
+		void slow ( ucmd_t* ucmd );
 		void run_meleebot ( ucmd_t* ucmd );
-		void run( ucmd_t* ucmd, float& old_smove, float& old_fmove, vec3_t& old_angs );
+		void run( ucmd_t* ucmd, vec3_t& old_angs );
 		void tickbase_controller( ucmd_t* ucmd );
 		void select_targets( std::deque < aim_target_t >& targets_out );
 
@@ -190,9 +174,11 @@ namespace features {
 
 		ENUM_BITMASK ( multipoint_mode_t );
 
-		bool hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, int& hitbox_out, float& best_dmg );
-		bool create_points( player_t* ent, anims::anim_info_t& rec, int i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );
-		bool get_hitbox( player_t* ent, anims::anim_info_t& rec, int i, vec3_t& pos_out, float& rad_out, float& zrad_out );
-		void idealize_shot( player_t* ent, vec3_t& pos_out, int& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg );
+		inline int extrap_amount = 4;
+
+		bool hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, hitbox_t& hitbox_out, float& best_dmg );
+		bool create_points( player_t* ent, anims::anim_info_t& rec, hitbox_t i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );
+		bool get_hitbox( player_t* ent, anims::anim_info_t& rec, hitbox_t i, vec3_t& pos_out, float& rad_out, float& zrad_out );
+		void idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg );
 	}
 }

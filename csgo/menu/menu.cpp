@@ -50,6 +50,8 @@ cJSON* cloud_config_list = nullptr;
 bool gui::opened = false;
 bool open_button_pressed = false;
 
+const char* last_weapon_name = nullptr;;
+
 enum tabs_t {
 	tab_legit = 0,
 	tab_rage,
@@ -138,6 +140,8 @@ ImFont* gui_small_font = nullptr;
 ImFont* gui_icons_font = nullptr;
 
 float g_last_dpi = 0.0f;
+
+#pragma optimize( "2", off )
 
 namespace stb {
 	static unsigned int stb_decompress_length ( const unsigned char* input ) {
@@ -325,6 +329,19 @@ void gui::scale_dpi ( ) {
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 }
 
+std::string create_cfg_dirs ( ) {
+	char documents [ MAX_PATH ] { 0 };
+
+	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), documents ) ) ) {
+		LI_FN ( CreateDirectoryA )( ( std::string ( documents ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( documents ) + _ ( "\\sesame\\skins" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( documents ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
+		LI_FN ( CreateDirectoryA )( ( std::string ( documents ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
+	}
+
+	return documents;
+}
+
 void gui::init( ) {
 	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
 	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
@@ -333,6 +350,11 @@ void gui::init( ) {
 
 	/* initialize cheat config */
 	options::init( );
+
+	/* load default configs */
+	auto cfg_dir = create_cfg_dirs ( );
+
+	options::load ( options::skin_vars, cfg_dir.append ( _ ( "\\sesame\\skins\\skins.xml" ) ) );
 
 	scale_dpi ( );
 
@@ -347,13 +369,7 @@ std::vector< std::string > configs { };
 std::vector< std::string > scripts { };
 
 void gui::load_cfg_list( ) {
-	char appdata [ MAX_PATH ];
-
-	if ( SUCCEEDED( LI_FN( SHGetFolderPathA )( nullptr, N( 5 ), nullptr, N( 0 ), appdata ) ) ) {
-		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-		LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-	}
+	auto cfg_dir = create_cfg_dirs ( );
 
 	auto sanitize_name = [ ] ( const std::string& dir ) {
 		const auto dot = dir.find_last_of( _( "." ) );
@@ -363,7 +379,7 @@ void gui::load_cfg_list( ) {
 	if ( !configs.empty() )
 		configs.clear ( );
 
-	for ( const auto& dir : std::filesystem::recursive_directory_iterator( std::string( appdata ) + _( "\\sesame\\configs" ) ) ) {
+	for ( const auto& dir : std::filesystem::recursive_directory_iterator( cfg_dir + _( "\\sesame\\configs" ) ) ) {
 		if ( dir.exists( ) && dir.is_regular_file( ) && dir.path( ).extension( ).string( ) == _( ".xml" ) ) {
 			const auto sanitized = sanitize_name( dir.path( ).filename( ).string( ) );
 			configs.push_back( sanitized );
@@ -375,13 +391,15 @@ void gui::load_cfg_list( ) {
 	if ( !scripts.empty ( ) )
 		scripts.clear ( );
 
-	for ( const auto& dir : std::filesystem::recursive_directory_iterator ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ) ) {
+	for ( const auto& dir : std::filesystem::recursive_directory_iterator ( cfg_dir + _ ( "\\sesame\\scripts" ) ) ) {
 		if ( dir.exists ( ) && dir.is_regular_file ( ) && dir.path ( ).extension ( ).string ( ) == _ ( ".js" ) ) {
 			const auto sanitized = sanitize_name ( dir.path ( ).filename ( ).string ( ) );
 			scripts.push_back ( sanitized );
 			js_api::load_script ( dir.path ( ).filename ( ).string ( ).c_str() );
 		}
 	}
+
+	last_weapon_name = nullptr;
 }
 
 void gui::weapon_controls( const std::string& weapon_name ) {
@@ -401,6 +419,7 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 
 		ImGui::Checkbox( _( "Auto Slow" ), &options::vars [ ragebot_weapon + _( "auto_slow" ) ].val.b );
 		ImGui::PushItemWidth ( -1.0f );
+		ImGui::Checkbox ( _ ( "Tickbase Smooth Recharge" ), &options::vars [ ragebot_weapon + _ ( "dt_smooth_recharge" ) ].val.b );
 		ImGui::SliderInt ( _ ( "Tickbase Recharge Delay" ), &options::vars [ ragebot_weapon + _ ( "dt_recharge_delay" ) ].val.i, 0, 1000, _ ( "%d ms" ) );
 		ImGui::SliderFloat( _( "Minimum Damage" ), &options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f > 100.0f ? ( _( "HP + " ) + std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f - 100.0f ) ) + _( " HP" ) ) : ( std::to_string( static_cast< int > ( options::vars [ ragebot_weapon + _( "min_dmg" ) ].val.f ) ) + _( " HP" ) ) ).c_str( ) );
 		ImGui::SliderFloat ( _ ( "Overrided Minimum Damage" ), &options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f, 0.0f, 150.0f, ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f > 100.0f ? ( _ ( "HP + " ) + std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f - 100.0f ) ) + _ ( " HP" ) ) : ( std::to_string ( static_cast< int > ( options::vars [ ragebot_weapon + _ ( "min_dmg_override" ) ].val.f ) ) + _ ( " HP" ) ) ).c_str ( ) );
@@ -657,6 +676,15 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 	}
 }
 
+static bool gui_paintkit_getter ( void* data, int idx, const char** out_text ) {
+	const auto items = reinterpret_cast< const features::skinchanger::paint_kit* >( data );
+
+	if ( out_text )
+		*out_text = items [ idx ].name.c_str ( );
+
+	return true;
+}
+
 void gui::draw( ) {
 	/* HANDLE DPI */
 	//sesui::globals::dpi = options::vars [ _( "gui.dpi" ) ].val.f;
@@ -702,15 +730,8 @@ void gui::draw( ) {
 				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _("There already is a config with the same name in this location.\nAre you sure you want to overwrite the config?" ));
 
 				if ( ImGui::Button ( _("Confirm"), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
-					char appdata [ MAX_PATH ];
-
-					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-					}
-
-					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
+					auto cfg_dir = create_cfg_dirs ( );
+					const auto file = cfg_dir.append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
 
 					options::save ( options::vars, file );
 
@@ -738,17 +759,9 @@ void gui::draw( ) {
 				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _ ( "Are you sure you want to delete the config?" ) );
 
 				if ( ImGui::Button ( _ ( "Confirm" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
-					char appdata [ MAX_PATH ];
+					auto cfg_dir = create_cfg_dirs ( );
 
-					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-					}
-
-					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
-
-					std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
+					std::remove ( ( cfg_dir + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
 
 					gui_mutex.lock ( );
 					load_cfg_list ( );
@@ -774,17 +787,10 @@ void gui::draw( ) {
 				ImGui::TextColored ( ImVec4 ( 1.0f, 0.1f, 0.1f, 1.0f ), _ ( "Are you sure you want to delete the script?" ) );
 
 				if ( ImGui::Button ( _ ( "Confirm" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ) ) ) {
-					char appdata [ MAX_PATH ];
+					auto cfg_dir = create_cfg_dirs ( );
+					const auto file = cfg_dir.append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
 
-					if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-						LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-					}
-
-					const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\scripts\\" ) ).append ( selected_script ).append ( _ ( ".js" ) );
-
-					std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
+					std::remove ( ( cfg_dir + _ ( "\\sesame\\scripts\\" ) + selected_script + _ ( ".js" ) ).c_str ( ) );
 
 					gui_mutex.lock ( );
 					load_cfg_list ( );
@@ -1097,11 +1103,7 @@ void gui::draw( ) {
 							ImGui::PopItemWidth ( );
 
 							static std::vector<const char*> logs {
-								  "Hits" ,
-								"Spread Misses" ,
-								"Resolver Misses" ,
-								  "Wrong Hitbox" ,
-								 "Manual Shots" ,
+								"Ragebot",
 							};
 
 							ImGui::MultiCombo ( _ ( "Logs" ), options::vars [ _ ( "visuals.other.logs" ) ].val.l, logs.data ( ), logs.size ( ) );
@@ -1138,111 +1140,177 @@ void gui::draw( ) {
 					} );
 				} break;
 				case tab_skins: {
-					ImGui::custom::AddSubtab ( _("Inventory Changer"), _("Add items to your inventory (Including custom skins!)"), [ & ] ( ) {
-						/*if ( ImGui::custom::InventoryBegin ( 2, 3 ) ) {
-							if ( ImGui::custom::InventoryButton ( _ ( "Add Item" ) ) ) {
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::ak47,
-									0,
-									302,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-								
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::awp,
-									0,
-									344,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::knife_skeleton,
-									0,
-									43,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::m4a4,
-									0,
-									309,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::revolver,
-									0,
-									595,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::knife_karambit,
-									0,
-									413,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::m4a1s,
-									0,
-									440,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::usps,
-									0,
-									313,
-									rand ( ),
-									0.0f,
-									{}
-									} );
-				
-								features::skinchanger::add_item ( {
-									false,
-									weapons_t::glove_motorcycle,
-									0,
-									10026,
-									rand ( ),
-									0.0f,
-									{}
-									} );
+					ImGui::custom::AddSubtab ( _ ( "Skin Changer" ), _ ( "Change your weapon or glove skins!" ), [ & ] ( ) {
+						/*
+						-- Model Options --
+						x Override Knife
+						[M9 Bayonet v]
+
+						-- Glove Options --
+						x Override Gloves
+						[Driver v]
+						[Listbox w/ Search for Glove Skins]
+
+						-- Skin Options --
+						x Enabled
+						x StatTrak
+						x Filter by Weapon
+						Quality 0-100
+						Seed 1-1000 or TextInput numbers only
+						[Listbox w/ Search for Skins]
+						*/
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Knives" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, ImGui::GetContentRegionAvail( ).y * 0.5f - ImGui::GetStyle ( ).FramePadding.y ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Knives" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Knives" ) );
+							ImGui::Separator ( );
+
+							ImGui::PushItemWidth ( -1.0f );
+							if(ImGui::Checkbox ( _ ( "Override Knife" ), &options::skin_vars [ _ ( "skins.skin.override_knife" ) ].val.b )) features::skinchanger::skin_changed = true;
+							if ( ImGui::Combo ( _ ( "##Knife Models" ), &options::skin_vars [ _ ( "skins.skin.knife" ) ].val.i, features::skinchanger::knife_names.data ( ), features::skinchanger::knife_names.size ( ) )) features::skinchanger::skin_changed = true;
+							ImGui::PopItemWidth ( );
+
+							ImGui::EndChildFrame ( );
+						}
+
+						const auto knives_group_end = ImGui::GetCursorPosY ( );
+
+						ImGui::SameLine ( );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Weapon Skin" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Weapon Skin" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Weapon Skin" ) );
+							ImGui::Separator ( );
+
+							ImGui::PushItemWidth ( -1.0f );
+							if ( ImGui::Checkbox ( _ ( "Enabled" ), &options::skin_vars [ _ ( "skins.skin.override_weapon" ) ].val.b ) ) features::skinchanger::skin_changed = true;
+
+							/* config per skin */
+							if ( g::local && g::local->alive() && g::local->weapon ( ) && g::local->weapon ( )->data( ) ) {
+								auto weapon = g::local->weapon ( );
+								auto weapon_data = weapon->data ( );
+
+								auto cur_gun_skin = options::skin_vars.find ( std::string ( _ ( "skins.skin." ) ).append ( weapon_data->m_weapon_name ) );
+
+								if ( cur_gun_skin != options::skin_vars.end ( ) ) {
+									if ( ImGui::Checkbox ( _ ( "StatTrak" ), &cur_gun_skin->second.val.skin.is_stattrak ) ) features::skinchanger::skin_changed = true;
+									if ( ImGui::SliderFloat ( _ ( "Quality" ), &cur_gun_skin->second.val.skin.wear, 0.0f, 100.0f, _ ( "%.0f%%" ) ) ) features::skinchanger::skin_changed = true;
+									if ( ImGui::SliderInt ( _ ( "Seed" ), &cur_gun_skin->second.val.skin.seed, 0, 100 ) ) features::skinchanger::skin_changed = true;
+									if ( ImGui::InputText ( _ ( "Nametag" ), cur_gun_skin->second.val.skin.nametag, sizeof ( cur_gun_skin->second.val.skin.nametag ) ) ) features::skinchanger::skin_changed = true;
+
+									//ImGui::Checkbox ( _ ( "Filter By Weapon" ), &options::skin_vars [ _ ( "skins.skin.filter_by_weapon" ) ].val.b );
+
+									static std::vector<features::skinchanger::paint_kit> items;
+
+									int cur_paintkit = 0;
+
+									if ( items.empty( ) ) {
+										int index = 0;
+
+										for ( auto& paintkit : features::skinchanger::skin_kits ) {
+											if ( paintkit.id == cur_gun_skin->second.val.skin.paintkit )
+												cur_paintkit = index;
+
+											items.push_back ( paintkit );
+											index++;
+										}
+									}
+
+									/* skin search */
+									auto stristr = [ ] ( const char* str1, const char* str2 ) -> char* {
+										const char* p1 = str1;
+										const char* p2 = str2;
+										const char* r = *p2 == 0 ? str1 : 0;
+
+										while ( *p1 != 0 && *p2 != 0 ) {
+											if ( tolower ( ( unsigned char ) *p1 ) == tolower ( ( unsigned char ) *p2 ) ) {
+												if ( !r )
+													r = p1;
+
+												p2++;
+											}
+											else {
+												p2 = str2;
+
+												if ( r )
+													p1 = r + 1;
+
+												if ( tolower ( ( unsigned char ) *p1 ) == tolower ( ( unsigned char ) *p2 ) ) {
+													r = p1;
+													p2++;
+												}
+												else
+													r = 0;
+											}
+
+											p1++;
+										}
+
+										return *p2 == 0 ? ( char* ) r : 0;
+									};
+
+									static char skin_search [ 64 ] = { 0 };
+
+									ImGui::NewLine ( );
+
+									if ( ImGui::InputText ( _ ( "##Skin Search" ), skin_search, sizeof ( skin_search ) ) || last_weapon_name != weapon_data->m_weapon_name ) {
+										if ( !items.empty ( ) )
+											items.clear ( );
+
+										int index = 0;
+
+										if ( !strlen ( skin_search ) ) {
+											for ( auto& paintkit : features::skinchanger::skin_kits ) {
+												if ( paintkit.id == cur_gun_skin->second.val.skin.paintkit )
+													cur_paintkit = index;
+
+												items.push_back ( paintkit );
+												index++;
+											}
+										}
+										else {
+											for ( auto& paintkit : features::skinchanger::skin_kits ) {
+												if ( stristr ( paintkit.name.data ( ), skin_search ) ) {
+													if ( paintkit.id == cur_gun_skin->second.val.skin.paintkit )
+														cur_paintkit = index;
+
+													items.push_back ( paintkit );
+												}
+
+												index++;
+											}
+										}
+									}
+
+									/* skin listbox goes here */
+									if ( ImGui::ListBox ( _ ( "##Skin List" ), &cur_paintkit, gui_paintkit_getter, items.data ( ), items.size ( ), 5 ) ) {
+										cur_gun_skin->second.val.skin.paintkit = items [ cur_paintkit ].id;
+										features::skinchanger::skin_changed = true;
+									}
+								}
+
+								last_weapon_name = weapon_data->m_weapon_name;
 							}
-				
-							for ( auto& skin : features::skinchanger::skins ) {
-								const auto kit = skin.get_kit ( );
-				
-								if ( !kit )
-									continue;
-								
-								ImGui::custom::InventoryButton ( kit->name.c_str(), &skin );
-							}
-				
-							ImGui::custom::InventoryEnd ( );
-						}*/
+							ImGui::PopItemWidth ( );
+
+							ImGui::EndChildFrame ( );
+						}
+
+						ImGui::SetCursorPosY ( knives_group_end );
+
+						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Glove Options" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, ImGui::GetContentRegionAvail ( ).y ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
+							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Glove Options" ) ).x * 0.5f );
+							ImGui::Text ( _ ( "Glove Options" ) );
+							ImGui::Separator ( );
+
+							ImGui::PushItemWidth ( -1.0f );
+							if( ImGui::Checkbox ( _ ( "Override Gloves" ), &options::skin_vars [ _ ( "skins.skin.override_gloves" ) ].val.b )) features::skinchanger::skin_changed = true;
+							ImGui::PopItemWidth ( );
+
+							/* combo for glove model goes here */
+							/* skin listbox goes here */
+
+							ImGui::EndChildFrame ( );
+						}
 					} );
 				
 					ImGui::custom::AddSubtab ( _("Model Changer"), _("Replace game models with your own"), [ & ] ( ) {
@@ -1279,20 +1347,25 @@ void gui::draw( ) {
 							};
 
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::Combo ( _ ( "T Player Model" ), &options::vars [ _ ( "skins.models.player_model_t" ) ].val.i, models.data ( ), models.size ( ) );
-							ImGui::Combo ( _ ( "CT Player Model" ), &options::vars [ _ ( "skins.models.player_model_ct" ) ].val.i, models.data ( ), models.size ( ) );
+							ImGui::Combo ( _ ( "T Player Model" ), &options::skin_vars [ _ ( "skins.models.player_model_t" ) ].val.i, models.data ( ), models.size ( ) );
+							ImGui::Combo ( _ ( "CT Player Model" ), &options::skin_vars [ _ ( "skins.models.player_model_ct" ) ].val.i, models.data ( ), models.size ( ) );
 							ImGui::PopItemWidth ( );
 
-							ImGui::EndChildFrame ( );
-						}
-
-						ImGui::SameLine ( );
-
-						ImGui::BeginChildFrame ( ImGui::GetID ( _ ( "Weapon Models" ) ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
-							ImGui::SetCursorPosX ( ImGui::GetCursorPosX ( ) + ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::CalcTextSize ( _ ( "Weapon Models" ) ).x * 0.5f );
-							ImGui::Text ( _ ( "Weapon Models" ) );
-							ImGui::Separator ( );
-
+							//if ( ImGui::Button ( _ ( "Save" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+							//	auto cfg_dir = create_cfg_dirs ( );
+							//
+							//	options::save ( options::skin_vars, cfg_dir.append ( _ ( "\\sesame\\skins\\skins.xml" ) ) );
+							//	cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+							//}
+							//
+							//if ( ImGui::Button ( _ ( "Load" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
+							//	auto cfg_dir = create_cfg_dirs ( );
+							//
+							//	options::load ( options::skin_vars, cfg_dir.append ( _ ( "\\sesame\\skins\\skins.xml" ) ) );
+							//	cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
+							//
+							//	last_weapon_name = nullptr;
+							//}
 
 							ImGui::EndChildFrame ( );
 						}
@@ -1325,6 +1398,9 @@ void gui::draw( ) {
 							ImGui::Text ( _("General") );
 							ImGui::Separator ( );
 
+							ImGui::Checkbox ( _ ( "Static Legs in Air" ), &options::vars [ _ ( "misc.effects.static_legs" ) ].val.b );
+							ImGui::Checkbox ( _ ( "Slide on Slow Walk" ), &options::vars [ _ ( "misc.effects.slowwalk_slide" ) ].val.b );
+							ImGui::Checkbox ( _ ( "No Pitch on Land" ), &options::vars [ _ ( "misc.effects.no_pitch_on_land" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Third Person" ), &options::vars [ _ ( "misc.effects.third_person" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Third Person Key" ), &options::vars [ _ ( "misc.effects.third_person_key" ) ].val.i, &options::vars [ _ ( "misc.effects.third_person_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
@@ -1337,7 +1413,7 @@ void gui::draw( ) {
 
 							ImGui::PushItemWidth ( -1.0f );
 							ImGui::Combo ( _ ( "Clan Tag Animation" ), &options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i, tag_anims.data ( ), tag_anims.size ( ) );
-							ImGui::InputText ( _ ( "Clan Tag Text" ), options::vars [ _ ( "misc.effects.clantag_text" ) ].val.s, 128 );
+							ImGui::InputText ( _ ( "Clan Tag Text" ), options::vars [ _ ( "misc.effects.clantag_text" ) ].val.s, sizeof( options::vars [ _ ( "misc.effects.clantag_text" ) ].val.s ) );
 							ImGui::SliderFloat ( _ ( "Revolver Cock Volume" ), &options::vars [ _ ( "misc.effects.revolver_cock_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
 							ImGui::SliderFloat ( _ ( "Weapon Volume" ), &options::vars [ _ ( "misc.effects.weapon_volume" ) ].val.f, 0.0f, 1.0f, _ ( "x%.1f" ) );
 							ImGui::SliderInt ( _ ( "View Interpolation" ), &options::vars [ _ ( "misc.effects.view_interpolation" ) ].val.i, -1, 16, ( options::vars [ _ ( "misc.effects.view_interpolation" ) ].val.i == -1 ) ? _ ( "Default" ) : _ ( "%d ticks" ) );
@@ -1392,20 +1468,8 @@ void gui::draw( ) {
 							ImGui::Separator ( );
 
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::SliderInt ( _ ( "GUI Animation Speed" ), &options::vars [ _ ( "gui.animation_speed" ) ].val.i, 10, 200, _ ( "%d%" ) );
+							ImGui::SliderInt ( _ ( "GUI Animation Speed" ), &options::vars [ _ ( "gui.animation_speed" ) ].val.i, 10, 200, _ ( "%d%%" ) );
 							ImGui::PopItemWidth ( );
-
-							//ImGui::SliderFloat ( _ ( "Low Tolerance" ), &anims::resolver::rdata::low_delta_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							//ImGui::SliderFloat ( _ ( "Middle Tolerance" ), &anims::resolver::rdata::middle_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							//ImGui::SliderFloat ( _ ( "Correct Tolerance" ), &anims::resolver::rdata::correct_tolerance, 0.0f, 1.0f, _ ( "%.6f" ) );
-							ImGui::SliderFloat ( _ ( "Lean Tolerance" ), &anims::resolver::rdata::lean_tolerance, 0.0f, 200.0f, _ ( "%.3f" ) );
-							ImGui::SliderFloat ( _ ( "Velocity Tolerance" ), &anims::resolver::rdata::velocity_tolerance, 0.0f, 50.0f, _ ( "%.3f" ) );
-							//ImGui::Checkbox ( _ ( "Test" ), &anims::test );
-
-							//static std::vector<const char*> angle_modes { "set yaw auto",  "approach yaw auto", "set yaw static" ,  "approach yaw static" };
-							//ImGui::PushItemWidth ( -1.0f );
-							//ImGui::Combo ( _ ( "Angle Mode" ), &options::vars [ _ ( "debug.angle_mode" ) ].val.i, angle_modes.data ( ), angle_modes.size ( ) );
-							//ImGui::PopItemWidth ( );
 
 							//int dpi = ( options::vars [ _ ( "gui.dpi" ) ].val.f < 1.0f ) ? 0 : static_cast< int >( options::vars [ _ ( "gui.dpi" ) ].val.f );
 							//static std::vector<const char*> dpis { "0.5",  "1.0", "2.0" , "3.0" };
@@ -1420,6 +1484,10 @@ void gui::draw( ) {
 							//case 2: options::vars [ _ ( "gui.dpi" ) ].val.f = 2.0f; break;
 							//case 3: options::vars [ _ ( "gui.dpi" ) ].val.f = 3.0f; break;
 							//}
+
+							//ImGui::PushItemWidth ( -1.0f );
+							//ImGui::SliderInt ( _ ( "Extrapolation Ticks" ), &features::ragebot::extrap_amount, 0, 16, _ ( "%d ticks" ) );
+							//ImGui::PopItemWidth ( );
 
 							ImGui::EndChildFrame ( );
 						}
@@ -1480,25 +1548,20 @@ void gui::draw( ) {
 							ImGui::PopItemWidth ( );
 
 							if ( ImGui::Button ( _ ( "Save" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-								char appdata [ MAX_PATH ];
-
-								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-								}
+								auto cfg_dir = create_cfg_dirs ( );
 
 								auto file_exists = [ ] ( const std::string& path ) {
 									std::ifstream file ( path );
 									return file.good ( );
 								};
 
-								const auto file = std::string ( appdata ).append( _ ( "\\sesame\\configs\\" ) ).append( selected_config ).append(_ ( ".xml" ));
+								auto file = cfg_dir.append( _ ( "\\sesame\\configs\\" ) ).append( selected_config ).append(_ ( ".xml" ));
 
 								if ( file_exists ( file ) ) {
 									open_save_modal = true;
 								}
 								else {
+									options::save ( options::skin_vars, cfg_dir + _ ( "\\sesame\\skins\\skins.xml" ) );
 									options::save ( options::vars, file );
 
 									gui_mutex.lock ( );
@@ -1510,40 +1573,30 @@ void gui::draw( ) {
 							}
 
 							if ( ImGui::Button ( _ ( "Load" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-								char appdata [ MAX_PATH ];
+								const auto cfg_dir = create_cfg_dirs ( );
 
-								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-								}
-
-								options::load ( options::vars, std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
+								options::load ( options::skin_vars, cfg_dir + _ ( "\\sesame\\skins\\skins.xml" ) );
+								options::load ( options::vars, cfg_dir + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) );
+								last_weapon_name = nullptr;
 
 								cs::i::engine->client_cmd_unrestricted ( _ ( "play ui\\buttonclick" ) );
 							}
 
 							if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-								char appdata [ MAX_PATH ];
-
-								if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-									LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-								}
+								auto cfg_dir = create_cfg_dirs ( );
 
 								auto file_exists = [ ] ( const std::string& path ) {
 									std::ifstream file ( path );
 									return file.good ( );
 								};
 
-								const auto file = std::string ( appdata ).append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
+								auto file = cfg_dir.append ( _ ( "\\sesame\\configs\\" ) ).append ( selected_config ).append ( _ ( ".xml" ) );
 
 								if ( file_exists ( file ) ) {
 									open_delete_modal = true;
 								}
 								else {
-									std::remove ( ( std::string ( appdata ) + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
+									std::remove ( ( cfg_dir + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" ) ).c_str ( ) );
 
 									gui_mutex.lock ( );
 									load_cfg_list ( );
@@ -1599,13 +1652,7 @@ void gui::draw( ) {
 					//		ImGui::PopItemWidth ( );
 					//
 					//		if ( ImGui::Button ( _ ( "Delete" ), ImVec2 ( -1.0f, 0.0f ) ) ) {
-					//			char appdata [ MAX_PATH ];
-					//
-					//			if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), appdata ) ) ) {
-					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame" ) ).c_str ( ), nullptr );
-					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\configs" ) ).c_str ( ), nullptr );
-					//				LI_FN ( CreateDirectoryA )( ( std::string ( appdata ) + _ ( "\\sesame\\scripts" ) ).c_str ( ), nullptr );
-					//			}
+					//			const auto cfg_dir = create_cfg_dirs ( );
 					//
 					//			auto file_exists = [ ] ( const std::string& path ) {
 					//				std::ifstream file ( path );
@@ -1797,3 +1844,5 @@ void gui::keybinds::draw( ) {
 		ImGui::End( );
 	}
 }
+
+#pragma optimize( "2", on )

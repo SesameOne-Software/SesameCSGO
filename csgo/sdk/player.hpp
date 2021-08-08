@@ -23,8 +23,9 @@ enum class flags_t : uint32_t {
 
 ENUM_BITMASK ( flags_t );
 
-enum class hitbox_t : uint32_t {
-	head = 0,
+enum class hitbox_t : int {
+	invalid = -1,
+	head,
 	neck,
 	pelvis,
 	stomach,
@@ -202,7 +203,7 @@ public:
 	NETVAR( float, flash_duration, "DT_CSPlayer->m_flFlashDuration" );
 	NETVAR( float, flash_alpha, "DT_CSPlayer->m_flFlashMaxAlpha" );
 	NETVAR( uint8_t, life_state, "DT_BasePlayer->m_lifeState" );
-	NETVAR( uint32_t, tick_base, "DT_BasePlayer->m_nTickBase" );
+	NETVAR( int, tick_base, "DT_BasePlayer->m_nTickBase" );
 	NETVAR( float, crouch_amount, "DT_BasePlayer->m_flDuckAmount" );
 	NETVAR( float, crouch_speed, "DT_BasePlayer->m_flDuckSpeed" );
 	NETVAR( vec3_t, view_punch, "DT_BasePlayer->m_viewPunchAngle" );
@@ -229,61 +230,58 @@ public:
 	NETVAR ( vec3_t, ladder_norm, "DT_CSPlayer->m_vecLadderNormal" );
 	NETVAR ( uint32_t*, wearables_handle, "DT_BaseCombatCharacter->m_hMyWearables" );
 	NETVAR ( bool, strafing, "DT_CSPlayer->m_bStrafing" );
-	OFFSET( int, effects, g::is_legacy ? 0xE4 : 0xE8 ); // TODO: FIX LATER
-	OFFSET( int, eflags, g::is_legacy ? 0xEC : 0xF0 );
-	OFFSET( void*, iks, 0x266C );
-	OFFSET( bool, should_update, 0x289C );
-	OFFSET( uint32_t, num_overlays, 0x298C );
-	OFFSET( float, spawn_time, 0xA370 );
-	OFFSET( matrix3x4a_t*, bones, 0x26A4 + 0x4 );
-	OFFSET( int, readable_bones, 0x26A8 + 0x4 );
-	OFFSET( int, writeable_bones, 0x26AC + 0x4 );
+	OFFSET( int, effects, g::is_legacy ? N(0xE4) : N(0xE8) ); // TODO: FIX LATER
+	OFFSET( int, eflags, g::is_legacy ? N ( 0xEC) :N ( 0xF0) );
+	OFFSET( void*, iks, N ( 0x266C ));
+	OFFSET( bool, should_update, N ( 0x289C ));
+	OFFSET( uint32_t, num_overlays, N ( 0x298C ));
+	OFFSET( float, spawn_time, N ( 0xA370 ));
+	OFFSET( matrix3x4a_t*, bones, N ( 0x26A4 + 0x4) );
+	OFFSET( int, readable_bones, N ( 0x26A8 + 0x4) );
+	OFFSET( int, writeable_bones, N ( 0x26AC + 0x4) );
 	NETVAR ( int, body, "DT_CSPlayer->m_nBody" );
 	NETVAR ( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 	NETVAR ( int, hitbox_set, "DT_BaseAnimating->m_nHitboxSet" );
+	NETVAR ( bool, spotted, "DT_BaseEntity->m_bSpotted" );
 
-	bool is_player( ) {
-		return client_class ( ) && client_class ( )->m_class_id == 40;
+	__forceinline animlayer_t* layers( ) {
+		return *reinterpret_cast< animlayer_t** >( reinterpret_cast<uintptr_t>(this) + N ( 0x2980) );
 	}
 
-	animlayer_t* layers( ) {
-		return *reinterpret_cast< animlayer_t** >( reinterpret_cast<uintptr_t>(this) + 0x2980 );
+	__forceinline std::array< float, 24 >& poses( ) {
+		return *reinterpret_cast< std::array< float, 24 >* >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2774) );
 	}
 
-	std::array< float, 24 >& poses( ) {
-		return *reinterpret_cast< std::array< float, 24 >* >( reinterpret_cast< uintptr_t >( this ) + 0x2774 );
-	}
-
-	void* seq_desc( int seq ) {
-		auto group_hdr = *reinterpret_cast< void** >( std::uintptr_t( this ) + 0xA53 );
+	__forceinline void* seq_desc( int seq ) {
+		auto group_hdr = *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( this ) + 0xA53 );
 		auto i = seq;
 
-		if ( seq < 0 || seq >= *reinterpret_cast< std::uint32_t* >( std::uintptr_t( group_hdr ) + 0xBC ) )
+		if ( seq < 0 || seq >= *reinterpret_cast< uint32_t* >( group_hdr + 0xBC ) )
 			i = 0;
 
-		return reinterpret_cast< void* >( std::uintptr_t( group_hdr ) + *reinterpret_cast< std::uintptr_t* >( std::uintptr_t( group_hdr ) + 0xC0 ) + 0xD4 * i );
+		return reinterpret_cast< void* >( group_hdr + *reinterpret_cast< uintptr_t* >( group_hdr + 0xC0 ) + 0xD4 * i );
 	}
 
-	void set_local_viewangles( const vec3_t& ang ) {
+	__forceinline void set_local_viewangles( const vec3_t& ang ) {
 		using fn = void( __thiscall* )( void*, const vec3_t& );
 		vfunc< fn >( this, 371 )( this, ang );
 	}
 
 	bool physics_run_think( int unk01 );
 
-	void think( ) {
+	__forceinline void think( ) {
 		vfunc< void( __thiscall* )( void* ) >( this, 138 )( this );
 	}
 
-	void pre_think( ) {
+	__forceinline void pre_think( ) {
 		vfunc< void( __thiscall* )( void* ) >( this, 317 )( this );
 	}
 
-	void post_think( ) {
+	__forceinline void post_think( ) {
 		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
 	}
 
-	vec3_t world_space( ) {
+	__forceinline vec3_t world_space( ) {
 		vec3_t wspace;
 		vec3_t va, vb;
 
@@ -296,13 +294,13 @@ public:
 		return wspace;
 	}
 
-	float& old_simtime( ) {
+	__forceinline float& old_simtime( ) {
 		return *( float* )( std::uintptr_t( &simtime( ) ) + 4 );
 	}
 
 	animstate_t* animstate( );
 
-	void* mdl( void ) {
+	__forceinline void* mdl( void ) {
 		void* r = this->renderable( );
 
 		if ( !r )
@@ -312,25 +310,25 @@ public:
 		return vfunc< getmdl_fn >( r, 8 )( r );
 	}
 
-	studiohdr_t* studio_mdl( void* mdl ) {
+	__forceinline studiohdr_t* studio_mdl( void* mdl ) {
 		using getstudiomdl_fn = studiohdr_t * ( __thiscall* )( void*, void* );
 		return vfunc< getstudiomdl_fn >( this, 32 )( this, mdl );
 	}
 
-	bool alive( ) {
+	__forceinline bool alive( ) {
 		return !!health( );
 	}
 
-	bool valid( ) {
+	__forceinline bool valid( ) {
 		return this && alive( ) && !dormant( ) && !life_state( );
 	}
 
-	vec3_t& abs_origin( ) {
+	__forceinline vec3_t& abs_origin( ) {
 		using fn = vec3_t & ( __thiscall* )( void* );
 		return vfunc< fn >( this, 10 )( this );
 	}
 
-	vec3_t& abs_angles( ) {
+	__forceinline vec3_t& abs_angles( ) {
 		using fn = vec3_t & ( __thiscall* )( void* );
 		return vfunc< fn >( this, 11 )( this );
 	}
@@ -339,12 +337,12 @@ public:
 
 	bool setup_bones( matrix3x4_t* m, std::uint32_t max, std::uint32_t mask, float seed );
 
-	void estimate_abs_vel( vec3_t& vec ) {
+	__forceinline void estimate_abs_vel( vec3_t& vec ) {
 		using fn = void( __thiscall* )( void*, vec3_t& );
 		vfunc< fn >( this, 144 )( this, vec );
 	}
 
-	vec3_t& const render_origin( ) {
+	__forceinline vec3_t& const render_origin( ) {
 		using fn = vec3_t& const( __thiscall* )( void* );
 		return vfunc< fn >( renderable( ), 1 )( renderable( ) );
 	}
@@ -364,11 +362,11 @@ public:
 	std::vector<weapon_t*> weapons ( );
 	std::vector<weapon_t*> wearables ( );
 
-	float desync_amount( ) {
+	__forceinline float desync_amount( ) {
 		auto state = animstate( );
 
 		if ( !state )
-			return 0.0f;
+			return N( 58 );
 
 		auto running_speed = std::clamp( state->m_run_speed, 0.0f, 1.0f );
 		auto yaw_modifier = ( ( ( state->m_ground_fraction * -0.3f ) - 0.2f ) * running_speed ) + 1.0f;
@@ -392,7 +390,7 @@ public:
 	void* get_data_map ( int frame_num );
 
 	/* XREF: above "placementOrigin" in 2 nested if statements */
-	int get_skin ( ) {
+	__forceinline int get_skin ( ) {
 		using fn = int ( __thiscall* )( void* );
 		return vfunc< fn > ( renderable ( ), 38 )( renderable( ) );
 	}

@@ -7,10 +7,8 @@
 decltype( &hooks::override_view ) hooks::old::override_view = nullptr;
 
 void __fastcall hooks::override_view( REG, void* setup ) {	
-		if ( !cs::i::engine->is_in_game ( ) || !cs::i::engine->is_connected ( ) ) {
-				return old::override_view( REG_OUT, setup );
-	}
-	MUTATE_START	
+	if ( !cs::i::engine->is_in_game ( ) || !cs::i::engine->is_connected ( ) )
+		return old::override_view( REG_OUT, setup );
 
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
 	static auto& fov = options::vars [ _( "visuals.other.fov" ) ].val.f;
@@ -53,13 +51,12 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 
 		ray_t ray;
 		trace_t trace;
-		trace_filter_t filter;
+		trace_filter_world_and_props_only_t filter;
 
 		auto start = g::local->eyes ( );
 		auto end = start + direction * ideal_distance;
 
 		ray.init ( start, end );
-		filter.m_skip = g::local;
 		
 		cs::i::trace->trace_ray ( ray, mask_shot_hull, &filter, &trace );
 
@@ -109,6 +106,4 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		*reinterpret_cast< float* >( uintptr_t( setup ) + 192 ) = g::local->abs_origin( ).z + 64.0f;
 
 	old::override_view( REG_OUT, setup );
-
-	MUTATE_END
 }

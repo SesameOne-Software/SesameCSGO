@@ -10,7 +10,7 @@
 #undef min
 #undef max
 
-/*void features::movement::directional_strafer ( ucmd_t* cmd, vec3_t& old_angs ) {
+void features::movement::directional_strafer ( ucmd_t* cmd, vec3_t& old_angs ) {
 	static int strafer_flags = 0;
 
 	if ( !!( g::local->flags ( ) & flags_t::on_ground ) ) {
@@ -122,8 +122,8 @@
 	if ( angles.y < -180.0f ) angles.y += 360.0f;
 	if ( angles.y > 180.0f ) angles.y -= 360.0f;
 
-	old_angs = angles;
-}*/
+	cs::rotate_movement ( cmd, angles );
+}
 
 void features::movement::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 	static auto& bhop = options::vars [ _ ( "misc.movement.bhop" ) ].val.b;
@@ -146,125 +146,7 @@ void features::movement::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 		if ( strafer && features::prediction::vel.length_2d ( ) >= 30.0f ) {
 			if ( directional ) {
-				/* credits to chambers, TY ^.^ */
-				const auto back = !!( ucmd->m_buttons & buttons_t::back );
-				const auto left = !!( ucmd->m_buttons & buttons_t::left );
-				const auto right = !!( ucmd->m_buttons & buttons_t::right );
-				const auto front = !!( ucmd->m_buttons & buttons_t::forward );
-
-				static bool of, ort, ob, ol;
-
-				auto vel = g::local->vel ( );
-				auto wanted_dir = 0.0f;
-
-				enum e_strafe_dirs {
-					qd_front,
-					qd_left,
-					qd_right,
-					qd_back
-				};
-
-				//	easy strafe direction selection (4dir)
-				{
-					std::array< int, 4 > q_dirs;
-
-					auto handle_dir = [ & ] ( bool dir, bool& odir, int qd ) {
-						auto old_qd_v = q_dirs [ qd ];
-
-						//	on release
-						if ( !dir ) {
-
-							//	set key priority to invalid
-							q_dirs [ qd ] = -1;
-
-							//	set all keys higher than we were to their priority - 1
-							//	this allows the key to be pushed to the top again without breaking shit
-							if ( odir ) {
-								for ( int i = qd_front; i <= qd_back; i++ ) {
-									if ( q_dirs [ i ] >= old_qd_v )
-										q_dirs [ i ] = std::max< int > ( q_dirs [ i ] - 1, -1 );
-								}
-							}
-						}
-
-						//	push to the top if freshly pressed
-						if ( dir && !odir ) {
-							q_dirs [ qd ] = 3;
-						}
-					};
-
-					handle_dir ( front, of, qd_front );
-					handle_dir ( left, ol, qd_left );
-					handle_dir ( right, ort, qd_right );
-					handle_dir ( back, ob, qd_back );
-
-					int best = 0;
-
-					//	bullshit to set flags so we can do less edge case handling down below
-					{
-						int chosen = qd_front, val = -1;
-						for ( int i = qd_front; i <= qd_back; i++ ) {
-							if ( q_dirs [ i ] > val ) {
-								val = q_dirs [ i ];
-								chosen = i;
-							}
-						}
-
-						best |= 1 << chosen;
-
-						val = -1;
-						chosen = -1;
-						for ( int i = qd_front; i <= qd_back; i++ ) {
-							if ( q_dirs [ i ] > val && !( best & ( 1 << i ) ) ) {
-								val = q_dirs [ i ];
-								chosen = i;
-							}
-						}
-
-						if ( chosen >= 0 )
-							best |= 1 << chosen;
-					}
-
-					//	pretty much no edge cases now :)
-					auto il = best & ( 1 << qd_left );
-					auto ir = best & ( 1 << qd_right );
-					auto ib = best & ( 1 << qd_back );
-					auto ifr = best & ( 1 << qd_front );
-
-					wanted_dir = old_angs.y;
-
-					if ( ifr && il ) wanted_dir += 45.0f;
-					else if ( ib && il ) wanted_dir += 90.0f + 45.0f;
-					else if ( ifr && ir ) wanted_dir -= 45.0f;
-					else if ( ib && ir ) wanted_dir -= 90.0f + 45.0f;
-					else if ( ib ) wanted_dir -= 180.0f;
-					else if ( ir ) wanted_dir -= 90.0f;
-					else if ( il ) wanted_dir += 90.0f;
-
-					wanted_dir = cs::normalize ( wanted_dir );
-				}
-
-				//	for easy strafe
-				of = front;
-				ob = back;
-				ol = left;
-				ort = right;
-
-				const auto turn_rate = cs::rad2deg ( asin ( 30.0f / vel.length_2d ( ) ) ) * 0.5f;
-				const auto vel_dir = cs::rad2deg ( atan2 ( vel.y, vel.x ) );
-				const auto target_vel_diff = cs::normalize ( wanted_dir - vel_dir );
-				const auto max_angle_change = std::clamp<float> ( cs::rad2deg ( atan2 ( 15.0f, vel.length_2d ( ) ) ), 0.0f, 45.0f );
-				const auto sign = target_vel_diff > 0.0f ? -1.0f : 1.0f;
-				
-				old_angs.y = cs::normalize ( vel_dir - sign * max_angle_change );
-
-				ucmd->m_smove = sign * g::cvars::cl_sidespeed->get_float ( );
-				ucmd->m_fmove = abs ( target_vel_diff ) >= max_angle_change ? 0.0f : g::cvars::cl_forwardspeed->get_float ( );
-
-				if ( abs ( target_vel_diff ) < max_angle_change ) {
-					ucmd->m_smove = ucmd->m_cmdnum % 2 ? g::cvars::cl_sidespeed->get_float ( ) : -g::cvars::cl_sidespeed->get_float ( );
-					old_angs.y = cs::normalize ( old_angs.y + ( ucmd->m_cmdnum % 2 ? turn_rate : -turn_rate ) );
-				}
+				directional_strafer ( ucmd, old_angs );
 			}
 			else {
 				if ( std::abs ( ucmd->m_mousedx ) > 2 ) {

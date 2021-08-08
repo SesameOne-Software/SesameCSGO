@@ -45,8 +45,7 @@ public:
 
 class net_channel_t {
 public:
-	PAD ( 23 );
-	bool should_delete;
+	PAD ( 24 );
 	int out_seq_nr;
 	int in_seq_nr;
 	int out_seq_nr_ack;
@@ -58,6 +57,21 @@ public:
 		using send_datagram_fn = int ( __thiscall* )( void*, void* );
 		return vfunc< send_datagram_fn > ( this, g::is_legacy ? 48 : 46 )( this, datagram );
 	}
+};
+
+class client_class_t;
+
+class event_info_t {
+public:
+	uint16_t class_id;
+	PAD ( 2 );
+	float fire_delay;
+	const void* send_table;
+	const client_class_t* client_class;
+	void* packed;
+	uint32_t flags;
+	PAD ( 28 );
+	event_info_t* next;
 };
 
 class c_clientstate {
@@ -79,7 +93,7 @@ public:
 	}
 
 	uint32_t& server_tickcount( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x16C : 0x164 ) );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x16C );
 	}
 
 	uint32_t& delta_tick( ) {
@@ -97,6 +111,8 @@ public:
 	uint32_t& out_seq_num( ) {
 		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CA4 : 0x4D24 ) );
 	}
+
+	event_info_t* events ( );
 };
 
 class c_engine {

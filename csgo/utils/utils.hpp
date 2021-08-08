@@ -6,6 +6,7 @@
 #include "padding.hpp"
 #include "registers.hpp"
 #include "../security/xorstr.hpp"
+#include "multithreading.hpp"
 
 extern std::array< bool, 5 > mouse_down;
 extern std::array< bool, 512 > key_down;

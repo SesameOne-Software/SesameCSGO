@@ -37,31 +37,31 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
     std::deque< int > hitboxes { };
 
     if ( triggerbot_hitboxes [ 3 ] )
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 2 ) ); // pelvis
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::pelvis ) );
 
     if ( triggerbot_hitboxes [ 0 ] )
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 0 ) ); // head
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::head ) );
 
     if ( triggerbot_hitboxes [ 1 ] )
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 1 ) ); // neck
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::neck ) );
 
     if ( triggerbot_hitboxes [ 6 ] ) {
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 11 ) ); // right foot
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 12 ) ); // left foot
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::r_foot ) );
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::l_foot ) );
     }
 
     if ( triggerbot_hitboxes [ 2 ] ) {
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 6 ) ); // chest
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::u_chest ) );
     }
 
     if ( triggerbot_hitboxes [ 5 ] ) {
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 7 ) ); // right thigh
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 8 ) ); // left thigh
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::r_thigh ) );
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::l_thigh ) );
     }
 
     if ( triggerbot_hitboxes [ 4 ] ) {
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 18 ) ); // right forearm
-        hitboxes.push_back( autowall::hitbox_to_hitgroup( 16 ) ); // left forearm
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::r_forearm ) );
+        hitboxes.push_back( autowall::hitbox_to_hitgroup( hitbox_t::l_forearm ) );
     }
 
     bool hitbox_target = !hitboxes.empty( )

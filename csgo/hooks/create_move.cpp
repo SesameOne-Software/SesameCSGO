@@ -1,5 +1,9 @@
 ﻿#include "create_move.hpp"
 #include "in_prediction.hpp"
+#include "send_net_msg.hpp"
+
+#include "../minhook/minhook.h"
+
 #include "../globals.hpp"
 
 #include "../features/ragebot.hpp"
@@ -135,7 +139,45 @@ void fd_crouch ( ucmd_t* ucmd ) {
 		ucmd->m_buttons |= buttons_t::duck;
 }
 
-int last_send_cmd = 0;
+void hook_netchannel ( ) {
+	if ( cs::i::client_state->net_channel ( ) && !hooks::old::send_net_msg ) {
+#define to_string( func ) #func
+#define dbg_hook( a, b, c ) print_and_hook ( a, b, c, _( to_string ( b ) ) )
+		auto print_and_hook = [ ] ( void* from, void* to, void** original, const char* func_name ) {
+			if ( !from )
+				return dbg_print ( _ ( "Invalid target function: %s\n" ), func_name );
+
+			//MessageBoxA( nullptr, func_name, func_name, 0 );
+
+			if ( MH_CreateHook ( from, to, original ) != MH_OK )
+				return dbg_print ( _ ( "Hook creation failed: %s\n" ), func_name );
+
+			if ( MH_EnableHook ( from ) != MH_OK )
+				return dbg_print ( _ ( "Hook enabling failed: %s\n" ), func_name );
+			// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
+		};
+
+		const auto _send_net_msg = vfunc< void*> ( cs::i::client_state->net_channel ( ), 40 );
+		dbg_hook ( _send_net_msg, hooks::send_net_msg, ( void** ) &hooks::old::send_net_msg );
+	}
+}
+
+void log_outgoing_cmd_nums ( ucmd_t* ucmd ) {
+	auto nc = cs::i::client_state->net_channel ( );
+
+	if ( !nc )
+		return;
+
+	if ( cs::i::client_state && !g::send_packet && !cs::is_valve_server ( ) && g::local ) {
+		g::outgoing_cmds [ nc->out_seq_nr % 150 ] = { nc->out_seq_nr, ucmd->m_cmdnum };
+
+		const auto backup_choked = nc->choked_packets;
+		nc->choked_packets = 0;
+		nc->send_datagram ( nullptr );
+		nc->choked_packets = backup_choked;
+		nc->out_seq_nr--;
+	}
+}
 
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
@@ -148,11 +190,17 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		cs::i::engine->set_viewangles ( ucmd->m_angs );
 	}
 
+	hook_netchannel ( );
+
 	utils::update_key_toggles( );
 
+	g::send_packet = true;
+
 	/* recharge if we need, and return */
-	if ( !exploits::in_exploit && exploits::recharge( ucmd ) ) 
+	if ( !exploits::in_exploit && exploits::recharge ( ucmd ) ) {
+		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = g::send_packet;
 		return false;
+	}
 
 	in_cm = true;
 
@@ -171,20 +219,18 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	security_handler::update( );
 
 	if ( !exploits::in_exploit )
-		features::esp::handle_dynamic_updates( );
+		features::esp::handle_dynamic_updates ( );
 
 	g::ucmd = ucmd;
 
-	auto old_angs = ucmd->m_angs;
+	vec3_t old_angs;
+	cs::i::engine->get_viewangles ( old_angs );
 
 	if ( !exploits::in_exploit )
 		features::clantag::run( ucmd );
 
 	features::movement::run( ucmd, old_angs );
 	features::blockbot::run( ucmd, old_angs );
-
-	auto old_smove = ucmd->m_smove;
-	auto old_fmove = ucmd->m_fmove;
 
 	if ( !exploits::in_exploit ) {
 		cs::for_each_player ( [ ] ( player_t* pl ) {
@@ -225,7 +271,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
 				exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
 
-			features::ragebot::run ( ucmd, old_smove, old_fmove, old_angs );
+			features::ragebot::run ( ucmd, old_angs );
 
 			if ( !!( ucmd->m_buttons & buttons_t::attack ) )
 				exploits::extend_recharge_delay ( cs::time2ticks ( static_cast< float >( features::ragebot::active_config.dt_recharge_delay ) / 1000.0f ) );
@@ -236,43 +282,43 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 				exploits::has_shifted = false;
 		}
 
-		features::antiaim::run ( ucmd, old_smove, old_fmove, last_attack );
-		features::autopeek::run ( ucmd, old_smove, old_fmove, old_angs );
+		features::antiaim::run ( ucmd, last_attack );
+		features::autopeek::run ( ucmd, old_angs );
 
-		if ( !exploits::in_exploit ) {
-			exploits::will_shift = false;
-
-			/* recreate what holdaim var does */
-			/* part of anims */ {
-				if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
-					if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
-						g::angles = ucmd->m_angs;
-						g::hold_aim = true;
-					}
-				}
-				else {
-					g::hold_aim = false;
-				}
-
-				if ( !g::hold_aim )
-					g::angles = ucmd->m_angs;
-
-				if ( g::send_packet )
-					g::hold_aim = false;
-			}
-		}
+		if ( !exploits::in_exploit )
+			fix_event_delay ( ucmd );
 	} );
 
-	if ( !exploits::in_exploit )
-		fix_event_delay ( ucmd );
+	if ( !exploits::in_exploit ) {
+		exploits::will_shift = false;
+
+		/* recreate what holdaim var does */ {
+			if ( g::cvars::sv_maxusrcmdprocessticks_holdaim->get_bool ( ) ) {
+				if ( !!( ucmd->m_buttons & buttons_t::attack ) ) {
+					g::angles = ucmd->m_angs;
+					g::hold_aim = true;
+				}
+			}
+			else {
+				g::hold_aim = false;
+			}
+
+			if ( !g::hold_aim )
+				g::angles = ucmd->m_angs;
+
+			if ( g::send_packet )
+				g::hold_aim = false;
+		}
+	}
 
 	/* auto-revolver */
 	if ( g::local && g::local->weapon ( ) ) {
 		const auto weapon = g::local->weapon ( );
-		const auto server_time = cs::ticks2time ( g::local->tick_base ( ) );
+		const auto server_time = cs::ticks2time ( g::local->tick_base( ) );
 
 		if ( g::local
 			&& weapon->data ( )
+			&& weapon->ammo ( ) > 0
 			&& features::ragebot::active_config.auto_revolver
 			&& weapon->item_definition_index ( ) == weapons_t::revolver
 			&& !( ucmd->m_buttons & buttons_t::attack ) ) {
@@ -287,7 +333,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			if ( g::can_fire_revolver && can_shoot ) {
 				if ( g::cock_time <= server_time ) {
 					if ( weapon->next_secondary_attack ( ) <= server_time )
-						g::cock_time = server_time + 0.234375f;
+						g::cock_time = server_time + 0.25f - cs::ticks2time( 1 );
 					else
 						ucmd->m_buttons |= buttons_t::attack2;
 				}
@@ -298,7 +344,7 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 			}
 			else {
 				g::can_fire_revolver = false;
-				g::cock_time = server_time + 0.234375f;
+				g::cock_time = server_time + 0.25f - cs::ticks2time ( 1 );
 				ucmd->m_buttons &= ~buttons_t::attack;
 			}
 		}
@@ -317,13 +363,10 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	cs::clamp( engine_angs );
 	cs::i::engine->set_viewangles( engine_angs );
 
-	cs::rotate_movement( ucmd, old_smove, old_fmove, old_angs );
+	cs::rotate_movement( ucmd, old_angs );
 
 	//break_bt ( ucmd );
 	fix_slide ( ucmd );
-
-	if ( g::send_packet )
-		last_send_cmd = ucmd->m_cmdnum;
 
 	if ( g::send_packet ) {
 		g::sent_cmd = *ucmd;
@@ -335,29 +378,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	/* airstuck (only on community servers) */
 	airstuck ( ucmd );
-	
-	/* event delay fix */
-	//if ( g::send_packet )
-	//	g::outgoing_cmd_nums.push_front ( ucmd->m_cmdnum );
-	//
-	//if ( cs::i::client_state && !g::send_packet && !cs::is_valve_server ( ) ) {
-	//	auto nc = cs::i::client_state->net_channel ( );
-	//
-	//	if ( nc ) {
-	//		const auto backup_choked = nc->choked_packets;
-	//
-	//		nc->choked_packets = 0;
-	//		nc->send_datagram ( nullptr );
-	//		nc->out_seq_nr--;
-	//		nc->choked_packets = backup_choked;
-	//	}
-	//}
-
-	if ( !exploits::in_exploit )
-		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = g::send_packet;
-
-	if ( !exploits::in_exploit )
-		exploits::run ( ucmd );
 
 	if ( g::send_packet ) {
 		g::send_cmds++;
@@ -367,6 +387,14 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		g::send_cmds = 0;
 		g::choked_cmds++;
 	}
+
+	if ( !exploits::in_exploit )
+		*reinterpret_cast< bool* >( *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( _AddressOfReturnAddress ( ) ) - 4 ) - 28 ) = g::send_packet;
+
+	//log_outgoing_cmd_nums ( ucmd );
+
+	if ( !exploits::in_exploit )
+		exploits::run ( ucmd );
 
 	in_cm = false;
 

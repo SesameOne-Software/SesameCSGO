@@ -25,13 +25,10 @@ void hooks::c_event_handler::fire_game_event ( event_t* event ) {
 		return;
 	MUTATE_START
 
-		//if ( !strcmp( event->get_name( ), _( "weapon_fire" ) ) )
-		//	features::lagcomp::cache_shot( event );
+	//if ( !strcmp( event->get_name( ), _( "weapon_fire" ) ) )
+	//	features::lagcomp::cache_shot( event );
 
-		if ( !strcmp ( event->get_name ( ), _ ( "player_death" ) ) )
-			/* translator::translate( ); */;
-
-	if ( !strcmp ( event->get_name ( ), _ ( "player_say" ) ) )
+	if ( !strcmp ( event->get_name ( ), _ ( "player_death" ) ) )
 		features::skinchanger::process_death ( event );
 
 	if ( !strcmp ( event->get_name ( ), _ ( "player_hurt" ) ) )

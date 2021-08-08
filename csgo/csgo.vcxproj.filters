@@ -455,9 +455,6 @@
     <ClInclude Include="hooks\ent_listener.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="hooks\cl_fireevents.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="base85.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -606,6 +603,36 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hooks\get_client_interp_amount.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\temp_entities.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\svc_msg_voice_data.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="hooks\get_client_model_renderable.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\atomic_lock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\mutex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\packed_heap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\semaphores.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\shared_mutex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multithreading\threading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\multithreading.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -781,9 +808,6 @@
     <ClCompile Include="hooks\base_interpolate_part1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="hooks\cl_fireevents.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -884,6 +908,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hooks\get_client_interp_amount.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\temp_entities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\svc_msg_voice_data.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="hooks\get_client_model_renderable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

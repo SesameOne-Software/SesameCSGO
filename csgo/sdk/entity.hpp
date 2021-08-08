@@ -61,6 +61,10 @@ public:
 		using fn = client_class_t * ( __thiscall* )( void* );
 		return vfunc< fn >( networkable( ), 2 )( networkable( ) );
 	}
+
+	bool is_player ( ) {
+		return vfunc< bool ( __thiscall* )( entity_t* ) > ( this, 157 )( this );
+	}
 };
 
 class planted_c4_t : public entity_t {

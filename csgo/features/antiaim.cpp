@@ -7,6 +7,7 @@
 #include "../menu/options.hpp"
 
 #include "../animations/rebuilt.hpp"
+#include "../sdk/netvar.hpp"
 
 #include "esp.hpp"
 
@@ -56,7 +57,7 @@ void features::antiaim::simulate_lby( ) {
 		lby::last_breaker_time = lby::spawn_time;
 	}
 
-	if ( prediction::vel.length_2d( ) > 0.1f )
+	if ( g::local->vel().length_2d( ) > 0.1f )
 		lby::last_breaker_time = cs::i::globals->m_curtime + 0.22f;
 	else if ( cs::i::globals->m_curtime >= lby::last_breaker_time ) {
 		lby::in_update = true;
@@ -108,8 +109,8 @@ player_t* looking_at( bool& hittable ) {
 				const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 				const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 2 );
 
-				const auto dmg_l = autowall::dmg ( g::local, ent, src, pred_ent_pos + cross * 35.0f, hitboxes_t::hitbox_head );
-				const auto dmg_r = autowall::dmg ( g::local, ent, src, pred_ent_pos - cross * 35.0f, hitboxes_t::hitbox_head );
+				const auto dmg_l = autowall::dmg ( g::local, ent, src, pred_ent_pos + cross * 35.0f, hitbox_t::head );
+				const auto dmg_r = autowall::dmg ( g::local, ent, src, pred_ent_pos - cross * 35.0f, hitbox_t::head );
 
 				if ( dmg_l > 0.0f || dmg_r > 0.0f ) {
 					if ( fov < best_target_fov ) {
@@ -135,8 +136,14 @@ int find_freestand_side( player_t* pl, float range ) {
 	const auto src = g::local->origin( ) + vec3_t( 0.0f, 0.0f, 64.0f );
 	const auto dst = pl->origin( ) + pl->vel( ) * ( cs::i::globals->m_curtime - pl->simtime( ) ) + vec3_t( 0.0f, 0.0f, 64.0f );
 
-	const auto l_dmg = autowall::dmg( g::local, pl, src, dst + cross * range, hitbox_head );
-	const auto r_dmg = autowall::dmg( g::local, pl, src, dst - cross * range, hitbox_head );
+	const auto l_dmg1 = autowall::dmg( g::local, pl, src + cross * range, dst + cross * range, hitbox_t::head );
+	const auto r_dmg1 = autowall::dmg( g::local, pl, src - cross * range, dst - cross * range, hitbox_t::head );
+
+	const auto l_dmg2 = autowall::dmg ( g::local, pl, src + cross * ( range * 0.5f ), dst + cross * ( range * 0.5f ), hitbox_t::head );
+	const auto r_dmg2 = autowall::dmg ( g::local, pl, src - cross * ( range * 0.5f ), dst - cross * ( range * 0.5f ), hitbox_t::head );
+
+	const auto l_dmg = std::max ( l_dmg1, l_dmg2 );
+	const auto r_dmg = std::max ( r_dmg1, r_dmg2 );
 
 	bool hit_wall = false;
 
@@ -158,7 +165,7 @@ int find_freestand_side( player_t* pl, float range ) {
 		}
 	}
 
-	if ( ( l_dmg == r_dmg || ( !l_dmg && !r_dmg ) || ( l_dmg && r_dmg ) ) || !hit_wall )
+	if ( l_dmg * r_dmg != 0.0f || ( l_dmg == 0.0f && r_dmg == 0.0f ) || !hit_wall )
 		return -1;
 
 	return ( l_dmg > r_dmg ) ? 0 : 1;
@@ -233,8 +240,8 @@ void features::antiaim::fakelag ( ucmd_t* ucmd, player_t* target ) {
 		const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 		const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 1 );
 
-		const auto dmg_l = autowall::dmg ( g::local, target, src + cross * 12.0f, pred_ent_pos, hitboxes_t::hitbox_head );
-		const auto dmg_r = autowall::dmg ( g::local, target, src - cross * 12.0f, pred_ent_pos, hitboxes_t::hitbox_head );
+		const auto dmg_l = autowall::dmg ( g::local, target, src + cross * 12.0f, pred_ent_pos, hitbox_t::head );
+		const auto dmg_r = autowall::dmg ( g::local, target, src - cross * 12.0f, pred_ent_pos, hitbox_t::head );
 
 		if ( dmg_l > 0.0f || dmg_r > 0.0f )
 			next_choke = trigger_lag_clamped;
@@ -278,7 +285,7 @@ void features::antiaim::fakelag ( ucmd_t* ucmd, player_t* target ) {
 	g::send_packet = cs::i::client_state->choked ( ) >= next_choke;
 }
 
-void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, bool was_shooting ) {
+void features::antiaim::run( ucmd_t* ucmd, bool was_shooting ) {
 	/* toggle */
 	static auto& air = options::vars [ _( "antiaim.air.enabled" ) ].val.b;
 	static auto& move = options::vars [ _( "antiaim.moving.enabled" ) ].val.b;
@@ -490,7 +497,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 				reached_choke_limit = true;
 
 			if ( reached_choke_limit ) {
-				if ( g::local->crouch_amount() < 1.0f )
+				if ( g::local->crouch_amount( ) < 1.0f )
 					ucmd->m_buttons |= buttons_t::duck;
 				else
 					reached_choke_limit = false;
@@ -512,29 +519,30 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 		}
 
 		auto approach_speed = [ & ] ( float target_speed ) {
-			const auto vec_move = vec3_t( old_fmove, old_smove, ucmd->m_umove );
+			const auto vec_move = vec3_t( ucmd->m_fmove, ucmd->m_smove, ucmd->m_umove );
 
 			if ( !target_speed ) {
 				if ( prediction::vel.length_2d( ) <= 13.0f ) {
-					old_fmove = old_smove = 0.0f;
+					ucmd->m_fmove = ucmd->m_smove = 0.0f;
 				}
 				else {
 					auto as_ang = cs::vec_angle( vec_move );
 					as_ang.y = cs::normalize( as_ang.y + 180.0f );
 					const auto inverted_move = cs::angle_vec( as_ang );
 
-					old_fmove = inverted_move.x * g::cvars::cl_forwardspeed->get_float ( );
-					old_smove = inverted_move.y * g::cvars::cl_forwardspeed->get_float ( );
+					ucmd->m_fmove = inverted_move.x * g::cvars::cl_forwardspeed->get_float ( );
+					ucmd->m_smove = inverted_move.y * g::cvars::cl_forwardspeed->get_float ( );
 				}
 			}
-			else if ( abs ( old_fmove ) > 3.0f || abs ( old_smove ) > 3.0f ) {
+			else if ( abs ( ucmd->m_fmove ) > 3.0f || abs ( ucmd->m_smove ) > 3.0f ) {
 				const auto magnitude = vec_move.length_2d ( );
 
-				old_fmove = ( old_fmove / magnitude ) * target_speed;
-				old_smove = ( old_smove / magnitude ) * target_speed;
+				ucmd->m_fmove = ( ucmd->m_fmove / magnitude ) * target_speed;
+				ucmd->m_smove = ( ucmd->m_smove / magnitude ) * target_speed;
 			}
 
 			ucmd->m_buttons &= ~buttons_t::walk;
+			ucmd->m_buttons |= buttons_t::speed;
 		};
 
 		if ( utils::keybind_active( slowwalk_key, slowwalk_key_mode ) && g::local->weapon( ) && g::local->weapon( )->data( ) ) {
@@ -546,7 +554,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 			}
 			else {
 				/* tiny slowwalk */
-				if ( abs( old_fmove ) > 3.3f || abs ( old_smove ) > 3.3f )
+				if ( abs( ucmd->m_smove ) > 3.3f || abs ( ucmd->m_smove ) > 3.3f )
 					approach_speed( (g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed) * 0.33f * ( slow_walk_speed / 100.0f ) );
 
 				/* mess up consistency of animlayers */
@@ -902,7 +910,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 						if ( g::send_packet ) {
 							/* micro movements */
 							const auto move_amount = g::local->crouch_amount ( ) > 0.0f ? 3.0f : 1.1f;
-							old_fmove += aa::move_flip ? -move_amount : move_amount;
+							ucmd->m_fmove += aa::move_flip ? -move_amount : move_amount;
 							aa::move_flip = !aa::move_flip;
 						}
 
@@ -946,7 +954,7 @@ void features::antiaim::run( ucmd_t* ucmd, float& old_smove, float& old_fmove, b
 								g::send_packet = false;
 							}
 							else if ( !g::send_packet ) {
-								ucmd->m_angs.y += copysignf( fabsf( desync_amnt ) * 110.0f, desync_side_stand ? -desync_amnt : desync_amnt );
+								ucmd->m_angs.y += copysignf( abs( desync_amnt ) * 110.0f, desync_side_stand ? -desync_amnt : desync_amnt );
 							}
 						}
 					}break;
