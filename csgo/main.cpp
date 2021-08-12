@@ -34,6 +34,8 @@
 
 #include "PH/PH_API.hpp"
 
+#include "seh.hpp"
+
 uint64_t anti_patch::g_text_section_hash;
 uintptr_t anti_patch::g_text_section, anti_patch::g_text_section_size;
 //anti_patch::s_header_data anti_patch::g_header_data;
@@ -132,7 +134,23 @@ unsigned __stdcall init_proxy( void* data ) {
 	OBF_END;
 }
 
-int __stdcall DllMain( void* loader_data, std::uint32_t reason, void* reserved ) {
+int __stdcall DllMain( void* loader_data, uint32_t reason, void* reserved ) {
+	if ( reason == DLL_PROCESS_ATTACH ) {
+#ifdef DEV_BUILD
+		const auto nt_headers = reinterpret_cast< IMAGE_NT_HEADERS* > ( reinterpret_cast< uintptr_t >( loader_data ) + reinterpret_cast< IMAGE_DOS_HEADER* >( loader_data )->e_lfanew );
+
+		g_ImageStartAddr = reinterpret_cast< void* >( nt_headers->OptionalHeader.ImageBase );
+		g_ImageEndAddr = reinterpret_cast< void* >( nt_headers->OptionalHeader.SizeOfImage );
+#else
+		const auto hearbeat_info = reinterpret_cast< ph_heartbeat::heartbeat_info* > ( loader_data );
+
+		g_ImageStartAddr = reinterpret_cast< void* >( hearbeat_info->image_base );
+		g_ImageEndAddr = reinterpret_cast< void* >( hearbeat_info->image_base + 0x1000000 );
+#endif
+
+		AddVectoredExceptionHandler ( 1, ExceptionHandler );
+	}
+
 	OBF_BEGIN;
 	IF ( reason == DLL_PROCESS_ATTACH ) {
 		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( init_proxy ), loader_data, 0, nullptr );

@@ -132,7 +132,6 @@ bool create_materials( ) {
 }
 
 void update_mats( const features::visual_config_t& visuals , const options::option::colorf& clr ) {
-	MUTATE_START
 		// XREF: Function DrawSpriteModel client.dll
 		auto set_vec = [ ] ( void* var , float x , float y , float z ) {
 		vfunc< void( __thiscall* )( void* , float , float , float ) >( var , 11 )( var , x , y , z );
@@ -181,14 +180,16 @@ void update_mats( const features::visual_config_t& visuals , const options::opti
 		set_vec( rimlight_exponent , 0.0f , 1.0f , 1.0f + ( 14.0f - clr.a * 14.0f ) );
 		set_vec( envmap , clr.r , clr.g , clr.b );
 	}
-
-	MUTATE_END
 }
 
 std::array < mdlrender_info_t , 65 > mdl_render_info;
 long long refresh_time = 0;
 
 void features::chams::add_shot ( player_t* player, const anims::anim_info_t& anim_info ) {
+	visual_config_t visuals;
+	if ( !get_visuals ( player, visuals ) || !visuals.hit_matrix )
+		return;
+
 	auto renderable = player->renderable( );
 
 	if ( !renderable )
@@ -230,12 +231,12 @@ void features::chams::add_shot ( player_t* player, const anims::anim_info_t& ani
 	rec.m_mdl_state.renderable = renderable;
 	rec.m_mdl_state.mdl_to_world = rec.m_bones.data ( );
 	
-	for ( auto& mat : rec.m_bones )
-		cs::angle_matrix ( rec.m_render_info.m_angles, rec.m_render_info.m_origin, mat );
+	//for ( auto& mat : rec.m_bones )
+	//	cs::angle_matrix ( rec.m_render_info.m_angles, rec.m_render_info.m_origin, mat );
 
 	rec.m_time = cs::i::globals->m_curtime;
 	rec.m_pl = player->idx ( );
-	rec.m_color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	rec.m_color = { visuals.hit_matrix_color.r, visuals.hit_matrix_color.g, visuals.hit_matrix_color.b, visuals.hit_matrix_color.a };
 
 	anims::resolver::hit_matrix_rec.push_back ( rec );
 
@@ -328,20 +329,22 @@ void features::chams::drawmodelexecute( void* ctx , void* state , const mdlrende
 		else if ( ( is_player && e->alive ( ) ) || features::chams::in_model ) {
 			/* hit matrix chams */
 			if ( features::chams::in_model ) {
-				bool found = false;
-				auto envmap = m_mat_glow->find_var( _( "$envmaptint" ) , &found );
-				set_vec( envmap , cur_hit_rec->m_color [ 0 ], cur_hit_rec->m_color [ 1 ], cur_hit_rec->m_color [ 2 ] );
+				if ( visuals.hit_matrix ) {
+					bool found = false;
+					auto envmap = m_mat_glow->find_var ( _ ( "$envmaptint" ), &found );
+					set_vec ( envmap, cur_hit_rec->m_color [ 0 ], cur_hit_rec->m_color [ 1 ], cur_hit_rec->m_color [ 2 ] );
 
-				auto rimlight_exponent = m_mat_glow->find_var( _( "$envmapfresnelminmaxexp" ) , &found );
-				set_vec( rimlight_exponent , 0.0f , 1.0f , 1.0f + ( 14.0f - cur_hit_rec->m_color [ 3 ] * 14.0f ) );
+					auto rimlight_exponent = m_mat_glow->find_var ( _ ( "$envmapfresnelminmaxexp" ), &found );
+					set_vec ( rimlight_exponent, 0.0f, 1.0f, 1.0f + ( 14.0f - cur_hit_rec->m_color [ 3 ] * 14.0f ) );
 
-				cs::i::render_view->set_alpha( 255 );
-				cs::i::render_view->set_color( 255 , 255 , 255 );
-				// mat->set_material_var_flag( 268435456, false );
-				m_mat_glow->set_material_var_flag( 0x8000 , visuals.chams_xqz );
-				m_mat_glow->set_material_var_flag( 0x1000 , visuals.chams_flat );
-				cs::i::mdl_render->force_mat( m_mat_glow );
-				hooks::old::draw_model_execute( cs::i::mdl_render , nullptr , ctx , state , info , bone_to_world );
+					cs::i::render_view->set_alpha ( 255 );
+					cs::i::render_view->set_color ( 255, 255, 255 );
+					// mat->set_material_var_flag( 268435456, false );
+					m_mat_glow->set_material_var_flag ( 0x8000, visuals.chams_xqz );
+					m_mat_glow->set_material_var_flag ( 0x1000, visuals.chams_flat );
+					cs::i::mdl_render->force_mat ( m_mat_glow );
+					hooks::old::draw_model_execute ( cs::i::mdl_render, nullptr, ctx, state, info, bone_to_world );
+				}
 			}
 			else {
 				std::array< matrix3x4_t , 128> matrix {};

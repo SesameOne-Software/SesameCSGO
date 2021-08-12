@@ -17,7 +17,6 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		return false;
 
 	if ( pl == g::local ) {
-		MUTATE_START
 		static auto& options = options::vars [ _( "visuals.local.options" ) ].val.l;
 		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.local.fakeduck_flag_location" ) ].val.i;
 		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.local.reloading_flag_location" ) ].val.i;
@@ -100,13 +99,11 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.reloading_color = reloading_color;
 		out.fatal_color = fatal_color;
 		out.zoom_color = zoom_color;
-		MUTATE_END
 
 		return true;
 	}
 
 	if ( g::local->team( ) != pl->team( ) ) {
-		MUTATE_START
 		static auto& options = options::vars [ _( "visuals.enemies.options" ) ].val.l;
 		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.enemies.fakeduck_flag_location" ) ].val.i;
 		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.enemies.reloading_flag_location" ) ].val.i;
@@ -184,12 +181,10 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		out.reloading_color = reloading_color;
 		out.fatal_color = fatal_color;
 		out.zoom_color = zoom_color;
-		MUTATE_END
 
 		return true;
 	}
 
-	MUTATE_START
 	static auto& options = options::vars [ _( "visuals.teammates.options" ) ].val.l;
 	static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.teammates.fakeduck_flag_location" ) ].val.i;
 	static auto& reloading_flag_placement = options::vars [ _ ( "visuals.teammates.reloading_flag_location" ) ].val.i;
@@ -265,7 +260,6 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.reloading_color = reloading_color;
 	out.fatal_color = fatal_color;
 	out.zoom_color = zoom_color;
-	MUTATE_END
 
 	return true;
 }

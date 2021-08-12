@@ -23,7 +23,6 @@ hooks::c_event_handler::~c_event_handler ( ) {
 void hooks::c_event_handler::fire_game_event ( event_t* event ) {
 	if ( !event || !g::local )
 		return;
-	MUTATE_START
 
 	//if ( !strcmp( event->get_name( ), _( "weapon_fire" ) ) )
 	//	features::lagcomp::cache_shot( event );
@@ -45,7 +44,6 @@ void hooks::c_event_handler::fire_game_event ( event_t* event ) {
 
 	if ( !strcmp ( event->get_name ( ), _ ( "round_end" ) ) )
 		g::round = round_t::ending;
-	MUTATE_END
 }
 
 int hooks::c_event_handler::get_event_debug_id ( ) {

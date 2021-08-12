@@ -635,6 +635,18 @@
     <ClInclude Include="utils\multithreading.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="EnigmaSDK\enigma_ide.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EnigmaSDK\enigma_keygen_ide.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EnigmaSDK\EnigmaSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="seh.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -919,5 +931,235 @@
     <ClCompile Include="hooks\get_client_model_renderable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EnigmaSDK\check_protection_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\check_protection_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\decrypt_on_execute_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\decrypt_on_execute_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin1.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin2.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin3.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin4.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin5.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin6.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin7.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin8.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin9.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin10.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin11.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin12.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin13.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin14.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin15.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_begin16.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end1.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end2.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end3.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end4.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end5.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end6.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end7.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end8.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end9.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end10.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end11.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end12.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end13.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end14.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end15.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\reg_crypt_end16.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\run_once_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\run_once_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unprotected_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unprotected_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin1.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin2.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin3.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin4.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin5.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin6.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin7.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin8.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin9.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin10.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin11.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin12.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin13.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin14.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin15.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_begin16.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end1.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end2.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end3.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end4.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end5.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end6.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end7.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end8.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end9.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end10.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end11.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end12.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end13.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end14.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end15.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\unreg_crypt_end16.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\vm_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\vm_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\vm_risc_begin.inc">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="EnigmaSDK\vm_risc_end.inc">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

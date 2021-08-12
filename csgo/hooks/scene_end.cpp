@@ -16,7 +16,6 @@ extern anims::resolver::hit_matrix_rec_t cur_hit_matrix_rec;
 decltype( &hooks::scene_end ) hooks::old::scene_end = nullptr;
 
 void __fastcall hooks::scene_end ( REG ) {
-	MUTATE_START
 	static auto& fog = options::vars [ _ ( "visuals.other.fog" ) ].val.b;
 	static auto& bloom = options::vars [ _ ( "visuals.other.bloom" ) ].val.b;
 
@@ -141,6 +140,4 @@ void __fastcall hooks::scene_end ( REG ) {
 		"features::glow::cache_entities",
 		features::glow::cache_entities( );
 	);
-
-	MUTATE_END
 }

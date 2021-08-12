@@ -377,13 +377,13 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 
 				const auto speed_as_portion_of_run_top_speed = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
 
-				if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f
+				/*if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f
 					&& animlayers [ 11 ].m_cycle > previous_record.m_anim_layers [ desync_side_t::desync_max ][ 11 ].m_cycle
 					&& speed_as_portion_of_run_top_speed > 0.0f && speed_as_portion_of_run_top_speed < 1.0f ) {
 					vel = origin_delta_vel_norm * ( max_speed * ( speed_as_portion_of_run_top_speed + 0.55f ) );
 					new_vel = true;
 				}
-				else if ( flMoveWeightWithAirSmooth < 0.95f || flTargetMoveWeight_to_speed2d > origin_delta_vel_len ) {
+				else*/ if ( flMoveWeightWithAirSmooth < 0.95f || flTargetMoveWeight_to_speed2d > origin_delta_vel_len ) {
 					vel = origin_delta_vel_norm * flTargetMoveWeight_to_speed2d;
 					new_vel = true;
 				}
@@ -440,27 +440,27 @@ void anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		vel.y = origin_delta.y / time_difference;
 	}
 
-	/* predict vel dir */
-	if ( records.size ( ) >= 2 && records [ 0 ].m_simtime - records [ 1 ].m_simtime > cs::ticks2time ( 1 ) && vel.length_2d ( ) > 0.0f ) {
-		const auto last_avg_vel = ( records [ 0 ].m_origin - records [ 1 ].m_origin ) / ( records [ 0 ].m_simtime - records [ 1 ].m_simtime );
-	
-		if ( last_avg_vel.length_2d ( ) > 0.0f ) {
-			float deg_1 = cs::rad2deg ( atan2 ( vel.y, vel.x ) );
-			float deg_2 = cs::rad2deg ( atan2 ( last_avg_vel.y, last_avg_vel.x ) );
-	
-			float deg_delta = cs::normalize ( deg_1 - deg_2 );
-			float deg_lerp = cs::normalize ( deg_1 + deg_delta * 0.5f );
-			float rad_dir = cs::deg2rad ( deg_lerp );
-	
-			float sin_dir, cos_dir;
-			cs::sin_cos ( rad_dir, &sin_dir, &cos_dir );
-	
-			float vel_len = vel.length_2d ( );
-	
-			vel.x = cos_dir * vel_len;
-			vel.y = sin_dir * vel_len;
-		}
-	}
+	///* predict vel dir */
+	//if ( records.size ( ) >= 2 && records [ 0 ].m_simtime - records [ 1 ].m_simtime > cs::ticks2time ( 1 ) && vel.length_2d ( ) > 0.0f ) {
+	//	const auto last_avg_vel = ( records [ 0 ].m_origin - records [ 1 ].m_origin ) / ( records [ 0 ].m_simtime - records [ 1 ].m_simtime );
+	//
+	//	if ( last_avg_vel.length_2d ( ) > 0.0f ) {
+	//		float deg_1 = cs::rad2deg ( atan2 ( vel.y, vel.x ) );
+	//		float deg_2 = cs::rad2deg ( atan2 ( last_avg_vel.y, last_avg_vel.x ) );
+	//
+	//		float deg_delta = cs::normalize ( deg_1 - deg_2 );
+	//		float deg_lerp = cs::normalize ( deg_1 + deg_delta * 0.5f );
+	//		float rad_dir = cs::deg2rad ( deg_lerp );
+	//
+	//		float sin_dir, cos_dir;
+	//		cs::sin_cos ( rad_dir, &sin_dir, &cos_dir );
+	//
+	//		float vel_len = vel.length_2d ( );
+	//
+	//		vel.x = cos_dir * vel_len;
+	//		vel.y = sin_dir * vel_len;
+	//	}
+	//}
 }
 
 void anims::update_from( player_t* ent , anim_info_t& from , anim_info_t& to, std::array<animlayer_t, 13>& cur_layers ) {
@@ -657,7 +657,7 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		if ( !!( ent->flags ( ) & flags_t::on_ground ) && should_resolve && side != desync_side_t::desync_max ) {
 			/* moving (including micromovements) */
 			if ( cur_layers [ 6 ].m_playback_rate > 0.0f )
-				anim_state->m_abs_yaw = cs::normalize ( angles.y - 120.0f + static_cast< float >( side ) * 60.0f );
+				anim_state->m_abs_yaw = cs::normalize ( angles.y - 70.0f + static_cast< float >( side ) * 35.0f );
 			/* standing and breaking lby */
 			else
 				ent->lby ( ) = cs::normalize ( angles.y - 120.0f + static_cast< float >( side ) * 60.0f );
