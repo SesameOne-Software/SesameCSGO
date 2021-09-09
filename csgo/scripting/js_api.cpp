@@ -168,6 +168,7 @@ void js_api::load_script ( std::string_view file_name ) {
 }
 
 void js_api::init ( ) {
+	VMP_BEGINULTRA ( );
 	/* destroy and reload context if it already exists */
 	if ( v7_ctx ) {
 		v7_destroy ( v7_ctx );
@@ -194,4 +195,6 @@ void js_api::init ( ) {
 		v7_set_method ( v7_ctx, player_obj, _ ( "get_health" ), bindings::player::get_health );
 		v7_set ( v7_ctx, v7_get_global ( v7_ctx ), _("player"), ~0, ctor_func );
 	}
+	VMP_END ( );
+	END_FUNC;
 }

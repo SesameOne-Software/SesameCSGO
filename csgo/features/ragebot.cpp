@@ -1,6 +1,9 @@
 #include "ragebot.hpp"
 #include <deque>
+
 #include "autowall.hpp"
+#include "autowall_skeet.hpp"
+
 #include "../menu/menu.hpp"
 #include "../globals.hpp"
 #include "prediction.hpp"
@@ -489,10 +492,38 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		return false;
 	}
 
-	if ( weapon->item_definition_index ( ) == weapons_t::ssg08 && weapon->inaccuracy ( ) < 0.009f ) {
-		hc_out = 100.0f;
-		return true;
-	}
+	auto weapon_data = weapon->data ( );
+	auto weapon_id = weapon->item_definition_index ( );
+
+	const auto round_acc = [ ] ( const float accuracy ) { return roundf ( accuracy * 1000.0f ) / 1000.0f; };
+	const auto sniper = weapon_id == weapons_t::awp || weapon_id == weapons_t::g3sg1 || weapon_id == weapons_t::scar20 || weapon_id == weapons_t::ssg08;
+	const auto crouched = !!( g::local->flags ( ) & flags_t::ducking );
+
+	//// calculate inaccuracy.
+	//const auto weapon_inaccuracy = weapon->inaccuracy ( );
+	//
+	//if ( weapon_id == weapons_t::revolver ) {
+	//	if ( weapon_inaccuracy < ( crouched ? 0.0020f : 0.0055f ) ) {
+	//		hc_out = -1.0f;
+	//		return true;
+	//	}
+	//}
+	//
+	//const auto zoomed = g::local->scoped ( );
+	//
+	//// no need for hitchance, if we can't increase it anyway.
+	//if ( crouched ) {
+	//	if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_crouch_alt : weapon_data->m_inaccuracy_crouch ) ) {
+	//		hc_out = -1.0f;
+	//		return true;
+	//	}
+	//}
+	//else {
+	//	if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_stand_alt : weapon_data->m_inaccuracy_stand ) ) {
+	//		hc_out = -1.0f;
+	//		return true;
+	//	}
+	//}
 
 	auto src = g::local->eyes( );
 
@@ -574,7 +605,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	VEC_TRANSFORM ( hhitbox->m_bbmax, bone_matrix [ hhitbox->m_bone ], vmax );
 
 	/* normal hitchance */
-	const auto weapon_range = weapon->data ( )->m_range;
+	const auto weapon_range = weapon_data->m_range;
 	const auto hitbox_as_hitgroup = autowall::hitbox_to_hitgroup ( hitbox );
 
 	for ( auto i = 0; i < rays; i++ ) {
@@ -612,7 +643,7 @@ void features::ragebot::tickbase_controller( ucmd_t* ucmd ) {
 	static auto& fd_key_mode = options::vars [ _( "antiaim.fakeduck_key_mode" ) ].val.i;
 
 	const auto weapon_data = ( g::local && g::local->weapon( ) && g::local->weapon( )->data( ) ) ? g::local->weapon( )->data( ) : nullptr;
-	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - cs::i::client_state->choked ( ) - 1 );
+	auto tickbase_as_int = std::clamp<int>( static_cast< int >( active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - 1 );
 
 	if ( !active_config.dt_enabled || !utils::keybind_active( active_config.dt_key, active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
@@ -630,7 +661,7 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 	cs::clamp( engine_angles );
 
 	cs::for_each_player( [ & ] ( player_t* ent ) {
-		if ( ent->team( ) == g::local->team( ) || ent->immune( ) )
+		if ( !g::local->is_enemy ( ent ) || ent->immune( ) )
 			return;
 
 		auto angle_to = cs::calc_angle( g::local->eyes( ), ent->eyes( ) );
@@ -660,8 +691,204 @@ void features::ragebot::select_targets( std::deque < aim_target_t >& targets_out
 	);
 }
 
+float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* player, const vec3_t& wish_dir, const vec3_t& wish_speed, bool& ducking ) {
+	VMP_BEGINMUTATION ( );
+	auto wanted_vel = wish_dir * wish_speed;
+	auto wanted_speed = wanted_vel.length_2d ( );
+
+	auto weapon = player->weapon ( );
+	auto duck_amount = player->crouch_amount ( );
+	auto flags_check = player->flags ( );
+
+	ducking = false;
+
+	if ( !( cmd->m_buttons & buttons_t::duck ) ) {
+		auto is_ducking = *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( &player->fall_vel ( ) ) + 0x31 );
+
+		if ( duck_amount > 0.0 )
+			is_ducking = true;
+
+		if ( is_ducking || duck_amount >= 1.0f ) {
+			auto duck_speed = 2.0f;
+
+			if ( player->crouch_speed ( ) >= 1.5f )
+				duck_speed = player->crouch_speed ( );
+
+			auto next_duck = std::max ( 0.0f, duck_amount - ( duck_speed * cs::ticks2time ( 1 ) ) );
+			auto backup_next_duck = next_duck;
+
+			if ( next_duck <= 0.0f )
+				next_duck = 0.0f;
+
+			auto new_flags = flags_check & ~flags_t::ducking;
+
+			if ( backup_next_duck > 0.0f )
+				new_flags = player->flags ( );
+
+			flags_check = new_flags & ~flags_t::ducking;
+
+			if ( next_duck > 0.75f )
+				flags_check = new_flags;
+
+			auto new_is_ducking = false;
+
+			if ( backup_next_duck > 0.0f )
+				new_is_ducking = is_ducking;
+
+			if ( new_is_ducking )
+				ducking = true;
+		}
+
+		if ( !!( flags_check & flags_t::ducking ) )
+			ducking = true;
+	}
+
+	auto is_walking = !!( cmd->m_buttons & buttons_t::speed ) && !ducking;
+
+	auto max_speed = 250.0f;
+	auto acceleration_scale = std::max ( max_speed, wanted_speed );
+	auto goal_speed = acceleration_scale;
+
+	static auto sv_accelerate_use_weapon_speed = cs::i::cvar->find ( _ ( "sv_accelerate_use_weapon_speed" ) );
+
+	auto slowed_by_scope = false;
+
+	if ( sv_accelerate_use_weapon_speed->get_bool ( ) && weapon ) {
+		const auto max_speed = vfunc<float ( __thiscall* )( weapon_t* )> ( weapon, 441 )( weapon );
+		const auto zoom_levels = vfunc<int ( __thiscall* )( weapon_t* )> ( weapon, 461 )( weapon );
+
+		slowed_by_scope = ( zoom_levels > 0 && zoom_levels > 1 && ( max_speed * 0.52f ) < 110.0f );
+		goal_speed *= std::min ( 1.0f, ( max_speed / max_speed ) );
+
+		if ( ( !ducking && !is_walking ) || ( ( is_walking || ducking ) && slowed_by_scope ) )
+			acceleration_scale *= std::min ( 1.0f, ( max_speed / max_speed ) );
+	}
+
+	if ( ducking ) {
+		if ( !slowed_by_scope )
+			acceleration_scale *= 0.34f;
+
+		goal_speed *= 0.34f;
+	}
+
+	if ( is_walking ) {
+		if ( !player->has_heavy_armor ( ) && !slowed_by_scope )
+			acceleration_scale *= 0.52f;
+
+		goal_speed *= 0.52f;
+	}
+
+	auto accel = g::cvars::sv_accelerate->get_float ( );
+
+	if ( is_walking && wanted_speed > ( goal_speed - 5.0f ) )
+		accel *= std::clamp ( 1.0f - ( std::max ( 0.0f, wanted_speed - ( goal_speed - 5.0f ) ) / std::max ( 0.0f, goal_speed - ( goal_speed - 5.0f ) ) ), 0.0f, 1.0f );
+
+	return cs::ticks2time ( 1 ) * accel * acceleration_scale;
+	VMP_END ( );
+};
+
+void features::ragebot::skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& old_angs ) {
+	VMP_BEGINMUTATION ( );
+	static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
+
+	if ( !g::local || !g::local->alive ( ) )
+		return;
+
+	const auto weapon = g::local->weapon ( );
+	const auto vel = g::local->vel ( );
+	const auto speed2d = vel.length_2d ( );
+	const auto move_vec = vec3_t ( cmd->m_fmove, cmd->m_smove, cmd->m_umove );
+
+	if ( !( cmd->m_buttons & buttons_t::jump ) && move_vec.length ( ) >= 38.0f ) {
+		if ( speed2d >= 28.0f ) {
+			const auto stop_speed = std::max ( g::cvars::sv_stopspeed->get_float ( ), speed2d );
+			const auto friction = g::cvars::sv_friction->get_float ( );
+
+			const auto max_stop_speed = std::max ( speed2d - ( ( stop_speed * friction ) * cs::ticks2time ( 1 ) ), 0.0f );
+
+			auto max_stop_speed_vec = vel * ( max_stop_speed / speed2d );
+			max_stop_speed_vec.z = 0.0f;
+
+			auto delta_target_speed = wanted_speed - max_stop_speed;
+
+			if ( abs( delta_target_speed ) >= 0.5f ) {
+				vec3_t move_dir;
+
+				vec3_t angles;
+				cs::i::engine->get_viewangles ( angles );
+
+				vec3_t fwd, right, up;
+				cs::angle_vec ( angles, &fwd, &right, nullptr );
+
+				fwd.normalize ( );
+				right.normalize ( );
+
+				if ( delta_target_speed >= 0.0f ) {
+					cmd->m_buttons &= ~buttons_t::speed;
+
+					move_dir.x = ( cmd->m_fmove * fwd.x ) + ( cmd->m_smove * right.x );
+					move_dir.y = ( cmd->m_smove * right.y ) + ( cmd->m_fmove * fwd.y );
+					move_dir.z = 0.0f;
+					
+					move_dir.normalize ( );
+				}
+				else {
+					move_dir = vel.normalized ( );
+					move_dir.z = 0.0f;
+
+					cmd->m_fmove = 450.0f;
+					cmd->m_smove = 0.0f;
+
+					old_angs.y = cs::normalize( cs::vec_angle ( move_dir ).y + 180.0f );
+					old_angs.x = old_angs.z = 0.0f;
+
+					delta_target_speed *= -1.0f;
+				}
+
+				auto ducking = false;
+				const auto accel = skeet_accelerate_rebuilt ( cmd, g::local, move_dir, max_stop_speed_vec, ducking );
+
+				const auto currentspeed = max_stop_speed_vec.dot_product ( move_dir );
+				const auto addspeed = std::clamp ( std::min( g::local->max_speed( ), deployable_limited_max_speed ( g::local ) ) - currentspeed, 0.0f, accel );
+
+				if ( addspeed > delta_target_speed + 0.5f ) {
+					auto move_length = currentspeed + delta_target_speed;
+
+					if ( ducking ) {
+						if ( g::local->crouch_amount ( ) == 1.0f )
+							move_length /= 0.34f;
+					}
+
+					const auto move_scale = move_length / move_vec.length ( );
+					
+					cmd->m_fmove = cmd->m_fmove * move_scale;
+					cmd->m_smove = cmd->m_smove * move_scale;
+					cmd->m_umove = cmd->m_umove * move_scale;
+				}
+			}
+			else {
+				cmd->m_smove = 0.0f;
+				cmd->m_fmove = 0.0f;
+			}
+		}
+	}
+
+	VMP_END ( );
+}
+
+float features::ragebot::get_scaled_min_dmg ( player_t* ent ) {
+	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
+	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
+
+	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
+	const auto new_min = static_cast< float >( min_dmg ) > 100.0f ? ( ent ? static_cast< float >( ent->health ( ) + ( min_dmg - 100.0f ) ) : min_dmg ) : std::min<float> ( ent->health ( ), static_cast< float >( min_dmg ) );
+
+	return std::max<float> ( 1.0f, new_min );
+}
+
 /* ty cbrs */
 void features::ragebot::slow ( ucmd_t* ucmd ) {
+	VMP_BEGINMUTATION ( );
 	if ( !active_config.auto_slow || !g::local || !g::local->alive( ) || !( g::local->flags ( ) & flags_t::on_ground ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) )
 		return;
 
@@ -715,9 +942,11 @@ void features::ragebot::slow ( ucmd_t* ucmd ) {
 	else {
 		quick_stop ( );
 	}
+	VMP_END ( );
 }
 
 void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
+	VMP_BEGINMUTATION ( );
 	if ( g::local->weapon ( )->item_definition_index ( ) == weapons_t::taser && !active_config.zeus_bot )
 		return;
 	else if ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife && !active_config.knife_bot )
@@ -733,7 +962,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 	vec3_t best_point, best_ang;
 
 	cs::for_each_player ( [ & ] ( player_t* pl ) {
-		if ( pl->team ( ) == g::local->team ( ) || pl->immune ( ) )
+		if ( !g::local->is_enemy ( pl ) || pl->immune ( ) )
 			return;
 
 		const auto recs = anims::get_lagcomp_records ( pl );
@@ -878,13 +1107,11 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 
 		get_target_idx ( ) = best_pl->idx ( );
 	}
+	VMP_END ( );
 }
 
 void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
-	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
-	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
-	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
-
+	VMP_BEGINMUTATION ( );
 	if ( !active_config.main_switch || !g::local || !g::local->alive ( ) || !g::local->weapon ( ) || !g::local->weapon ( )->data ( ) ) {
 		scan_points.clear ( );
 		return;
@@ -950,30 +1177,45 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 	const auto cur_speed = g::local->vel ( ).length_2d ( );
 	auto pre_autostop_working = false;
 
-	if ( active_config.auto_slow && cur_speed > 0.0f ) {
-		auto calc_velocity = [ & ] ( vec3_t& vel ) {
-			const auto speed = vel.length_2d ( );
-		
-			if ( speed >= 0.1f ) {
-				const auto stop_speed = std::max ( speed, g::cvars::sv_stopspeed->get_float ( ) );
-				vel *= std::max ( 0.0f, speed - g::cvars::sv_friction->get_float ( ) * stop_speed * cs::ticks2time ( 1 ) / speed );
-			}
-		};
-		
-		const float deceleration = g::cvars::sv_accelerate->get_float ( ) * g::cvars::sv_maxspeed->get_float ( ) * cs::ticks2time ( 1 );
-		const int ticks_until_accurate = cur_speed / deceleration;
-		const auto predicted_eyes = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( ticks_until_accurate - 1 );
-	
+	const auto stop_to_speed = ( max_speed - 1.0f ) * 0.34f;
+
+	if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
+		const auto vel_norm = g::local->vel ( ).normalized ( );
+
+		auto speed = cur_speed;
+		auto move_dir = -vel_norm;
+		auto move_dir_max_speed = move_dir * speed;
+		auto predicted_eyes = g::local->eyes ( );
+
+		auto ticks_until_slow = 0;
+
+		while ( speed > stop_to_speed ) {
+			auto ducking = false;
+
+			const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
+
+			speed -= accel;
+			move_dir_max_speed = move_dir * speed;
+			predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
+
+			ticks_until_slow++;
+
+			if ( ticks_until_slow >= 16 )
+				break;
+		}
+
 		player_t* at_target = nullptr;
 	
 		for ( auto i = 0; i < cs::i::globals->m_max_clients; i++ ) {
 			const auto ent = cs::i::ent_list->get<player_t*> ( i );
 	
-			if ( ent->valid ( ) && !ent->immune() && ent->team ( ) != g::local->team ( ) ) {
+			if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
+				const auto min_dmg = get_scaled_min_dmg ( ent );
+
 				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
-				const auto dmg = autowall::dmg ( g::local, ent, predicted_eyes, pred_ent_pos, hitbox_t::head );
+				const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
 	
-				if ( dmg >= 1.0f && dmg >= ( static_cast< float >( min_dmg ) > 100.0f ? static_cast< float >( ent->health ( ) + ( min_dmg - 100 ) ) : std::min ( static_cast< float >( ent->health ( ) + 5.0f ), static_cast< float >( min_dmg ) ) ) ) {
+				if ( dmg >= min_dmg ) {
 					at_target = ent;
 					break;
 				}
@@ -981,7 +1223,7 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 		}
 	
 		if ( at_target ) {
-			slow ( ucmd );
+			skeet_slow ( ucmd, stop_to_speed, old_angs );
 			pre_autostop_working = true;
 		}
 	}
@@ -997,7 +1239,7 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 	auto should_aim = best.m_dmg && hc;
 	
 	if ( !pre_autostop_working && best.m_dmg )
-		slow ( ucmd );
+		skeet_slow ( ucmd, stop_to_speed, old_angs );
 
 	if ( !active_config.auto_shoot )
 		should_aim = !!( ucmd->m_buttons & buttons_t::attack ) && best.m_dmg;
@@ -1055,9 +1297,11 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 				ucmd->m_buttons &= ~buttons_t::attack2;
 		}
 	}
+	VMP_END ( );
 }
 
 bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, hitbox_t i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side ) {
+	VMP_BEGINMUTATION ( );
 	vec3_t hitbox_pos = vec3_t( 0.0f, 0.0f, 0.0f );
 	float hitbox_rad = 0.0f;
 	float hitbox_zrad = 0.0f;
@@ -1139,6 +1383,7 @@ bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, h
 		scan_points.emplace( point );
 
 	return true;
+	VMP_END ( );
 }
 
 bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, hitbox_t i, vec3_t& pos_out, float& rad_out, float& zrad_out ) {
@@ -1188,10 +1433,7 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, hitb
 }
 
 bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, hitbox_t& hitbox_out, float& best_dmg ) {
-	static auto& min_dmg_override_key = options::vars [ _ ( "ragebot.min_dmg_override_key" ) ].val.i;
-	static auto& min_dmg_override_key_mode = options::vars [ _ ( "ragebot.min_dmg_override_key_mode" ) ].val.i;
-	const auto min_dmg = utils::keybind_active ( min_dmg_override_key, min_dmg_override_key_mode ) ? active_config.min_dmg_override : active_config.min_dmg;
-
+	VMP_BEGINMUTATION ( );
 	auto pl = ent;
 
 	if ( !pl )
@@ -1206,6 +1448,8 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	if ( !weapon_data )
 		return false;
+
+	auto min_dmg = get_scaled_min_dmg ( ent );
 
 	/* select side to multipoint on (only one side at a time, saves a shit ton of frames) */
 	multipoint_side_t multipoint_side = multipoint_side_t::none;
@@ -1222,8 +1466,8 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 	auto left_dir = -right_dir;
 	auto dmg_center = autowall::dmg ( g::local, pl, src, eyes_max, hitbox_t::head /* pretend player would be there */ );
-	auto dmg_left = autowall::dmg ( g::local, pl, src, eyes_max + left_dir * 35.0f, hitbox_t::head /* pretend player would be there */ );
-	auto dmg_right = autowall::dmg ( g::local, pl, src, eyes_max + right_dir * 35.0f, hitbox_t::head /* pretend player would be there */ );
+	auto dmg_left = awall_skeet::dmg ( g::local, src, eyes_max + left_dir * 35.0f, weapon, pl, min_dmg, true );
+	auto dmg_right = awall_skeet::dmg ( g::local, src, eyes_max + right_dir * 35.0f, weapon, pl, min_dmg, true );
 	auto dmg_feet = autowall::dmg ( g::local, pl, src, rec.m_origin + vec3_t ( 0.0f, 0.0f, 2.0f ), hitbox_t::head /* pretend player would be there */ );
 
 	/* will we most likely not do damage at all? then let's cancel target selection altogether i guess */
@@ -1266,11 +1510,8 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	}
 
 	/* force baim */
-	float scaled_dmg = static_cast< float > ( weapon_data->m_dmg );
-	autowall::scale_dmg( pl, weapon_data, autowall::hitbox_to_hitgroup( hitbox_t::pelvis ), scaled_dmg );
-
-	float scaled_dmg_head = static_cast< float > ( weapon_data->m_dmg );
-	autowall::scale_dmg ( pl, weapon_data, autowall::hitbox_to_hitgroup ( hitbox_t::head ), scaled_dmg_head );
+	const auto scaled_dmg = awall_skeet::scale_dmg( autowall::hitbox_to_hitgroup ( hitbox_t::pelvis ), pl, weapon_data->m_dmg, weapon_data->m_armor_ratio, weapon->item_definition_index ( ) );
+	const auto scaled_dmg_head = awall_skeet::scale_dmg ( autowall::hitbox_to_hitgroup ( hitbox_t::head ), pl, weapon_data->m_dmg, weapon_data->m_armor_ratio, weapon->item_definition_index ( ) );
 	
 	auto should_baim = false;
 
@@ -1354,7 +1595,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	pl->maxs ( ) = rec.m_maxs;
 
 	float best_dmg_tmp = 0.0f;
-	vec3_t best_pos = vec3_t(0.0f, 0.0f, 0.0f);
+	vec3_t best_pos = vec3_t ( 0.0f, 0.0f, 0.0f );
 	hitbox_t best_hitbox = hitbox_t::invalid;
 
 	/* select best point on all hitboxes */
@@ -1373,7 +1614,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			auto dmg = autowall::dmg ( g::local, pl, src, point, hitbox_t::invalid ); /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
+			auto dmg = awall_skeet::dmg ( g::local, src, point, weapon, pl, min_dmg, false, autowall::hitbox_to_hitgroup ( hitbox ) ); /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
 			//dbg_print ( _("calculated damage: %.1f"), dmg );
 
 			if ( dmg > best_points_damage ) {
@@ -1393,7 +1634,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 		/* if we meet min dmg requirement or shot will be fatal, we can immediately break out */
 		if ( should_baim
 			&& hitbox != hitbox_t::head && hitbox != hitbox_t::neck
-			&& (( ( ( exploits::is_ready ( ) || exploits::has_shifted || exploits::in_exploit ) && active_config.max_dt_ticks > 6 ) ? true : (best_dmg_tmp >= ent->health ( )) ) && weapon->item_definition_index ( ) != weapons_t::ssg08 ) )
+			&& ( ( ( exploits::is_ready ( ) || exploits::has_shifted || exploits::in_exploit ) && active_config.max_dt_ticks > 6 ) ? ( weapon->item_definition_index ( ) != weapons_t::ssg08 ) : (best_dmg_tmp >= ent->health ( )) ) )
 			break;
 
 		//if ( best_dmg_tmp > min_dmg || best_dmg_tmp > rec.m_pl->health( ) ) {
@@ -1403,7 +1644,7 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	}
 	
 	/* save best data */
-	if ( best_dmg_tmp > best_dmg && best_dmg_tmp > ( static_cast< float >( min_dmg ) > 100.0f ? static_cast< float >( ent->health ( ) + ( min_dmg - 100 ) ) : std::min ( static_cast< float >( ent->health ( ) + 5.0f ), static_cast< float >( min_dmg ) ) ) ) {
+	if ( best_dmg_tmp > best_dmg && best_dmg_tmp > min_dmg ) {
 		pos_out = best_pos;
 		hitbox_out = best_hitbox;
 		best_dmg = best_dmg_tmp;
@@ -1417,9 +1658,11 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	pl->maxs ( ) = backup_maxs;
 
 	return best_dmg_tmp > 0.0f;
+	VMP_END ( );
 }
 
 void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t& hitbox_out, anims::anim_info_t& rec_out, float& best_dmg ) {
+	VMP_BEGINMUTATION ( );
 	constexpr int SIMILAR_RECORD_THRESHOLD = 0;
 
 	if ( !ent->valid ( ) )
@@ -1609,4 +1852,6 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 	for ( auto& record : best_recs )
 		if ( record->m_forward_track )
 			delete record;
+
+	VMP_END ( );
 }

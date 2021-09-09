@@ -128,6 +128,7 @@ t create_interface ( const char* _module, const char* iname ) {
 
 void features::skinchanger::dump_kits ( )
 {
+	VMP_BEGINULTRA ( );
 	const auto localize = create_interface< void* > ( _("localize.dll"), _("Localize_001") );
 	const auto V_UCS2ToUTF8 = reinterpret_cast< int( * )( const wchar_t*, char*, int ) >( LI_FN( GetProcAddress )( LI_FN( GetModuleHandleA ) ( _ ( "vstdlib.dll" ) ),_( "V_UCS2ToUTF8" )) );
 	
@@ -213,4 +214,5 @@ void features::skinchanger::dump_kits ( )
 
 		sticker_kits.insert ( sticker_kits.begin ( ), { 0,_( "None" )} );
 	}
+	VMP_END ( );
 }

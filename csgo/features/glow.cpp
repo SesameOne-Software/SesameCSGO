@@ -107,6 +107,7 @@ public:
 c_glow_obj_mgr* glow_obj_mgr = nullptr;
 
 void features::glow::cache_entities( ) {
+	VMP_BEGINMUTATION ( );
 	if ( !glow_obj_mgr )
 		glow_obj_mgr = pattern::search( _( "client.dll" ), _( "0F 11 05 ? ? ? ? 83 C8 01" ) ).add( 3 ).deref( ).get< c_glow_obj_mgr* >( );
 
@@ -159,4 +160,5 @@ void features::glow::cache_entities( ) {
 			glow_object.set( 0.949f, 0.019f, 0.0f, 1.0f );
 		}*/
 	}
+	VMP_END ( );
 }

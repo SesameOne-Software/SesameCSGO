@@ -176,6 +176,10 @@ namespace features {
 
 		inline int extrap_amount = 4;
 
+		float skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* player, const vec3_t& wish_dir, const vec3_t& wish_speed, bool& ducking );
+		void skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& old_angs );
+
+		float get_scaled_min_dmg ( player_t* ent );
 		bool hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t& pos_out, hitbox_t& hitbox_out, float& best_dmg );
 		bool create_points( player_t* ent, anims::anim_info_t& rec, hitbox_t i, std::deque< vec3_t >& points, multipoint_side_t multipoint_side );
 		bool get_hitbox( player_t* ent, anims::anim_info_t& rec, hitbox_t i, vec3_t& pos_out, float& rad_out, float& zrad_out );

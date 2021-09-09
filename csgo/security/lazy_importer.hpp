@@ -19,9 +19,13 @@
 #ifndef LAZY_IMPORTER_HPP
 #define LAZY_IMPORTER_HPP
 
+#ifdef _DEBUG
+#define LI_FN(name) name
+#else
 #define LI_FN(name) \
     ::li::detail::lazy_function<::li::detail::khash(#name), decltype(&name)>()
-//#define LI_FN(name) name
+#endif
+
 #define LI_FN_DEF(name) ::li::detail::lazy_function<::li::detail::khash(#name), name>()
 
 #define LI_MODULE(name) ::li::detail::lazy_module<::li::detail::khash(name)>()

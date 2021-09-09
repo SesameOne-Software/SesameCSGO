@@ -105,6 +105,7 @@ std::vector< std::string > split( const std::string& str, const std::string& del
 }
 
 void options::save( const std::unordered_map< std::string, option >& options, const std::string& path ) {
+	VMP_BEGINULTRA ( );
 	tinyxml2::XMLDocument doc;
 
 	const auto root = doc.NewElement( _( "sesame" ) );
@@ -178,9 +179,11 @@ void options::save( const std::unordered_map< std::string, option >& options, co
 	}
 
 	doc.SaveFile( path.data( ) );
+	VMP_END ( );
 }
 
 void options::load( std::unordered_map< std::string, option >& options, const std::string& path ) {
+	VMP_BEGINULTRA ( );
 	tinyxml2::XMLDocument doc;
 
 	const auto err = doc.LoadFile( path.data( ) );
@@ -311,6 +314,7 @@ void options::load( std::unordered_map< std::string, option >& options, const st
 			continue;
 		}
 	}
+	VMP_END ( );
 }
 
 __forceinline void add_weapon_config( const std::string& weapon_category ) {
@@ -411,6 +415,7 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 }
 
 void options::init_skins ( ) {
+	VMP_BEGINMUTATION ( );
 	struct weapon_arr_entry_t {
 		const char* weapon_name;
 		PAD ( 12 );
@@ -430,9 +435,11 @@ void options::init_skins ( ) {
 
 	option::add_skin_int ( _ ( "skins.models.player_model_t" ), 0 );
 	option::add_skin_int ( _ ( "skins.models.player_model_ct" ), 0 );
+	VMP_END ( );
 }
 
 void options::init( ) {
+	VMP_BEGINULTRA ( );
 	/* options should be structered in the following format: */
 	/* TAB.GROUP.OPTION */
 
@@ -615,6 +622,7 @@ void options::init( ) {
 
 	/* skins */
 	init_skins ( );
+	VMP_END ( );
 }
 
 #pragma optimize( "2", on )

@@ -50,6 +50,7 @@ bool nade_predicted = false;
 bool will_hit = false;
 
 void features::nade_prediction::predict( ucmd_t* ucmd ) {
+	VMP_BEGINMUTATION ( );
 	if ( !g::local->weapon ( ) || !g::local->weapon ( )->data( ) ) {
 		nade_predicted = false;
 		will_hit = false;
@@ -143,7 +144,7 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 			for ( auto i = 1; i <= cs::i::globals->m_max_clients; i++ ) {
 				auto player = cs::i::ent_list->get<player_t*> ( i );
 
-				if ( !player || !player->is_player ( ) || !player->alive ( ) || player->team ( ) == g::local->team ( ) )
+				if ( !player || !player->is_player ( ) || !player->alive ( ) || !g::local->is_enemy ( player ) )
 					continue;
 				
 				auto calc_alpha = [ & ] ( float time, float fade_time, bool add = false ) {
@@ -185,9 +186,11 @@ void features::nade_prediction::predict( ucmd_t* ucmd ) {
 		cur_nade_track_renderable.at( n ).m_valid = false;
 
 	nade_predicted = true;
+	VMP_END ( );
 }
 
 bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t& trace, const vec3_t& vel ) {
+	VMP_BEGINMUTATION ( );
 	if ( !weapon )
 		return true;
 
@@ -215,11 +218,13 @@ bool features::nade_prediction::detonated( weapon_t* weapon, float time, trace_t
 	}
 
 	return false;
+	VMP_END ( );
 }
 
 auto was_attacking_last_tick = false;
 
 void features::nade_prediction::trace( ucmd_t* ucmd ) {
+	VMP_BEGINMUTATION ( );
 	static auto& grenade_trajectories = options::vars [ _( "visuals.other.grenade_trajectories" ) ].val.b;
 	static auto& grenade_bounces = options::vars [ _( "visuals.other.grenade_bounces" ) ].val.b;
 	static auto& grenade_blast_radii = options::vars [ _( "visuals.other.grenade_blast_radii" ) ].val.b;
@@ -272,9 +277,11 @@ void features::nade_prediction::trace( ucmd_t* ucmd ) {
 
 	nade_predicted = false;
 	will_hit = false;
+	VMP_END ( );
 }
 
 void features::nade_prediction::draw( ) {
+	VMP_BEGINMUTATION ( );
 	static auto& grenade_trajectories = options::vars [ _( "visuals.other.grenade_trajectories" ) ].val.b;
 	static auto& grenade_bounces = options::vars [ _( "visuals.other.grenade_bounces" ) ].val.b;
 	static auto& grenade_blast_radii = options::vars [ _( "visuals.other.grenade_blast_radii" ) ].val.b;
@@ -379,4 +386,5 @@ void features::nade_prediction::draw( ) {
 			base_time += cs::i::globals->m_ipt * 3.0f;
 		}
 	}
+	VMP_END ( );
 }

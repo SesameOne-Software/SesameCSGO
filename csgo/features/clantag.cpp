@@ -10,6 +10,7 @@ uint64_t current_plist_player = 0;
 uint64_t player_to_steal_tag_from = 0;
 
 void features::clantag::run( ucmd_t* ucmd ) {
+	VMP_BEGINMUTATION ( );
 	static auto& clantag = options::vars [ _ ( "misc.effects.clantag" ) ].val.b;
 	static auto& clantag_animation = options::vars [ _ ( "misc.effects.clantag_animation" ) ].val.i;
 	static auto& clantag_text = options::vars [ _("misc.effects.clantag_text")].val.s;
@@ -135,4 +136,6 @@ void features::clantag::run( ucmd_t* ucmd ) {
 		} break;
 		}
 	}
+
+	VMP_END ( );
 }

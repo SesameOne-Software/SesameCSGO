@@ -52,7 +52,7 @@ public:
 		msg_fn ( buffer, list );
 	}
 
-	static pattern search( const char* mod, const char* pat ) {
+	static __declspec( noinline ) pattern search( const char* mod, const char* pat ) {
 		auto pat1 = const_cast< char* >( pat );
 		auto range_start = reinterpret_cast< uintptr_t >( LI_FN( GetModuleHandleA )( mod ) );
 

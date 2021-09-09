@@ -58,6 +58,7 @@ namespace anims {
 		bool m_shot, m_invalid;
 		bool m_forward_track;
 		bool m_resolved;
+		bool m_has_vel;
 		vec3_t m_angles;
 		vec3_t m_origin;
 		vec3_t m_mins;
@@ -154,7 +155,7 @@ namespace anims {
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
 	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix );
-	void fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlayer_t, 13>& animlayers, const vec3_t& origin );
+	bool fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlayer_t, 13>& animlayers, const vec3_t& origin );
 	void update_from ( player_t* ent, anim_info_t& from, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
 	void apply_anims ( player_t* ent );
 

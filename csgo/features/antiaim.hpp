@@ -10,6 +10,7 @@ namespace features {
 
 		void simulate_lby( );
 		void fakelag ( ucmd_t* ucmd, player_t* target );
-		void run( ucmd_t* ucmd, bool was_shooting );
+		void slow_walk ( ucmd_t* cmd, vec3_t& old_angs );
+		void run( ucmd_t* ucmd, bool was_shooting, vec3_t& old_angs );
 	}
 }

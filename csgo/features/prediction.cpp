@@ -18,28 +18,28 @@ namespace prediction_util {
 	bool in_pred;
 
 	bool start ( ucmd_t* ucmd ) {
-		OBF_BEGIN;
-		V ( features::prediction::in_prediction ) = true;
+		VMP_BEGINMUTATION ( );
+		features::prediction::in_prediction = true;
 
-		IF ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
-			RETURN ( false ); ENDIF;
+		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !g::local || !g::local->alive ( ) )
+			return false;
 
-		IF ( !V ( prediction_player ) || !V ( prediction_seed ) ) {
-			V ( prediction_seed ) = pattern::search ( _ ( "client.dll" ), _ ( "8B 47 40 A3" ) ).add ( 4 ).deref ( ).get< uintptr_t > ( );
-			V ( prediction_player ) = pattern::search ( _ ( "client.dll" ), _ ( "0F 5B C0 89 35" ) ).add ( 5 ).deref ( ).get< uintptr_t > ( );
-		} ENDIF;
+		if ( !prediction_player || !prediction_seed ) {
+			prediction_seed = pattern::search ( _ ( "client.dll" ), _ ( "8B 47 40 A3" ) ).add ( 4 ).deref ( ).get< uintptr_t > ( );
+			prediction_player = pattern::search ( _ ( "client.dll" ), _ ( "0F 5B C0 89 35" ) ).add ( 5 ).deref ( ).get< uintptr_t > ( );
+		}
 
-		IF ( cs::i::client_state->delta_tick ( ) > 0 ) {
+		if ( cs::i::client_state->delta_tick ( ) > 0 ) {
 			cs::i::pred->update (
 				cs::i::client_state->delta_tick ( ),
 				cs::i::client_state->delta_tick ( ) > 0,
 				cs::i::client_state->last_command_ack ( ),
 				cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
 			);
-		} ENDIF;
+		}
 
-		V ( first_time_pred ) = V ( cs::i::pred->m_is_first_time_predicted );
-		V ( in_pred ) = V ( cs::i::pred->m_in_prediction );
+		first_time_pred = cs::i::pred->m_is_first_time_predicted;
+		in_pred = cs::i::pred->m_in_prediction;
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
 		*reinterpret_cast< uintptr_t* >( prediction_player ) = reinterpret_cast< uintptr_t >( g::local );
@@ -53,17 +53,17 @@ namespace prediction_util {
 
 		curtime = cs::i::globals->m_curtime;
 		frametime = cs::i::globals->m_frametime;
-		V ( tickcount ) = V ( cs::i::globals->m_tickcount );
+		tickcount = cs::i::globals->m_tickcount;
 
 		cs::i::globals->m_curtime = predicted_curtime = cs::ticks2time ( g::local->tick_base ( ) );
-		cs::i::globals->m_frametime = V ( cs::i::pred->m_engine_paused ) ? 0.0f : cs::i::globals->m_ipt;
+		cs::i::globals->m_frametime = cs::i::pred->m_engine_paused ? 0.0f : cs::i::globals->m_ipt;
 		cs::i::globals->m_tickcount = g::local->tick_base ( );
 
-		V ( cs::i::pred->m_is_first_time_predicted ) = false;
-		V ( cs::i::pred->m_in_prediction ) = true;
+		cs::i::pred->m_is_first_time_predicted = false;
+		cs::i::pred->m_in_prediction = true;
 
-		IF ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 52 ) ) )
-			* reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31EC ) : N ( 0x31FC ) ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 52 ) ); ENDIF;
+		if ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 52 ) ) )
+			* reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31EC ) : N ( 0x31FC ) ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 52 ) );
 
 		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 48 ) ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x3310 ) : N ( 0x3334 ) ) );
 		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( ucmd ) + N ( 48 ) ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x330C ) : N ( 0x3330 ) ) );
@@ -87,16 +87,16 @@ namespace prediction_util {
 		//cs::i::pred->set_local_viewangles ( ucmd->m_angs );
 
 		// run prethink
-		IF ( g::local->physics_run_think ( 0 ) )
-			g::local->pre_think ( ); ENDIF;
+		if ( g::local->physics_run_think ( 0 ) )
+			g::local->pre_think ( );
 
 		// run think
 		auto& next_think = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 252 ) );
 
-		IF ( next_think > 0 && next_think <= g::local->tick_base ( ) ) {
+		if ( next_think > 0 && next_think <= g::local->tick_base ( ) ) {
 			next_think = -1;
 			g::local->think ( );
-		} ENDIF;
+		}
 
 		// setup move
 		memset ( movedata, 0, sizeof ( movedata ) );
@@ -106,25 +106,25 @@ namespace prediction_util {
 
 		const auto weapon = g::local->weapon ( );
 
-		IF ( weapon )
-			weapon->update_accuracy ( ); ENDIF;
+		if ( weapon )
+			weapon->update_accuracy ( );
 
 		//cs::i::move_helper->process_impacts ( );
 
 		// run post think
 		//g::local->post_think ( );
-		RETURN ( true );
-		OBF_END;
+		return true;
+		VMP_END ( );
 	}
 
 	bool end ( ucmd_t* ucmd ) {
-		OBF_BEGIN;
+		VMP_BEGINMUTATION ( );
 		features::prediction::in_prediction = false;
 
 		auto local = cs::i::ent_list->get< player_t* > ( cs::i::engine->get_local_player ( ) );
 
-		IF ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
-			RETURN ( false ); ENDIF;
+		if ( !cs::i::engine->is_in_game ( ) || !ucmd || !local || !local->alive ( ) )
+			return false;
 
 		cs::i::move->finish_track_prediction_errors ( g::local );
 		cs::i::move_helper->set_host ( nullptr );
@@ -141,11 +141,11 @@ namespace prediction_util {
 		//if ( cs::i::globals->m_frametime > 0.0f )
 		//	g::local->tick_base ( )++;
 
-		V ( cs::i::pred->m_is_first_time_predicted ) = V ( first_time_pred );
-		V ( cs::i::pred->m_in_prediction ) = V ( in_pred );
+		cs::i::pred->m_is_first_time_predicted = first_time_pred;
+		cs::i::pred->m_in_prediction = in_pred;
 
-		RETURN ( true );
-		OBF_END;
+		return true;
+		VMP_END ( );
 	}
 }
 

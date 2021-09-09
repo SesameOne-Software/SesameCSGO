@@ -118,15 +118,15 @@ enum tracetype_t
 struct plane_t {
 	vec3_t m_normal;
 	float m_dist;
-	std::uint8_t m_type;
-	std::uint8_t m_sign_bits;
+	uint8_t m_type;
+	uint8_t m_sign_bits;
 	PAD( 2 );
 };
 
 struct surface_t {
 	const char* m_name;
 	short m_surface_props;
-	std::uint8_t m_flags;
+	uint8_t m_flags;
 };
 
 class base_trace_t {
@@ -144,8 +144,8 @@ public:
 
 	float m_fraction;
 
-	std::uint32_t m_contents;
-	std::uint16_t m_disp_flags;
+	uint32_t m_contents;
+	uint16_t m_disp_flags;
 
 	bool m_allsolid;
 	bool m_startsolid;
@@ -174,7 +174,7 @@ public:
 	surface_t m_surface;
 	int m_hitgroup;
 	short m_physicsbone;
-	std::uint16_t m_world_surface_index;
+	uint16_t m_world_surface_index;
 	entity_t* m_hit_entity;
 	int m_hitbox;
 
@@ -202,19 +202,19 @@ private:
 
 class __trace_filter_t {
 public:
-	virtual bool should_hit_ent( entity_t* ent, std::uint32_t mask ) = 0;
-	virtual std::uint32_t get_trace_type( ) const = 0;
+	virtual bool should_hit_ent( entity_t* ent, uint32_t mask ) = 0;
+	virtual uint32_t get_trace_type( ) const = 0;
 };
 
 class _trace_filter_t : public __trace_filter_t {
 public:
 	void* m_skip;
 
-	bool should_hit_ent( entity_t* ent, std::uint32_t ) override {
+	bool should_hit_ent( entity_t* ent, uint32_t ) override {
 		return ent != m_skip;
 	}
 
-	std::uint32_t get_trace_type( ) const override {
+	uint32_t get_trace_type( ) const override {
 		return 0;
 	}
 };
@@ -231,11 +231,34 @@ public:
 		m_skip = ent;
 	}
 
-	bool should_hit_ent( entity_t* ent, std::uint32_t ) override {
+	bool should_hit_ent( entity_t* ent, uint32_t ) override {
 		return !( ent == m_skip );
 	}
 
-	std::uint32_t get_trace_type( ) const override {
+	uint32_t get_trace_type( ) const override {
+		return 0;
+	}
+};
+
+class trace_filter_skip_two_entities_t : public _trace_filter_t {
+public:
+	void* m_skip1;
+	void* m_skip2;
+
+	trace_filter_skip_two_entities_t ( ) {
+		m_skip2 = m_skip1 = nullptr;
+	}
+
+	trace_filter_skip_two_entities_t ( void* ent1, void* ent2 ) {
+		m_skip1 = ent1;
+		m_skip2 = ent2;
+	}
+
+	bool should_hit_ent ( entity_t* ent, uint32_t ) override {
+		return !( ent == m_skip1 || ent == m_skip2 );
+	}
+
+	uint32_t get_trace_type ( ) const override {
 		return 0;
 	}
 };
@@ -252,11 +275,11 @@ public:
 		m_skip = ent;
 	}
 
-	bool should_hit_ent ( entity_t* ent, std::uint32_t ) override {
+	bool should_hit_ent ( entity_t* ent, uint32_t ) override {
 		return false;
 	}
 
-	std::uint32_t get_trace_type ( ) const override {
+	uint32_t get_trace_type ( ) const override {
 		return 0;
 	}
 };

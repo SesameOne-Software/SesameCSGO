@@ -27,8 +27,12 @@
         []() { return str; },                                    \
         std::make_index_sequence<sizeof(str) / sizeof(*str)>{},  \
         std::make_index_sequence<::jm::detail::_buffer_size<sizeof(str)>()>{})
+
+#ifdef _DEBUG
+#define _(str) (str)
+#else
 #define _(str) MAKE_STR(str).crypt_get()
-//#define _(str) (str)
+#endif
 
 #ifdef _MSC_VER
 #define XORSTR_FORCEINLINE __forceinline

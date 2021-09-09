@@ -231,7 +231,7 @@ namespace autowall {
 				}
 				else if ( enter_material != 'G' ) {
 					if ( enter_material == 'F' && ff_damage_reduction_bullets->get_float ( ) == 0.0
-						&& tr.m_hit_entity && reinterpret_cast< player_t* >( tr.m_hit_entity )->is_player ( ) && reinterpret_cast< player_t* >( tr.m_hit_entity )->team ( ) == shooter->team ( ) && !mp_teammates_are_enemies->get_bool ( ) ) {
+						&& tr.m_hit_entity && reinterpret_cast< player_t* >( tr.m_hit_entity )->is_player ( ) && shooter->is_enemy( reinterpret_cast< player_t* >( tr.m_hit_entity ) ) && !mp_teammates_are_enemies->get_bool ( ) ) {
 						penetration_modifier = ff_damage_bullet_penetration->get_float ( );
 
 						if ( penetration_modifier == 0.0f )
@@ -367,10 +367,10 @@ namespace autowall {
 				&& (data.enter_trace.m_hit_entity->team ( ) == 2 || data.enter_trace.m_hit_entity->team ( ) == 3 )
 				&& hitgroup == -1
 				&& data.enter_trace.m_hitgroup <= 8 && data.enter_trace.m_hitgroup > 0 ) {
-				if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) == g::local->team ( ) && g::cvars::mp_friendlyfire->get_bool ( ) )
+				if ( !entity->is_enemy( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity ) ) && g::cvars::mp_friendlyfire->get_bool ( ) )
 					return false;
 
-				if ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity )->team ( ) != g::local->team ( ) ) {
+				if ( entity->is_enemy ( reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity ) ) ) {
 					autowall::scale_dmg ( dst_entity, weapon_data, data.enter_trace.m_hitgroup, data.current_damage );
 					return true;
 				}

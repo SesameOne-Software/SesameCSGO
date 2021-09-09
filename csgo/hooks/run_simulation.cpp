@@ -6,6 +6,8 @@
 #include "../features/exploits.hpp"
 #include "../features/prediction.hpp"
 
+#include "../features/antiaim.hpp"
+
 #undef min
 #undef max
 
@@ -20,38 +22,37 @@ namespace lby {
 int last_cmd_num = 0;
 
 int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, player_t* localplayer ) {
-	OBF_BEGIN;
-	IF ( !g::local || !g::local->alive ( ) )
-		last_cmd_num = N ( 0 ); ENDIF;
+	if ( !g::local || !g::local->alive ( ) )
+		last_cmd_num = N ( 0 );
 	
-	IF ( !localplayer || localplayer != g::local || !g::local )
-		RETURN ( old::run_simulation ( REG_OUT, current_command, cmd, localplayer ) ); ENDIF;
+	if ( !localplayer || localplayer != g::local || !g::local )
+		return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 	
-	IF ( cmd->m_tickcount == std::numeric_limits<int>::max ( ) ) {
+	if ( cmd->m_tickcount == std::numeric_limits<int>::max ( ) ) {
 		cmd->m_hasbeenpredicted = true;
 
-		cs::i::move_helper->set_host ( g::local );
+		cs::i::move_helper->set_host ( localplayer );
 
-		IF ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) ) )
-			* reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31EC ) : N ( 0x31FC ) ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) ); ENDIF;
+		if ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) ) )
+			* reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31EC ) : N ( 0x31FC ) ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) );
 
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x3310 ) : N ( 0x3334 ) ) );
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x330C ) : N ( 0x3330 ) ) );
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x3310 ) : N ( 0x3334 ) ) );
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x330C ) : N ( 0x3330 ) ) );
 
 		const auto v16 = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) );
-		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
+		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
 
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31DC ) : N ( 0x31EC ) ) ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) ) = v16;
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31E0 ) : N ( 0x31F0 ) ) ) = v16 & v17;
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + ( g::is_legacy ? N ( 0x31E4 ) : N ( 0x31F4 ) ) ) = v17 & ~v16;
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31DC ) : N ( 0x31EC ) ) ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) ) = v16;
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E0 ) : N ( 0x31F0 ) ) ) = v16 & v17;
+		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E4 ) : N ( 0x31F4 ) ) ) = v17 & ~v16;
 
 		localplayer->post_think ( );
 		localplayer->tick_base ( )++;
 
 		cs::i::move_helper->set_host ( nullptr );
-		RETURN( 0 );
-	} ENDIF;
+		return 0;
+	}
 	
 	const auto backup_vel_mod = localplayer->velocity_modifier ( );
 	const auto backup_tickbase = localplayer->tick_base ( );
@@ -59,19 +60,19 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	const auto backup_vel_modifier = localplayer->velocity_modifier ( );
 	localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
 	
-	IF ( current_command == exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].first )
-		exploits::adjust_player_time_base ( localplayer, exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].second ); ENDIF;
+	if ( current_command == exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].first )
+		exploits::adjust_player_time_base ( localplayer, exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].second );
 	
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
 	
-	IF ( current_command > last_cmd_num )
-		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) - N ( 1 ), true ); ENDIF;
+	if ( current_command > last_cmd_num )
+		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) - N ( 1 ), true );
 	
 	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
 	
-	IF ( current_command > last_cmd_num )
-		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) ); ENDIF;
+	if ( current_command > last_cmd_num )
+		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) );
 	
 	localplayer->velocity_modifier ( ) = backup_vel_modifier;
 	
@@ -79,13 +80,11 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	
 	/* local anims */
 	if ( current_command > last_cmd_num ) {
-		if ( g::local && g::local->alive ( ) )
-			anims::update_anims ( g::local, lby::in_update ? g::sent_cmd.m_angs : g::angles );
+		if ( localplayer && localplayer->alive ( ) )
+			anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
 		else
 			anims::manage_fake ( );
 
 		last_cmd_num = current_command;
 	}
-
-	OBF_END;
 }

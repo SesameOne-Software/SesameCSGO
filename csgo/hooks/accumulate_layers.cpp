@@ -5,7 +5,7 @@ decltype( &hooks::accumulate_layers ) hooks::old::accumulate_layers = nullptr;
 // credits cbrs
 void __fastcall hooks::accumulate_layers( REG , void* setup , vec3_t& pos , void* q , float time ) {
     static auto iks_off = pattern::search( _( "client.dll" ) , _( "8D 47 FC 8B 8F" ) ).add( 5 ).deref( ).add( 4 ).get< uint32_t >( );
-    static auto accumulate_pose = pattern::search( _( "server.dll" ) , "E8 ? ? ? ? 83 BF ? ? ? ? ? 0F 84 ? ? ? ? 8D" ).resolve_rip().get<void( __thiscall* )( void* , vec3_t&, void* , int , float , float , float , void* )>();
+    static auto accumulate_pose = pattern::search( _( "server.dll" ) , _("E8 ? ? ? ? 83 BF ? ? ? ? ? 0F 84 ? ? ? ? 8D") ).resolve_rip().get<void( __thiscall* )( void* , vec3_t&, void* , int , float , float , float , void* )>();
     
     const auto player = reinterpret_cast<player_t*>( ecx );
     

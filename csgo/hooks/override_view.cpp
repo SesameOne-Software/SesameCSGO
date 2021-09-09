@@ -60,7 +60,7 @@ void __fastcall hooks::override_view( REG, void* setup ) {
 		
 		cs::i::trace->trace_ray ( ray, mask_shot_hull, &filter, &trace );
 
-		return ( ideal_distance * trace.m_fraction ) - 10.0f;
+		return std::clamp( ( ideal_distance * trace.m_fraction ) - 10.0f, 0.0f, third_person_range );
 	};
 
 	if ( g::local ) {

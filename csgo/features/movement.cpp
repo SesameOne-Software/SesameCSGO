@@ -11,6 +11,7 @@
 #undef max
 
 void features::movement::directional_strafer ( ucmd_t* cmd, vec3_t& old_angs ) {
+	VMP_BEGINMUTATION ( );
 	static int strafer_flags = 0;
 
 	if ( !!( g::local->flags ( ) & flags_t::on_ground ) ) {
@@ -123,9 +124,11 @@ void features::movement::directional_strafer ( ucmd_t* cmd, vec3_t& old_angs ) {
 	if ( angles.y > 180.0f ) angles.y -= 360.0f;
 
 	cs::rotate_movement ( cmd, angles );
+	VMP_END ( );
 }
 
 void features::movement::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
+	VMP_BEGINMUTATION ( );
 	static auto& bhop = options::vars [ _ ( "misc.movement.bhop" ) ].val.b;
 	static auto& strafer = options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b;
 	static auto& directional = options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b;
@@ -182,4 +185,5 @@ void features::movement::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 		last_flags = g::local->flags ( );
 	}
+	VMP_END ( );
 }

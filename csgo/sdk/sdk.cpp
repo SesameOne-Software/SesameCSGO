@@ -26,6 +26,7 @@ c_game_event_mgr* cs::i::events = nullptr;
 c_view_render_beams* cs::i::beams = nullptr;
 IDirect3DDevice9* cs::i::dev = nullptr;
 c_network_string_table_container* cs::i::client_string_table_container = nullptr;
+c_game_type* cs::i::game_type = nullptr;
 
 c_mdl_cache_critical_section::c_mdl_cache_critical_section( ) {
 	cs::i::mdl_cache->begin_lock( );
@@ -128,6 +129,7 @@ void cs::util::clip_trace_to_players( const vec3_t& start, const vec3_t& end, st
 }
 
 void cs::rotate_movement ( ucmd_t* cmd, const vec3_t& angles ) {
+	VMP_BEGINMUTATION ( );
 	vec3_t view_fwd, view_right, view_up, cmd_fwd, cmd_right, cmd_up;
 	auto view_angles = cmd->m_angs;
 
@@ -173,6 +175,7 @@ void cs::rotate_movement ( ucmd_t* cmd, const vec3_t& angles ) {
 	cmd->m_fmove = std::clamp ( cmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
 	cmd->m_smove = std::clamp ( cmd->m_smove, -g::cvars::cl_sidespeed->get_float ( ), g::cvars::cl_sidespeed->get_float ( ) );
 	cmd->m_umove = std::clamp ( cmd->m_umove, -g::cvars::cl_upspeed->get_float ( ), g::cvars::cl_upspeed->get_float ( ) );
+	VMP_END ( );
 }
 
 template < typename t >
@@ -185,6 +188,7 @@ t cs::create_interface( const char* module, const char* iname ) {
 }
 
 bool cs::init( ) {
+	VMP_BEGINULTRA ( );
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 5E 8B 40 10" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );
 	i::ent_list = create_interface< c_entlist* >( _( "client.dll" ), _( "VClientEntityList003" ) );
 	i::mat_sys = create_interface< c_matsys* >( _( "materialsystem.dll" ), _( "VMaterialSystem080" ) );
@@ -209,8 +213,11 @@ bool cs::init( ) {
 	i::mem_alloc = *( c_mem_alloc** ) GetProcAddress( GetModuleHandleA( _( "tier0.dll" ) ), _( "g_pMemAlloc" ) );
 	i::dev = pattern::search( _( "shaderapidx9.dll" ), _( "A1 ? ? ? ? 50 8B 08 FF 51 0C" ) ).add( 1 ).deref( ).deref( ).get< IDirect3DDevice9* >( );
 	i::client_string_table_container = create_interface< c_network_string_table_container* > ( _ ( "engine.dll" ), _ ( "VEngineClientStringTable001" ) );
-
+	i::game_type = create_interface< c_game_type* > ( _ ( "matchmaking.dll" ), _ ( "VENGINE_GAMETYPES_VERSION002" ) );
+	
 	g::cvars::init ( );
 
 	return true;
+	VMP_END ( );
+	END_FUNC;
 }

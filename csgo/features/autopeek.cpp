@@ -20,6 +20,7 @@ void features::autopeek::draw ( ) {
 }
 
 void features::autopeek::run ( ucmd_t* ucmd, vec3_t& move_ang ) {
+	VMP_BEGINMUTATION ( );
 	static auto& enabled = options::vars [ _ ( "ragebot.autopeek" ) ].val.b;
 	static auto& autopeek_key = options::vars [ _ ( "ragebot.autopeek_key" ) ].val.i;
 	static auto& autopeek_key_mode = options::vars [ _ ( "ragebot.autopeek_key_mode" ) ].val.i;
@@ -97,4 +98,5 @@ void features::autopeek::run ( ucmd_t* ucmd, vec3_t& move_ang ) {
 				peek.m_retrack = false;
 		}
 	}
+	VMP_END ( );
 }

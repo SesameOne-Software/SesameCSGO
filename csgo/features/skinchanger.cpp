@@ -67,6 +67,7 @@ void* find_hud_element_skinchanger ( const char* name ) {
 }
 
 void features::skinchanger::run ( ) {
+	VMP_BEGINMUTATION ( );
 	static auto& override_knife = options::skin_vars [ _ ( "skins.skin.override_knife" ) ].val.b;
 	static auto& override_weapon = options::skin_vars [ _ ( "skins.skin.override_weapon" ) ].val.b;
 	static auto& selected_knife = options::skin_vars [ _ ( "skins.skin.knife" ) ].val.i;
@@ -324,6 +325,7 @@ void features::skinchanger::run ( ) {
 		was_dead = false;
 		skin_changed = false;
 	}
+	VMP_END ( );
 }
 
 std::vector<uint8_t> features::skinchanger::skin_preview ( const std::string& file ) {
@@ -343,6 +345,7 @@ std::vector<uint8_t> features::skinchanger::skin_preview ( const std::string& fi
 }
 
 void features::skinchanger::dump_sequences ( ) {
+	VMP_BEGINMUTATION ( );
 	std::unordered_map< weapons_t, std::string > knife_anim_model_names {
 		{ weapons_t::knife_bayonet, "models/weapons/v_knife_bayonet_anim.mdl" },
 		{ weapons_t::knife_css,"models/weapons/v_knife_css_anim.mdl" },
@@ -406,6 +409,7 @@ void features::skinchanger::dump_sequences ( ) {
 			knife_sequences [ knife_anim_model.first ].push_back ( {i, name} );
 		}
 	}
+	VMP_END ( );
 }
 
 void features::skinchanger::init ( ) {
@@ -419,6 +423,7 @@ void features::skinchanger::init ( ) {
 }
 
 void features::skinchanger::process_death ( event_t* event ) {
+	VMP_BEGINMUTATION ( );
 	static auto& override_knife = options::skin_vars [ _ ( "skins.skin.override_knife" ) ].val.b;
 	static auto& selected_knife = options::skin_vars [ _ ( "skins.skin.knife" ) ].val.i;
 
@@ -451,4 +456,5 @@ void features::skinchanger::process_death ( event_t* event ) {
 	
 	if ( override_knife )
 		event->set_string ( _ ( "weapon" ), knife_weapon_names [ selected_knife ] );
+	VMP_END ( );
 }

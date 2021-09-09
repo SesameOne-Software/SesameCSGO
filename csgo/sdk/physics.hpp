@@ -18,8 +18,8 @@ struct surfacegameprops_t {
 	PAD( 8 );
 	float m_penetration_modifier;
 	float m_damage_modifier;
-	std::uint16_t m_material;
-	std::uint8_t m_climbable;
+	uint16_t m_material;
+	uint8_t m_climbable;
 	PAD( 4 );
 };
 

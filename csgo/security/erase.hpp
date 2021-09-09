@@ -16,34 +16,34 @@ namespace erase {
 	__asm nop
 
 	__forceinline void erase_func ( void* pfunc ) {
-		//unsigned long old_prot = 0;
-		//size_t func_len = 0;
-		//
-		//for ( func_len = 0; ; func_len++ ) {
-		//	if ( *( uint32_t* ) ( uintptr_t ( pfunc ) + func_len ) == 0x90909090 ) {
-		//		auto found_end = false;
-		//
-		//		for ( auto i = 0; i < 32; i++ ) {
-		//			if ( *( uint8_t* ) ( uintptr_t ( pfunc ) + func_len + i ) == 0xc3 ) {
-		//				func_len += i + 1;
-		//				found_end = true;
-		//				break;
-		//			}
-		//			else if ( *( uint8_t* ) ( uintptr_t ( pfunc ) + func_len + i ) == 0xc2 ) {
-		//				func_len += i + 2;
-		//				found_end = true;
-		//				break;
-		//			}
-		//		}
-		//
-		//		if ( found_end )
-		//			break;
-		//	}
-		//}
-		//
-		//LI_FN( VirtualProtect ) ( pfunc, func_len, PAGE_EXECUTE_READWRITE, &old_prot );
-		//memset ( pfunc, 0, func_len );
-		//LI_FN ( VirtualProtect ) ( pfunc, func_len, old_prot, &old_prot );
+		unsigned long old_prot = 0;
+		size_t func_len = 0;
+		
+		for ( func_len = 0; ; func_len++ ) {
+			if ( *( uint32_t* ) ( uintptr_t ( pfunc ) + func_len ) == 0x90909090 ) {
+				auto found_end = false;
+		
+				for ( auto i = 0; i < 32; i++ ) {
+					if ( *( uint8_t* ) ( uintptr_t ( pfunc ) + func_len + i ) == 0xc3 ) {
+						func_len += i + 1;
+						found_end = true;
+						break;
+					}
+					else if ( *( uint8_t* ) ( uintptr_t ( pfunc ) + func_len + i ) == 0xc2 ) {
+						func_len += i + 2;
+						found_end = true;
+						break;
+					}
+				}
+		
+				if ( found_end )
+					break;
+			}
+		}
+		
+		LI_FN( VirtualProtect ) ( pfunc, func_len, PAGE_EXECUTE_READWRITE, &old_prot );
+		memset ( pfunc, 0x90, func_len );
+		LI_FN ( VirtualProtect ) ( pfunc, func_len, old_prot, &old_prot );
 	}
 
 	__forceinline void erase_headers ( uintptr_t base ) {

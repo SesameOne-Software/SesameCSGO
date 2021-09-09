@@ -180,7 +180,7 @@ struct animlayer_t {
 
 struct anim_list_record_t {
 	player_t* m_ent;
-	std::uint32_t m_flags;
+	uint32_t m_flags;
 };
 
 struct anim_list_t {
@@ -243,9 +243,16 @@ public:
 	NETVAR ( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 	NETVAR ( int, hitbox_set, "DT_BaseAnimating->m_nHitboxSet" );
 	NETVAR ( bool, spotted, "DT_BaseEntity->m_bSpotted" );
+	NETVAR ( float, max_speed, "DT_BasePlayer->m_flMaxspeed" );
+	NETVAR ( bool, is_ghost, "DT_CSPlayer->m_bIsPlayerGhost" );
+	NETVAR ( int, survival_team, "DT_CSPlayer->m_nSurvivalTeam" );
+
+	/* skeet skeet, #1 cheat */
+	/* checks if other player is enemy to this player */
+	bool is_enemy ( player_t* other );
 
 	__forceinline animlayer_t* layers( ) {
-		return *reinterpret_cast< animlayer_t** >( reinterpret_cast<uintptr_t>(this) + N ( 0x2980) );
+		return *reinterpret_cast< animlayer_t** >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2980 ) );
 	}
 
 	__forceinline std::array< float, 24 >& poses( ) {

@@ -283,7 +283,7 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 
 	/* draw server hitboxes for testing */
 	//if ( g::local && g::local->alive() ){
-	//	static const auto UTIL_PlayerByIndex = pattern::search(_( "server.dll") ,_( "85 C9 7E 2A A1") ).get<player_t* ( __fastcall* )( int )>( );
+	//	static const auto UTIL_PlayerByIndex = pattern::search(_( "server.dll") ,_( "85 C9 7E 32 A1") ).get<player_t* ( __fastcall* )( int )>( );
 	//	static const auto draw_server_hitboxes = pattern::search( _( "server.dll" ) , _( "55 8B EC 81 EC ? ? ? ? 53 56 8B 35 ? ? ? ? 8B D9 57 8B CE" ) ).get<void*>( );
 	//
 	//	const auto duration = -1.0f;

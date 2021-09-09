@@ -638,6 +638,18 @@
     <ClInclude Include="seh.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="VMProtect\Include\C\VMProtectDDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VMProtect\Include\C\VMProtectSDK.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="features\autowall_skeet.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sdk\game_type.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utils\miniz.c">
@@ -671,9 +683,6 @@
       <Filter>Source Files\features</Filter>
     </ClCompile>
     <ClCompile Include="features\ragebot.cpp">
-      <Filter>Source Files\features</Filter>
-    </ClCompile>
-    <ClCompile Include="features\antiaim.cpp">
       <Filter>Source Files\features</Filter>
     </ClCompile>
     <ClCompile Include="features\prediction.cpp">
@@ -922,5 +931,16 @@
     <ClCompile Include="hooks\get_client_model_renderable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="features\antiaim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="features\autowall_skeet.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="VMProtect\Include\ASM\VMProtectSDK.inc">
+      <Filter>Header Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

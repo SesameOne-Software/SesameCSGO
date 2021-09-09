@@ -7,6 +7,7 @@ std::unordered_map< std::string, int > netvars::m_client_ids;
 std::unordered_map< std::string, std::unordered_map< std::string, netvars::netvar_data_t > > netvars::m_offsets;
 
 std::vector< std::string > split ( std::string to_split, std::string delimeter ) {
+	VMP_BEGINMUTATION ( );
 	std::vector< std::string > split;
 	int start = 0;
 	int end = 0;
@@ -23,9 +24,11 @@ std::vector< std::string > split ( std::string to_split, std::string delimeter )
 	}
 
 	return split;
+	VMP_END ( );
 }
 
 bool netvars::init ( ) {
+	VMP_BEGINULTRA ( );
 	if ( !cs::i::client )
 		return false;
 
@@ -38,9 +41,12 @@ bool netvars::init ( ) {
 		store_table ( list->m_recv_table->m_net_table_name, list->m_recv_table );
 
 	return true;
+	VMP_END ( );
+	END_FUNC;
 }
 
 void netvars::store_table ( const std::string& name, recv_table_t* table, std::size_t offset ) {
+	VMP_BEGINMUTATION ( );
 	for ( int i { }; i < table->m_num_props; ++i ) {
 		auto prop = &table->m_props [ i ];
 		auto child = prop->m_data_table;
@@ -56,6 +62,7 @@ void netvars::store_table ( const std::string& name, recv_table_t* table, std::s
 			m_offsets [ name ][ prop->m_var_name ].m_offset = static_cast< size_t >( prop->m_offset + offset );
 		}
 	}
+	VMP_END ( );
 }
 
 int netvars::get_client_id ( const std::string& network_name ) {

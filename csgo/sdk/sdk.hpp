@@ -30,6 +30,7 @@
 #include "beams.hpp"
 #include "cvar.hpp"
 #include "network_string_table_container.hpp"
+#include "game_type.hpp"
 
 namespace cs {
 	constexpr auto pi = 3.14159265358979f;
@@ -59,6 +60,7 @@ namespace cs {
 		extern c_view_render_beams* beams;
 		extern IDirect3DDevice9* dev;
 		extern c_network_string_table_container* client_string_table_container;
+		extern c_game_type* game_type;
 	}
 
 	namespace render {
@@ -232,7 +234,7 @@ namespace cs {
 		trace_t tr;
 		util_traceline( g::local->eyes( ), point, 0x46004003, g::local, &tr );
 
-		return tr.m_fraction > 0.97f || ( reinterpret_cast< player_t* >( tr.m_hit_entity )->valid( ) && reinterpret_cast< player_t* >( tr.m_hit_entity )->team( ) != g::local->team( ) );
+		return tr.m_fraction > 0.97f || ( reinterpret_cast< player_t* >( tr.m_hit_entity )->valid( ) && g::local->is_enemy( reinterpret_cast< player_t* >( tr.m_hit_entity ) ) );
 	}
 
 	void rotate_movement ( ucmd_t* cmd, const vec3_t& angles );

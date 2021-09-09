@@ -5,7 +5,7 @@ decltype( &hooks::temp_entities ) hooks::old::temp_entities = nullptr;
 bool __fastcall hooks::temp_entities ( REG, void* msg ) {
 	const auto ret = old::temp_entities ( REG_OUT, msg );
 	
-	if ( !g::local || !g::local->alive())
+	if ( !g::local || !g::local->alive ( ) )
 		return ret;
 
 	for ( auto ei = cs::i::client_state->events ( ); ei; ei = ei->next ) {

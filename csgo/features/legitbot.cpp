@@ -70,7 +70,7 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
 
     if ( exploits::can_shoot( )
         && hit_pl->valid( )
-        && hit_pl->team( ) != g::local->team( )
+        && g::local->is_enemy ( hit_pl )
         && hitbox_target ) {
         ucmd->m_buttons |= buttons_t::attack;
     }
@@ -80,10 +80,12 @@ __forceinline void run_triggerbot( ucmd_t* ucmd ) {
 }
 
 void features::legitbot::run( ucmd_t* ucmd ) {
+    VMP_BEGINMUTATION ( );
     static auto& main_switch = options::vars [ _( "global.assistance_type" ) ].val.i;
 
     if ( main_switch != 1 || !cs::i::engine->is_in_game( ) || !cs::i::engine->is_connected( ) || !g::local )
         return;
 
     run_triggerbot( ucmd );
+    VMP_END ( );
 }

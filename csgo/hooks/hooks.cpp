@@ -75,6 +75,7 @@ std::unique_ptr< c_entity_listener_mgr > ent_listener;
 #pragma optimize( "2", off )
 
 void hooks::init( ) {
+	VMP_BEGINULTRA ( );
 	g::resources::init ( );
 	/* initialize cheat config */
 	gui::init( );
@@ -216,7 +217,7 @@ void hooks::init( ) {
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
 	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
-	//dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
+	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	dbg_hook ( _temp_entities, temp_entities, ( void** ) &old::temp_entities );
 	dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
@@ -233,7 +234,7 @@ void hooks::init( ) {
 	dbg_hook ( _calc_view, calc_view, ( void** ) &old::calc_view );
 	dbg_hook ( _post_network_data_received, post_network_data_received, ( void** ) &old::post_network_data_received );
 	//dbg_hook ( _packet_start, packet_start, ( void** ) &old::packet_start );
-	dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
+	//dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
 	dbg_hook ( _svc_msg_voice_data, svc_msg_voice_data, ( void** ) &old::svc_msg_voice_data );
 	dbg_hook ( _get_client_model_renderable, get_client_model_renderable, ( void** ) &old::get_client_model_renderable );
 
@@ -244,6 +245,8 @@ void hooks::init( ) {
 
 	//cs::i::engine->client_cmd_unrestricted (_( "clear") );
 	//dbg_print ( _("Success.\n" ));
+	VMP_END ( );
+	END_FUNC;
 }
 
 #pragma optimize( "2", on )

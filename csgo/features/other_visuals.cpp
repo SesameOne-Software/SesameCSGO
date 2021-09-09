@@ -11,6 +11,7 @@
 float features::spread_circle::total_spread = 0.0f;
 
 bool features::get_visuals( player_t* pl, visual_config_t& out ) {
+	VMP_BEGINMUTATION ( );
 	memset( &out, 0, sizeof out );
 
 	if ( !pl || !pl->is_player( ) )
@@ -103,7 +104,7 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 		return true;
 	}
 
-	if ( g::local->team( ) != pl->team( ) ) {
+	if ( g::local->is_enemy ( pl ) ) {
 		static auto& options = options::vars [ _( "visuals.enemies.options" ) ].val.l;
 		static auto& fakeduck_flag_placement = options::vars [ _ ( "visuals.enemies.fakeduck_flag_location" ) ].val.i;
 		static auto& reloading_flag_placement = options::vars [ _ ( "visuals.enemies.reloading_flag_location" ) ].val.i;
@@ -262,9 +263,11 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.zoom_color = zoom_color;
 
 	return true;
+	VMP_END ( );
 }
 
 void features::offscreen_esp::draw( ) {
+	VMP_BEGINMUTATION ( );
 	static auto& bomb_esp = options::vars [ _( "visuals.other.bomb_esp" ) ].val.b;
 	static auto& bomb_timer = options::vars [ _( "visuals.other.bomb_timer" ) ].val.b;
 	static auto& offscreen_esp = options::vars [ _( "visuals.other.offscreen_esp" ) ].val.b;
@@ -290,7 +293,7 @@ void features::offscreen_esp::draw( ) {
 
 		switch ( pl->client_class( )->m_class_id ) {
 			case 40: {
-				if ( pl->valid( ) && offscreen_esp && pl != g::local && pl->team( ) != g::local->team( ) ) {
+				if ( pl->valid( ) && offscreen_esp && pl != g::local && g::local->is_enemy ( pl ) ) {
 					vec3_t screen;
 
 					//auto interp_origin = lagcomp::data::cham_records [ pl->idx( ) ].m_bones1 [ 1 ].origin( );
@@ -390,9 +393,11 @@ void features::offscreen_esp::draw( ) {
 			} break;
 		}
 	}
+	VMP_END ( );
 }
 
 void features::spread_circle::draw( ) {
+	VMP_BEGINMUTATION ( );
 	static auto& spread_circle = options::vars [ _( "visuals.other.spread_circle" ) ].val.b;
 	static auto& gradient_spread_circle = options::vars [ _( "visuals.other.gradient_spread_circle" ) ].val.b;
 	static auto& spread_circle_color = options::vars [ _( "visuals.other.spread_circle_color" ) ].val.c;
@@ -492,4 +497,5 @@ void features::spread_circle::draw( ) {
 		render::circle( w / 2, h / 2, radius, 48, rgba ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ) );
 		render::circle( w / 2, h / 2, radius, 48, rgba ( static_cast< int > ( spread_circle_color.r * 255.0f ), static_cast< int > ( spread_circle_color.g * 255.0f ), static_cast< int > ( spread_circle_color.b * 255.0f ), static_cast< int > ( spread_circle_color.a * 255.0f ) ), true );
 	}
+	VMP_END ( );
 }

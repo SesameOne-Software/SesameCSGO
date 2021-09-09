@@ -4,6 +4,42 @@
 #include "../hooks/modify_eye_pos.hpp"
 #include "../hooks/setup_bones.hpp"
 
+bool player_t::is_enemy ( player_t* other ) {
+	static auto mp_teammates_are_enemies = cs::i::cvar->find ( _ ( "mp_teammates_are_enemies" ) );
+
+	if ( !this || !other || this == other )
+		return false;
+
+	if ( cs::i::game_type->get_game_type ( ) == game_type_t::danger_zone ) {
+		const auto my_team = survival_team ( );
+
+		if ( my_team == -1 )
+			return true;
+
+		return my_team != other->survival_team ( );
+	}
+	else {
+		const auto my_team = static_cast< int >( team ( ) ) - 2;
+		auto v11 = false;
+
+		if ( my_team ) {
+			if ( my_team != 1 )
+				return false;
+
+			v11 = other->team ( ) == 2;
+		}
+		else
+			v11 = other->team ( ) == 3;
+
+		if ( v11 )
+			return true;
+
+		return mp_teammates_are_enemies->get_bool ( );
+	}
+
+	return false;
+}
+
 void* planted_c4_t::get_defuser( ) {
 	return cs::i::ent_list->get_by_handle<player_t*>( defuser_handle( ) );
 }
@@ -60,12 +96,12 @@ void animstate_t::update( vec3_t& ang ) {
 }
 
 const char* animstate_t::get_weapon_move_animation ( ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ), "53 56 57 8B F9 33 F6 8B 4F 60 8B 01 FF 90" ).get<const char* ( __thiscall* )( animstate_t* )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ),_( "53 56 57 8B F9 33 F6 8B 4F 60 8B 01 FF 90") ).get<const char* ( __thiscall* )( animstate_t* )> ( );
 	return addr ( this );
 }
 
 void player_t::get_sequence_linear_motion ( void* studio_hdr, int sequence, float* poses, vec3_t* vec ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ), "55 8B EC 83 EC 0C 56 8B F1 57 8B FA 85 F6 75 14" ).get<void ( __fastcall* )( void*, int, float*, vec3_t& )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ), _("55 8B EC 83 EC 0C 56 8B F1 57 8B FA 85 F6 75 14") ).get<void ( __fastcall* )( void*, int, float*, vec3_t& )> ( );
 
 	__asm {
 		mov edx, sequence
@@ -84,12 +120,12 @@ float player_t::get_sequence_move_distance ( void* studio_hdr, int sequence ) {
 }
 
 int player_t::lookup_sequence ( const char* seq ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ), "E8 ? ? ? ? 5E 83 F8 FF" ).resolve_rip().get<int ( __thiscall* )( player_t*, const char* )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ), _("E8 ? ? ? ? 5E 83 F8 FF" )).resolve_rip().get<int ( __thiscall* )( player_t*, const char* )> ( );
 	return addr ( this, seq );
 }
 
 float player_t::sequence_duration ( int sequence ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ), "55 8B EC 56 8B F1 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? 83 C4 04 5E 5D C2 04 00 52 68 ? ? ? ? 6A 02" ).get<float ( __thiscall* )( player_t*, int )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ), _("55 8B EC 56 8B F1 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? 83 C4 04 5E 5D C2 04 00 52 68 ? ? ? ? 6A 02" )).get<float ( __thiscall* )( player_t*, int )> ( );
 
 	float retval;
 	addr ( this, sequence );

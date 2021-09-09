@@ -252,6 +252,7 @@ namespace stb {
 }
 
 void gui::scale_dpi ( ) {
+	VMP_BEGINMUTATION ( );
 	static bool first_scale = true;
 
 	if ( g_last_dpi == options::vars [ _ ( "gui.dpi" ) ].val.f )
@@ -327,9 +328,11 @@ void gui::scale_dpi ( ) {
 	g_last_dpi = options::vars [ _ ( "gui.dpi" ) ].val.f;
 
 	io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+	VMP_END( );
 }
 
 std::string create_cfg_dirs ( ) {
+	VMP_BEGINMUTATION ( );
 	char documents [ MAX_PATH ] { 0 };
 
 	if ( SUCCEEDED ( LI_FN ( SHGetFolderPathA )( nullptr, N ( 5 ), nullptr, N ( 0 ), documents ) ) ) {
@@ -340,9 +343,11 @@ std::string create_cfg_dirs ( ) {
 	}
 
 	return documents;
+	VMP_END ( );
 }
 
 void gui::init( ) {
+	VMP_BEGINMUTATION ( );
 	//if ( !g::loader_data || !g::loader_data->avatar || !g::loader_data->avatar_sz )
 	//	g_pfp_data = std::string( reinterpret_cast< const char* >( ses_pfp ), sizeof( ses_pfp ) );//networking::get(_("sesame.one/data/avatars/s/0/1.jpg"));
 	//else
@@ -361,6 +366,7 @@ void gui::init( ) {
 	gui_mutex.lock ( );
 	load_cfg_list ( );
 	gui_mutex.unlock ( );
+	VMP_END ( );
 }
 
 char selected_config [ 128 ] = "default";
@@ -369,6 +375,7 @@ std::vector< std::string > configs { };
 std::vector< std::string > scripts { };
 
 void gui::load_cfg_list( ) {
+	VMP_BEGINULTRA ( );
 	auto cfg_dir = create_cfg_dirs ( );
 
 	auto sanitize_name = [ ] ( const std::string& dir ) {
@@ -400,9 +407,11 @@ void gui::load_cfg_list( ) {
 	}
 
 	last_weapon_name = nullptr;
+	VMP_END ( );
 }
 
 void gui::weapon_controls( const std::string& weapon_name ) {
+	VMP_BEGINMUTATION ( );
 	const auto ragebot_weapon = _( "ragebot." ) + weapon_name + _( "." );
 	
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Weapon Settings" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -464,9 +473,11 @@ void gui::weapon_controls( const std::string& weapon_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+	VMP_END ( );
 }
 
 void gui::antiaim_controls( const std::string& antiaim_name ) {
+	VMP_BEGINMUTATION ( );
 	const auto antiaim_config = _( "antiaim." ) + antiaim_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Antiaim" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -527,9 +538,11 @@ void gui::antiaim_controls( const std::string& antiaim_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+	VMP_END ( );
 }
 
 void gui::player_visuals_controls( const std::string& visual_name ) {
+	VMP_BEGINMUTATION ( );
 	const auto visuals_config = _( "visuals." ) + visual_name + _( "." );
 
 	ImGui::BeginChildFrame ( ImGui::GetID ( "Player Visuals" ), ImVec2 ( ImGui::GetWindowContentRegionWidth ( ) * 0.5f - ImGui::GetStyle ( ).FramePadding.x, 0.0f ), ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove ); {
@@ -674,6 +687,7 @@ void gui::player_visuals_controls( const std::string& visual_name ) {
 
 		ImGui::EndChildFrame( );
 	}
+	VMP_END ( );
 }
 
 static bool gui_paintkit_getter ( void* data, int idx, const char** out_text ) {
@@ -686,6 +700,7 @@ static bool gui_paintkit_getter ( void* data, int idx, const char** out_text ) {
 }
 
 void gui::draw( ) {
+	VMP_BEGINMUTATION ( );
 	/* HANDLE DPI */
 	//sesui::globals::dpi = options::vars [ _( "gui.dpi" ) ].val.f;
 
@@ -893,7 +908,7 @@ void gui::draw( ) {
 							ImGui::Keybind ( _ ( "Tickbase Shift Key" ), &options::vars [ _ ( "ragebot.dt_key" ) ].val.i, &options::vars [ _ ( "ragebot.dt_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
 							ImGui::Checkbox ( _ ( "Teleport On Shift" ), &options::vars [ _ ( "ragebot.dt_teleport" ) ].val.b );
 							ImGui::PushItemWidth ( -1.0f );
-							ImGui::SliderInt ( _ ( "Tickbase Shift Amount" ), &options::vars [ _ ( "ragebot.dt_ticks" ) ].val.i, 0, 16, _ ( "%d ticks" ) );
+							ImGui::SliderInt ( _ ( "Tickbase Shift Amount" ), &options::vars [ _ ( "ragebot.dt_ticks" ) ].val.i, 0, 15, _ ( "%d ticks" ) );
 							ImGui::PopItemWidth ( );
 							ImGui::Checkbox ( _ ( "Extended Lagcomp" ), &options::vars [ _ ( "ragebot.extended_lagcomp_enabled" ) ].val.b );
 							ImGui::PushItemWidth ( -1.0f );
@@ -1043,9 +1058,9 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Bullet Tracers" ), &options::vars [ _ ( "visuals.other.bullet_tracers" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Bullet Tracer Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_tracer_color" ) ].val.c );
-							ImGui::Checkbox ( _ ( "Client Bullet Impacts" ), &options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b );
-							ImGui::SameLine ( );
-							ImGui::ColorEdit4 ( _ ( "##Client Bullet Impacts Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c );
+							//ImGui::Checkbox ( _ ( "Client Bullet Impacts" ), &options::vars [ _ ( "visuals.other.bullet_impacts_client" ) ].val.b );
+							//ImGui::SameLine ( );
+							//ImGui::ColorEdit4 ( _ ( "##Client Bullet Impacts Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_impacts_client_color" ) ].val.c );
 							ImGui::Checkbox ( _ ( "Server Bullet Impacts" ), &options::vars [ _ ( "visuals.other.bullet_impacts_server" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::ColorEdit4 ( _ ( "##Server Bullet Impacts Color" ), ( float* ) &options::vars [ _ ( "visuals.other.bullet_impacts_server_color" ) ].val.c );
@@ -1196,6 +1211,8 @@ void gui::draw( ) {
 									if ( ImGui::SliderFloat ( _ ( "Quality" ), &cur_gun_skin->second.val.skin.wear, 0.0f, 100.0f, _ ( "%.0f%%" ) ) ) features::skinchanger::skin_changed = true;
 									if ( ImGui::SliderInt ( _ ( "Seed" ), &cur_gun_skin->second.val.skin.seed, 0, 100 ) ) features::skinchanger::skin_changed = true;
 									if ( ImGui::InputText ( _ ( "Nametag" ), cur_gun_skin->second.val.skin.nametag, sizeof ( cur_gun_skin->second.val.skin.nametag ) ) ) features::skinchanger::skin_changed = true;
+
+									ImGui::Text ( _ ( "Search" ) );
 
 									//ImGui::Checkbox ( _ ( "Filter By Weapon" ), &options::skin_vars [ _ ( "skins.skin.filter_by_weapon" ) ].val.b );
 
@@ -1555,13 +1572,14 @@ void gui::draw( ) {
 									return file.good ( );
 								};
 
-								auto file = cfg_dir.append( _ ( "\\sesame\\configs\\" ) ).append( selected_config ).append(_ ( ".xml" ));
+								auto file = cfg_dir + _ ( "\\sesame\\configs\\" ) + selected_config + _ ( ".xml" );
+
+								options::save ( options::skin_vars, cfg_dir + _ ( "\\sesame\\skins\\skins.xml" ) );
 
 								if ( file_exists ( file ) ) {
 									open_save_modal = true;
 								}
 								else {
-									options::save ( options::skin_vars, cfg_dir + _ ( "\\sesame\\skins\\skins.xml" ) );
 									options::save ( options::vars, file );
 
 									gui_mutex.lock ( );
@@ -1726,6 +1744,7 @@ void gui::draw( ) {
 
 		ImGui::PopFont ( );
 	}
+	VMP_END ( );
 }
 
 void gui::watermark::draw( ) {
@@ -1733,6 +1752,7 @@ void gui::watermark::draw( ) {
 }
 
 void gui::keybinds::draw( ) {
+	VMP_BEGINMUTATION ( );
 	std::vector< std::string > entries {
 
 	};
@@ -1843,6 +1863,7 @@ void gui::keybinds::draw( ) {
 
 		ImGui::End( );
 	}
+	VMP_END ( );
 }
 
 #pragma optimize( "2", on )

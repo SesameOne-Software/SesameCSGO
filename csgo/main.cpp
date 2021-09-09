@@ -51,24 +51,26 @@ std::string last_config_user;
 #pragma optimize( "2", off )
 
 unsigned __stdcall do_heartbeat( void* data ) {
-	OBF_BEGIN;
+	VMP_BEGINULTRA ( );
 
-	WHILE ( true ) {
+	while ( true ) {
 		std::this_thread::sleep_for ( std::chrono::seconds ( ph_heartbeat::PH_SECONDS_INTERVAL ) );
 
 		ph_heartbeat::send_heartbeat ( );
-	} ENDWHILE;
+	}
 
-	RETURN ( 0 );
-	OBF_END;
+	return 0;
+	VMP_END ( );
 }
 
+int __stdcall DllMain ( void* loader_data, uint32_t reason, void* reserved );
+
 unsigned __stdcall init_proxy( void* data ) {
-	OBF_BEGIN;
+	VMP_BEGINULTRA ( );
 
 	/* wait for all modules to load */
-	WHILE ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
-		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) ); ENDWHILE;
+	while ( !LI_FN ( GetModuleHandleA )( _ ( "serverbrowser.dll" ) ) )
+		std::this_thread::sleep_for ( std::chrono::milliseconds ( N ( 100 ) ) );
 
 	g::is_legacy = *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( LI_FN ( GetModuleHandleA )( _ ( "csgo.exe" ) ) ) + N( 0x120 ) ) == N( 0x5A2F1C6A ) /* Tuesday, 12.12.2017 00:01:46 UTC */;
 
@@ -77,14 +79,13 @@ unsigned __stdcall init_proxy( void* data ) {
 	netvars::init ( );
 	js_api::init ( );
 	hooks::init ( );
-	
+
 	//security_handler::store_text_section_hash( uintptr_t( loader_info->hMod ) );
 
-	WHILE ( !g::unload )
-		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) ); ENDWHILE;
+	while ( !g::unload )
+		std::this_thread::sleep_for ( std::chrono::seconds ( N ( 1 ) ) );
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 500 ) ) );
-
 	/* destroy imgui resources */
 	ImGui_ImplDX9_Shutdown ( );
 	ImGui_ImplWin32_Shutdown ( );
@@ -97,8 +98,8 @@ unsigned __stdcall init_proxy( void* data ) {
 
 	std::this_thread::sleep_for( std::chrono::milliseconds( N( 200 ) ) );
 
-	IF ( g::local )
-		g::local->animate ( ) = true; ENDIF;
+	if ( g::local )
+		g::local->animate ( ) = true;
 
 	cs::i::input->m_camera_in_thirdperson = false;
 
@@ -110,18 +111,17 @@ unsigned __stdcall init_proxy( void* data ) {
 
 		load_named_sky( _( "nukeblank" ) );
 
-		int i = 0;
-		FOR ( i = cs::i::mat_sys->first_material ( ), i != cs::i::mat_sys->invalid_material ( ), i = cs::i::mat_sys->next_material ( i ) ) {
+		for ( auto i = cs::i::mat_sys->first_material ( ); i != cs::i::mat_sys->invalid_material ( ); i = cs::i::mat_sys->next_material ( i ) ) {
 			auto mat = cs::i::mat_sys->get_material ( i );
 
-			IF ( !mat || mat->is_error_material ( ) )
-				CONTINUE; ENDIF;
+			if ( !mat || mat->is_error_material ( ) )
+				continue;
 
-			IF ( strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) ) || strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) ) {
+			if ( strstr ( mat->get_texture_group_name ( ), _ ( "StaticProp" ) ) || strstr ( mat->get_texture_group_name ( ), _ ( "World" ) ) ) {
 				mat->color_modulate ( 255, 255, 255 );
 				mat->alpha_modulate ( 255 );
-			} ENDIF;
-		} ENDFOR;
+			}
+		}
 	}
 
 #ifndef DEV_BUILD
@@ -130,39 +130,59 @@ unsigned __stdcall init_proxy( void* data ) {
 	FreeLibraryAndExitThread( HMODULE( data ), 0 );
 #endif
 
-	RETURN( 0 );
-	OBF_END;
+	return 0;
+	VMP_END ( );
+}
+
+__forceinline size_t get_image_size ( void* base ) {
+	if ( !base )
+		return 0;
+
+	size_t image_size = 0;
+
+	MEMORY_BASIC_INFORMATION memInfo {};
+	VirtualQuery ( base, &memInfo, sizeof ( memInfo ) );
+
+	while ( memInfo.BaseAddress && memInfo.AllocationBase == base ) {
+		image_size += memInfo.RegionSize;
+		VirtualQuery ( ( LPVOID ) ( ( LPBYTE ) base + image_size ), &memInfo, sizeof ( memInfo ) );
+	}
+
+	return image_size;
 }
 
 int __stdcall DllMain( void* loader_data, uint32_t reason, void* reserved ) {
+	VMP_BEGINULTRA ( );
+
 	if ( reason == DLL_PROCESS_ATTACH ) {
 #ifdef DEV_BUILD
 		const auto nt_headers = reinterpret_cast< IMAGE_NT_HEADERS* > ( reinterpret_cast< uintptr_t >( loader_data ) + reinterpret_cast< IMAGE_DOS_HEADER* >( loader_data )->e_lfanew );
 
 		g_ImageStartAddr = reinterpret_cast< void* >( nt_headers->OptionalHeader.ImageBase );
-		g_ImageEndAddr = reinterpret_cast< void* >( nt_headers->OptionalHeader.SizeOfImage );
+		g_ImageEndAddr = ( uint8_t* ) g_ImageStartAddr + get_image_size ( reinterpret_cast< void* >( nt_headers->OptionalHeader.ImageBase ) );
 #else
 		const auto hearbeat_info = reinterpret_cast< ph_heartbeat::heartbeat_info* > ( loader_data );
 
 		g_ImageStartAddr = reinterpret_cast< void* >( hearbeat_info->image_base );
-		g_ImageEndAddr = reinterpret_cast< void* >( hearbeat_info->image_base + 0x1000000 );
+		g_ImageEndAddr = ( uint8_t* ) g_ImageStartAddr + get_image_size ( reinterpret_cast< void* >( hearbeat_info->image_base ) );
 #endif
 
 		AddVectoredExceptionHandler ( 1, ExceptionHandler );
 	}
 
-	OBF_BEGIN;
-	IF ( reason == DLL_PROCESS_ATTACH ) {
+	if ( reason == DLL_PROCESS_ATTACH ) {
 		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( init_proxy ), loader_data, 0, nullptr );
 
-#ifndef DEV_BUILD
-		ph_heartbeat::initialize_heartbeat ( reinterpret_cast< ph_heartbeat::heartbeat_info* >( loader_data ) );
-		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( do_heartbeat ), nullptr, 0, nullptr );
-#endif
-	} ENDIF;
+//#ifndef DEV_BUILD
+//		ph_heartbeat::initialize_heartbeat ( reinterpret_cast< ph_heartbeat::heartbeat_info* >( loader_data ) );
+//		_beginthreadex ( nullptr, 0, reinterpret_cast< _beginthreadex_proc_type >( do_heartbeat ), nullptr, 0, nullptr );
+//#endif
+	}
 		
-	RETURN( TRUE );
-	OBF_END;
+	return TRUE;
+
+	VMP_END ( );
+	END_FUNC;
 }
 
 #pragma optimize( "2", on )

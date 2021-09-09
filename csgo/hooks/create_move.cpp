@@ -263,8 +263,6 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 				features::spread_circle::total_spread = 0.0f;
 		}
 
-		features::antiaim::simulate_lby ( );
-
 		if ( !exploits::in_exploit ) {
 			features::legitbot::run ( ucmd );
 
@@ -282,11 +280,10 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 				exploits::has_shifted = false;
 		}
 
-		features::antiaim::run ( ucmd, last_attack );
-		features::autopeek::run ( ucmd, old_angs );
+		features::antiaim::simulate_lby ( );
 
-		if ( !exploits::in_exploit )
-			fix_event_delay ( ucmd );
+		features::antiaim::run ( ucmd, last_attack, old_angs );
+		features::autopeek::run ( ucmd, old_angs );
 	} );
 
 	if ( !exploits::in_exploit ) {
@@ -375,7 +372,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 
 	ucmd->m_fmove = std::clamp< float >( ucmd->m_fmove, -g::cvars::cl_forwardspeed->get_float ( ), g::cvars::cl_forwardspeed->get_float ( ) );
 	ucmd->m_smove = std::clamp< float >( ucmd->m_smove, -g::cvars::cl_sidespeed->get_float(), g::cvars::cl_sidespeed->get_float ( ) );
-
+	ucmd->m_umove = std::clamp< float > ( ucmd->m_umove, -g::cvars::cl_upspeed->get_float ( ), g::cvars::cl_upspeed->get_float ( ) );
+	
 	/* airstuck (only on community servers) */
 	airstuck ( ucmd );
 
