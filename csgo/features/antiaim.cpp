@@ -203,8 +203,23 @@ void features::antiaim::slow_walk ( ucmd_t* cmd, vec3_t& old_angs ) {
 		}
 
 		cmd->m_buttons &= ~buttons_t::walk;
-		cmd->m_buttons |= buttons_t::speed;
+		//cmd->m_buttons |= buttons_t::speed;
 	};
+
+	auto max_speed = 260.0f;
+	const auto weapon = g::local->weapon ( );
+
+	if ( weapon && weapon->data ( ) )
+		max_speed = g::local->scoped ( ) ? weapon->data ( )->m_max_speed_alt : weapon->data ( )->m_max_speed;
+
+	auto abs_max_speed = max_speed;
+
+	if ( !!( g::local->flags ( ) & flags_t::ducking ) )
+		abs_max_speed *= 0.34f;
+	else if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( g::local ) + 0x9975 ) )
+		abs_max_speed *= 0.52f;
+
+	//max_speed = std::min ( max_speed, deployable_limited_max_speed ( g::local ) );
 
 	if ( utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && g::local->weapon ( ) && g::local->weapon ( )->data ( ) ) {
 		if ( fakewalk && !cs::is_valve_server ( ) ) {
@@ -212,22 +227,15 @@ void features::antiaim::slow_walk ( ucmd_t* cmd, vec3_t& old_angs ) {
 				approach_speed ( 0.0f );
 		}
 		else {
-			auto flp2 = [ ] ( uint32_t x ) -> uint32_t {
-				x = x | ( x >> 1 );
-				x = x | ( x >> 2 );
-				x = x | ( x >> 4 );
-				x = x | ( x >> 8 );
-				x = x | ( x >> 16 );
-				return x - ( x >> 1 );
-			};
+			auto target_speed = max_speed * 0.33f * ( slow_walk_speed / 100.0f );
 
-			const auto slowwalk_cycle = static_cast< float >( cmd->m_cmdnum % 10000 ) * cs::ticks2time ( 1 ) * 5.0f;
-			const auto scaled_slowwalk_cycle = static_cast< float >( flp2 ( static_cast< int >( slowwalk_cycle ) ) );
-			const auto slowwalk_cycle_delta = abs( slowwalk_cycle - scaled_slowwalk_cycle - 0.5f );
-			const auto max_speed = std::min ( g::local->max_speed(), deployable_limited_max_speed ( g::local ) );
-
-			ragebot::skeet_slow ( cmd, ( max_speed - 1.0f ) * 0.34f - ( slowwalk_cycle_delta + slowwalk_cycle_delta ) * 3.0f, old_angs );
+			/* tiny slowwalk */
+			if ( abs ( cmd->m_fmove ) > 3.3f || abs ( cmd->m_smove ) > 3.3f )
+				approach_speed ( abs( target_speed - fmodf ( cs::i::globals->m_curtime * ( target_speed * 0.42f * 4.0f ), target_speed * 0.42f ) ) );
 		}
+	}
+	else if ( !!( g::local->flags ( ) & flags_t::on_ground ) && ( abs ( cmd->m_fmove ) > 3.3f || abs ( cmd->m_smove ) > 3.3f ) ) {
+		approach_speed ( abs( abs_max_speed - fmodf ( cs::i::globals->m_curtime * ( abs_max_speed * 0.25f * 4.0f ), abs_max_speed * 0.25f ) ));
 	}
 }
 
@@ -258,11 +266,10 @@ void features::antiaim::fakelag ( ucmd_t* ucmd, player_t* target ) {
 
 	auto max_lag = std::clamp< int > ( choke_limit, 1, choke_limit - final_shift_amount_max );
 
-	if ( fakewalk && utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && !cs::is_valve_server ( ) )
-		max_lag = 14;
-
 	if ( fd_enabled && utils::keybind_active ( fd_key, fd_key_mode ) )
 		max_lag = cs::is_valve_server ( ) ? 8 : 16;
+	else if ( fakewalk && utils::keybind_active ( slowwalk_key, slowwalk_key_mode ) && !cs::is_valve_server ( ) )
+		max_lag = 14;
 
 	static bool last_on_ground = true;
 	static int next_choke = fakelag_limit;

@@ -499,31 +499,31 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	const auto sniper = weapon_id == weapons_t::awp || weapon_id == weapons_t::g3sg1 || weapon_id == weapons_t::scar20 || weapon_id == weapons_t::ssg08;
 	const auto crouched = !!( g::local->flags ( ) & flags_t::ducking );
 
-	//// calculate inaccuracy.
-	//const auto weapon_inaccuracy = weapon->inaccuracy ( );
-	//
-	//if ( weapon_id == weapons_t::revolver ) {
-	//	if ( weapon_inaccuracy < ( crouched ? 0.0020f : 0.0055f ) ) {
-	//		hc_out = -1.0f;
-	//		return true;
-	//	}
-	//}
-	//
-	//const auto zoomed = g::local->scoped ( );
-	//
-	//// no need for hitchance, if we can't increase it anyway.
-	//if ( crouched ) {
-	//	if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_crouch_alt : weapon_data->m_inaccuracy_crouch ) ) {
-	//		hc_out = -1.0f;
-	//		return true;
-	//	}
-	//}
-	//else {
-	//	if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_stand_alt : weapon_data->m_inaccuracy_stand ) ) {
-	//		hc_out = -1.0f;
-	//		return true;
-	//	}
-	//}
+	// calculate inaccuracy.
+	const auto weapon_inaccuracy = weapon->inaccuracy ( );
+	
+	if ( weapon_id == weapons_t::revolver ) {
+		if ( weapon_inaccuracy < ( crouched ? 0.0020f : 0.0055f ) ) {
+			hc_out = -1.0f;
+			return true;
+		}
+	}
+	
+	const auto zoomed = g::local->scoped ( );
+	
+	// no need for hitchance, if we can't increase it anyway.
+	if ( crouched ) {
+		if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_crouch_alt : weapon_data->m_inaccuracy_crouch ) ) {
+			hc_out = -1.0f;
+			return true;
+		}
+	}
+	else {
+		if ( round_acc ( weapon_inaccuracy ) == round_acc ( ( sniper && zoomed ) ? weapon_data->m_inaccuracy_stand_alt : weapon_data->m_inaccuracy_stand ) ) {
+			hc_out = -1.0f;
+			return true;
+		}
+	}
 
 	auto src = g::local->eyes( );
 
@@ -624,7 +624,13 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 			forward.z + right.z * spread_dir.x + up.z * spread_dir.y
 		);
 
-		if ( autowall::trace_ray( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+		trace_t tr;
+		ray_t ray;
+
+		ray.init ( src, src + direction * weapon_range );
+		cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
+
+		if ( tr.m_hit_entity == pl && tr.m_hitbox == static_cast<int>( hitbox ) )
 			hits++;
 	}
 
@@ -754,8 +760,15 @@ float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* playe
 	auto slowed_by_scope = false;
 
 	if ( sv_accelerate_use_weapon_speed->get_bool ( ) && weapon ) {
-		const auto max_speed = vfunc<float ( __thiscall* )( weapon_t* )> ( weapon, 441 )( weapon );
-		const auto zoom_levels = vfunc<int ( __thiscall* )( weapon_t* )> ( weapon, 461 )( weapon );
+		auto max_speed = 260.0f;
+		auto zoom_levels = 0;
+		const auto weapon = g::local->weapon ( );
+
+		if ( weapon ) {
+			if ( auto data = weapon->data ( ) )
+				max_speed = g::local->scoped ( ) ? data->m_max_speed_alt : data->m_max_speed;
+			zoom_levels = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( weapon ) + 0x33E0 );
+		}
 
 		slowed_by_scope = ( zoom_levels > 0 && zoom_levels > 1 && ( max_speed * 0.52f ) < 110.0f );
 		goal_speed *= std::min ( 1.0f, ( max_speed / max_speed ) );
@@ -1181,37 +1194,37 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 	if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
 		const auto vel_norm = g::local->vel ( ).normalized ( );
-
+	
 		auto speed = cur_speed;
 		auto move_dir = -vel_norm;
 		auto move_dir_max_speed = move_dir * speed;
 		auto predicted_eyes = g::local->eyes ( );
-
+	
 		auto ticks_until_slow = 0;
-
+	
 		while ( speed > stop_to_speed ) {
 			auto ducking = false;
-
+	
 			const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
-
+	
 			speed -= accel;
 			move_dir_max_speed = move_dir * speed;
 			predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
-
+	
 			ticks_until_slow++;
-
+	
 			if ( ticks_until_slow >= 16 )
 				break;
 		}
-
+	
 		player_t* at_target = nullptr;
 	
-		for ( auto i = 0; i < cs::i::globals->m_max_clients; i++ ) {
+		for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
 			const auto ent = cs::i::ent_list->get<player_t*> ( i );
 	
 			if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
 				const auto min_dmg = get_scaled_min_dmg ( ent );
-
+	
 				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
 				const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
 	

@@ -11,7 +11,6 @@
 float features::spread_circle::total_spread = 0.0f;
 
 bool features::get_visuals( player_t* pl, visual_config_t& out ) {
-	VMP_BEGINMUTATION ( );
 	memset( &out, 0, sizeof out );
 
 	if ( !pl || !pl->is_player( ) )
@@ -263,7 +262,6 @@ bool features::get_visuals( player_t* pl, visual_config_t& out ) {
 	out.zoom_color = zoom_color;
 
 	return true;
-	VMP_END ( );
 }
 
 void features::offscreen_esp::draw( ) {

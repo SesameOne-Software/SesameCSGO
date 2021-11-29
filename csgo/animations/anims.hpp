@@ -2,6 +2,7 @@
 #include <deque>
 #include <array>
 #include <optional>
+
 #include "../sdk/sdk.hpp"
 
 namespace anims {
@@ -59,6 +60,7 @@ namespace anims {
 		bool m_forward_track;
 		bool m_resolved;
 		bool m_has_vel;
+		bool m_shifted;
 		vec3_t m_angles;
 		vec3_t m_origin;
 		vec3_t m_mins;
@@ -77,17 +79,7 @@ namespace anims {
 		std::array<std::array< matrix3x4_t , 128 > , desync_side_t::desync_max + 1> m_aim_bones;
 		desync_side_t m_side;
 
-		inline bool valid ( ) {
-			const auto nci = cs::i::engine->get_net_channel_info ( );
-
-			if ( !nci || !g::local || m_invalid )
-				return false;
-
-			const auto lerp = lerp_time ( );
-			const auto correct = std::clamp ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp, 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
-
-			return abs ( correct - ( cs::ticks2time ( g::local->tick_base ( ) ) - m_simtime ) ) <= 0.2f;
-		}
+		bool valid ( );
 
 		anim_info_t ( ) {
 
@@ -116,15 +108,16 @@ namespace anims {
 	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );
 	
 	inline std::deque<anim_info_t*> get_lagcomp_records( player_t* ent ) {
-		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) )
+		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) || !lagcomp_track [ ent->idx ( ) ].front ( )->valid ( ) )
 			return {};
-		
-		std::deque<anim_info_t*> records {};
 
+		//return { lagcomp_track [ ent->idx ( ) ].front ( ) };
+		std::deque<anim_info_t*> records {};
+		
 		for ( auto& rec : lagcomp_track [ ent->idx( ) ] )
 			if ( rec->valid( ) )
 				records.push_back( rec );
-
+		
 		return records;
 	}
 
@@ -149,6 +142,8 @@ namespace anims {
 		return std::nullopt;
 	}
 
+	inline int yaw_mode = 0;
+	
 	bool get_lagcomp_bones( player_t* ent , std::array<matrix3x4_t , 128>& out );
 
 	void reset_data ( int idx );

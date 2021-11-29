@@ -63,7 +63,7 @@ public:
 	}
 
 	bool is_player ( ) {
-		return vfunc< bool ( __thiscall* )( entity_t* ) > ( this, 157 )( this );
+		return vfunc< bool ( __thiscall* )( entity_t* ) > ( this, 158 )( this );
 	}
 };
 

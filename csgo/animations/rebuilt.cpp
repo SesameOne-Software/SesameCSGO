@@ -2188,7 +2188,8 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	update_layer ( anim_state, 6, nWeaponMoveSeq, flLocalCycleIncrement, flMoveWeightWithAirSmooth, anim_state->m_feet_cycle );
 
 	if ( !CLIENT_DLL_ANIMS && player == g::local && g::local ) {
-		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + ( g::is_legacy ? 0x31E8 : 0x31F8 ) );
+		/* @ m_iFOV + 0x14 */
+		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + 0x3208 );
 
 		const auto moveRight = !!( buttons & buttons_t::right );
 		const auto moveLeft = !!( buttons & buttons_t::left );
@@ -2623,7 +2624,7 @@ void anims::rebuilt::update( animstate_t* anim_state , vec3_t angles , vec3_t or
 	{
 		MDLCACHE_CRITICAL_SECTION( );
 
-		vfunc<void( __thiscall* )( player_t*, int )>( player, 218 )( player, 0 ); // m_pPlayer->SetSequence( 0 ); might become outdated
+		vfunc<void( __thiscall* )( player_t*, int )>( player, 219 )( player, 0 ); // m_pPlayer->SetSequence( 0 ); might become outdated
 		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( player ) + 0xA18 ) = 0.0f;
 		
 		if ( *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( player ) + 0xA14 ) != 0.0f ) {

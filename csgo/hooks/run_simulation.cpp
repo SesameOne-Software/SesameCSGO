@@ -60,18 +60,18 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	const auto backup_vel_modifier = localplayer->velocity_modifier ( );
 	localplayer->velocity_modifier ( ) = features::prediction::vel_modifier;
 	
-	if ( current_command == exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].first )
-		exploits::adjust_player_time_base ( localplayer, exploits::tickshift [ current_command % exploits::tickshift.size ( ) ].second );
+	if ( cmd->m_cmdnum == exploits::tickshift [ cmd->m_cmdnum % exploits::tickshift.size ( ) ].first )
+		exploits::adjust_player_time_base ( localplayer, exploits::tickshift [ cmd->m_cmdnum % exploits::tickshift.size ( ) ].second );
 	
 	auto curtime = cs::i::globals->m_curtime = cs::ticks2time ( localplayer->tick_base ( ) );
 	__asm movss xmm2, curtime
 	
-	if ( current_command > last_cmd_num )
+	if ( cmd->m_cmdnum > last_cmd_num )
 		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) - N ( 1 ), true );
 	
-	old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
+	old::run_simulation ( REG_OUT, cmd->m_cmdnum, cmd, localplayer );
 	
-	if ( current_command > last_cmd_num )
+	if ( cmd->m_cmdnum > last_cmd_num )
 		features::prediction::fix_netvars ( cs::i::client_state->last_command_ack ( ) );
 	
 	localplayer->velocity_modifier ( ) = backup_vel_modifier;
@@ -79,12 +79,12 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	features::prediction::fix_viewmodel ( true );
 	
 	/* local anims */
-	if ( current_command > last_cmd_num ) {
+	if ( cmd->m_cmdnum > last_cmd_num ) {
 		if ( localplayer && localplayer->alive ( ) )
 			anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
 		else
 			anims::manage_fake ( );
 
-		last_cmd_num = current_command;
+		last_cmd_num = cmd->m_cmdnum;
 	}
 }

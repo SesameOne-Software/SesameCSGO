@@ -49,7 +49,19 @@ void fix_slide( ucmd_t* ucmd ) {
 
 	static auto& leg_movement = options::vars[ _( "antiaim.leg_movement" ) ].val.i;
 
+	auto max_speed = 260.0f;
+	if ( auto weapon = g::local->weapon ( ) ) {
+		const auto weapon_data = weapon->data ( );
+
+		max_speed = g::local->scoped ( ) ? weapon_data->m_max_speed_alt : weapon_data->m_max_speed;
+	}
+
+	const auto is_walking = g::local->vel ( ).length_2d ( ) < max_speed * 0.52f;
 	auto wanted_leg_movement = leg_movement;
+
+	/* dont slide if we arent able to anyways */
+	if ( leg_movement != 0 && is_walking )
+		wanted_leg_movement = 1;
 
 redo_leg_movement:
 	ucmd->m_buttons &= ~( buttons_t::right | buttons_t::left | buttons_t::back | buttons_t::forward );
@@ -76,11 +88,9 @@ redo_leg_movement:
 		if ( g::send_packet )
 			leg_movement_counter++;
 
-		switch ( leg_movement_counter % 4 ) {
-		case 0: wanted_leg_movement = 0; break;
-		case 1: wanted_leg_movement = 1; break;
-		case 2: wanted_leg_movement = 2; break;
-		case 3: wanted_leg_movement = 1; break;
+		switch ( leg_movement_counter % 2 ) {
+		case 0: wanted_leg_movement = 1; break;
+		case 1: wanted_leg_movement = 2; break;
 		}
 
 		goto redo_leg_movement;
@@ -95,7 +105,7 @@ void fix_event_delay( ucmd_t* ucmd ) {
 
 	/* choke packets if requested */
 	if ( g::local && g::local->weapon ( ) && g::local->weapon ( )->data ( )
-		&& ( !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) && exploits::can_shoot ( ) )
+		&& ( !!( ucmd->m_buttons & ( buttons_t::attack | ( g::local->weapon ( )->data ( )->m_type == weapon_type_t::knife ? buttons_t::attack2 : static_cast< buttons_t >( 0 ) ) ) ) /* && exploits::can_shoot ( )*/ )
 		&& !( fd_enabled && utils::keybind_active( fd_key, fd_key_mode ) ) )
 		g::send_packet = true;
 
@@ -182,12 +192,19 @@ void log_outgoing_cmd_nums ( ucmd_t* ucmd ) {
 bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	const auto ret = old::create_move ( REG_OUT, sampletime, ucmd );
 
+	if ( !exploits::in_exploit && ret && ucmd )
+		cs::i::engine->set_viewangles ( ucmd->m_angs );
+
 	if ( !ucmd || !ucmd->m_cmdnum )
 		return ret;
 
-	if ( !exploits::in_exploit && ret ) {
-		cs::i::pred->set_local_viewangles ( ucmd->m_angs );
-		cs::i::engine->set_viewangles ( ucmd->m_angs );
+	if ( cs::i::client_state->delta_tick ( ) > 0 ) {
+		cs::i::pred->update (
+			cs::i::client_state->delta_tick ( ),
+			cs::i::client_state->delta_tick ( ) > 0,
+			cs::i::client_state->last_command_ack ( ),
+			cs::i::client_state->last_outgoing_cmd ( ) + cs::i::client_state->choked ( )
+		);
 	}
 
 	hook_netchannel ( );
@@ -285,6 +302,8 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		features::antiaim::run ( ucmd, last_attack, old_angs );
 		features::autopeek::run ( ucmd, old_angs );
 	} );
+
+	fix_event_delay ( ucmd );
 
 	if ( !exploits::in_exploit ) {
 		exploits::will_shift = false;

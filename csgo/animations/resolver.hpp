@@ -43,6 +43,8 @@ namespace anims {
 
 		inline std::deque< anims::resolver::hit_matrix_rec_t > hit_matrix_rec { };
 		inline std::deque< impact_rec_t > impact_recs { };
+
+		inline float weight_tolerance = 1.0f;
 		
 		bool process_blood ( const effect_data_t& effect_data );
 		void process_impact( event_t* event );

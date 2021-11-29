@@ -168,8 +168,8 @@ void player_t::create_animstate( animstate_t* state ) {
 void player_t::inval_bone_cache( ) {
 	static auto invalidate_bone_cache = pattern::search( _( "client.dll" ), _( "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ) ).add( 10 ).get< uintptr_t >( );
 
-	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2924 ) ) = N( 0xFF7FFFFF );
-	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2690 ) ) = **( uintptr_t** ) invalidate_bone_cache - 1;
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x292C ) ) = N( 0xFF7FFFFF );
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2694 ) ) = **( uintptr_t** ) invalidate_bone_cache - 1;
 }
 
 void player_t::set_abs_angles( const vec3_t& ang ) {
@@ -206,19 +206,19 @@ void player_t::set_abs_origin( const vec3_t& vec ) {
 }
 
 animstate_t* player_t::animstate( ) {
-	static auto animstate_offset = pattern::search( _( "client.dll" ), _( "8B 8E ? ? ? ? F3 0F 10 48 04 E8 ? ? ? ? E9" ) ).add( 2 ).deref( ).get< std::uintptr_t >( );
+	static auto animstate_offset = pattern::search( _( "client.dll" ), _( "8B 8E ? ? ? ? 85 C9 74 3E E8" ) ).add( 2 ).deref( ).get< std::uintptr_t >( );
 	return *( animstate_t** )( std::uintptr_t( this ) + animstate_offset );
 }
 
 vec3_t player_t::eyes( ) {
 	static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
 
-	vec3_t pos = this->origin( ) + this->view_offset( );
+	vec3_t pos = origin( ) + view_offset( );
 
 	/* eye position */
-	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 168 ) ( this, pos );
+	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 169 ) ( this, pos );
 
-	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x3AC8 ) && animstate ( ) )
+	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x9B14 ) && this == g::local && animstate ( ) )
 		hooks::modify_eye_pos( animstate( ), nullptr, pos );
 
 	return pos;
@@ -236,6 +236,19 @@ matrix3x4_t*& player_t::bone_cache( ) {
 
 weapon_t* player_t::weapon( ) {
 	return cs::i::ent_list->get_by_handle< weapon_t* >( weapon_handle( ) );
+}
+
+entity_t* player_t::vehicle ( ) {
+	auto handle = vehicle_handle ( );
+	int* v14 = nullptr;
+
+	if ( handle != -1
+		&& ( v14 = cs::i::ent_list->get_by_handle< int* > ( handle ) ) != 0
+		&& v14 [ 1 ] == *( reinterpret_cast< unsigned short int* >( &handle ) + 1 )
+		&& *v14 )
+		return ( *( entity_t* ( __thiscall** )( int ) )( *( DWORD* ) *v14 + 396 ) )( *v14 );
+
+	return nullptr;
 }
 
 std::vector<weapon_t*> player_t::weapons ( ) {

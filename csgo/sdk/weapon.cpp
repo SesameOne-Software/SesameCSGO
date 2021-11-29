@@ -140,15 +140,15 @@ weapon_t* weapon_t::world_mdl ( ) {
 
 float weapon_t::inaccuracy( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 482 )( this );
+	return vfunc< fn >( this, 483 )( this );
 }
 
 float weapon_t::spread( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 452 )( this );
+	return vfunc< fn >( this, 453 )( this );
 }
 
 float weapon_t::max_speed( ) {
 	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 441 )( this );
+	return vfunc< fn >( this, 442 )( this );
 }

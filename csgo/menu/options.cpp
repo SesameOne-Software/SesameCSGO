@@ -415,7 +415,7 @@ __forceinline void add_player_visual_config( const std::string& player_category 
 }
 
 void options::init_skins ( ) {
-	VMP_BEGINMUTATION ( );
+	//VMP_BEGINMUTATION ( );
 	struct weapon_arr_entry_t {
 		const char* weapon_name;
 		PAD ( 12 );
@@ -435,11 +435,11 @@ void options::init_skins ( ) {
 
 	option::add_skin_int ( _ ( "skins.models.player_model_t" ), 0 );
 	option::add_skin_int ( _ ( "skins.models.player_model_ct" ), 0 );
-	VMP_END ( );
+	//VMP_END ( );
 }
 
 void options::init( ) {
-	VMP_BEGINULTRA ( );
+	//VMP_BEGINULTRA ( );
 	/* options should be structered in the following format: */
 	/* TAB.GROUP.OPTION */
 
@@ -622,7 +622,7 @@ void options::init( ) {
 
 	/* skins */
 	init_skins ( );
-	VMP_END ( );
+	//VMP_END ( );
 }
 
 #pragma optimize( "2", on )

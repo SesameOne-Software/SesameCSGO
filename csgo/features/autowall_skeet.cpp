@@ -143,7 +143,7 @@ __forceinline bool trace_to_exit ( vec3_t start, vec3_t dir, vec3_t& end, trace_
 	return false;
 }
 
-__forceinline bool handle_bullet_penetration ( const vec3_t& dir, vec3_t& src, weapon_info_t* weapon_data, trace_t& tr, int& penetrate_count, float& cur_dmg, float dmg_fail, player_t* player ) {
+bool handle_bullet_penetration ( const vec3_t& dir, vec3_t& src, weapon_info_t* weapon_data, trace_t& tr, int& penetrate_count, float& cur_dmg, float dmg_fail, player_t* player ) {
 	auto surface_data = cs::i::phys->surface ( tr.m_surface.m_surface_props );
 	auto enter_material = surface_data->m_game.m_material;
 	auto hit_grate = ( tr.m_contents & contents_grate ) != 0;
@@ -163,7 +163,7 @@ __forceinline bool handle_bullet_penetration ( const vec3_t& dir, vec3_t& src, w
 	if ( dmg_fail > 10.0f ) {
 		auto enter_penetration_modifier = 3.0f;
 		auto enter_dmg_lost_percent = 0.16f;
-
+	
 		switch ( enter_material ) {
 		case 'G':
 		case 'Y':
@@ -190,10 +190,10 @@ __forceinline bool handle_bullet_penetration ( const vec3_t& dir, vec3_t& src, w
 			}
 			break;
 		}
-
+	
 		const auto enter_pen_mod = std::max ( 0.0f, 1.0f / enter_penetration_modifier );
 		const auto enter_pen_wep_mod = std::max ( 0.0f, ( 3.0f / weapon_data->m_penetration ) * 1.25f ) * ( enter_pen_mod * 3.0f ) + ( cur_dmg * enter_dmg_lost_percent );
-
+	
 		max_trace_to_exit_dist = std::min ( ( abs ( sqrt ( ( cur_dmg - ( dmg_fail - 1.0f ) ) - enter_pen_wep_mod ) * 4.8989797f ) / sqrt ( enter_pen_mod ) + 4.0f ) + 1.0f, 90.0f );
 	}
 

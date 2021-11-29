@@ -36,7 +36,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	//	return;
 
 	using bone_lookup_fn = int( __thiscall* )( player_t*, const char* );
-	static auto lookup_bone = pattern::search( _( "client.dll" ), _( "55 8B EC 53 56 8B F1 57 83 BE ? ? ? ? ? 75" ) ).get<bone_lookup_fn>( );
+	static auto lookup_bone = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 85 C0 78 4E" ) ).resolve_rip().get<bone_lookup_fn>( );
 
 	if ( !player || player != g::local || !player->bone_cache ( ) || !in_cm )
 		return;
@@ -48,7 +48,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	if ( !anim_state->m_hit_ground || anim_state->m_duck_amount == 0.0f || !cs::i::ent_list->get<void*> ( player->ground_entity_handle ( ) ) )
 		return;
 
-	auto bone_pos = anims::real_matrix [ lookup_bone ( player, "head_0" ) ].origin ( );
+	auto bone_pos = anims::real_matrix [ lookup_bone ( player, _("head_0") ) ].origin ( );
 
 	if ( bone_pos.z < pos.z )
 		pos.z = std::lerp ( pos.z, bone_pos.z, spline_remap_val ( abs ( pos.z - bone_pos.z ), 4.0f, 10.0f, 0.0f, 1.0f ) );

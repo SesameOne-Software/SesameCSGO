@@ -119,6 +119,7 @@ public:
 	bool m_full_auto;
 	PAD ( 3 );
 	int m_dmg;
+	PAD ( 4 );
 	float m_armor_ratio;
 	int m_bullets;
 	float m_penetration;
@@ -151,7 +152,7 @@ public:
 	float m_inaccuracy_move_alt;
 	float m_inaccuracy_reload;
 	int m_recoil_seed;
-	PAD ( 32 );
+	PAD ( 36 );
 };
 
 class c_econ_item {
@@ -322,7 +323,7 @@ public:
 
 	__forceinline void update_accuracy( ) {
 		using fn = void( __thiscall* )( void* );
-		vfunc< fn >( this, 483 )( this );
+		vfunc< fn >( this, 484 )( this );
 	}
 
 	float inaccuracy( );

@@ -75,7 +75,7 @@ std::unique_ptr< c_entity_listener_mgr > ent_listener;
 #pragma optimize( "2", off )
 
 void hooks::init( ) {
-	VMP_BEGINULTRA ( );
+	//VMP_BEGINULTRA ( );
 	g::resources::init ( );
 	/* initialize cheat config */
 	gui::init( );
@@ -83,6 +83,10 @@ void hooks::init( ) {
 	//const auto cl_extrapolate = cs::i::cvar->find (_("cl_extrapolate") );
 	//cl_extrapolate->no_callback ( );
 	//cl_extrapolate->set_value ( 0 );
+
+	const auto r_jiggle_bones = cs::i::cvar->find ( _ ( "r_jiggle_bones" ) );
+	r_jiggle_bones->no_callback ( );
+	r_jiggle_bones->set_value ( 0 );
 
 	features::skinchanger::init ( );
 
@@ -122,7 +126,7 @@ void hooks::init( ) {
 	LI_FN ( VirtualProtect )( engine_bp, N ( 1 ), old_prot, &old_prot );
 
 	/* hook functions */
-	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 85 C9 75 06 B0" ) ).get< void* >( );
+	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 4D 04 8B C1" ) ).get< void* >( );
 	const auto _frame_stage_notify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< void* >( );
 	const auto _end_scene = vfunc< void* >( cs::i::dev, N( 42 ) );
 	const auto _reset = vfunc< void* >( cs::i::dev, N( 16 ) );
@@ -143,11 +147,11 @@ void hooks::init( ) {
 	const auto _in_prediction = vfunc< void* >( cs::i::pred, N( 14 ) );	
 	const auto _emit_sound = pattern::search( _( "engine.dll" ), _( "E8 ? ? ? ? 8B E5 5D C2 3C 00 55" ) ).resolve_rip( ).get<void*>( );
 	const auto _cs_blood_spray_callback = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 4D 08 F3 0F 10 51 ? 8D 51 18" ) ).get<void*>( );
-	const auto _modify_eye_pos = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
+	const auto _modify_eye_pos = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 70 56 57 8B F9 89 7C 24 14 83 7F 60" ) ).get<void*>( );
 	const auto _setup_bones = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9" ) ).get< void* >( );
 	const auto _run_command = vfunc<void*>( cs::i::pred, 19 );
 	const auto _run_simulation = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? A1 ? ? ? ? F3 0F 10 45 ? F3 0F 11 40" ) ).resolve_rip().get< void* >( );
-	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 E4 F0 81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 1C" ) ).get< void* > ( );
+	const auto _build_transformations = pattern::search ( _ ( "client.dll" ), _ ( "81 EC ? ? ? ? 56 57 8B F9 8B 0D ? ? ? ? 89 7C 24 28" ) ).sub(3).get< void* > ( );
 	const auto _base_interpolate_part1 = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 8B 45 14 56" ) ).get< void* > ( );
 	const auto _temp_entities = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 E4 F8 83 EC 4C A1 ? ? ? ? 80 B8" ) ).get< void* > ( );
 	const auto _update_clientside_animations = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 0D ? ? ? ? 8B 01 FF 50 10" ) ).resolve_rip ( ).get< void* > ( );
@@ -167,6 +171,9 @@ void hooks::init( ) {
 	const auto _get_client_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? F3 0F 58 44 24" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _svc_msg_voice_data = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC 83 E4 F8 A1 ? ? ? ? 81 EC ? ? ? ? 53 56 8B F1 B9 ? ? ? ? 57 FF 50 34 8B 7D 08 85 C0 74 13 8B 47 08" ) ).get< void* > ( );
 	const auto _get_client_model_renderable = pattern::search ( _ ( "client.dll" ), _ ( "56 8B F1 80 BE ? ? ? ? ? 0F 84 ? ? ? ? 80 BE ? ? ? ? ? 0F 85 ? ? ? ? 8B 0D" ) ).get< void* > ( );
+
+	//dbg_print ( _ ( "EndScene: 0x%X" ), _end_scene );
+	//dbg_print ( _ ( "Reset: 0x%X" ), _reset );
 
 	MH_Initialize( );
 
@@ -216,14 +223,14 @@ void hooks::init( ) {
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
-	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
+	//dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
-	dbg_hook ( _temp_entities, temp_entities, ( void** ) &old::temp_entities );
+	//dbg_hook ( _temp_entities, temp_entities, ( void** ) &old::temp_entities );
 	dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-	//dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
 	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
@@ -245,7 +252,7 @@ void hooks::init( ) {
 
 	//cs::i::engine->client_cmd_unrestricted (_( "clear") );
 	//dbg_print ( _("Success.\n" ));
-	VMP_END ( );
+	//VMP_END ( );
 	END_FUNC;
 }
 

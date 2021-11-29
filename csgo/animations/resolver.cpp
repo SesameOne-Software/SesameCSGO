@@ -1093,416 +1093,238 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 			if ( speed_2d > max_speed * 0.9f )
 				rdata::was_moving [ idx ] = true;
 		}
-		else {
-			if ( !!( rec.m_flags & flags_t::on_ground ) && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground ) ) {
-				if ( speed_2d <= 5.0f ) {
-					if ( rdata::was_moving [ idx ] ) {
-						if ( !rdata::new_resolve [ idx ] )
-							rdata::prefer_edge [ idx ] = true;
+		else if ( !!( rec.m_flags & flags_t::on_ground ) /* && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground )*/ ) {
+			if ( speed_2d <= 5.0f ) {
+				if ( rdata::was_moving [ idx ] ) {
+					if ( !rdata::new_resolve [ idx ] )
+						rdata::prefer_edge [ idx ] = true;
 
-						rdata::new_resolve [ idx ] = false;
-						rdata::was_moving [ idx ] = false;
-					}
-					
-					//IF ( anim_layers [ N ( 6 ) ].m_weight <= N( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate > N( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate < 0.0001f && anim_info [ idx ].size( ) >= N( 3 ) ) {
-					//	const auto rate_delta_1 = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
-					//	const auto rate_delta_2 = abs ( anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
-					//
-					//	IF ( anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 )
-					//		&& anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 )
-					//		&& anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 ) ) {
-					//		IF ( rate_delta_1 >= 0.000003f && rate_delta_2 >= 0.000003f ) {
-					//			const auto side1 = anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
-					//				&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
-					//				&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
-					//			const auto side2 = anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
-					//				&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
-					//				&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
-					//
-					//			IF ( side1 || side2 ) {
-					//				rdata::resolved_jitter [ idx ] = true;
-					//				rdata::jitter_sync [ idx ] = side1;
-					//
-					//				rdata::resolved_side_jitter1 [ idx ] = rdata::resolved_side_run [ idx ];
-					//
-					//				IF ( rdata::resolved_side_jitter1 [ idx ] >= desync_side_t::desync_middle )
-					//					rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_left_max;
-					//				ELSE
-					//					rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_right_max;
-					//				ENDIF;
-					//			} ENDIF;
-					//		}
-					//		ELSE {
-					//			IF ( rate_delta_1 < 0.000003f && rate_delta_2 < 0.000003f )
-					//				rdata::resolved_jitter [ idx ] = false; ENDIF;
-					//		} ENDIF;
-					//	} ENDIF;
-					//}
-					//ELSE {
-						const auto lby_delta_yaw = angle_diff1 ( rec.m_anim_state [ desync_side_t::desync_max ].m_eye_yaw, rec.m_lby );
+					rdata::new_resolve [ idx ] = false;
+					rdata::was_moving [ idx ] = false;
+				}
+				
+				if ( anim_layers [ N ( 6 ) ].m_weight <= N ( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate < 0.0001f && anim_info [ idx ].size ( ) >= N ( 3 ) ) {
+					const auto rate_delta_1 = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
+					const auto rate_delta_2 = abs ( anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
 
-						if ( anim_layers [ N ( 3 ) ].m_weight <= N ( 0 )
-							&& anim_layers [ N ( 3 ) ].m_cycle <= N ( 0 )
-							&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
-							&& abs ( lby_delta_yaw ) > N ( 35 ) ) {
-							desync_side_t new_desync_side = desync_side_t::desync_middle;
+					if ( anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 )
+						&& anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 )
+						&& anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_weight <= N ( 0 ) ) {
+						if ( rate_delta_1 >= 0.000003f && rate_delta_2 >= 0.000003f ) {
+							const auto side1 = anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
+							const auto side2 = anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate >= anim_info [ idx ][ N ( 1 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate
+								&& anim_layers [ N ( 6 ) ].m_playback_rate <= anim_info [ idx ][ N ( 2 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate;
 
-							if ( lby_delta_yaw > N ( 0 ) && rdata::resolved_side_run [ idx ] < desync_side_t::desync_middle ) {
-								new_desync_side = rdata::resolved_side_run [ idx ];
-							} else {
-								if ( lby_delta_yaw <= N ( 0 ) && rdata::resolved_side_run [ idx ] >= desync_side_t::desync_middle )
-									new_desync_side = rdata::resolved_side_run [ idx ];
+							if ( side1 || side2 ) {
+								rdata::resolved_jitter [ idx ] = true;
+								rdata::jitter_sync [ idx ] = side1;
+
+								rdata::resolved_side_jitter1 [ idx ] = rdata::resolved_side_run [ idx ];
+
+								if ( rdata::resolved_side_jitter1 [ idx ] >= desync_side_t::desync_middle )
+									rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_left_max;
 								else
-									new_desync_side = ( lby_delta_yaw <= N ( 0 ) ) ? desync_side_t::desync_right_max : desync_side_t::desync_left_max;
+									rdata::resolved_side_jitter2 [ idx ] = desync_side_t::desync_right_max;
 							}
-
-							if ( rdata::resolved_side_run [ idx ] != new_desync_side )
-								features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 );
-
+						}
+						else {
+							if ( rate_delta_1 < 0.000003f && rate_delta_2 < 0.000003f )
+								rdata::resolved_jitter [ idx ] = false;
+						}
+					}
+				}
+				else {
+					const auto lby_delta_yaw = angle_diff1 ( rec.m_anim_state [ desync_side_t::desync_max ].m_eye_yaw, rec.m_lby );
+					
+					if ( anim_layers [ N ( 3 ) ].m_weight <= N ( 0 )
+						&& anim_layers [ N ( 3 ) ].m_cycle <= N ( 0 )
+						&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
+						&& anim_layers [ N ( 6 ) ].m_playback_rate <= N ( 0 )
+						&& abs ( lby_delta_yaw ) > N ( 35 ) ) {
+						desync_side_t new_desync_side = desync_side_t::desync_middle;
+					
+						if ( lby_delta_yaw > N ( 0 ) && rdata::resolved_side_run [ idx ] < desync_side_t::desync_middle ) {
+							new_desync_side = rdata::resolved_side_run [ idx ];
+						} else {
+							if ( lby_delta_yaw <= N ( 0 ) && rdata::resolved_side_run [ idx ] >= desync_side_t::desync_middle )
+								new_desync_side = rdata::resolved_side_run [ idx ];
+							else
+								new_desync_side = ( lby_delta_yaw <= N ( 0 ) ) ? desync_side_t::desync_right_max : desync_side_t::desync_left_max;
+						}
+					
+						if ( rdata::resolved_side_run [ idx ] != new_desync_side )
+							features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 );
+					
+						rdata::resolved_side_run [ idx ] = new_desync_side;
+						rdata::new_resolve [ idx ] = true;
+						rdata::prefer_edge [ idx ] = false;
+					
+						rec.m_resolved = true;
+					}
+					else {
+						/* resolve center-real / anti-alignment on standing */
+						if ( !rdata::new_resolve [ idx ]
+							&& !features::ragebot::get_misses ( idx ).bad_resolve
+							&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
+							&& anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 )
+							&& anim_layers [ N ( 6 ) ].m_playback_rate <= 0.06f
+							&& abs ( delta_yaw ) < N ( 35 ) && abs ( delta_yaw_old ) < N ( 35 )
+							&& abs ( delta_eye_yaw ) < N ( 26 )
+							&& abs ( delta_at_target ) > N ( 12 ) && abs ( delta_at_target ) < N ( 76 ) ) {
+							desync_side_t new_desync_side = desync_side_t::desync_middle;
+					
+							if ( delta_at_target <= N ( 0 ) )
+								new_desync_side = delta_at_target >= -N ( 44 ) ? desync_side_t::desync_right_half : desync_side_t::desync_right_max;
+							else
+								new_desync_side = delta_at_target <= N ( 44 ) ? desync_side_t::desync_left_half : desync_side_t::desync_left_max;
+					
 							rdata::resolved_side_run [ idx ] = new_desync_side;
 							rdata::new_resolve [ idx ] = true;
 							rdata::prefer_edge [ idx ] = false;
-
-							rec.m_resolved = true;
 						}
-						else {
-							/* resolve center-real / anti-alignment on standing */
-							if ( !rdata::new_resolve [ idx ]
-								&& !features::ragebot::get_misses ( idx ).bad_resolve
-								&& anim_layers [ N ( 6 ) ].m_weight <= N ( 0 )
-								&& anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 )
-								&& anim_layers [ N ( 6 ) ].m_playback_rate <= 0.06f
-								&& abs ( delta_yaw ) < N ( 35 ) && abs ( delta_yaw_old ) < N ( 35 )
-								&& abs ( delta_eye_yaw ) < N ( 26 )
-								&& abs ( delta_at_target ) > N ( 12 ) && abs ( delta_at_target ) < N ( 76 ) ) {
-								desync_side_t new_desync_side = desync_side_t::desync_middle;
+					}
+				}
 
-								if ( delta_at_target <= N ( 0 ) )
-									new_desync_side = delta_at_target >= -N ( 44 ) ? desync_side_t::desync_right_half : desync_side_t::desync_right_max;
-								else
-									new_desync_side = delta_at_target <= N ( 44 ) ? desync_side_t::desync_left_half : desync_side_t::desync_left_max;
+				rdata::last_good_weight [ idx ] = false;
+			}
+			/* moving */
+			else {
+				const auto& prev_rec = anim_info [ idx ][ 0 ];
+				const auto& prev_server_layers = prev_rec.m_anim_layers [ desync_side_t::desync_max ];
+				auto default_animstate = prev_rec.m_anim_state [ desync_side_t::desync_max ];
 
-								rdata::resolved_side_run [ idx ] = new_desync_side;
-								rdata::new_resolve [ idx ] = true;
-								rdata::prefer_edge [ idx ] = false;
+				const bool is_running = anim_layers [ N ( 11 ) ].m_weight <= 0.0f;
+
+				bool side_changed = false;
+				desync_side_t& desync_side = antiaim_disabled ? rdata::resolved_side [ idx ] : rdata::resolved_side_run [ idx ];
+				const desync_side_t backup_desync_side = desync_side;
+				
+				if ( anim_layers [ 6 ].m_sequence == prev_server_layers [ 6 ].m_sequence
+					&& anim_layers [ 6 ].m_weight > 0.0001f
+					&& anim_layers [ 6 ].m_playback_rate > 0.0005f
+					&& speed_2d >= 5.0f ) {
+					auto something = false;
+
+					const auto middle_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_middle ][ 6 ].m_weight ) * 1000.0f;
+					const auto left_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_max ][ 6 ].m_weight ) * 1000.0f;
+					const auto left_half_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_half ][ 6 ].m_weight ) * 1000.0f;
+					const auto right_half_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_half ][ 6 ].m_weight ) * 1000.0f;
+					const auto right_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_max ][ 6 ].m_weight ) * 1000.0f;
+
+					const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, std::min ( right_half_delta_weight, right_delta_weight ) ) ) );
+
+					const auto middle_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_middle ][ 12 ].m_weight ) * 1000.0f;
+					const auto left_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_max ][ 12 ].m_weight ) * 1000.0f;
+					const auto left_half_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_half ][ 12 ].m_weight ) * 1000.0f;
+					const auto right_half_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_half ][ 12 ].m_weight ) * 1000.0f;
+					const auto right_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_max ][ 12 ].m_weight ) * 1000.0f;
+
+					const auto smallest_weight12 = std::min ( middle_delta_weight12, std::min ( left_delta_weight12, std::min ( left_half_delta_weight12, std::min ( right_half_delta_weight12, right_delta_weight12 ) ) ) );
+
+					/* onetap */
+					if ( rec.m_choked_commands <= 1 || ( rec.m_has_vel && smallest_weight <= 1.0f ) || smallest_weight12 <= 1.0f || anim_layers [ 7 ].m_weight >= 1.0f || rec.m_has_vel )
+						goto skip_da_check;
+					
+					if ( anim_layers [ 11 ].m_weight > 0.0f && anim_layers [ 11 ].m_weight < 1.0f )
+						goto skip_da_check;
+					
+					if ( abs ( anim_layers [ 6 ].m_weight - prev_server_layers [ 6 ].m_weight ) < cs::ticks2time ( 1 ) * 2.0f
+						&& abs ( speed_2d - prev_rec.m_vel.length_2d ( ) ) < cs::ticks2time ( 1 ) * 2000.0f ) {
+						if ( anim_layers [ 12 ].m_weight <= 0.01f )
+							goto skip_da_check;
+
+						if ( abs ( speed_2d - prev_rec.m_vel.length_2d ( ) ) <= 5.0f && rec.m_vel.normalized ( ).dot_product ( prev_rec.m_vel.normalized ( ) ) >= 0.99939084f ) {
+						skip_da_check:
+
+							const auto server_rate = anim_layers [ 6 ].m_playback_rate;
+
+							const auto right_delta = abs ( server_rate - rec.m_anim_layers [ desync_side_t::desync_right_max ][ 6 ].m_playback_rate );
+							const auto left_delta = abs ( server_rate - rec.m_anim_layers [ desync_side_t::desync_left_max ][ 6 ].m_playback_rate );
+							const auto low_delta = abs ( server_rate - rec.m_anim_layers [ desync_side_t::desync_left_half ][ 6 ].m_playback_rate );
+							const auto middle_delta = abs ( server_rate - rec.m_anim_layers [ desync_side_t::desync_middle ][ 6 ].m_playback_rate );
+
+							auto velocity_delta = 3.0f;
+
+							if ( rec.m_choked_commands >= 2 )
+								velocity_delta = ( rec.m_vel - prev_rec.m_vel ).length_2d ( );
+
+							velocity_delta = std::clamp( velocity_delta, 3.0f, 6.0f );
+
+							desync_side_t side = desync_side_t::desync_middle;
+							auto optimal = abs ( server_rate - rec.m_anim_layers [ desync_side_t::desync_middle ][ 6 ].m_playback_rate );
+
+							if ( static_cast< int > ( low_delta * 1000.0f ) > velocity_delta || middle_delta < low_delta ) {
+								if ( desync_side != desync_side_t::desync_middle )
+									side_changed = true;
+
+								desync_side = desync_side_t::desync_middle;
+
+								if ( static_cast< int > ( middle_delta * 1000.0f ) <= velocity_delta )
+									rec.m_resolved = true;
+							}
+							else {
+								if ( desync_side != desync_side_t::desync_left_half )
+									side_changed = true;
+
+								desync_side = desync_side_t::desync_left_half;
+								rec.m_resolved = true;
+							}
+
+							if ( static_cast< int > ( right_delta * 1000.0f ) <= velocity_delta && optimal >= right_delta ) {
+								if ( desync_side != desync_side_t::desync_right_max )
+									side_changed = true;
+
+								desync_side = desync_side_t::desync_right_max;
+								rec.m_resolved = true;
+							}
+
+							if ( static_cast< int > ( left_delta * 1000.0f ) <= velocity_delta && optimal >= left_delta ) {
+								if ( desync_side != desync_side_t::desync_left_max )
+									side_changed = true;
+
+								desync_side = desync_side_t::desync_left_max;
+								rec.m_resolved = true;
 							}
 						}
-					//} ENDIF;
+					}
+				}
 
+				if ( ( backup_desync_side >= desync_side_t::desync_middle && desync_side < desync_side_t::desync_middle ) || ( backup_desync_side < desync_side_t::desync_middle && desync_side >= desync_side_t::desync_middle ) )
+					features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 );
+
+				if ( is_running )
+					rdata::was_moving [ idx ] = true;
+
+				if ( side_changed && is_running ) {
+					if ( rdata::last_good_weight [ idx ] ) {
+						rdata::resolved_jitter [ idx ] = true;
+						rdata::jitter_sync [ idx ] = cs::time2ticks ( rec.m_simtime ) % N ( 2 );
+					}
+
+					rdata::last_good_weight [ idx ] = true;
+				}
+				else {
 					rdata::last_good_weight [ idx ] = false;
 				}
-				/* moving */
+
+				if ( !side_changed && is_running ) {
+					if ( rdata::last_bad_weight [ idx ] )
+						rdata::resolved_jitter [ idx ] = false;
+
+					rdata::last_bad_weight [ idx ] = true;
+				}
 				else {
-					const auto& prev_rec = anim_info [ idx ][ 0 ];
-					const auto& prev_server_layers = prev_rec.m_anim_layers [ desync_side_t::desync_max ];
-					auto default_animstate = prev_rec.m_anim_state [ desync_side_t::desync_max ];
+					rdata::last_bad_weight [ idx ] = false;
+				}
 
-					const bool is_running = anim_layers [ N ( 11 ) ].m_weight <= 0.0f;
-
-					bool side_changed = false;
-					desync_side_t& desync_side = antiaim_disabled ? rdata::resolved_side [ idx ] : rdata::resolved_side_run [ idx ];
-					const desync_side_t backup_desync_side = desync_side;
-					
-					if ( anim_layers [ 6 ].m_sequence == prev_server_layers [ 6 ].m_sequence
-						&& anim_layers [ 6 ].m_weight > 0.0001f
-						&& anim_layers [ 6 ].m_playback_rate > 0.0005f
-						&& speed_2d >= 5.0f ) {
-						const auto middle_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_middle ][ 6 ].m_weight ) * 1000.0f;
-						const auto left_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_max ][ 6 ].m_weight ) * 1000.0f;
-						const auto left_half_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_half ][ 6 ].m_weight ) * 1000.0f;
-						const auto right_half_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_half ][ 6 ].m_weight ) * 1000.0f;
-						const auto right_delta_weight = abs ( anim_layers [ 6 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_max ][ 6 ].m_weight ) * 1000.0f;
-
-						const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, std::min ( right_half_delta_weight, right_delta_weight ) ) ) );
-
-						const auto middle_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_middle ][ 12 ].m_weight ) * 1000.0f;
-						const auto left_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_max ][ 12 ].m_weight ) * 1000.0f;
-						const auto left_half_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_left_half ][ 12 ].m_weight ) * 1000.0f;
-						const auto right_half_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_half ][ 12 ].m_weight ) * 1000.0f;
-						const auto right_delta_weight12 = abs ( anim_layers [ 12 ].m_weight - rec.m_anim_layers [ desync_side_t::desync_right_max ][ 12 ].m_weight ) * 1000.0f;
-
-						const auto smallest_weight12 = std::min ( middle_delta_weight12, std::min ( left_delta_weight12, std::min ( left_half_delta_weight12, std::min ( right_half_delta_weight12, right_delta_weight12 ) ) ) );
-
-						//dbg_print ( "weight: %.2f, lean: %.2f, layer11: %.2f,\n", smallest_weight, smallest_weight12, anim_layers [ 11 ].m_weight );
-
-						if ( rec.m_choked_commands <= 1 || ( rec.m_has_vel && smallest_weight <= 1.0f ) || smallest_weight12 <= 1.0f || anim_layers [ 7 ].m_weight >= 1.0f )
-							goto skip_da_check;
-
-						if ( anim_layers [ 11 ].m_weight >= 0.0f && anim_layers [ 11 ].m_weight < 1.0f )
-							goto skip_da_check;
-
-						if ( abs ( anim_layers [ 6 ].m_weight - prev_server_layers [ 6 ].m_weight ) < cs::ticks2time ( 1 ) * 2.0f
-							&& abs ( speed_2d - prev_rec.m_vel.length_2d ( ) ) < cs::ticks2time ( 1 ) * 2000.0f ) {
-							if ( anim_layers [ 12 ].m_weight <= 0.01f )
-								goto skip_da_check;
-
-							if ( abs ( speed_2d - prev_rec.m_vel.length_2d ( ) ) <= 5.0f && rec.m_vel.normalized ( ).dot_product ( prev_rec.m_vel.normalized ( ) ) >= 0.99939084f ) {
-							skip_da_check:
-								desync_side_t side = desync_side_t::desync_max;
-								
-								float best_pbr_delta = std::numeric_limits<float>::max ( );
-								float weight_delta = 0.0001f;
-								float server_rate = anim_layers [ 6 ].m_playback_rate;
-								
-								/* calculate playback rate */
-								float pb = rec.m_vel.length_2d ( );
-								
-								if ( server_rate > 0.0f ) {
-									float v834 = ent->get_sequence_cycle_rate_server ( anim_layers [ 6 ].m_sequence );
-									float v442 = server_rate / cs::ticks2time ( 1 );
-								
-									pb = ( pb / ( ( v442 / ( 1.0f - ( default_animstate.m_ground_fraction * 0.15f ) ) ) / v834 ) ) * ( 1.0f / v834 );
-								}
-								else {
-									pb = 0.0f;
-								}
-								
-								/* determine if it is a good time to check low delta */
-								auto matrix_width = std::lerp ( 1.0f, std::lerp ( 0.8f, 0.5f, default_animstate.m_ground_fraction ), std::clamp ( default_animstate.m_run_speed, 0.0f, 1.0f ) );
-								
-								if ( default_animstate.m_duck_amount > 0.0f )
-									matrix_width = std::lerp ( matrix_width, 0.5f, default_animstate.m_duck_amount * std::clamp ( default_animstate.m_unk_feet_speed_ratio, 0.0f, 1.0f ) );
-								
-								const auto max_rotation = default_animstate.m_max_yaw * matrix_width;
-								
-								float possible_amounts [ 5 ] = {
-									-max_rotation,
-									0.0f,
-									max_rotation,
-									-max_rotation * 0.5f,
-									max_rotation * 0.5f
-								};
-								
-								float possible_approach [ 5 ] = {
-									-max_rotation,
-									0.0f,
-									max_rotation,
-									-max_rotation * 0.5f,
-									max_rotation * 0.5f
-								};
-								
-								int unk = 5;
-								if ( matrix_width < 0.55f )
-									unk = 3;
-
-								float largest_approach = 0.0f;
-								
-								/* find desync side with largest possible amount of error */
-								for ( int i = 0; i < 5; i++ ) {
-									float desync_amount = possible_amounts [ i ];
-								
-									float target = 0.0f;
-									desync_amount = anglemod ( desync_amount );
-								
-									float delta = target - desync_amount;
-								
-									if ( desync_amount != 0.0f ) {
-										float speed = ( 30.0f + 20.0f * default_animstate.m_ground_fraction ) * cs::ticks2time ( 1 );
-								
-										if ( speed < 0.0f )
-											speed = -speed;
-								
-										if ( delta < -180.0f )
-											delta += 360.0f;
-										else if ( delta > 180.0f )
-											delta -= 360.0f;
-								
-										if ( delta > speed )
-											desync_amount += speed;
-										else if ( delta < -speed )
-											desync_amount -= speed;
-										else
-											desync_amount = target;
-									}
-
-									const auto feet_yaw_change = abs ( possible_amounts [ i ] - desync_amount );
-								
-									if ( feet_yaw_change > largest_approach )
-										largest_approach = feet_yaw_change;
-
-									possible_approach [ i ] = cs::normalize ( default_animstate.m_eye_yaw + desync_amount );
-								}
-								
-								/* get best side */
-								const auto backup_poses = ent->poses ( );
-								
-								for ( int i = 0; i < desync_side_t::desync_max; i++ ) {
-									if ( i == desync_side_t::desync_right_half )
-										continue;
-								
-									if ( i == desync_side_t::desync_left_half && unk - 1 <= 2 )
-										continue;
-								
-									const auto desync_side_is_max = i == desync_side_t::desync_left_max || i == desync_side_t::desync_middle || i == desync_side_t::desync_right_max;
-
-									/* recalc poses */
-									ent->poses ( ) = rec.m_poses [ i ];
-									
-									float desync_amount = -max_rotation + ( i * ( max_rotation / 2.0f ) );
-									float target = 0.0f;
-									desync_amount = anglemod ( desync_amount );
-
-									float delta = target - desync_amount;
-
-									if ( desync_amount != 0.0f ) {
-										float speed = ( 30.0f + 20.0f * default_animstate.m_ground_fraction ) * cs::ticks2time ( 1 );
-
-										if ( speed < 0.0f )
-											speed = -speed;
-
-										if ( delta < -180.0f )
-											delta += 360.0f;
-										else if ( delta > 180.0f )
-											delta -= 360.0f;
-
-										if ( delta > speed )
-											desync_amount += speed;
-										else if ( delta < -speed )
-											desync_amount -= speed;
-										else
-											desync_amount = target;
-									}
-
-									const auto foot_yaw = cs::normalize ( default_animstate.m_eye_yaw + desync_amount );
-
-									float raw_yaw_ideal = ( atan2 ( -rec.m_vel.y, -rec.m_vel.x ) * 180.0f / cs::pi );
-
-									if ( raw_yaw_ideal < 0.0f )
-										raw_yaw_ideal += 360.0f;
-
-									const auto move_yaw_ideal = cs::normalize ( angle_diff1 ( foot_yaw, raw_yaw_ideal ) );
-
-									ent->poses ( ) [ pose_param_t::move_yaw ] = std::clamp ( cs::normalize ( move_yaw_ideal ), -180.0f, 180.0f ) / 360.0f + 0.5f;
-
-									auto flAimYaw = angle_diff1 ( foot_yaw, default_animstate.m_eye_yaw );
-
-									if ( flAimYaw >= 0.0f && default_animstate.m_max_yaw != 0.0f )
-										flAimYaw = ( flAimYaw / default_animstate.m_max_yaw ) * 58.0f;
-									else if ( default_animstate.m_min_yaw != 0.0f )
-										flAimYaw = ( flAimYaw / default_animstate.m_min_yaw ) * -58.0f;
-
-									ent->poses ( ) [ pose_param_t::body_yaw ] = std::clamp ( flAimYaw, -58.0f, 58.0f ) / 116.0f + 0.5f;
-								
-									/* check desync side */
-									float move_dist = ent->get_sequence_move_distance ( rebuilt::get_model_ptr ( ent ), anim_layers [ 6 ].m_sequence );
-									float pbr_delta = abs ( move_dist - pb );
-								
-									if ( i == desync_side ) {
-										float tolerance = desync_side_is_max ? 3.0f : 1.5f;
-								
-										if ( pbr_delta < tolerance ) {
-											best_pbr_delta = pbr_delta;
-											break;
-										}
-									}
-								
-									if ( pbr_delta < best_pbr_delta ) {
-										best_pbr_delta = pbr_delta;
-										side = static_cast< desync_side_t >( i );
-									}
-								}
-								
-								ent->poses ( ) = backup_poses;
-								
-								if ( best_pbr_delta <= 10.0f && side != desync_side_t::desync_max ) {
-									if ( side != desync_side )
-										side_changed = true;
-								
-									desync_side = side;
-									rec.m_resolved = true;
-								}
-
-								//const auto middle_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ desync_side_t::desync_middle ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
-								//const auto left_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ desync_side_t::desync_left_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
-								//const auto right_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ desync_side_t::desync_right_max ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
-								//const auto left_half_delta_rate = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - rec.m_anim_layers [ desync_side_t::desync_left_half ][ N ( 6 ) ].m_playback_rate ) * N ( 1000 );
-								//
-								//IF ( right_delta_rate < left_delta_rate && right_delta_rate < middle_delta_rate && right_delta_weight < 10.0f && right_delta_rate < 1.0f ) {
-								//	IF ( desync_side != desync_side_t::desync_right_max )
-								//		side_changed = true; ENDIF;
-								//
-								//	desync_side = desync_side_t::desync_right_max;
-								//
-								//	rdata::new_resolve [ idx ] = true;
-								//	rdata::prefer_edge [ idx ] = false;
-								//	rec.m_resolved = true;
-								//}
-								//ELSE {
-								//	IF ( anim_layers [ N ( 6 ) ].m_weight < 0.95f
-								//		&& ( ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate && left_delta_weight < 10.0f && left_delta_rate < 1.0f )
-								//		|| ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate && middle_delta_weight < 10.0f && middle_delta_rate < 1.0f ) )
-								//		&& abs ( left_delta_rate - middle_delta_rate ) < ( ( left_delta_rate + middle_delta_rate ) * 0.5f ) * 0.75f ) {
-								//		IF ( desync_side != desync_side_t::desync_left_half )
-								//			side_changed = true; ENDIF;
-								//
-								//		desync_side = desync_side_t::desync_left_half;
-								//
-								//		rdata::new_resolve [ idx ] = true;
-								//		rdata::prefer_edge [ idx ] = false;
-								//		rec.m_resolved = true;
-								//	}
-								//	ELSE {
-								//		IF ( left_delta_rate < middle_delta_rate && left_delta_rate < right_delta_rate && left_delta_weight < 10.0f && left_delta_rate < 1.0f ) {
-								//			IF ( desync_side != desync_side_t::desync_left_max )
-								//				side_changed = true; ENDIF;
-								//
-								//			desync_side = desync_side_t::desync_left_max;
-								//
-								//			rdata::new_resolve [ idx ] = true;
-								//			rdata::prefer_edge [ idx ] = false;
-								//			rec.m_resolved = true;
-								//		} ELSE {
-								//			IF ( middle_delta_rate < left_delta_rate && middle_delta_rate < right_delta_rate && middle_delta_weight < 10.0f && middle_delta_rate < 1.0f ) {
-								//				IF ( desync_side != desync_side_t::desync_middle )
-								//					side_changed = true; ENDIF;
-								//
-								//				desync_side = desync_side_t::desync_middle;
-								//
-								//				rdata::new_resolve [ idx ] = true;
-								//				rdata::prefer_edge [ idx ] = false;
-								//				rec.m_resolved = true;
-								//			} ENDIF;
-								//		} ENDIF;
-								//	} ENDIF;
-								//} ENDIF;
-							}
-						}
-					}
-
-					if ( ( backup_desync_side >= desync_side_t::desync_middle && desync_side < desync_side_t::desync_middle ) || ( backup_desync_side < desync_side_t::desync_middle && desync_side >= desync_side_t::desync_middle ) )
-						features::ragebot::get_misses ( idx ).bad_resolve = N ( 0 );
-
-					if ( is_running )
-						rdata::was_moving [ idx ] = true;
-
-					if ( side_changed && is_running ) {
-						if ( rdata::last_good_weight [ idx ] ) {
-							rdata::resolved_jitter [ idx ] = true;
-							rdata::jitter_sync [ idx ] = cs::time2ticks ( rec.m_simtime ) % N ( 2 );
-						}
-
-						rdata::last_good_weight [ idx ] = true;
-					}
-					else {
-						rdata::last_good_weight [ idx ] = false;
-					}
-
-					if ( !side_changed && is_running ) {
-						if ( rdata::last_bad_weight [ idx ] )
-							rdata::resolved_jitter [ idx ] = false;
-
-						rdata::last_bad_weight [ idx ] = true;
-					}
-					else {
-						rdata::last_bad_weight [ idx ] = false;
-					}
-
-					if ( rdata::resolved_jitter [ idx ] && is_running ) {
-						if ( rdata::jitter_sync [ idx ] == cs::time2ticks ( rec.m_simtime ) % 2 )
-							rdata::resolved_side_jitter1 [ idx ] = desync_side;
-						else
-							rdata::resolved_side_jitter2 [ idx ] = desync_side;
-					}
+				if ( rdata::resolved_jitter [ idx ] && is_running ) {
+					if ( rdata::jitter_sync [ idx ] == cs::time2ticks ( rec.m_simtime ) % 2 )
+						rdata::resolved_side_jitter1 [ idx ] = desync_side;
+					else
+						rdata::resolved_side_jitter2 [ idx ] = desync_side;
 				}
 			}
 		}

@@ -1398,7 +1398,7 @@ void gui::draw( ) {
 							ImGui::Checkbox ( _ ( "Block Bot" ), &options::vars [ _ ( "misc.movement.block_bot" ) ].val.b );
 							ImGui::SameLine ( );
 							ImGui::Keybind ( _ ( "##Block Bot Key" ), &options::vars [ _ ( "misc.movement.block_bot_key" ) ].val.i, &options::vars [ _ ( "misc.movement.block_bot_key_mode" ) ].val.i, ImVec2 ( -1.0f, 0.0f ) );
-							ImGui::Checkbox ( _ ( "Auto Jump" ), &options::vars [ _ ( "misc.movement.bhop" ) ].val.b );
+							ImGui::Checkbox ( _ ( "Bunnyhop" ), &options::vars [ _ ( "misc.movement.bhop" ) ].val.b );
 							//ImGui::Checkbox ( _ ( "Auto Forward" ), &options::vars [ _ ( "misc.movement.auto_forward" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Auto Strafer" ), &options::vars [ _ ( "misc.movement.auto_strafer" ) ].val.b );
 							ImGui::Checkbox ( _ ( "Directional Auto Strafer" ), &options::vars [ _ ( "misc.movement.omnidirectional_auto_strafer" ) ].val.b );
@@ -1534,6 +1534,9 @@ void gui::draw( ) {
 								}
 							}
 #endif
+							static std::vector<const char*> anim_yaw_mode { "Current",  "Onetap", "Skeet" , "Neverlose" };
+							ImGui::Combo ( _ ( "Anim Yaw Mode" ), &anims::yaw_mode, anim_yaw_mode.data ( ), anim_yaw_mode.size ( ) );
+							ImGui::SliderFloat ( _ ( "Resolver Weight Tolerance" ), &anims::resolver::weight_tolerance, 0.0f, 1.0f, _ ( "%.1f" ) );
 
 							ImGui::EndChildFrame ( );
 						}

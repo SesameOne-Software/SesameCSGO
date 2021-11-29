@@ -272,10 +272,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			"features::skinchanger::run",
 			features::skinchanger::run ( );
 		);
-
+	
 		//if ( g::local )
 		//	features::prediction::fix_netvars ( cs::i::client_state->last_command_ack( ) );
-
+	
 		features::prediction::fix_viewmodel ( );
 	}
 

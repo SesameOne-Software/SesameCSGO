@@ -25,7 +25,7 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 			for ( auto i = 0; i < pl->bone_count(); i++ )
 				pl->bone_cache ( ) [ i ].set_origin ( pl->bone_cache ( ) [ i ].origin ( ) - anims::usable_origin [ pl->idx ( ) ] + pl->render_origin ( ) );
 
-			attachmenthelper_fn ( pl, *reinterpret_cast< void** > ( reinterpret_cast< uintptr_t >( pl ) + 0x294C ) );
+			attachmenthelper_fn ( pl, *reinterpret_cast< void** > ( reinterpret_cast< uintptr_t >( pl ) + 0x2950 ) );
 			*reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( pl ) + 0x2690 ) = g_model_bone_counter;
 		}
 
