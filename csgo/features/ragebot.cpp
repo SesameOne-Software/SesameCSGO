@@ -626,12 +626,15 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 
 		trace_t tr;
 		ray_t ray;
-
+		
 		ray.init ( src, src + direction * weapon_range );
 		cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
-
+		
 		if ( tr.m_hit_entity == pl && tr.m_hitbox == static_cast<int>( hitbox ) )
 			hits++;
+
+		//if ( autowall::trace_ray ( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+		//	hits++;
 	}
 
 	hc_out = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
@@ -1187,59 +1190,59 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 	/* extrapolate autostop */ 
 	const auto max_speed = g::local->scoped ( ) ? g::local->weapon ( )->data ( )->m_max_speed_alt : g::local->weapon ( )->data ( )->m_max_speed;
-	const auto cur_speed = g::local->vel ( ).length_2d ( );
+	const auto cur_speed = g::local->vel ( ).length_2d();
 	auto pre_autostop_working = false;
 
-	const auto stop_to_speed = ( max_speed - 1.0f ) * 0.34f;
+	const auto stop_to_speed = max_speed * 0.33f;
 
-	if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
-		const auto vel_norm = g::local->vel ( ).normalized ( );
-	
-		auto speed = cur_speed;
-		auto move_dir = -vel_norm;
-		auto move_dir_max_speed = move_dir * speed;
-		auto predicted_eyes = g::local->eyes ( );
-	
-		auto ticks_until_slow = 0;
-	
-		while ( speed > stop_to_speed ) {
-			auto ducking = false;
-	
-			const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
-	
-			speed -= accel;
-			move_dir_max_speed = move_dir * speed;
-			predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
-	
-			ticks_until_slow++;
-	
-			if ( ticks_until_slow >= 16 )
-				break;
-		}
-	
-		player_t* at_target = nullptr;
-	
-		for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
-			const auto ent = cs::i::ent_list->get<player_t*> ( i );
-	
-			if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
-				const auto min_dmg = get_scaled_min_dmg ( ent );
-	
-				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
-				const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
-	
-				if ( dmg >= min_dmg ) {
-					at_target = ent;
-					break;
-				}
-			}
-		}
-	
-		if ( at_target ) {
-			skeet_slow ( ucmd, stop_to_speed, old_angs );
-			pre_autostop_working = true;
-		}
-	}
+	//if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
+	//	const auto vel_norm = g::local->vel().normalized ( );
+	//
+	//	auto speed = cur_speed;
+	//	auto move_dir = -vel_norm;
+	//	auto move_dir_max_speed = move_dir * speed;
+	//	auto predicted_eyes = g::local->eyes ( );
+	//
+	//	auto ticks_until_slow = 0;
+	//
+	//	while ( speed > stop_to_speed ) {
+	//		auto ducking = false;
+	//
+	//		const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
+	//
+	//		speed -= accel;
+	//		move_dir_max_speed = move_dir * speed;
+	//		predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
+	//
+	//		ticks_until_slow++;
+	//
+	//		if ( ticks_until_slow >= 16 )
+	//			break;
+	//	}
+	//
+	//	player_t* at_target = nullptr;
+	//
+	//	for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
+	//		const auto ent = cs::i::ent_list->get<player_t*> ( i );
+	//
+	//		if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
+	//			const auto min_dmg = get_scaled_min_dmg ( ent );
+	//
+	//			const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
+	//			const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
+	//
+	//			if ( dmg >= min_dmg ) {
+	//				at_target = ent;
+	//				break;
+	//			}
+	//		}
+	//	}
+	//
+	//	if ( at_target ) {
+	//		slow ( ucmd );
+	//		pre_autostop_working = true;
+	//	}
+	//}
 
 	if ( !best.m_ent )
 		return;
@@ -1251,8 +1254,8 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 	auto hc = hitchance( angle_to, best.m_ent, best.m_point, 256, best.m_hitbox, best.m_record, hc_out );
 	auto should_aim = best.m_dmg && hc;
 	
-	if ( !pre_autostop_working && best.m_dmg )
-		skeet_slow ( ucmd, stop_to_speed, old_angs );
+	if ( !pre_autostop_working && best.m_dmg && !!( g::local->flags ( ) & flags_t::on_ground ) )
+		slow ( ucmd );
 
 	if ( !active_config.auto_shoot )
 		should_aim = !!( ucmd->m_buttons & buttons_t::attack ) && best.m_dmg;
@@ -1478,14 +1481,14 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 
 	auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
 	auto left_dir = -right_dir;
-	auto dmg_center = autowall::dmg ( g::local, pl, src, eyes_max, hitbox_t::head /* pretend player would be there */ );
+	//auto dmg_center = autowall::dmg ( g::local, pl, src, eyes_max, hitbox_t::head /* pretend player would be there */ );
 	auto dmg_left = awall_skeet::dmg ( g::local, src, eyes_max + left_dir * 35.0f, weapon, pl, min_dmg, true );
 	auto dmg_right = awall_skeet::dmg ( g::local, src, eyes_max + right_dir * 35.0f, weapon, pl, min_dmg, true );
-	auto dmg_feet = autowall::dmg ( g::local, pl, src, rec.m_origin + vec3_t ( 0.0f, 0.0f, 2.0f ), hitbox_t::head /* pretend player would be there */ );
+	//auto dmg_feet = autowall::dmg ( g::local, pl, src, rec.m_origin + vec3_t ( 0.0f, 0.0f, 2.0f ), hitbox_t::head /* pretend player would be there */ );
 
 	/* will we most likely not do damage at all? then let's cancel target selection altogether i guess */
-	if ( !dmg_center && !dmg_left && !dmg_right && !dmg_feet )
-		return false;
+	//if ( !dmg_center && !dmg_left && !dmg_right && !dmg_feet )
+	//	return false;
 
 	std::deque< hitbox_t > hitboxes { };
 

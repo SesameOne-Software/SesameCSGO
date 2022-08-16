@@ -98,7 +98,7 @@ void features::skinchanger::run ( ) {
 
 	static auto g_ClientLeafSystem = pattern::search ( "client.dll", "A1 ? ? ? ? FF 50 14 8B 86 ? ? ? ? B9 ? ? ? ? C1 E8 0E 24 01 0F B6 C0 50 0F B7 86 ? ? ? ? 50 A1 ? ? ? ? FF 50 18 8B 86 ? ? ? ? B9 ? ? ? ? C1 E8 0C 24 01 0F B6 C0 50 0F B7 86 ? ? ? ? 50 A1 ? ? ? ? FF 90 ? ? ? ? 8B 0D" ).add(1).deref().get<void*>();
 	
-	static auto clear_hud_weapon_icon = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 53 56 8B 75 08 8B D9 57 6B FE 2C 89 5D FC" ) ).get<int ( __thiscall* )( void*, int )> ( );
+	static auto clear_hud_weapon_icon = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 53 56 8B 75 08 8B D9 57 6B FE 34" ) ).get<int ( __thiscall* )( void*, int )> ( );
 
 	if ( !g::local || !g::local->alive ( ) ) {
 		backup_player_mdl_idx = 0;

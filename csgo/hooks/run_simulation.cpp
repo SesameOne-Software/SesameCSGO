@@ -27,25 +27,31 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	
 	if ( !localplayer || localplayer != g::local || !g::local )
 		return old::run_simulation ( REG_OUT, current_command, cmd, localplayer );
-	
+
+	static auto using_standard_weapons_in_vehicle = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 8B 16 8B CE 8A D8" ) ).resolve_rip ( ).get< bool ( __thiscall* )( player_t* ) > ( );
+
 	if ( cmd->m_tickcount == std::numeric_limits<int>::max ( ) ) {
 		cmd->m_hasbeenpredicted = true;
 
 		cs::i::move_helper->set_host ( localplayer );
 
-		if ( *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) ) )
-			* reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31EC ) : N ( 0x31FC ) ) ) = *reinterpret_cast< uint8_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 52 ) );
+		cmd->m_buttons |= *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3344 ) );
+		cmd->m_buttons &= ~*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3340 ) );
+		
+		const auto vehicle = g::local->vehicle ( );
 
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) |= *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x3310 ) : N ( 0x3334 ) ) );
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) ) &= ~*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x330C ) : N ( 0x3330 ) ) );
+		/* Vehicle impulse */
+		if ( cmd->m_impulse && ( !vehicle || using_standard_weapons_in_vehicle ( g::local ) ) )
+			*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x320C ) = cmd->m_impulse;
 
-		const auto v16 = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( cmd ) + N ( 48 ) );
-		const auto v17 = v16 ^ *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
+		/* UpdateButtonState */
+		const auto v16 = cmd->m_buttons;
+		const auto v17 = v16 ^ *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 );
 
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31DC ) : N ( 0x31EC ) ) ) = *reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) );
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E8 ) : N ( 0x31F8 ) ) ) = v16;
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E0 ) : N ( 0x31F0 ) ) ) = v16 & v17;
-		*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( localplayer ) + ( g::is_legacy ? N ( 0x31E4 ) : N ( 0x31F4 ) ) ) = v17 & ~v16;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31FC ) = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 );
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 ) = v16;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3200 ) = v16 & v17;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3204 ) = v17 & ~v16;
 
 		localplayer->post_think ( );
 		localplayer->tick_base ( )++;

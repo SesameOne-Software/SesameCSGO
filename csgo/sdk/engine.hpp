@@ -77,7 +77,7 @@ public:
 class c_clientstate {
 public:
 	net_channel_t* net_channel ( ) {
-		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x9C );
+		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x94 );
 	}
 
 	uint32_t& choked( ) {
@@ -93,11 +93,11 @@ public:
 	}
 
 	uint32_t& server_tickcount( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x16C );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x110 );
 	}
 
-	uint32_t& delta_tick( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x174 );
+	int& delta_tick( ) {
+		return *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( this ) + 0x16C );
 	}
 
 	uint32_t& cur_seq ( ) {
@@ -105,7 +105,7 @@ public:
 	}
 
 	float& next_cmd_time( ) {
-		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
+		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x108 );
 	}
 
 	uint32_t& out_seq_num( ) {

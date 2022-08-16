@@ -107,7 +107,7 @@ player_t* looking_at ( bool& hittable ) {
 
 				const auto pred_ent_pos = features::esp::esp_data [ i ].m_pos + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), 0.0f, cs::ticks2time ( 16 ) );
 				const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
-				const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 2 );
+				const auto src = g::local->eyes ( ) + features::prediction::vel * cs::ticks2time ( 2 );
 
 				const auto dmg_l = autowall::dmg ( g::local, ent, src, pred_ent_pos + cross * 35.0f, hitbox_t::head );
 				const auto dmg_r = autowall::dmg ( g::local, ent, src, pred_ent_pos - cross * 35.0f, hitbox_t::head );
@@ -235,7 +235,12 @@ void features::antiaim::slow_walk ( ucmd_t* cmd, vec3_t& old_angs ) {
 		}
 	}
 	else if ( !!( g::local->flags ( ) & flags_t::on_ground ) && ( abs ( cmd->m_fmove ) > 3.3f || abs ( cmd->m_smove ) > 3.3f ) ) {
-		approach_speed ( abs( abs_max_speed - fmodf ( cs::i::globals->m_curtime * ( abs_max_speed * 0.25f * 4.0f ), abs_max_speed * 0.25f ) ));
+		//approach_speed ( abs( abs_max_speed - fmodf ( cs::i::globals->m_curtime * ( abs_max_speed * 0.25f * 4.0f ), abs_max_speed * 0.25f ) ));
+
+		float v14 = ( ( cmd->m_cmdnum % 10000 ) * cs::ticks2time ( 1 ) ) * 5.0f;
+		float v10 = abs ( ( v14 - floor ( v14 ) ) - 0.5f );
+
+		approach_speed ( ( abs_max_speed - 1.0f ) - ( ( v10 + v10 ) * 10.0f ) );
 	}
 }
 
@@ -305,7 +310,7 @@ void features::antiaim::fakelag ( ucmd_t* ucmd, player_t* target ) {
 	if ( fakelag_triggers [ 1 /* on peek */ ] && target ) {
 		const auto pred_ent_pos = target->origin ( ) + target->view_offset ( ) + target->vel ( ) * std::clamp ( target->simtime ( ) - target->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
 		const auto cross = cs::angle_vec ( cs::calc_angle ( g::local->eyes ( ), pred_ent_pos ) ).cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
-		const auto src = g::local->eyes ( ) + g::local->vel ( ) * cs::ticks2time ( 1 );
+		const auto src = g::local->eyes ( ) + prediction::vel * cs::ticks2time ( 1 );
 
 		const auto dmg_l = autowall::dmg ( g::local, target, src + cross * 12.0f, pred_ent_pos, hitbox_t::head );
 		const auto dmg_r = autowall::dmg ( g::local, target, src - cross * 12.0f, pred_ent_pos, hitbox_t::head );

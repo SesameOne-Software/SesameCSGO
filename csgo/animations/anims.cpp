@@ -24,17 +24,19 @@ bool anims::anim_info_t::valid ( ) {
 	const auto lerp = lerp_time ( );
 	const auto correct = std::clamp ( nci->get_latency ( 0 ) + nci->get_latency ( 1 ) + lerp, 0.0f, g::cvars::sv_maxunlag->get_float ( ) );
 
-	auto tickbase = g::local->tick_base ( );
-
+	auto server_time = g::local->alive() ? cs::ticks2time( g::local->tick_base ( )) : cs::i::globals->m_curtime;
 	auto tickbase_as_int = std::clamp<int> ( static_cast< int >( features::ragebot::active_config.max_dt_ticks ), 0, g::cvars::sv_maxusrcmdprocessticks->get_int ( ) - 1 );
 
 	if ( !features::ragebot::active_config.dt_enabled || !utils::keybind_active ( features::ragebot::active_config.dt_key, features::ragebot::active_config.dt_key_mode ) )
 		tickbase_as_int = 0;
 
-	if ( exploits::is_ready ( ) && tickbase_as_int > 0 )
-		tickbase -= std::max ( tickbase_as_int, 0 );
+	//if ( exploits::is_ready ( ) && tickbase_as_int > 0 )
+	//	server_time -= cs::ticks2time ( std::max ( tickbase_as_int, 0 ) );
 
-	return abs ( correct - ( cs::ticks2time ( tickbase ) - m_simtime ) ) <= 0.2f;
+	if ( abs ( correct - ( server_time - m_simtime ) ) > 0.2f )
+		return false;
+
+	return true;
 }
 
 anims::anim_info_t::anim_info_t ( player_t* ent ) {
@@ -397,6 +399,8 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		return true;
 	}
 
+	auto fixed = false;
+
 	/* skeet */
 	if ( !!( ent->flags ( ) & flags_t::on_ground ) ) {
 		vel.z = 0.0f;
@@ -410,7 +414,7 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 
 		if ( animlayers [ 6 ].m_weight <= 0.0f ) {
 			vel.zero ( );
-			return true;
+			fixed = true;
 		}
 		else {
 			if ( animlayers [ 6 ].m_playback_rate > 0.0f ) {
@@ -419,18 +423,18 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 
 				auto origin_delta_vel_len = vel.length_2d ( );
 
-				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight /*/ std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f )*/;
+				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight / std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f );
 				const auto flTargetMoveWeight_to_speed2d = std::lerp ( max_speed * 0.52f, max_speed * 0.34f, ent->crouch_amount ( ) ) * flMoveWeightWithAirSmooth;
 
 				const auto speed_as_portion_of_run_top_speed = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
 
 				if ( animlayers [ 11 ].m_weight > 0.0f && animlayers [ 11 ].m_weight < 1.0f ) {
 					vel = origin_delta_vel_norm * ( max_speed * ( speed_as_portion_of_run_top_speed + 0.55f ) );
-					return true;
+					fixed = true;
 				}
 				else if ( flMoveWeightWithAirSmooth < 0.95f || flTargetMoveWeight_to_speed2d > origin_delta_vel_len ) {
 					vel = origin_delta_vel_norm * flTargetMoveWeight_to_speed2d;
-					return flMoveWeightWithAirSmooth < 0.95f;
+					fixed = flMoveWeightWithAirSmooth < 0.95f;
 				}
 				else {
 					static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
@@ -444,7 +448,7 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 
 					if ( origin_delta_vel_len > flTargetMoveWeight_adjusted_speed2d ) {
 						vel = origin_delta_vel_norm * flTargetMoveWeight_adjusted_speed2d;
-						return true;
+						fixed = true;
 					}
 				}
 			}
@@ -461,32 +465,32 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		vel.x = origin_delta.x / time_difference;
 		vel.y = origin_delta.y / time_difference;
 
-		return true;
+		fixed = true;
 	}
 
-	/* predict vel dir */
-	if ( records.size ( ) >= 2 && records [ 0 ].m_simtime - records [ 1 ].m_simtime > cs::ticks2time ( 1 ) && vel.length_2d ( ) > 0.0f ) {
-		const auto last_avg_vel = ( records [ 0 ].m_origin - records [ 1 ].m_origin ) / ( records [ 0 ].m_simtime - records [ 1 ].m_simtime );
-	
-		if ( last_avg_vel.length_2d ( ) > 0.0f ) {
-			float deg_1 = cs::rad2deg ( atan2 ( vel.y, vel.x ) );
-			float deg_2 = cs::rad2deg ( atan2 ( last_avg_vel.y, last_avg_vel.x ) );
-	
-			float deg_delta = cs::normalize ( deg_1 - deg_2 );
-			float deg_lerp = cs::normalize ( deg_1 + deg_delta * 0.5f );
-			float rad_dir = cs::deg2rad ( deg_lerp );
-	
-			float sin_dir, cos_dir;
-			cs::sin_cos ( rad_dir, &sin_dir, &cos_dir );
-	
-			float vel_len = vel.length_2d ( );
-	
-			vel.x = cos_dir * vel_len;
-			vel.y = sin_dir * vel_len;
-		}
-	}
+	///* predict vel dir */
+	//if ( records.size ( ) >= 2 && records [ 0 ].m_simtime - records [ 1 ].m_simtime > cs::ticks2time ( 1 ) && vel.length_2d ( ) > 0.0f ) {
+	//	const auto last_avg_vel = ( records [ 0 ].m_origin - records [ 1 ].m_origin ) / ( records [ 0 ].m_simtime - records [ 1 ].m_simtime );
+	//
+	//	if ( last_avg_vel.length_2d ( ) > 0.0f ) {
+	//		float deg_1 = cs::rad2deg ( atan2 ( origin_delta.y, origin_delta.x ) );
+	//		float deg_2 = cs::rad2deg ( atan2 ( last_avg_vel.y, last_avg_vel.x ) );
+	//
+	//		float deg_delta = cs::normalize ( deg_1 - deg_2 );
+	//		float deg_lerp = cs::normalize ( deg_1 + deg_delta * 0.5f );
+	//		float rad_dir = cs::deg2rad ( deg_lerp );
+	//
+	//		float sin_dir, cos_dir;
+	//		cs::sin_cos ( rad_dir, &sin_dir, &cos_dir );
+	//
+	//		float vel_len = vel.length_2d ( );
+	//
+	//		vel.x = cos_dir * vel_len;
+	//		vel.y = sin_dir * vel_len;
+	//	}
+	//}
 
-	return false;
+	return fixed;
 	VMP_END ( );
 }
 
@@ -807,7 +811,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 		cs::i::globals->m_frametime = cs::ticks2time( 1 );
 
 		state->m_last_clientside_anim_update = cs::i::globals->m_curtime - cs::ticks2time( 1 );
-		state->m_feet_yaw_rate = 0.0f;
+		//state->m_feet_yaw_rate = 0.0f;
 	}
 	
 	const auto backup_invalidate_bone_cache = invalidate_bone_cache;

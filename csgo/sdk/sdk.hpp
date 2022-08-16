@@ -275,14 +275,17 @@ namespace cs {
 	}
 
 	__forceinline bool is_valve_server( ) {
-		static auto cs_game_rules = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 74 38" ) ).add( 1 ).deref( ).get< void* >( );
-		return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x7C );
+		return false;
+		//static auto cs_game_rules = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 74 38" ) ).add( 1 ).deref( ).get< void* >( );
+		//return *reinterpret_cast< uintptr_t* > ( cs_game_rules ) && *reinterpret_cast< bool* > ( *reinterpret_cast< uintptr_t* > ( cs_game_rules ) + 0x7C );
 	}
 
 	__forceinline void add_box_overlay ( const vec3_t& origin, const vec3_t& mins, const vec3_t& maxs, vec3_t const& angles, int r, int g, int b, int a, float duration ) {
 		static auto debug_overlay = pattern::search ( _ ( "client.dll" ), _ ( "A1 ? ? ? ? F3 0F 11 44 24 ? 8B 30 8B" ) ).add ( 1 ).deref ( ).deref ( ).get< void* > ( );
 		vfunc<void(__thiscall*)( void*, const vec3_t&, const vec3_t&, const vec3_t&, vec3_t const&, int, int, int, int, float )> ( debug_overlay, 1 )( debug_overlay, origin, mins, maxs, angles, r, g, b, a, duration );
 	}
+
+	void set_send_packet ( bool value );
 
 	__forceinline std::string get_weapon_name ( weapons_t idx ) {
 		static std::unordered_map<weapons_t, std::string> weapon_names {

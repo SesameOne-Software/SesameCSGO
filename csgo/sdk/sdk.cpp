@@ -187,6 +187,31 @@ t cs::create_interface( const char* module, const char* iname ) {
 	return reinterpret_cast< t >( fn( iname, 0 ) );
 }
 
+void cs::set_send_packet ( bool value ) {
+	static auto loc1 = pattern::search ( _ ( "engine.dll" ), _ ( "0F 84 ? ? ? ? E8 ? ? ? ? 84 DB" ) ).get< uint8_t* > ( );
+	static auto loc2 = pattern::search ( _ ( "engine.dll" ), _ ( "84 DB 0F 84 ? ? ? ? 8B 8F" ) ).add ( 2 ).get< uint8_t* > ( );
+	static auto unprotected = false;
+
+	if ( !unprotected ) {
+		VirtualProtect ( loc1, 32, PAGE_EXECUTE_READWRITE, nullptr );
+		VirtualProtect ( loc2, 32, PAGE_EXECUTE_READWRITE, nullptr );
+		unprotected = true;
+	}
+
+	if ( value ) {
+		uint8_t a [ ] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+		uint8_t b [ ] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+		memcpy ( loc1, a, sizeof ( a ) );
+		memcpy ( loc2, b, sizeof ( b ) );
+	}
+	else {
+		uint8_t a [ ] = { 0x90, 0x84, 0xE9, 0x00, 0x00, 0x00 };
+		uint8_t b [ ] = { 0x90, 0x84, 0x64, 0x03, 0x00, 0x00 };
+		memcpy ( loc1, a, sizeof ( a ) );
+		memcpy ( loc2, b, sizeof ( b ) );
+	}
+}
+
 bool cs::init( ) {
 	VMP_BEGINULTRA ( );
 	i::globals = pattern::search( _( "client.dll" ), _( "A1 ? ? ? ? 5E 8B 40 10" ) ).add( 1 ).deref( ).deref( ).get< c_globals* >( );

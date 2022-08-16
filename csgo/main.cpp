@@ -151,6 +151,51 @@ __forceinline size_t get_image_size ( void* base ) {
 	return image_size;
 }
 
+__forceinline bool AddDllHandleToSafeList ( ) {
+	auto InitSafeModule = [ ] ( void* pInitSafeModuleFnAddress ) {
+		typedef unsigned int ( __fastcall* InitSafeModuleFn_t )( void*, void* );
+		InitSafeModuleFn_t InitSafeModuleFn = ( InitSafeModuleFn_t ) pInitSafeModuleFnAddress;
+
+		InitSafeModuleFn (
+			g_ImageStartAddr,
+			g_ImageEndAddr );
+
+		return true;
+	};
+
+	/* client.dll */ {
+		static auto InitSafeModuleFn = pattern::search ( _ ( "client.dll" ), _("56 8B 71 3C B8") ).get< void ( __fastcall* )( void*, void* ) > ( );
+		if ( InitSafeModuleFn ) {
+			InitSafeModuleFn ( g_ImageStartAddr, nullptr );
+		}
+		else {
+			return false;
+		}
+	}
+
+	/* engine.dll */ {
+		static auto InitSafeModuleFn = pattern::search ( _ ( "engine.dll" ), _("56 8B 71 3C B8") ).get< void ( __fastcall* )( void*, void* ) > ( );
+		if ( InitSafeModuleFn ) {
+			InitSafeModuleFn ( g_ImageStartAddr, nullptr );
+		}
+		else {
+			return false;
+		}
+	}
+
+	/* studiorender.dll */ {
+		if ( !InitSafeModule ( pattern::search ( _ ( "studiorender.dll" ), _ ( "53 56 8B 35 ? ? ? ? 8B DA 57" ) ).get< void* > ( ) ) )
+			return false;
+	}
+
+	/* materialsystem.dll */ {
+		if ( !InitSafeModule ( pattern::search ( _ ( "materialsystem.dll" ), _("53 56 8B 35 ? ? ? ? 8B DA 57") ).get< void* > ( ) ) )
+			return false;
+	}
+
+	return true;
+}
+
 int __stdcall DllMain( void* loader_data, uint32_t reason, void* reserved ) {
 	VMP_BEGINULTRA ( );
 
@@ -167,7 +212,17 @@ int __stdcall DllMain( void* loader_data, uint32_t reason, void* reserved ) {
 		g_ImageEndAddr = ( uint8_t* ) g_ImageStartAddr + get_image_size ( reinterpret_cast< void* >( hearbeat_info->image_base ) );
 #endif
 
-		AddVectoredExceptionHandler ( 1, ExceptionHandler );
+		const auto exh = AddVectoredExceptionHandler ( 1, ExceptionHandler );
+
+		if ( !AddDllHandleToSafeList ( ) ) {
+			if ( exh )
+				RemoveVectoredExceptionHandler ( exh );
+
+			MessageBoxA ( nullptr, _ ( "Failed to add DLL to safe module list." ), _ ( "Error" ), MB_OK );
+			ExitProcess ( 1 );
+
+			return FALSE;
+		}
 	}
 
 	if ( reason == DLL_PROCESS_ATTACH ) {

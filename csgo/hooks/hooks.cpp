@@ -93,15 +93,15 @@ void hooks::init( ) {
 	/* load default config */
 	//menu::load_default( );
 
-	old::wnd_proc = ( WNDPROC ) LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ), GWLP_WNDPROC, LONG_PTR ( wnd_proc ) );
+	old::wnd_proc = ( WNDPROC ) LI_FN ( SetWindowLongA )( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive - Direct3D 9" ) ), GWLP_WNDPROC, LONG_PTR ( wnd_proc ) );
 
 	/* remove max processing ticks clamp */
-	const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
-	
+	//const auto clsm_numUsrCmdProcessTicksMax_clamp = pattern::search( _( "engine.dll" ), _( "0F 4F F0 89 5D FC" ) ).get< void* >( );
+	//
 	unsigned long old_prot = N( 0 );
-	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), N( PAGE_EXECUTE_READWRITE ), &old_prot );
-	memset ( clsm_numUsrCmdProcessTicksMax_clamp, N( 0x90 ), N ( 3 ) );
-	LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), old_prot, &old_prot );
+	//LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), N( PAGE_EXECUTE_READWRITE ), &old_prot );
+	//memset ( clsm_numUsrCmdProcessTicksMax_clamp, N( 0x90 ), N ( 3 ) );
+	//LI_FN ( VirtualProtect )( clsm_numUsrCmdProcessTicksMax_clamp, N ( 3 ), old_prot, &old_prot );
 
 	/* remove breakpoints */
 	const auto client_bp = pattern::search ( _ ( "client.dll" ), _ ( "CC F3 0F 10 4D 18" ) ).get< void* > ( );
@@ -126,7 +126,7 @@ void hooks::init( ) {
 	LI_FN ( VirtualProtect )( engine_bp, N ( 1 ), old_prot, &old_prot );
 
 	/* hook functions */
-	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 4D 04 8B C1" ) ).get< void* >( );
+	const auto _create_move = pattern::search( _( "client.dll" ), _( "55 8B EC 56 8D 75 04 8B 0E E8 ? ? ? ? 8B 0E" ) ).get< void* >( );
 	const auto _frame_stage_notify = pattern::search( _( "client.dll" ), _( "55 8B EC 8B 0D ? ? ? ? 8B 01 8B 80 74 01 00 00 FF D0 A2" ) ).get< void* >( );
 	const auto _end_scene = vfunc< void* >( cs::i::dev, N( 42 ) );
 	const auto _reset = vfunc< void* >( cs::i::dev, N( 16 ) );
@@ -136,7 +136,7 @@ void hooks::init( ) {
 	const auto _do_extra_bone_processing = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
 	const auto _get_eye_angles = pattern::search( _( "client.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
 	const auto _get_int = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
-	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 83 EC 58 56 57 8B 3D ? ? ? ? 85 FF" ) ).get< void* >( );
+	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 8B 4D 04 83 EC 58" ) ).get< void* >( );
 	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
 	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "57 8B F9 8B 07 8B 80 ? ? ? ? FF D0 84 C0 75 02" ) ).get< void* >( );
 	const auto _is_hltv = vfunc< void* >( cs::i::engine, N( 93 ) );
@@ -161,7 +161,7 @@ void hooks::init( ) {
 	const auto _notify_on_layer_change_cycle = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 98 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
 	const auto _notify_on_layer_change_weight = pattern::search( _( "client.dll" ) , _( "F3 0F 11 86 9C 00 00 00 5E 5D C2 08 00" ) ).sub( 57 ).get< void* >( );
 	const auto _is_connected = vfunc<void*>( cs::i::engine , N( 27 ) );
-	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 8B 1D" ) ).get< void* > ( );
+	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 56 89 4D EC" ) ).get< void* > ( );
 	const auto _prediction_error_handler = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 45 10 53 56 8B F1 57" ) ).get< void* > ( );
 	const auto _draw_cube_overlay = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC F3 0F 10 45 28 8B 55 0C" ) ).get< void* > ( );
 	const auto _adjust_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 56 8B F1 F3 0F 11 4D" ) ).get< void* > ( );
@@ -215,7 +215,7 @@ void hooks::init( ) {
 	//dbg_hook( _write_usercmd_delta_to_buffer, write_usercmd_delta_to_buffer, ( void** )&old::write_usercmd_delta_to_buffer );
 	dbg_hook( _list_leaves_in_box, list_leaves_in_box, ( void** )&old::list_leaves_in_box );
 	dbg_hook( _get_viewmodel_fov, get_viewmodel_fov, ( void** )&old::get_viewmodel_fov );
-	//dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
+	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
 	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
@@ -230,10 +230,10 @@ void hooks::init( ) {
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	//dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
-	dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
+	//dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
 	dbg_hook ( _perform_flashbang_effect, perform_flashbang_effect, ( void** ) &old::perform_flashbang_effect );
 	//dbg_hook ( _prediction_error_handler, prediction_error_handler, ( void** ) &old::prediction_error_handler );
 	//dbg_hook ( _draw_cube_overlay, draw_cube_overlay, ( void** ) &old::draw_cube_overlay );

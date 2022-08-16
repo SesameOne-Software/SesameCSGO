@@ -1201,13 +1201,13 @@ void features::esp::render( ) {
 
 		vec3_t points [ ] = {
 			vec3_t( min.x, min.y, min.z ),
+			vec3_t ( min.x, min.y, max.z ),
 			vec3_t( min.x, max.y, min.z ),
-			vec3_t( max.x, max.y, min.z ),
+			vec3_t ( min.x, max.y, max.z ),
 			vec3_t( max.x, min.y, min.z ),
-			vec3_t( max.x, max.y, max.z ),
-			vec3_t( min.x, max.y, max.z ),
-			vec3_t( min.x, min.y, max.z ),
-			vec3_t( max.x, min.y, max.z )
+			vec3_t( max.x, min.y, max.z ),
+			vec3_t ( max.x, max.y, min.z ),
+			vec3_t ( max.x, max.y, max.z ),
 		};
 
 		if ( !cs::render::world_to_screen( flb , points[ 3 ] )
