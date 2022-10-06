@@ -20,8 +20,8 @@ bool features::chams::in_model = false;
 
 bool create_materials( ) {
 	auto ikv = [ ] ( void* kv , const char* name ) {
-		static auto ikv_fn = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 33 C0 C7 45" ) ).get< void( __thiscall* )( void* , const char* ) >( );
-		ikv_fn( kv , name );
+		static auto ikv_fn = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 33 C0 C7 45" ) ).get< void ( __thiscall* )( void*, const char*, void*, void* ) >( );
+		ikv_fn( kv , name, nullptr, nullptr );
 	};
 
 	auto lfb = [ ] ( void* kv , const char* name , const char* buf ) {

@@ -91,7 +91,7 @@ unsigned __stdcall init_proxy( void* data ) {
 	ImGui_ImplWin32_Shutdown ( );
 	ImGui::DestroyContext ( );
 
-	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive" ) ), GWLP_WNDPROC, long( hooks::old::wnd_proc ) );
+	LI_FN( SetWindowLongA )( LI_FN( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive - Direct3D 9" ) ), GWLP_WNDPROC, long( hooks::old::wnd_proc ) );
 
 	MH_RemoveHook( MH_ALL_HOOKS );
 	MH_Uninitialize( );
@@ -151,46 +151,103 @@ __forceinline size_t get_image_size ( void* base ) {
 	return image_size;
 }
 
-__forceinline bool AddDllHandleToSafeList ( ) {
-	auto InitSafeModule = [ ] ( void* pInitSafeModuleFnAddress ) {
-		typedef unsigned int ( __fastcall* InitSafeModuleFn_t )( void*, void* );
-		InitSafeModuleFn_t InitSafeModuleFn = ( InitSafeModuleFn_t ) pInitSafeModuleFnAddress;
+inline bool add_dll_handle_to_safe_list ( HMODULE dll ) {
+	std::array<uint8_t, 0x1000> fake_pe_header = { 0 };
 
-		InitSafeModuleFn (
-			g_ImageStartAddr,
-			g_ImageEndAddr );
+	void* module_start = reinterpret_cast< void* >( dll );
+	const size_t image_size = get_image_size ( module_start );
+	void* module_end = reinterpret_cast< void* >( reinterpret_cast< uint8_t* >( dll ) + image_size );
 
-		return true;
+	*( uint32_t* ) ( fake_pe_header.data ( ) + 0x3C ) = 0;
+	*( uint16_t* ) ( fake_pe_header.data ( ) + 0x18 ) = 0x10B;
+	*( uint16_t* ) ( fake_pe_header.data ( ) + 0x8 ) = 4;
+	*( ptrdiff_t* ) ( fake_pe_header.data ( ) + 0x2C ) = ( ptrdiff_t ) ( ( uintptr_t ) module_start - ( uintptr_t ) fake_pe_header.data ( ) );
+	*( uint32_t* ) ( fake_pe_header.data ( ) + 0x50 ) = image_size;
+
+	using InitSafeModuleFn = unsigned int ( __fastcall* )( void*, void* );
+
+	if ( const auto func = pattern::search ( _ ( "client.dll" ), _ ( "56 8B 71 3C B8" ) ).get<InitSafeModuleFn> ( ) )
+		( *func ) ( fake_pe_header.data ( ), nullptr );
+	else
+		return false;
+
+	if ( const auto func = pattern::search ( _ ( "engine.dll" ), _ ( "56 8B 71 3C B8" ) ).get<InitSafeModuleFn> ( ) )
+		( *func ) ( fake_pe_header.data ( ), nullptr );
+	else
+		return false;
+
+	const std::vector < std::string > module_list = {
+		/*XOR( "antitamper.dll" ),
+		XOR( "inputsystem.dll" ),*/
+		_ ( "materialsystem.dll" ),
+		/*XOR( "server.dll" ),
+		XOR( "matchmaking.dll" ),
+		XOR( "cairo.dll" ),
+		XOR( "datacache.dll" ),
+		XOR( "filesystem_stdio.dll" ),
+		XOR( "icui18n.dll" ),
+		XOR( "icuuc.dll" ),
+		XOR( "imemanager.dll" ),
+		XOR( "launcher.dll" ),
+		XOR( "libavcodec-56.dll" ),
+		XOR( "libavformat-56.dll" ),
+		XOR( "libavresample-2.dll" ),
+		XOR( "libavutil-54.dll" ),
+		XOR( "libfontconfig-1.dll" ),
+		XOR( "libfreetype-6.dll" ),
+		XOR( "libglib-2.0-0.dll" ),
+		XOR( "libgmodule-2.0-0.dll" ),
+		XOR( "libgobject-2.0-0.dll" ),
+		XOR( "libpango-1.0-0.dll" ),
+		XOR( "libpangoft2-1.0-0.dll" ),
+		XOR( "libswscale-3.dll" ),
+		XOR( "localize.dll" ),
+		XOR( "mss32.dll" ),
+		XOR( "panorama.dll" ),
+		XOR( "panorama_text_pango.dll" ),
+		XOR( "panoramauiclient.dll" ),
+		XOR( "parsifal.dll" ),
+		XOR( "phonon.dll" ),
+		XOR( "scenefilecache.dll" ),
+		XOR( "serverbrowser.dll" ),
+		XOR( "shaderapidx9.dll" ),
+		XOR( "soundemittersystem.dll" ),
+		XOR( "soundsystem.dll" ),
+		XOR( "stdshader_dbg.dll" ),
+		XOR( "stdshared_dx9.dll" ),
+		XOR( "steam_api.dll" ),
+		XOR( "steamnetworkingsockets.dll" ),*/
+		_ ( "studiorender.dll" ),
+		/*XOR( "tier0.dll" ),
+		XOR( "v8.dll" ),
+		XOR( "v8_libbase.dll" ),
+		XOR( "v8_libplatform.dll" ),
+		XOR( "valve_avi.dll" ),
+		XOR( "vaudio_celt.dll" ),
+		XOR( "vaudio_miles.dll" ),
+		XOR( "vaudio_speex.dll" ),
+		XOR( "vgui2.dll" ),
+		XOR( "vguimatsurface.dll" ),
+		XOR( "video.dll" ),
+		XOR( "vphysics.dll" ),
+		XOR( "vscript.dll" ),
+		XOR( "vstdlib.dll" ),
+		XOR( "vtex_dll.dll" ),
+		XOR( "fmod.dll" ),
+		XOR( "fmodstudio.dll" )*/
 	};
 
-	/* client.dll */ {
-		static auto InitSafeModuleFn = pattern::search ( _ ( "client.dll" ), _("56 8B 71 3C B8") ).get< void ( __fastcall* )( void*, void* ) > ( );
-		if ( InitSafeModuleFn ) {
-			InitSafeModuleFn ( g_ImageStartAddr, nullptr );
-		}
-		else {
-			return false;
-		}
-	}
+	for ( const auto& mod : module_list ) {
+		for ( bool* call_check_list = pattern::search ( mod.c_str ( ), _ ( "8B F0 83 3C 95" ) ).add ( 5 ).deref ( ).get<bool*> ( );
+			*call_check_list != 0;
+			call_check_list += 20 )
+			*call_check_list = false;
 
-	/* engine.dll */ {
-		static auto InitSafeModuleFn = pattern::search ( _ ( "engine.dll" ), _("56 8B 71 3C B8") ).get< void ( __fastcall* )( void*, void* ) > ( );
-		if ( InitSafeModuleFn ) {
-			InitSafeModuleFn ( g_ImageStartAddr, nullptr );
+		if ( const auto func = pattern::search ( mod.c_str( ), _ ( "53 56 8B 35 ? ? ? ? 8B DA 57" ) ).get<InitSafeModuleFn> ( ) ) {
+			( *func ) (
+				module_start,
+				module_end );
 		}
-		else {
-			return false;
-		}
-	}
-
-	/* studiorender.dll */ {
-		if ( !InitSafeModule ( pattern::search ( _ ( "studiorender.dll" ), _ ( "53 56 8B 35 ? ? ? ? 8B DA 57" ) ).get< void* > ( ) ) )
-			return false;
-	}
-
-	/* materialsystem.dll */ {
-		if ( !InitSafeModule ( pattern::search ( _ ( "materialsystem.dll" ), _("53 56 8B 35 ? ? ? ? 8B DA 57") ).get< void* > ( ) ) )
-			return false;
 	}
 
 	return true;
@@ -214,7 +271,7 @@ int __stdcall DllMain( void* loader_data, uint32_t reason, void* reserved ) {
 
 		const auto exh = AddVectoredExceptionHandler ( 1, ExceptionHandler );
 
-		if ( !AddDllHandleToSafeList ( ) ) {
+		if ( !add_dll_handle_to_safe_list ( reinterpret_cast<HMODULE>( loader_data ) ) ) {
 			if ( exh )
 				RemoveVectoredExceptionHandler ( exh );
 
