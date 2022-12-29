@@ -135,9 +135,9 @@ void hooks::init( ) {
 	const auto _draw_model_execute = vfunc< void* >( cs::i::mdl_render, N( 21 ) );
 	const auto _do_extra_bone_processing = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 81 EC FC 00 00 00 53 56 8B F1 57" ) ).get< void* >( );
 	const auto _get_eye_angles = pattern::search( _( "client.dll" ), _( "56 8B F1 85 F6 74 32" ) ).get< void* >( );
-	const auto _get_int = pattern::search( _( "client.dll" ), _( "8B 51 1C 3B D1 75 06" ) ).get< void* >( );
+	const auto _get_int = pattern::search( _( "client.dll" ), _( "56 8B F1 8B 4E 1C 3B CE 75 3E" ) ).get< void* >( );
 	const auto _override_view = pattern::search( _( "client.dll" ), _( "55 8B EC 83 E4 F8 8B 4D 04 83 EC 58" ) ).get< void* >( );
-	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 18" ) ).get<void*>( );
+	const auto _send_datagram = pattern::search( _( "engine.dll" ), _( "55 8B EC 83 E4 F0 B8 ? ? ? ? E8 ? ? ? ? 56 57 8B F9 89 7C 24 14" ) ).get<void*>( );
 	const auto _should_skip_anim_frame = pattern::search( _( "client.dll" ), _( "57 8B F9 8B 07 8B 80 ? ? ? ? FF D0 84 C0 75 02" ) ).get< void* >( );
 	const auto _is_hltv = vfunc< void* >( cs::i::engine, N( 93 ) );
 	const auto _write_usercmd_delta_to_buffer = vfunc< void* >( cs::i::client, N( 24 ) );
@@ -164,7 +164,7 @@ void hooks::init( ) {
 	const auto _perform_flashbang_effect = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 48 53 56 89 4D EC" ) ).get< void* > ( );
 	const auto _prediction_error_handler = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 8B 45 10 53 56 8B F1 57" ) ).get< void* > ( );
 	const auto _draw_cube_overlay = pattern::search ( _ ( "engine.dll" ), _ ( "55 8B EC F3 0F 10 45 28 8B 55 0C" ) ).get< void* > ( );
-	const auto _adjust_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 56 8B F1 F3 0F 11 4D" ) ).get< void* > ( );
+	//const auto _adjust_interp_amount = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 56 8B F1 F3 0F 11 4D" ) ).get< void* > ( );
 	const auto _calc_view = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 14 53 56 57 FF 75 18" ) ).get< void* > ( );
 	const auto _post_network_data_received = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 33 F6 6A 02" ) ).resolve_rip ( ).get< void* > ( );
 	const auto _packet_start = pattern::search ( _ ( "engine.dll" ), _ ( "56 8B F1 E8 ? ? ? ? 8B 8E ? ? ? ? 3B" ) ).sub ( 32 ).get< void* > ( );

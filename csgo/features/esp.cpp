@@ -205,7 +205,7 @@ LABEL_23:
 void features::esp::send_data_to_clients ( ) {
 	VMP_BEGINMUTATION ( );
 	static auto c_clc_msg_voice_data__constructor = pattern::search ( _ ( "engine.dll" ), _ ( "56 57 8B F9 8D 4F 08 C7 07 ? ? ? ? E8 ? ? ? ? C7 07 ? ? ? ?" ) ).get< void ( __thiscall* )( void* ) > ( );
-	static auto c_clc_msg_voice_data__deconstructor = pattern::search ( _ ( "engine.dll" ), _ ( "53 8B D9 56 8D 73 3C 57 C7 03 ? ? ? ? C7 43 ? ? ? ? ? 8B 46 14" ) ).get< void ( __thiscall* )( void* ) > ( );
+	static auto c_clc_msg_voice_data__deconstructor = pattern::search ( _ ( "engine.dll" ), _ ( "E8 ? ? ? ? 5E 8B E5 5D C3 CC CC CC CC CC CC CC CC CC CC CC CC 51" ) ).resolve_rip().get< void ( __thiscall* )( void* ) > ( );
 
 	constexpr bool SHARE_WITH_OTHER_TEAM = true;
 

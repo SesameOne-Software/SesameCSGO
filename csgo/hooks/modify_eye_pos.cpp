@@ -36,7 +36,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	//	return;
 
 	using bone_lookup_fn = int( __thiscall* )( player_t*, const char* );
-	static auto lookup_bone = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 85 C0 78 4E" ) ).resolve_rip().get<bone_lookup_fn>( );
+	static auto lookup_bone = pattern::search( _( "client.dll" ), _( "E8 ? ? ? ? 66 89 47 04" ) ).resolve_rip().get<bone_lookup_fn>( );
 
 	if ( !player || player != g::local || !player->bone_cache ( ) || !in_cm )
 		return;
