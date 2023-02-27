@@ -10,11 +10,11 @@ void __fastcall hooks::build_transformations( REG, studiohdr_t* hdr, const vec3_
     if ( !ent || !ent->is_player() )
         return old::build_transformations( REG_OUT, hdr, pos, quaternion, matrix, mask, computed );
 
-    const auto backup_jiggle_bones = *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x2930 );
+    const auto backup_jiggle_bones = *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x291C );
 
-    *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x2930 ) = 0;
+    *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x291C ) = 0;
 
     old::build_transformations( REG_OUT, hdr, pos, quaternion, matrix, mask, computed );
 
-    *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x2930 ) = backup_jiggle_bones;
+    *reinterpret_cast< int* > ( uintptr_t( ent ) + 0x291C ) = backup_jiggle_bones;
 }

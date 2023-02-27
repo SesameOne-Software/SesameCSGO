@@ -78,6 +78,7 @@ namespace anims {
 		std::array<animstate_t , desync_side_t::desync_max + 1> m_anim_state;
 		std::array<std::array< matrix3x4_t , 128 > , desync_side_t::desync_max + 1> m_aim_bones;
 		desync_side_t m_side;
+		desync_side_t m_opposite_side;
 
 		bool valid ( );
 

@@ -172,8 +172,6 @@ int find_freestand_side ( player_t* pl, float range ) {
 }
 
 void features::antiaim::slow_walk ( ucmd_t* cmd, vec3_t& old_angs ) {
-	static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
-
 	static auto& slowwalk_key = options::vars [ _ ( "antiaim.slow_walk_key" ) ].val.i;
 	static auto& slowwalk_key_mode = options::vars [ _ ( "antiaim.slow_walk_key_mode" ) ].val.i;
 	static auto& slow_walk_speed = options::vars [ _ ( "antiaim.slow_walk_speed" ) ].val.f;
@@ -216,7 +214,7 @@ void features::antiaim::slow_walk ( ucmd_t* cmd, vec3_t& old_angs ) {
 
 	if ( !!( g::local->flags ( ) & flags_t::ducking ) )
 		abs_max_speed *= 0.34f;
-	else if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( g::local ) + 0x9975 ) )
+	else if ( g::local->is_walking() )
 		abs_max_speed *= 0.52f;
 
 	//max_speed = std::min ( max_speed, deployable_limited_max_speed ( g::local ) );

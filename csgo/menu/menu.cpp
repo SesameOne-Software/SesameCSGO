@@ -280,7 +280,7 @@ void gui::scale_dpi ( ) {
 	//ImGui::StyleColorsClassic();
 
 	// Setup Platform/Renderer backends
-	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( nullptr, _ ( "Counter-Strike: Global Offensive - Direct3D 9" ) ) );
+	ImGui_ImplWin32_Init ( LI_FN ( FindWindowA )( _("Valve001" ), nullptr ) );
 	ImGui_ImplDX9_Init ( cs::i::dev );
 
 	static const ImWchar custom_font_ranges_all [ ] = { 0x20, 0xFFFF, 0 };

@@ -678,11 +678,18 @@ anims::desync_side_t anims::resolver::apply_antiaim ( player_t* player, const an
 		return rdata::resolved_side [ idx ];
 	}
 	else {
-		if ( rdata::resolved_jitter [ idx ] && !features::ragebot::get_misses ( idx ).bad_resolve ) {
-			if ( rdata::jitter_sync [ idx ] == cs::time2ticks ( rec.m_simtime ) % 2 )
-				return rdata::resolved_side_jitter1 [ idx ];
-			else
-				return rdata::resolved_side_jitter2 [ idx ];
+		if ( anim_info [ idx ].size ( ) >= 1 ) {
+			const auto delta_eye_yaw = angle_diff1 ( rec.m_anim_state [ desync_side_t::desync_max ].m_eye_yaw, anim_info [ idx ][ N ( 0 ) ].m_anim_state [ desync_side_t::desync_max ].m_eye_yaw );
+
+			if ( delta_eye_yaw > 4.0f && rdata::resolved_jitter [ idx ] && !features::ragebot::get_misses ( idx ).bad_resolve ) {
+				if ( delta_eye_yaw < 0.0f )
+					return rdata::resolved_side_jitter1 [ idx ];
+				else
+					return rdata::resolved_side_jitter2 [ idx ];
+			}
+			else {
+				return rdata::resolved_side_run [ idx ];
+			}
 		}
 		else {
 			return rdata::resolved_side_run [ idx ];
@@ -981,7 +988,7 @@ __forceinline float anglemod ( float a ) {
 
 bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot ) {
 	VMP_BEGINMUTATION ( );
-	static auto CCSGOPlayerAnimState__GetWeaponPrefix = pattern::search ( _ ( "client.dll" ), _ ( "53 56 57 8B F9 33 F6 8B 4F 60" ) ).get<const char* ( __thiscall* )( animstate_t* )> ( );
+	static auto CCSGOPlayerAnimState__GetWeaponPrefix = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 50 8D 44 24 54" ) ).resolve_rip().get<const char* ( __thiscall* )( animstate_t* )> ( );
 
 	/* set default desync direction to middle (0 deg range) */
 	const auto idx = ent->idx ( );
@@ -1072,7 +1079,7 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 	//}
 	///* jitter resolver */
 	//ELSE {
-		if ( delta_yaw > N ( 1 ) && delta_yaw_old > N ( 1 )
+		/*if ( delta_yaw > N ( 1 ) && delta_yaw_old > N ( 1 )
 			&& abs ( delta_yaw - delta_yaw_old ) > abs ( delta_eye_yaw )
 			&& abs ( delta_yaw ) > N ( 45 ) && abs ( delta_yaw_old ) > N ( 45 ) && delta_yaw * delta_yaw_old < N ( 0 ) ) {
 			float some_yaw = N ( 0 );
@@ -1094,15 +1101,15 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 			if ( speed_2d > max_speed * 0.9f )
 				rdata::was_moving [ idx ] = true;
 		}
-		else if ( !!( rec.m_flags & flags_t::on_ground ) /* && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground )*/ ) {
+		else*/ if ( !!( rec.m_flags & flags_t::on_ground ) /* && !!( anim_info [ idx ][ N ( 0 ) ].m_flags & flags_t::on_ground )*/ ) {
 			if ( speed_2d <= 5.0f ) {
-				if ( rdata::was_moving [ idx ] ) {
-					if ( !rdata::new_resolve [ idx ] )
-						rdata::prefer_edge [ idx ] = true;
-
-					rdata::new_resolve [ idx ] = false;
-					rdata::was_moving [ idx ] = false;
-				}
+				//if ( rdata::was_moving [ idx ] ) {
+				//	if ( !rdata::new_resolve [ idx ] )
+				//		rdata::prefer_edge [ idx ] = true;
+				//
+				//	rdata::new_resolve [ idx ] = false;
+				//	rdata::was_moving [ idx ] = false;
+				//}
 				
 				//if ( anim_layers [ N ( 6 ) ].m_weight <= N ( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate > N ( 0 ) && anim_layers [ N ( 6 ) ].m_playback_rate < 0.0001f && anim_info [ idx ].size ( ) >= N ( 3 ) ) {
 				//	const auto rate_delta_1 = abs ( anim_layers [ N ( 6 ) ].m_playback_rate - anim_info [ idx ][ N ( 0 ) ].m_anim_layers [ desync_side_t::desync_max ][ N ( 6 ) ].m_playback_rate );
@@ -1217,8 +1224,10 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 
 					const auto smallest_weight = std::min ( middle_delta_weight, std::min ( left_delta_weight, std::min ( left_half_delta_weight, std::min ( right_half_delta_weight, right_delta_weight ) ) ) );
 
+					//goto skip_da_check;
+
 					/* onetap */
-					if ( rec.m_choked_commands <= 1 || ( rec.m_has_vel && smallest_weight <= 1.0f ) || anim_layers [ 12 ].m_weight * 1000.0f <= 1.0f /* || anim_layers [ 7 ].m_weight >= 1.0f || rec.m_has_vel*/ )
+					if ( rec.m_choked_commands <= 2 || ( rec.m_has_vel && smallest_weight <= 1.0f ) || anim_layers [ 12 ].m_weight * 1000.0f <= 1.0f /*|| rec.m_has_vel || anim_layers [ 7 ].m_weight >= 1.0f || rec.m_has_vel*/ )
 						goto skip_da_check;
 					
 					if ( anim_layers [ 11 ].m_weight > 0.0f && anim_layers [ 11 ].m_weight < 1.0f )
@@ -1350,67 +1359,33 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 								yaw_modifier += ( ( default_animstate.m_duck_amount * speed_factor ) * ( 0.5f - yaw_modifier ) );
 							}
 
-							if ( left_delta < optimal && left_delta < 1.0f ) {
-								if ( desync_side != desync_side_t::desync_left_max )
-									side_changed = true;
+							bool tried_resolve_low = false;
 
-								desync_side = desync_side_t::desync_left_max;
-
-								rec.m_resolved = true;
+							if ( low_delta > 1.0f || middle_delta < low_delta ) {
+								if ( middle_delta < 1.0f ) {
+									rec.m_resolved = true;
+									side = desync_side_t::desync_middle;
+									optimal = middle_delta;
+								}
 							}
-							else if ( right_delta < optimal && right_delta < 1.0f ) {
-								if ( desync_side != desync_side_t::desync_right_max )
-									side_changed = true;
+							else {
+								//tried_resolve_low = true;
+								//side = desync_side_t::desync_left_half;
+								//optimal = low_delta;
+							}
 
+							if ( right_delta < 1.0f && optimal >= right_delta ) {
 								desync_side = desync_side_t::desync_right_max;
-
-								rec.m_resolved = true;
-							}
-							else if ( low_delta < optimal && yaw_modifier > 0.55f && low_delta < 1.0f ) {
-								if ( desync_side != desync_side_t::desync_left_half )
-									side_changed = true;
-
-								desync_side = desync_side_t::desync_left_half;
-
-								rec.m_resolved = true;
-							}
-							else if ( optimal < 1.0f ) {
-								if ( desync_side != desync_side_t::desync_middle )
-									side_changed = true;
-
-								desync_side = desync_side_t::desync_middle;
-
+								optimal = right_delta;
 								rec.m_resolved = true;
 							}
 
-							//if ( static_cast< int > ( low_delta ) > 1.0f || optimal < low_delta ) {
-							//	if ( desync_side != desync_side_t::desync_middle )
-							//		side_changed = true;
-							//
-							//	desync_side = desync_side_t::desync_middle;
-							//	rec.m_resolved = true;
-							//}
-							//else {
-							//	if ( desync_side != desync_side_t::desync_left_half )
-							//		side_changed = true;
-							//
-							//	desync_side = desync_side_t::desync_left_half;
-							//	rec.m_resolved = true;
-							//}
-							//
-							//if ( static_cast< int > ( right_delta ) <= 1.0f && optimal >= right_delta ) {
-							//	if ( desync_side != desync_side_t::desync_right_max )
-							//		side_changed = true;
-							//
-							//	desync_side = desync_side_t::desync_right_max;
-							//	rec.m_resolved = true;
-							//}
-							//
-							//if ( static_cast< int > ( left_delta ) <= 1.0f && optimal >= left_delta ) {
-							//	if ( desync_side != desync_side_t::desync_left_max )
-							//		side_changed = true;
-							//
-							//	desync_side = desync_side_t::desync_left_max;
+							if ( left_delta < 1.0f && optimal >= left_delta ) {
+								desync_side = desync_side_t::desync_left_max;
+								rec.m_resolved = true;
+							}
+
+							//if ( side == desync_side_t::desync_left_half && tried_resolve_low ) {
 							//	rec.m_resolved = true;
 							//}
 						}
@@ -1423,34 +1398,51 @@ bool anims::resolver::resolve_desync( player_t* ent, anim_info_t& rec, bool shot
 				if ( is_running )
 					rdata::was_moving [ idx ] = true;
 
-				if ( side_changed && is_running ) {
-					if ( rdata::last_good_weight [ idx ] ) {
-						rdata::resolved_jitter [ idx ] = true;
-						rdata::jitter_sync [ idx ] = cs::time2ticks ( rec.m_simtime ) % N ( 2 );
-					}
-
-					rdata::last_good_weight [ idx ] = true;
-				}
-				else {
-					rdata::last_good_weight [ idx ] = false;
-				}
-
-				if ( !side_changed && is_running ) {
-					if ( rdata::last_bad_weight [ idx ] )
-						rdata::resolved_jitter [ idx ] = false;
-
-					rdata::last_bad_weight [ idx ] = true;
-				}
-				else {
-					rdata::last_bad_weight [ idx ] = false;
-				}
-
-				if ( rdata::resolved_jitter [ idx ] && is_running ) {
-					if ( rdata::jitter_sync [ idx ] == cs::time2ticks ( rec.m_simtime ) % 2 )
+				// jitter resolve (if have base jitter, and resolved current and previous ticks, and resolve was different)
+				if ( delta_eye_yaw > 4.0f
+					&& rec.m_resolved
+					&& anim_info [ idx ][ N ( 0 ) ].m_resolved
+					&& desync_side != anim_info [ idx ][ N ( 0 ) ].m_side ) {
+					rdata::resolved_jitter [ idx ] = true;
+					
+					if ( delta_eye_yaw < 0.0f ) {
 						rdata::resolved_side_jitter1 [ idx ] = desync_side;
-					else
+						rdata::resolved_side_jitter2 [ idx ] = anim_info [ idx ][ N ( 0 ) ].m_side;
+					}
+					else {
+						rdata::resolved_side_jitter1 [ idx ] = anim_info [ idx ][ N ( 0 ) ].m_side;
 						rdata::resolved_side_jitter2 [ idx ] = desync_side;
+					}
 				}
+
+				//if ( side_changed && is_running ) {
+				//	if ( rdata::last_good_weight [ idx ] ) {
+				//		rdata::resolved_jitter [ idx ] = true;
+				//		rdata::jitter_sync [ idx ] = delta_eye_yaw < 0.0f;
+				//	}
+				//
+				//	rdata::last_good_weight [ idx ] = true;
+				//}
+				//else {
+				//	rdata::last_good_weight [ idx ] = false;
+				//}
+				//
+				//if ( !side_changed && is_running ) {
+				//	//if ( rdata::last_bad_weight [ idx ] )
+				//	//	rdata::resolved_jitter [ idx ] = false;
+				//
+				//	rdata::last_bad_weight [ idx ] = true;
+				//}
+				//else {
+				//	rdata::last_bad_weight [ idx ] = false;
+				//}
+				//
+				//if ( rdata::resolved_jitter [ idx ] && is_running ) {
+				//	if ( rdata::jitter_sync [ idx ] == delta_eye_yaw < 0.0f )
+				//		rdata::resolved_side_jitter1 [ idx ] = desync_side;
+				//	else
+				//		rdata::resolved_side_jitter2 [ idx ] = desync_side;
+				//}
 			}
 		}
 	//} ENDIF;

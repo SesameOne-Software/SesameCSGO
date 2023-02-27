@@ -230,49 +230,44 @@ public:
 	NETVAR ( vec3_t, ladder_norm, "DT_CSPlayer->m_vecLadderNormal" );
 	NETVAR ( uint32_t*, wearables_handle, "DT_BaseCombatCharacter->m_hMyWearables" );
 	NETVAR ( bool, strafing, "DT_CSPlayer->m_bStrafing" );
-	OFFSET( int, effects, g::is_legacy ? N(0xE4) : N(0xE8) ); // TODO: FIX LATER
-	OFFSET( int, eflags, g::is_legacy ? N ( 0xEC) :N ( 0xF0) );
-	OFFSET( void*, iks, N ( 0x2674 ));
-	OFFSET( bool, should_update, N ( 0x289C ));
-	OFFSET( uint32_t, num_overlays, N ( 0x298C ));
-	OFFSET( float, spawn_time, N ( 0xA370 ));
-	OFFSET( matrix3x4a_t*, bones, N ( 0x26A4 + 0x4) );
-	OFFSET( int, readable_bones, N ( 0x26A8 + 0x4) );
-	OFFSET( int, writeable_bones, N ( 0x26AC + 0x4) );
+	OFFSET ( int, effects, 0xEC );
+	OFFSET( int, eflags, 0xE4 );
+	OFFSET( void*, iks, N ( 0x265C + 4));
+	OFFSET( bool, should_update, N ( 0x288C ));
+	OFFSET( float, spawn_time, N ( 0xA290 ));
+	OFFSET( matrix3x4a_t*, bones, N ( 0x2694 + 0x4) );
+	OFFSET( int, readable_bones, N ( 0x2698 + 0x4) );
+	OFFSET( int, writeable_bones, N ( 0x269C + 0x4) );
 	NETVAR ( int, body, "DT_CSPlayer->m_nBody" );
 	NETVAR ( vec3_t, rotation, "DT_CSPlayer->m_angRotation" );
 	NETVAR ( int, hitbox_set, "DT_BaseAnimating->m_nHitboxSet" );
 	NETVAR ( bool, spotted, "DT_BaseEntity->m_bSpotted" );
 	NETVAR ( float, max_speed, "DT_BasePlayer->m_flMaxspeed" );
-	OFFSET ( uint32_t, vehicle_handle, 0x3300 );
+	OFFSET ( uint32_t, vehicle_handle, 0x32D0 );
 	NETVAR ( bool, is_ghost, "DT_CSPlayer->m_bIsPlayerGhost" );
 	NETVAR ( int, survival_team, "DT_CSPlayer->m_nSurvivalTeam" );
+	NETVAR ( bool, is_walking, "DT_CSPlayer->m_bIsWalking" );
 
 	/* skeet skeet, #1 cheat */
 	/* checks if other player is enemy to this player */
 	bool is_enemy ( player_t* other );
 
 	__forceinline animlayer_t* layers( ) {
-		return *reinterpret_cast< animlayer_t** >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2990 ) );
+		return *reinterpret_cast< animlayer_t** >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2970 ) );
 	}
 
 	__forceinline std::array< float, 24 >& poses( ) {
-		return *reinterpret_cast< std::array< float, 24 >* >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2778) );
+		return *reinterpret_cast< std::array< float, 24 >* >( reinterpret_cast< uintptr_t >( this ) + N ( 0x2764 ) );
 	}
 
 	__forceinline void* seq_desc( int seq ) {
-		auto group_hdr = *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( this ) + 0xA53 );
+		auto group_hdr = *reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( this ) + 0x293C );
 		auto i = seq;
 
 		if ( seq < 0 || seq >= *reinterpret_cast< uint32_t* >( group_hdr + 0xBC ) )
 			i = 0;
 
 		return reinterpret_cast< void* >( group_hdr + *reinterpret_cast< uintptr_t* >( group_hdr + 0xC0 ) + 0xD4 * i );
-	}
-
-	__forceinline void set_local_viewangles( const vec3_t& ang ) {
-		using fn = void( __thiscall* )( void*, const vec3_t& );
-		vfunc< fn >( this, 373 )( this, ang );
 	}
 
 	__forceinline void select_item ( const char* weapon_name, int weapon_subtype ) {
@@ -283,15 +278,15 @@ public:
 	bool physics_run_think( int unk01 );
 
 	__forceinline void think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 139 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 137 )( this );
 	}
 
 	__forceinline void pre_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 318 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 307 )( this );
 	}
 
 	__forceinline void post_think( ) {
-		vfunc< void( __thiscall* )( void* ) >( this, 319 )( this );
+		vfunc< void( __thiscall* )( void* ) >( this, 308 )( this );
 	}
 
 	__forceinline vec3_t world_space( ) {
@@ -349,11 +344,6 @@ public:
 	std::uint32_t handle( );
 
 	bool setup_bones( matrix3x4_t* m, std::uint32_t max, std::uint32_t mask, float seed );
-
-	__forceinline void estimate_abs_vel( vec3_t& vec ) {
-		using fn = void( __thiscall* )( void*, vec3_t& );
-		vfunc< fn >( this, 144 )( this, vec );
-	}
 
 	__forceinline vec3_t& const render_origin( ) {
 		using fn = vec3_t& const( __thiscall* )( void* );

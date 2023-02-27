@@ -29,7 +29,7 @@ void* find_hud_element( const char* name ) {
 
 void run_preserve_death_notices( ) {
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
-	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 53 56 8B 71 58" ) ).get< void ( __thiscall* )( void* ) > ( );
+	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 68 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? 8B F0 85 F6 74 19" ) ).resolve_rip().get< void ( __thiscall* )( void* ) > ( );
 
 	const auto death_notice = find_hud_element ( _ ( "CCSGO_HudDeathNotice" ) );
 

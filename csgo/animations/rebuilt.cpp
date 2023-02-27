@@ -446,7 +446,7 @@ void anims::rebuilt::set_weight_rate( animstate_t* anim_state , int layer , floa
 }
 
 int anims::rebuilt::get_layer_activity( animstate_t* anim_state , int layer ) {
-	static auto CCSGOPlayerAnimState__GetLayerActivity = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 EC 08 53 56 8B 35 ? ? ? ? 57 8B F9 8B CE 8B 06 FF 90 84 00 00 00 8B 7F 60 83 BF ? ? ? ? 00" ) ).get<int( __thiscall* )( animstate_t* , int )>( );
+	static auto CCSGOPlayerAnimState__GetLayerActivity = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 3D ? ? ? ? 75 11" ) ).resolve_rip().get<int( __thiscall* )( animstate_t* , int )>( );
 	return CCSGOPlayerAnimState__GetLayerActivity( anim_state, layer );
 }
 
@@ -457,7 +457,7 @@ int anims::rebuilt::select_sequence_from_act_mods( animstate_t* anim_state , int
 }
 
 float anims::rebuilt::get_layer_ideal_weight_from_seq_cycle( animstate_t* anim_state , int layer ) {
-	static auto CCSGOPlayerAnimState__GetLayerIdealWeightFromSeqCycle = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 08 53 56 8B 35 ? ? ? ? 57 8B F9 8B CE 8B 06 FF 90 84 00 00 00 8B 7F 60 0F 57 DB" ) ).get<void*> ( );
+	static auto CCSGOPlayerAnimState__GetLayerIdealWeightFromSeqCycle = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 0F 2F 44 24" ) ).resolve_rip().get<void*> ( );
 
 	auto ret = 1.0f;
 
@@ -472,7 +472,7 @@ float anims::rebuilt::get_layer_ideal_weight_from_seq_cycle( animstate_t* anim_s
 }
 
 float anims::rebuilt::get_first_sequence_anim_tag( animstate_t* anim_state , int seq , int tag , float start , float end ) {
-	static auto CCSPlayer__GetFirstSequenceAnimTag = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? F3 0F 11 86 98 00 00 00 0F 57 DB F3 0F 10 86 24 01 00 00" ) ).resolve_rip().get<float( __thiscall* )( player_t*, int, int, float, float )>( );
+	static auto CCSPlayer__GetFirstSequenceAnimTag = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? F3 0F 11 86 ? ? ? ? 0F 57 DB" ) ).resolve_rip().get<float( __thiscall* )( player_t*, int, int, float, float )>( );
 	
 	const auto player = anim_state->m_entity;
 	const auto mdl_ptr = get_model_ptr ( player );
@@ -1835,7 +1835,7 @@ void anims::rebuilt::setup_velocity( animstate_t* anim_state, bool force_feet_ya
 			vecAbsVelocity = *reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( player ) + 0x94 );
 		}
 		else {
-			C_CSPlayer__EstimateAbsVelocity( player );	// Using this accessor if the client is starved of information, 
+			//C_CSPlayer__EstimateAbsVelocity( player );	// Using this accessor if the client is starved of information, 
 																// the player doesn't run on the spot. Note this is unreliable
 																// and could fail to populate the value if prediction fails.
 			vecAbsVelocity = *reinterpret_cast< vec3_t* >( reinterpret_cast< uintptr_t > ( player ) + 0x94 );
@@ -2091,7 +2091,7 @@ void anims::rebuilt::setup_aim_matrix( animstate_t* anim_state ) {
 }
 
 void anims::rebuilt::setup_weapon_action( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpWeaponAction = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 53 56 57 8B F9 8B 77 60" ) ).get<void( __thiscall* )( animstate_t* )>( );
+	static auto CCSGOPlayerAnimState__SetUpWeaponAction = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B 47 60" ) ).resolve_rip().get<void( __thiscall* )( animstate_t* )>( );
 	CCSGOPlayerAnimState__SetUpWeaponAction( anim_state );
 }
 
@@ -2099,7 +2099,7 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 	//static auto CCSGOPlayerAnimState__SetUpMovement = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 81 EC 88 00 00 00 56 57 8B 3D ? ? ? ? 8B F1 8B CF 89" ) ).get<void( __thiscall* )( animstate_t* )>( );
 	//CCSGOPlayerAnimState__SetUpMovement( anim_state );
 
-	static auto CCSGOPlayerAnimState__GetWeaponPrefix = pattern::search ( _ ( "client.dll" ), _ ( "53 56 57 8B F9 33 F6 8B 4F 60" ) ).get<const char* ( __thiscall* )( animstate_t* )> ( );
+	static auto CCSGOPlayerAnimState__GetWeaponPrefix = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 50 8D 44 24 54" ) ).resolve_rip().get<const char* ( __thiscall* )( animstate_t* )> ( );
 	static auto m_iMoveState = pattern::search ( _ ( "client.dll" ), _ ( "8B 81 ? ? ? ? 3B 86 ? ? ? ? 74" ) ).add(2).deref().get<uint32_t> ( );
 
 	MDLCACHE_CRITICAL_SECTION ( );
@@ -2189,7 +2189,7 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 
 	if ( !CLIENT_DLL_ANIMS && player == g::local && g::local ) {
 		/* @ m_iFOV + 0x14 */
-		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + 0x3208 );
+		const auto buttons = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( player ) + 0x31D4 + 0x14 );
 
 		const auto moveRight = !!( buttons & buttons_t::right );
 		const auto moveLeft = !!( buttons & buttons_t::left );
@@ -2433,12 +2433,12 @@ void anims::rebuilt::setup_movement( animstate_t* anim_state ) {
 }
 
 void anims::rebuilt::setup_alive_loop( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpAliveloop = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 56 8B 71 60 83 BE ? ? ? ? 00 0F 84 ? ? ? ? 8B B6 ? ? ? ? 81 C6 68 02 00 00" ) ).get<void( __thiscall* )( animstate_t* )>( );
+	static auto CCSGOPlayerAnimState__SetUpAliveloop = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B 47 60 83 B8" ) ).resolve_rip ( ).get<void( __thiscall* )( animstate_t* )>( );
 	CCSGOPlayerAnimState__SetUpAliveloop( anim_state );
 }
 
 void anims::rebuilt::setup_whole_body_action( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpWholeBodyAction = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 EC 08 56 57 8B F9 8B 77" ) ).get<void( __thiscall* )( animstate_t* )>( );
+	static auto CCSGOPlayerAnimState__SetUpWholeBodyAction = pattern::search( _( "client.dll" ) , _( "51 8B 41 60 83 B8" ) ).get<void( __thiscall* )( animstate_t* )>( );
 	CCSGOPlayerAnimState__SetUpWholeBodyAction( anim_state );
 }
 
@@ -2526,7 +2526,7 @@ void anims::rebuilt::setup_flashed_reaction( animstate_t* anim_state ) {
 }
 
 void anims::rebuilt::setup_flinch( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpFlinch = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 56 8B 71 60 83 BE ? ? ? ? 00 0F 84 ? ? ? ? 8B B6 ? ? ? ? 81 C6 30 02 00 00" ) ).get<void( __thiscall* )( animstate_t* )>( );
+	static auto CCSGOPlayerAnimState__SetUpFlinch = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B CF E8 ? ? ? ? 33 C0" ) ).resolve_rip().get<void( __thiscall* )( animstate_t* )>( );
 	CCSGOPlayerAnimState__SetUpFlinch( anim_state );
 }
 

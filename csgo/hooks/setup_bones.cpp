@@ -18,7 +18,7 @@ bool __fastcall hooks::setup_bones( REG, matrix3x4_t* out, int max_bones, int ma
 
 	const auto pl = reinterpret_cast< player_t* > ( reinterpret_cast< uintptr_t >( ecx ) - 4 );
 	
-	if ( pl && pl->is_player ( ) && pl->health() > 0 ) {
+	if ( !bone_setup::allow && pl && pl->is_player ( ) && pl->health() > 0 ) {
 		if ( *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( pl ) + 0x2690 ) != g_model_bone_counter ) {
 			memcpy ( pl->bone_cache ( ), anims::usable_bones [ pl->idx ( ) ].data ( ), sizeof ( matrix3x4_t ) * pl->bone_count ( ) );
 			

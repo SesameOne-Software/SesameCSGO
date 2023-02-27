@@ -770,7 +770,7 @@ float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* playe
 		if ( weapon ) {
 			if ( auto data = weapon->data ( ) )
 				max_speed = g::local->scoped ( ) ? data->m_max_speed_alt : data->m_max_speed;
-			zoom_levels = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( weapon ) + 0x33E0 );
+			zoom_levels = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( weapon ) + 0x3340 );
 		}
 
 		slowed_by_scope = ( zoom_levels > 0 && zoom_levels > 1 && ( max_speed * 0.52f ) < 110.0f );
@@ -805,8 +805,6 @@ float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* playe
 
 void features::ragebot::skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& old_angs ) {
 	VMP_BEGINMUTATION ( );
-	static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
-
 	if ( !g::local || !g::local->alive ( ) )
 		return;
 
@@ -865,7 +863,7 @@ void features::ragebot::skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& ol
 				const auto accel = skeet_accelerate_rebuilt ( cmd, g::local, move_dir, max_stop_speed_vec, ducking );
 
 				const auto currentspeed = max_stop_speed_vec.dot_product ( move_dir );
-				const auto addspeed = std::clamp ( std::min( g::local->max_speed( ), deployable_limited_max_speed ( g::local ) ) - currentspeed, 0.0f, accel );
+				const auto addspeed = std::clamp ( std::min( g::local->max_speed( ), 260.0f ) - currentspeed, 0.0f, accel );
 
 				if ( addspeed > delta_target_speed + 0.5f ) {
 					auto move_length = currentspeed + delta_target_speed;
@@ -1389,11 +1387,17 @@ bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, h
 	if ( !!(multipoint_mask & multipoint_mode_t::right) )
 		points.push_back( hitbox_pos + vec3_t( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale );
 
-	if ( !!(multipoint_mask & multipoint_mode_t::bottom ))
-		points.push_back( hitbox_pos - vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
+	vec3_t top_offset = vec3_t ( 0.0f, 0.0f, hitbox_zrad ) * pointscale;
 
-	if ( !!(multipoint_mask & multipoint_mode_t::top ))
-		points.push_back( hitbox_pos + vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
+	if ( !!(multipoint_mask & multipoint_mode_t::bottom ))
+		points.push_back( hitbox_pos - top_offset * pointscale );
+
+	if ( !!( multipoint_mask & multipoint_mode_t::top ) ) {
+		points.push_back ( hitbox_pos + top_offset * pointscale );
+
+		points.push_back ( hitbox_pos + side_vec * hitbox_rad * pointscale + top_offset );
+		points.push_back ( hitbox_pos + vec3_t ( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale + top_offset );
+	}
 
 	for ( auto& point : points )
 		scan_points.emplace( point );
@@ -1580,23 +1584,28 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	/* use other matrix with same points, trying to find alignments in the two matricies */
 	/* shift over by 1 entry in our records */
 	// SAFE POINT BONE MATRIX DOESN'T WORK RIGHT NOW
-	auto opposite_side_max = anims::desync_side_t::desync_middle;
+	//auto opposite_side_max = anims::desync_side_t::desync_middle;
+	//
+	//switch ( rec.m_side ) {
+	//case anims::desync_side_t::desync_left_max:
+	//case anims::desync_side_t::desync_left_half:
+	//	opposite_side_max = anims::desync_side_t::desync_right_max;
+	//	break;
+	//case anims::desync_side_t::desync_middle:
+	//	opposite_side_max = anims::desync_side_t::desync_left_max;
+	//	break;
+	//case anims::desync_side_t::desync_right_max:
+	//case anims::desync_side_t::desync_right_half:
+	//	opposite_side_max = anims::desync_side_t::desync_left_max;
+	//	break;
+	//}
 
-	switch ( rec.m_side ) {
-	case anims::desync_side_t::desync_left_max:
-	case anims::desync_side_t::desync_left_half:
-		opposite_side_max = anims::desync_side_t::desync_right_max;
-		break;
-	case anims::desync_side_t::desync_middle:
-		opposite_side_max = anims::desync_side_t::desync_left_max;
-		break;
-	case anims::desync_side_t::desync_right_max:
-	case anims::desync_side_t::desync_right_half:
-		opposite_side_max = anims::desync_side_t::desync_left_max;
-		break;
-	}
+	bool force_disable_safepoint = false;
 
-	std::array< matrix3x4_t, 128>& dmg_scan_matrix = safe_point_active ? rec.m_aim_bones[ opposite_side_max ] : rec.m_aim_bones[ rec.m_side ];
+retry_hitscan:
+
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix_unsafe = rec.m_aim_bones [ rec.m_side ];
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix = ( safe_point_active && !force_disable_safepoint ) ? rec.m_aim_bones [ rec.m_opposite_side ] : rec.m_aim_bones [ rec.m_side ];
 
 	const auto backup_origin = pl->origin ( );
 	auto backup_abs_origin = pl->abs_origin ( );
@@ -1783,6 +1792,10 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 			const auto at_target_yaw = cs::normalize ( cs::calc_angle ( g::local->eyes ( ), ent->eyes ( ) ).y );
 
 			for ( auto& rec : recs ) {
+				/* only aim at records that arent newest */
+				//if ( rec->m_simtime == ent->simtime ( ) )
+				//	continue;
+
 				const auto speed2d = rec->m_vel.length_2d ( );
 
 				if ( !!( rec->m_flags & flags_t::on_ground ) && speed2d > highest_speed ) {

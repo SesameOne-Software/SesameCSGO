@@ -96,7 +96,7 @@ void animstate_t::update( vec3_t& ang ) {
 }
 
 const char* animstate_t::get_weapon_move_animation ( ) {
-	static auto addr = pattern::search ( _ ( "client.dll" ),_( "53 56 57 8B F9 33 F6 8B 4F 60 8B 01 FF 90") ).get<const char* ( __thiscall* )( animstate_t* )> ( );
+	static auto addr = pattern::search ( _ ( "client.dll" ),_( "E8 ? ? ? ? 50 8D 44 24 54") ).resolve_rip().get<const char* ( __thiscall* )( animstate_t* )> ( );
 	return addr ( this );
 }
 
@@ -168,8 +168,8 @@ void player_t::create_animstate( animstate_t* state ) {
 void player_t::inval_bone_cache( ) {
 	static auto invalidate_bone_cache = pattern::search( _( "client.dll" ), _( "80 3D ? ? ? ? ? 74 16 A1 ? ? ? ? 48 C7 81" ) ).add( 10 ).get< uintptr_t >( );
 
-	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x292C ) ) = N( 0xFF7FFFFF );
-	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2694 ) ) = **( uintptr_t** ) invalidate_bone_cache - 1;
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2914 ) ) = N( 0xFF7FFFFF );
+	*( uint32_t* ) ( ( uintptr_t ) this + N( 0x2680 ) ) = **( uintptr_t** ) invalidate_bone_cache - 1;
 }
 
 void player_t::set_abs_angles( const vec3_t& ang ) {
@@ -211,14 +211,12 @@ animstate_t* player_t::animstate( ) {
 }
 
 vec3_t player_t::eyes( ) {
-	static auto modify_eye_position = pattern::search( _( "client.dll" ), _( "57 E8 ? ? ? ? 8B 06 8B CE FF 90" ) ).add( 1 ).resolve_rip( ).get<void*>( );
-
 	vec3_t pos = origin( ) + view_offset( );
 
 	/* eye position */
 	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 169 ) ( this, pos );
 
-	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x9B14 ) && this == g::local && animstate ( ) )
+	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x39E1 ) && this == g::local && animstate ( ) )
 		hooks::modify_eye_pos( animstate( ), nullptr, pos );
 
 	return pos;

@@ -87,7 +87,6 @@ namespace g {
 	inline int choked_cmds = 0;
 	inline int send_cmds = 0;
 	inline bool just_shot = false;
-	inline bool is_legacy = false;
 
 	namespace resources {
 #include "base85.hpp"

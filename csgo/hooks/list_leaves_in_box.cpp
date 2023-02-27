@@ -28,7 +28,7 @@ int __fastcall hooks::list_leaves_in_box( REG, vec3_t& mins, vec3_t& maxs, uint1
 		PAD( 4 );
 	};
 
-	static auto ret_addr = pattern::search( _( "client.dll" ), _( "56 52 FF 50 18" ) ).add( 5 ).get< void* >( );
+	static auto ret_addr = pattern::search( _( "client.dll" ), _( "8B 7D 08 8B 74 24 10 89 44 24 14" ) ).get< void* >( );
 
 	if ( _ReturnAddress( ) != ret_addr )
 		return old::list_leaves_in_box( REG_OUT, mins, maxs, list, list_max );

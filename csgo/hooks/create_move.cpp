@@ -215,7 +215,12 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 	
 	/* recharge if we need, and return */
 	if ( !exploits::in_exploit && exploits::recharge ( ucmd ) ) {
-		cs::set_send_packet ( g::send_packet );
+		PDWORD pEBP;
+		__asm mov pEBP, ebp;
+
+		*( bool* ) ( *pEBP - 0x1C ) = g::send_packet;
+
+		//cs::set_send_packet ( g::send_packet );
 		return false;
 	}
 	
@@ -405,8 +410,14 @@ bool __fastcall hooks::create_move( REG, float sampletime, ucmd_t* ucmd ) {
 		g::choked_cmds++;
 	}
 	
-	if ( !exploits::in_exploit )
-		cs::set_send_packet ( g::send_packet );
+	if ( !exploits::in_exploit ) {
+		PDWORD pEBP;
+		__asm mov pEBP, ebp;
+
+		*( bool* ) ( *pEBP - 0x1C ) = g::send_packet;
+
+		//cs::set_send_packet ( g::send_packet );
+	}
 	
 	//log_outgoing_cmd_nums ( ucmd );
 	

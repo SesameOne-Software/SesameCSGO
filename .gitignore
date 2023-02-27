@@ -38,3 +38,4 @@ csgo/Release
 *.exp
 bin
 csgo/Debug
+.vs

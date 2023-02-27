@@ -183,7 +183,7 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	/* func sigs */
 	static auto init_iks = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 EC 08 8B 45 08 56 57 8B F9 8D" ) ).get< void( __thiscall* )( void* , void* , vec3_t& , vec3_t& , float , int , int ) >( );
 	static auto update_targets = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F0 81 EC 18 01 00 00 33" ) ).get< void( __thiscall* )( void* , vec3_t* , void* , void* , uint8_t* ) >( );
-	static auto solve_dependencies = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F0 81 EC 98 05 00 00 8B 81" ) ).get< void( __thiscall* )( void* , vec3_t* , void* , void* , uint8_t* ) >( );
+	static auto solve_dependencies = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B 47 FC 8D 4F FC 8B 80" ) ).resolve_rip().get< void( __thiscall* )( void* , vec3_t* , void* , void* , uint8_t* ) >( );
 
 	/* offset sigs */
 	static auto iks_off = pattern::search( _( "client.dll" ) , _( "8D 47 FC 8B 8F" ) ).add( 5 ).deref( ).add( 4 ).get< uint32_t >( );
@@ -191,16 +191,16 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 
 	const auto backup_poses = target->poses( );
 
-	auto cstudio = *reinterpret_cast< void** >( uintptr_t( target ) + 0x2950 );
+	auto cstudio = *reinterpret_cast< void** >( uintptr_t( target ) + 0x293C );
 
 	if ( !cstudio )
 		return false;
 
-	//if ( target != g::local ) {
-	//	invalidate_physics_recursive( target , 2 );
-	//	invalidate_physics_recursive( target , 8 );
-	//	invalidate_physics_recursive( target , 32 );
-	//}
+	if ( target != g::local ) {
+		invalidate_physics_recursive( target , 2 );
+		invalidate_physics_recursive( target , 8 );
+		invalidate_physics_recursive( target , 32 );
+	}
 
 	target->poses( ) = poses;
 
@@ -275,7 +275,6 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	target->poses( ) = backup_poses;
 
 	return true;
-	VMP_END ( );
 }
 
 void anims::reset_data ( int idx ) {
@@ -394,10 +393,10 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 		return true;
 	}
 
-	if ( cs::time2ticks ( ent->simtime ( ) - previous_record.m_simtime ) <= 1 ) {
-		vel = origin_delta / time_difference;
-		return true;
-	}
+	//if ( cs::time2ticks ( ent->simtime ( ) - previous_record.m_simtime ) <= 1 ) {
+	//	vel = origin_delta / time_difference;
+	//	return true;
+	//}
 
 	auto fixed = false;
 
@@ -423,7 +422,7 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 
 				auto origin_delta_vel_len = vel.length_2d ( );
 
-				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight / std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f );
+				const auto flMoveWeightWithAirSmooth = animlayers [ 6 ].m_weight /*/ std::max ( 1.0f - animlayers [ 5 ].m_weight, 0.55f )*/;
 				const auto flTargetMoveWeight_to_speed2d = std::lerp ( max_speed * 0.52f, max_speed * 0.34f, ent->crouch_amount ( ) ) * flMoveWeightWithAirSmooth;
 
 				const auto speed_as_portion_of_run_top_speed = 0.35f * ( 1.0f - animlayers [ 11 ].m_weight );
@@ -437,13 +436,12 @@ bool anims::fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlaye
 					fixed = flMoveWeightWithAirSmooth < 0.95f;
 				}
 				else {
-					static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
-
-					auto flTargetMoveWeight_adjusted_speed2d = std::min ( max_speed, deployable_limited_max_speed ( ent ) );
+					const float deployable_limited_max_speed = 260.0f;
+					float flTargetMoveWeight_adjusted_speed2d = std::min ( max_speed, deployable_limited_max_speed );
 
 					if ( !!( ent->flags ( ) & flags_t::ducking ) )
 						flTargetMoveWeight_adjusted_speed2d *= 0.34f;
-					else if ( *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( ent ) + 0x9975 ) )
+					else if ( ent->is_walking() )
 						flTargetMoveWeight_adjusted_speed2d *= 0.52f;
 
 					if ( origin_delta_vel_len > flTargetMoveWeight_adjusted_speed2d ) {
@@ -630,6 +628,18 @@ void anims::update_from( player_t* ent , anim_info_t& from , anim_info_t& to, st
 
 		*reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( &animstate ) + 0x180 ) = to.m_anim_layers [ desync_side_t::desync_max ][ 12 ].m_weight;
 	}
+
+	switch ( to.m_side ) {
+	case desync_side_t::desync_left_max:
+	case desync_side_t::desync_left_half:
+		to.m_opposite_side = desync_side_t::desync_right_max;
+		break;
+	case desync_side_t::desync_right_half:
+	case desync_side_t::desync_right_max:
+	case desync_side_t::desync_middle:
+		to.m_opposite_side = desync_side_t::desync_left_max;
+		break;
+	}
 	
 	ent->poses ( ) = to.m_poses [ to.m_side ];
 	*ent->animstate ( ) = to.m_anim_state [ to.m_side ];
@@ -638,12 +648,17 @@ void anims::update_from( player_t* ent , anim_info_t& from , anim_info_t& to, st
 	/* build bones for resolved side */
 	auto backup_lean = ent->layers ( ) [ 12 ].m_weight;
 	ent->layers ( ) [ 12 ].m_weight = 0.0f;
+	ent->set_abs_angles ( to.m_abs_angles [ to.m_opposite_side ] );
+	build_bones ( ent, to.m_aim_bones [ to.m_opposite_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_opposite_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_opposite_side ] );
+	ent->set_abs_angles ( to.m_abs_angles [ to.m_side ] );
 	build_bones ( ent, to.m_aim_bones [ to.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, to.m_anim_state [ to.m_side ].m_abs_yaw, 0.0f ), to.m_origin, to.m_simtime, to.m_poses [ to.m_side ] );
 	ent->layers ( ) [ 12 ].m_weight = backup_lean;
 
 	/* remove later */
-	for ( auto& bones : to.m_aim_bones )
-		bones = to.m_aim_bones [ to.m_side ];
+	for ( int i = 0; i < to.m_aim_bones.size ( ); i++ ) {
+		if ( i != to.m_opposite_side && i != to.m_side )
+			to.m_aim_bones [ i ] = to.m_aim_bones [ to.m_side ];
+	}
 }
 
 void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix ) {
@@ -677,25 +692,27 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 		const auto backup_lby = ent->lby ( );
 		vec3_t update_angles = angles;
 
-		if ( should_resolve && side != desync_side_t::desync_max && !build_matrix && should_desync ) {
-			const auto desync_amount = ent->desync_amount ( );
+		if ( should_resolve && side != desync_side_t::desync_max && should_desync /*&& !build_matrix*/ ) {
+			const auto desync_amount = /*ent->desync_amount ( ) * 1.033f*/ 60.0f;
+
+			//anim_state->m_abs_yaw = cs::normalize ( to.m_angles.y + -desync_amount + static_cast< float >( side ) * desync_amount );
 
 			//static std::vector<const char*> anim_yaw_mode { "Current",  "Onetap", "Skeet" , "Neverlose" };
 			//switch ( yaw_mode ) {
 			//case 0:
-			//	anim_state->m_abs_yaw = cs::normalize ( ent->angles ( ).y + -desync_amount + static_cast< float >( side ) * ( desync_amount * 0.5f ) );
+				anim_state->m_abs_yaw = cs::normalize ( ent->angles ( ).y + -desync_amount + static_cast< float >( side ) * ( desync_amount * 0.5f ) );
 			//	break;
 			//case 1:
 			//	anim_state->m_abs_yaw = cs::normalize ( ent->angles ( ).y + -60.0f + static_cast< float >( side ) * 30.0f );
 			//	break;
 			//case 2:
-				update_angles.y = cs::normalize ( update_angles.y + -120.0f + static_cast< float >( side ) * 60.0f );
-
-				if ( !anim_layers [ 6 ].m_weight && !anim_layers [ 6 ].m_playback_rate && !!( ent->flags ( ) & flags_t::on_ground ) )
-					ent->lby ( ) = update_angles.y;
+			//	update_angles.y = cs::normalize ( update_angles.y + -120.0f + static_cast< float >( side ) * 60.0f );
+			//
+			//	if ( !anim_layers [ 6 ].m_weight && !anim_layers [ 6 ].m_playback_rate && !!( ent->flags ( ) & flags_t::on_ground ) )
+			//		ent->lby ( ) = update_angles.y;
 			//	break;
 			//case 3:
-			//	update_angles.y = cs::normalize ( update_angles.y + -70.0f + static_cast< float >( side ) * 35.0f );
+			//	update_angles.y = cs::normalize ( update_angles.y + -120.0f + static_cast< float >( side ) * 60.0f );
 			//
 			//	if ( !anim_layers [ 6 ].m_weight && !anim_layers [ 6 ].m_playback_rate && !!( ent->flags ( ) & flags_t::on_ground ) )
 			//		ent->lby ( ) = update_angles.y;
@@ -940,9 +957,9 @@ void anims::on_net_update_end ( int idx ) {
 		return;
 	}
 
-	if ( anim_info [ idx ].empty ( ) || ent->simtime ( ) > anim_info [ idx ].front( ).m_simtime ) {
+	if ( anim_info [ idx ].empty ( ) || ent->simtime ( ) > ent->old_simtime() ) {
 		/* fixes crashing caused by animation fix when there are severe frame drops (dont animate between choked commands if gaps between simtime is too big) */
-		if ( !anim_info [ idx ].empty ( ) && abs( ent->simtime( ) - anim_info [ idx ].front ( ).m_simtime ) > cs::ticks2time( 20 ) )
+		if ( !anim_info [ idx ].empty ( ) && abs( ent->simtime( ) - anim_info [ idx ].front ( ).m_simtime ) > cs::ticks2time( 64 ) )
 			reset_data ( idx );
 
 		anim_info_t rec;
@@ -988,22 +1005,44 @@ void anims::on_net_update_end ( int idx ) {
 			/* set animlayers to ones from the server after we are done using the predicted ones */
 			rec.m_anim_layers = backup_anim_layers;
 
+			switch ( rec.m_side ) {
+			case desync_side_t::desync_left_max:
+			case desync_side_t::desync_left_half:
+				rec.m_opposite_side = desync_side_t::desync_right_max;
+				break;
+			case desync_side_t::desync_right_half:
+			case desync_side_t::desync_right_max:
+			case desync_side_t::desync_middle:
+				rec.m_opposite_side = desync_side_t::desync_left_max;
+				break;
+			}
+
 			ent->poses ( ) = rec.m_poses [ rec.m_side ];
 			*ent->animstate ( ) = rec.m_anim_state [ rec.m_side ];
 			ent->set_abs_angles ( rec.m_abs_angles [ rec.m_side ] );
 
 			/* build bones for resolved side */
-			float backup_lean = ent->layers ( ) [ 12 ].m_weight;
+			auto backup_lean = ent->layers ( ) [ 12 ].m_weight;
 			ent->layers ( ) [ 12 ].m_weight = 0.0f;
+			ent->set_abs_angles ( rec.m_abs_angles [ rec.m_opposite_side ] );
+			build_bones ( ent, rec.m_aim_bones [ rec.m_opposite_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, rec.m_anim_state [ rec.m_opposite_side ].m_abs_yaw, 0.0f ), rec.m_origin, rec.m_simtime, rec.m_poses [ rec.m_opposite_side ] );
+			ent->set_abs_angles ( rec.m_abs_angles [ rec.m_side ] );
 			build_bones ( ent, rec.m_aim_bones [ rec.m_side ].data ( ), 0x7FF00, vec3_t ( 0.0f, rec.m_anim_state [ rec.m_side ].m_abs_yaw, 0.0f ), rec.m_origin, rec.m_simtime, rec.m_poses [ rec.m_side ] );
 			ent->layers ( ) [ 12 ].m_weight = backup_lean;
 
 			/* remove later */
-			for ( auto& bones : rec.m_aim_bones )
-				bones = rec.m_aim_bones [ rec.m_side ];
+			for ( int i = 0; i < rec.m_aim_bones.size ( ); i++ ) {
+				if ( i != rec.m_opposite_side && i != rec.m_side )
+					rec.m_aim_bones [ i ] = rec.m_aim_bones [ rec.m_side ];
+			}
+
+			if ( rec.m_simtime <= rec.m_old_simtime )
+				rec.m_invalid = true;
 
 			anim_info[ idx ].push_front( rec );
-			lagcomp_track [ idx ].push_front ( &anim_info [ idx ].front ( ) );
+
+			if ( !rec.m_invalid )
+				lagcomp_track [ idx ].push_front ( &anim_info [ idx ].front ( ) );
 		}
 		else {
 			rec = anim_info_t( ent );
@@ -1022,8 +1061,13 @@ void anims::on_net_update_end ( int idx ) {
 
 			update_from ( ent, anim_info [ idx ].front ( ), rec, rec.m_anim_layers [ desync_side_t::desync_max ] );
 
+			if ( rec.m_simtime <= rec.m_old_simtime )
+				rec.m_invalid = true;
+
 			anim_info[ idx ].push_front( rec );
-			lagcomp_track [ idx ].push_front ( &anim_info [ idx ].front ( ) );
+
+			if ( !rec.m_invalid )
+				lagcomp_track [ idx ].push_front ( &anim_info [ idx ].front ( ) );
 		}
 	}
 	
