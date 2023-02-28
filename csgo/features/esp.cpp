@@ -1101,45 +1101,45 @@ void features::esp::handle_dynamic_updates( ) {
 	}
 
 	/* update with sounds */
-	static auto get_active_sounds = pattern::search( _( "engine.dll" ) , _( "55 8B EC 83 E4 F8 81 EC 44 03 00 00 53 56" ) ).get< void( __thiscall* )( snd_data_t* ) >( );
+	//static auto get_active_sounds = pattern::search( _( "engine.dll" ) , _( "55 8B EC 83 E4 F8 81 EC 44 03 00 00 53 56" ) ).get< void( __thiscall* )( snd_data_t* ) >( );
 
-	memset( &cached_data , 0 , sizeof cached_data );
-	get_active_sounds( &cached_data );
+	//memset( &cached_data , 0 , sizeof cached_data );
+	//get_active_sounds( &cached_data );
 
-	if ( !cached_data.m_count )
-		return;
+	//if ( !cached_data.m_count )
+	//	return;
 
-	for ( auto i = 0; i < cached_data.m_count; i++ ) {
-		const auto sound = cached_data.m_sounds[ i ];
+	//for ( auto i = 0; i < cached_data.m_count; i++ ) {
+	//	const auto sound = cached_data.m_sounds[ i ];
 
-		if ( !sound.m_from_server || !sound.m_sound_src || sound.m_sound_src > 64 || !sound.m_origin || *sound.m_origin == vec3_t( 0.0f , 0.0f , 0.0f ) )
-			continue;
+	//	if ( !sound.m_from_server || !sound.m_sound_src || sound.m_sound_src > 64 || !sound.m_origin || *sound.m_origin == vec3_t( 0.0f , 0.0f , 0.0f ) )
+	//		continue;
 
-		auto pl = cs::i::ent_list->get< player_t* >( sound.m_sound_src );
+	//	auto pl = cs::i::ent_list->get< player_t* >( sound.m_sound_src );
 
-		if ( !pl || !pl->dormant( ) )
-			continue;
+	//	if ( !pl || !pl->dormant( ) )
+	//		continue;
 
-		vec3_t end_pos = *sound.m_origin;
+	//	vec3_t end_pos = *sound.m_origin;
 
-		trace_t tr;
-		ray_t ray;
+	//	trace_t tr;
+	//	ray_t ray;
 
-		trace_filter_t trace_filter;
-		trace_filter.m_skip = pl;
+	//	trace_filter_t trace_filter;
+	//	trace_filter.m_skip = pl;
 
-		ray.init( *sound.m_origin + vec3_t( 0.0f , 0.0f , 2.0f ) , *sound.m_origin - vec3_t( 0.0f , 0.0f , 4096.0f ) );
-		cs::i::trace->trace_ray( ray , mask_playersolid , &trace_filter , &tr );
+	//	ray.init( *sound.m_origin + vec3_t( 0.0f , 0.0f , 2.0f ) , *sound.m_origin - vec3_t( 0.0f , 0.0f , 4096.0f ) );
+	//	cs::i::trace->trace_ray( ray , mask_playersolid , &trace_filter , &tr );
 
-		if ( !tr.is_visible( ) )
-			end_pos = tr.m_endpos;
+	//	if ( !tr.is_visible( ) )
+	//		end_pos = tr.m_endpos;
 
-		if ( abs ( esp_data [ i ].m_spotted_time - cs::i::globals->m_curtime ) > 1.0f ) {
-			esp_data [ pl->idx ( ) ].m_sound_pos = end_pos;
-			esp_data [ pl->idx ( ) ].m_dormant = true;
-			esp_data [ pl->idx ( ) ].m_last_seen = cs::i::globals->m_curtime;
-		}
-	}
+	//	if ( abs ( esp_data [ i ].m_spotted_time - cs::i::globals->m_curtime ) > 1.0f ) {
+	//		esp_data [ pl->idx ( ) ].m_sound_pos = end_pos;
+	//		esp_data [ pl->idx ( ) ].m_dormant = true;
+	//		esp_data [ pl->idx ( ) ].m_last_seen = cs::i::globals->m_curtime;
+	//	}
+	//}
 }
 
 void features::esp::reset_dormancy( event_t* event ) {

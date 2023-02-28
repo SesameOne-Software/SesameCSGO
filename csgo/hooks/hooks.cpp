@@ -218,7 +218,7 @@ void hooks::init( ) {
 	dbg_hook( _in_prediction, in_prediction, ( void** )&old::in_prediction );
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
-	dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
+	//dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
 	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
 	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );

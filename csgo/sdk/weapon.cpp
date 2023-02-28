@@ -138,14 +138,14 @@ weapon_t* weapon_t::world_mdl ( ) {
 	return cs::i::ent_list->get_by_handle<weapon_t*>( world_model_handle() );
 }
 
-float weapon_t::inaccuracy( ) {
-	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 483 )( this );
+float weapon_t::inaccuracy() {
+	using fn = float(__thiscall*)(void*);
+	return vfunc< fn >(this, 469)(this);
 }
 
-float weapon_t::spread( ) {
-	using fn = float( __thiscall* )( void* );
-	return vfunc< fn >( this, 453 )( this );
+float weapon_t::spread() {
+	using fn = float(__thiscall*)(void*);
+	return vfunc< fn >(this, 439)(this);
 }
 
 float weapon_t::max_speed( ) {

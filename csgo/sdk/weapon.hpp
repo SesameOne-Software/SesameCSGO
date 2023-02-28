@@ -323,7 +323,7 @@ public:
 
 	__forceinline void update_accuracy( ) {
 		using fn = void( __thiscall* )( void* );
-		vfunc< fn >( this, 484 )( this );
+		vfunc< fn >( this, 471 )( this );
 	}
 
 	float inaccuracy( );
