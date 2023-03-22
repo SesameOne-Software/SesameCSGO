@@ -4,7 +4,7 @@
 
 // Generated using ReClass 2016
 
-enum class weapons_t : uint16_t {
+enum class weapons_t : int {
 	none = 0,
 	deagle = 1,
 	elite = 2,
@@ -105,21 +105,26 @@ public:
 	int m_max_clip;
 	PAD ( 12 );
 	int m_max_reserved_ammo;
-	PAD ( 96 );
+	PAD ( 0x4 );												// 0x0028
+	const char* m_world_model;						// 0x002C
+	const char* m_view_model;							// 0x0030
+	const char* m_world_dropped_model;				// 0x0034
+	PAD ( 0x48 );											// 0x0038
+	const char* m_ammo_type;							// 0x0080
+	uint8_t           pad_0084 [ 4 ];
 	char* m_hud_name;
 	char* m_weapon_name;
 	PAD ( 56 );
 	weapon_type_t m_type;
-	PAD ( 4 );
 	int m_price;
 	int m_reward;
 	PAD ( 4 );
 	float m_fire_rate;
-	PAD ( 12 );
+	float m_fire_rate_alt;
+	PAD ( 8 );
 	bool m_full_auto;
 	PAD ( 3 );
 	int m_dmg;
-	PAD ( 4 );
 	float m_armor_ratio;
 	int m_bullets;
 	float m_penetration;
@@ -129,7 +134,10 @@ public:
 	float m_throw_velocity;
 	PAD ( 12 );
 	bool m_silencer;
-	PAD ( 15 );
+	PAD ( 3 );
+	const char* m_silencer_model;						// 0x0120
+	int				  m_crosshair_min_distance;				// 0x0124
+	int				  m_crosshair_delta_distance;			// 0x0128
 	float m_max_speed;
 	float m_max_speed_alt;
 	float m_speed_modifier;

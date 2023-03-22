@@ -196,11 +196,11 @@ bool anims::build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t
 	if ( !cstudio )
 		return false;
 
-	if ( target != g::local ) {
-		invalidate_physics_recursive( target , 2 );
-		invalidate_physics_recursive( target , 8 );
-		invalidate_physics_recursive( target , 32 );
-	}
+	//if ( target != g::local ) {
+	//	invalidate_physics_recursive( target , 2 );
+	//	invalidate_physics_recursive( target , 8 );
+	//	invalidate_physics_recursive( target , 32 );
+	//}
 
 	target->poses( ) = poses;
 

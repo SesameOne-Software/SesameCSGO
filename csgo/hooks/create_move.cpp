@@ -167,7 +167,7 @@ void hook_netchannel ( ) {
 			// dbg_print ( _ ( "Hooked: %s\n" ), func_name );
 		};
 
-		const auto _send_net_msg = vfunc< void*> ( cs::i::client_state->net_channel ( ), 40 );
+		const auto _send_net_msg = vfunc< void*> ( cs::i::client_state->net_channel ( ), 42 );
 		dbg_hook ( _send_net_msg, hooks::send_net_msg, ( void** ) &hooks::old::send_net_msg );
 	}
 }

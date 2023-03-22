@@ -154,7 +154,7 @@ public:
 	animstate_pose_param_cache_t m_move_blend_crouch_pose; //0x0294
 	PAD ( 4 );
 	float m_vel_unk; //0x02A4
-	PAD ( 138 );
+	PAD ( 134 );
 	float m_min_yaw; //0x0330
 	float m_max_yaw; //0x0334
 	float m_max_pitch; //0x0338

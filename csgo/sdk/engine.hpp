@@ -45,7 +45,10 @@ public:
 
 class net_channel_t {
 public:
-	PAD ( 24 );
+	PAD ( 0x14 );
+	bool m_processing_messages;		// 0x0014
+	bool m_should_delete;			// 0x0015
+	PAD ( 0x2 );
 	int out_seq_nr;
 	int in_seq_nr;
 	int out_seq_nr_ack;
@@ -64,13 +67,13 @@ class client_class_t;
 class event_info_t {
 public:
 	uint16_t class_id;
-	PAD ( 2 );
 	float fire_delay;
 	const void* send_table;
 	const client_class_t* client_class;
 	void* packed;
+	void* packed1;
 	uint32_t flags;
-	PAD ( 28 );
+	PAD ( 0x18 );
 	event_info_t* next;
 };
 

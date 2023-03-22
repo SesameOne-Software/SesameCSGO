@@ -71,19 +71,19 @@ void features::skinchanger::run ( ) {
 	static auto& override_knife = options::skin_vars [ _ ( "skins.skin.override_knife" ) ].val.b;
 	static auto& override_weapon = options::skin_vars [ _ ( "skins.skin.override_weapon" ) ].val.b;
 	static auto& selected_knife = options::skin_vars [ _ ( "skins.skin.knife" ) ].val.i;
-	static auto& player_model_t = options::skin_vars [ _ ( "skins.models.player_model_t" ) ].val.i;
-	static auto& player_model_ct = options::skin_vars [ _ ( "skins.models.player_model_ct" ) ].val.i;
+	//static auto& player_model_t = options::skin_vars [ _ ( "skins.models.player_model_t" ) ].val.i;
+	//static auto& player_model_ct = options::skin_vars [ _ ( "skins.models.player_model_ct" ) ].val.i;
 
 	/* precache custom models */
 	static bool was_in_game = false;
 	static bool was_dead = true;
-	static int backup_player_mdl_idx = 0;
+	//static int backup_player_mdl_idx = 0;
 	static int backup_knife_model = selected_knife;
-	static auto last_player_model_t = player_model_t;
-	static auto last_player_model_ct = player_model_ct;
+	//static auto last_player_model_t = player_model_t;
+	//static auto last_player_model_ct = player_model_ct;
 
 	if ( cs::i::engine->is_in_game ( ) && !was_in_game ) {
-		precache_model ( _ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" ) );
+		//precache_model ( _ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" ) );
 		was_dead = true;
 	}
 
@@ -101,10 +101,10 @@ void features::skinchanger::run ( ) {
 	static auto clear_hud_weapon_icon = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 51 53 56 8B 75 08 8B D9 57 6B FE 34" ) ).get<int ( __thiscall* )( void*, int )> ( );
 
 	if ( !g::local || !g::local->alive ( ) ) {
-		backup_player_mdl_idx = 0;
+		//backup_player_mdl_idx = 0;
 
-		last_player_model_t = player_model_t;
-		last_player_model_ct = player_model_ct;
+		//last_player_model_t = player_model_t;
+		//last_player_model_ct = player_model_ct;
 		backup_knife_model = selected_knife;
 
 		was_dead = false;
@@ -265,48 +265,48 @@ void features::skinchanger::run ( ) {
 	//	}
 	//}
 
-	/* model changer */
-	std::vector<std::string> models {
-		_ ( "Default" ),
-		_ ( "models/player/custom_player/legacy/ctm_fbi_variantb.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_fbi_variantf.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_fbi_variantg.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_fbi_varianth.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_sas_variantf.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_st6_variante.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_st6_variantg.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_st6_varianti.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_st6_variantk.mdl" ),
-		_ ( "models/player/custom_player/legacy/ctm_st6_variantm.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_balkan_variantf.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_balkan_variantg.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_balkan_varianth.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_balkan_varianti.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_balkan_variantj.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_leet_variantf.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_leet_variantg.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_leet_varianth.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_leet_varianti.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_phoenix_variantf.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_phoenix_variantg.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_phoenix_varianth.mdl" ),
-		_ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" )
-	};
+	///* model changer */
+	//std::vector<std::string> models {
+	//	_ ( "Default" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_fbi_variantb.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_fbi_variantf.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_fbi_variantg.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_fbi_varianth.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_sas_variantf.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_st6_variante.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_st6_variantg.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_st6_varianti.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_st6_variantk.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/ctm_st6_variantm.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_balkan_variantf.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_balkan_variantg.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_balkan_varianth.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_balkan_varianti.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_balkan_variantj.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_leet_variantf.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_leet_variantg.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_leet_varianth.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_leet_varianti.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_phoenix_variantf.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_phoenix_variantg.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_phoenix_varianth.mdl" ),
+	//	_ ( "models/player/custom_player/legacy/tm_jumpsuit_variantb.mdl" )
+	//};
+	//
+	///* force update if player model changes */
+	//if ( !backup_player_mdl_idx )
+	//	backup_player_mdl_idx = g::local->mdl_idx ( );
+	//
+	//std::string& model = models [ g::local->team ( ) == 2 ? player_model_t : player_model_ct ];
+	//
+	//const auto new_idx = model == _ ( "Default" ) ? backup_player_mdl_idx : cs::i::mdl_info->mdl_idx ( model.c_str ( ) );
+	//
+	//g::local->set_model_idx ( new_idx );
+	//
+	//if ( const auto ragdoll = cs::i::ent_list->get_by_handle< entity_t* > ( g::local->ragdoll_handle ( ) ) )
+	//	ragdoll->set_model_idx ( new_idx );
 
-	/* force update if player model changes */
-	if ( !backup_player_mdl_idx )
-		backup_player_mdl_idx = g::local->mdl_idx ( );
-
-	std::string& model = models [ g::local->team ( ) == 2 ? player_model_t : player_model_ct ];
-
-	const auto new_idx = model == _ ( "Default" ) ? backup_player_mdl_idx : cs::i::mdl_info->mdl_idx ( model.c_str ( ) );
-
-	g::local->set_model_idx ( new_idx );
-
-	if ( const auto ragdoll = cs::i::ent_list->get_by_handle< entity_t* > ( g::local->ragdoll_handle ( ) ) )
-		ragdoll->set_model_idx ( new_idx );
-
-	if ( player_model_t != last_player_model_t || player_model_ct != last_player_model_ct /*|| was_dead*/ || backup_knife_model != selected_knife || skin_changed ) {
+	if ( backup_knife_model != selected_knife || skin_changed ) {
 		/* clear weapon icons */
 		const auto hud_weapon_selection = reinterpret_cast< int* >( find_hud_element_skinchanger ( _ ( "CCSGO_HudWeaponSelection" ) ) );
 
@@ -318,8 +318,6 @@ void features::skinchanger::run ( ) {
 		/* force full update */
 		cs::i::client_state->delta_tick ( ) = -1;
 
-		last_player_model_t = player_model_t;
-		last_player_model_ct = player_model_ct;
 		backup_knife_model = selected_knife;
 
 		was_dead = false;

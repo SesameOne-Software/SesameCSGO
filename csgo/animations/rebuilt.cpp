@@ -2091,8 +2091,8 @@ void anims::rebuilt::setup_aim_matrix( animstate_t* anim_state ) {
 }
 
 void anims::rebuilt::setup_weapon_action( animstate_t* anim_state ) {
-	static auto CCSGOPlayerAnimState__SetUpWeaponAction = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B 47 60" ) ).resolve_rip().get<void( __thiscall* )( animstate_t* )>( );
-	CCSGOPlayerAnimState__SetUpWeaponAction( anim_state );
+	//static auto CCSGOPlayerAnimState__SetUpWeaponAction = pattern::search( _( "client.dll" ) , _( "E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B CF E8 ? ? ? ? 8B 47 60" ) ).resolve_rip().get<void( __thiscall* )( animstate_t* )>( );
+	//CCSGOPlayerAnimState__SetUpWeaponAction( anim_state );
 }
 
 void anims::rebuilt::setup_movement( animstate_t* anim_state ) {

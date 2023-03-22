@@ -89,11 +89,11 @@ namespace prediction_util {
 			}
 		}
 
-		const auto vehicle = g::local->vehicle( );
-
-		/* Vehicle impulse */
-		if ( ucmd->m_impulse && ( !vehicle || using_standard_weapons_in_vehicle(g::local) ) )
-			*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31EC ) = ucmd->m_impulse;
+		//const auto vehicle = g::local->vehicle( );
+		//
+		///* Vehicle impulse */
+		//if ( ucmd->m_impulse && ( !vehicle || using_standard_weapons_in_vehicle(g::local) ) )
+		//	*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31EC ) = ucmd->m_impulse;
 
 		/* UpdateButtonState */
 		const auto v16 = ucmd->m_buttons;
@@ -123,10 +123,10 @@ namespace prediction_util {
 		cs::i::pred->setup_move ( g::local, ucmd, cs::i::move_helper, movedata );
 
 		/* process movement */
-		if ( !vehicle )
+		//if ( !vehicle )
 			cs::i::move->process_movement ( g::local, movedata );
-		else
-			vfunc< void ( __thiscall* )( entity_t*, player_t*, void* ) > ( vehicle, 5 ) ( vehicle, g::local, movedata );
+		//else
+		//	vfunc< void ( __thiscall* )( entity_t*, player_t*, void* ) > ( vehicle, 5 ) ( vehicle, g::local, movedata );
 
 		cs::i::pred->finish_move ( g::local, ucmd, movedata );
 

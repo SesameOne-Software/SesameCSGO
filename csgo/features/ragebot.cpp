@@ -630,11 +630,11 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		ray.init ( src, src + direction * weapon_range );
 		cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
 		
-		if ( tr.m_hit_entity == pl && tr.m_hitbox == static_cast<int>( hitbox ) )
-			hits++;
-
-		//if ( autowall::trace_ray ( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+		//if ( tr.m_hit_entity == pl && tr.m_hitbox == static_cast<int>( hitbox ) )
 		//	hits++;
+
+		if ( autowall::trace_ray ( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+			hits++;
 	}
 
 	hc_out = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;

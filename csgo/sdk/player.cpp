@@ -214,7 +214,7 @@ vec3_t player_t::eyes( ) {
 	vec3_t pos = origin( ) + view_offset( );
 
 	/* eye position */
-	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 169 ) ( this, pos );
+	vfunc< void( __thiscall* )( player_t*, vec3_t& ) >( this, 163 ) ( this, pos );
 
 	if ( *reinterpret_cast< bool* > ( uintptr_t ( this ) + 0x39E1 ) && this == g::local && animstate ( ) )
 		hooks::modify_eye_pos( animstate( ), nullptr, pos );

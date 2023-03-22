@@ -58,27 +58,26 @@ stencil_state_t stencil_state;
 
 class glow_object_definition_t {
 public:
-	int m_next_free_slot;
 	entity_t* m_ent;
 	vec3_t m_glow_color;
 	float m_glow_alpha;
-	bool m_glow_alpha_capped_by_render_alpha;
-	float m_glow_alpha_function_of_max_velocity;
+	PAD ( 0x8 );
 	float m_glow_alpha_max;
-	float m_glow_pukse_overdrive;
+	PAD ( 0x4 );
 	bool m_render_when_occluded;
 	bool m_render_when_unoccluded;
 	bool m_full_bloom_render;
+	PAD ( 0x1 );
 	int m_full_bloom_stencil_test_value;
-	int m_style;
+	PAD ( 0x4 );
 	int m_split_screen_slot;
+	int m_next_free_slot;
 
-	void set( float r, float g, float b, float a, int style = 0 ) {
+	void set( float r, float g, float b, float a ) {
 		m_glow_color = vec3_t( r, g, b );
 		m_glow_alpha = a;
 		m_render_when_occluded = true;
 		m_render_when_unoccluded = false;
-		m_style = style;
 	}
 
 	bool should_draw( int slot ) const {
@@ -140,7 +139,7 @@ void features::glow::cache_entities( ) {
 
 		/*if ( client_class->m_class_id == 1 || ( client_class->m_class_id >= 231 && client_class->m_class_id <= 272 ) )
 			glow_object.set( 0.007f, 0.949f, 0.705f, 1.0f );
-		else*/ if ( client_class->m_class_id == 40 ) {
+		else*/ if ( entity->is_player() ) {
 			if ( !entity->valid( ) )
 				continue;
 

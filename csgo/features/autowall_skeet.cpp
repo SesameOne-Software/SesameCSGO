@@ -67,7 +67,7 @@ __forceinline bool is_breakable ( entity_t* ent ) {
 	...
 	*/ 
 
-	static auto m_takedamage_offset = _is_breakable.add ( 38 ).deref ( ).get< uint32_t > ( );
+	static auto m_takedamage_offset = _is_breakable.add ( 24 ).deref ( ).get< uint32_t > ( );
 
 	if ( !ent || !ent->idx ( ) )
 		return false;
@@ -332,7 +332,7 @@ bool awall_skeet::fire_bullet ( player_t* local, vec3_t src, const vec3_t& dir, 
 		else if ( data.enter_trace.m_hit_entity ) {
 			const auto as_player = reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity );
 
-			if ( as_player->is_player ( ) && data.enter_trace.m_hitgroup > hitgroup_generic && data.enter_trace.m_hitgroup <= 8 && !as_player->is_ghost ( ) ) {
+			if ( as_player->is_player ( ) && data.enter_trace.m_hitgroup > hitgroup_generic && data.enter_trace.m_hitgroup <= 8 /*&& !as_player->is_ghost ( )*/ ) {
 				const auto is_enemy = local->is_enemy ( as_player );
 
 				if ( !is_enemy && g::cvars::mp_friendlyfire->get_bool ( ) )
