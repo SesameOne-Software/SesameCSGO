@@ -114,10 +114,6 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		anims::resolver::rdata::last_bad_weight.fill ( false );
 		anims::resolver::rdata::resolved_jitter.fill ( false );
 		anims::resolver::rdata::jitter_sync.fill ( 0 );
-		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
-		anims::resolver::rdata::resolved_side_run.fill ( anims::desync_side_t::desync_middle );
-		anims::resolver::rdata::resolved_side_jitter1.fill ( anims::desync_side_t::desync_middle );
-		anims::resolver::rdata::resolved_side_jitter2.fill ( anims::desync_side_t::desync_middle );
 
 		/* reset fake ping */
 		exploits::last_incoming_seq_num = 0;

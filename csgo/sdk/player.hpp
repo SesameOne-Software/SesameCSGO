@@ -189,7 +189,7 @@ struct anim_list_t {
 
 class player_t : public entity_t {
 public:
-	NETVAR( uint32_t, ground_entity_handle, "DT_BasePlayer->m_hGroundEntity" );
+	NETVAR( uint32_t, ground_entity_handle, "DT_CSPlayer->m_hGroundEntity" );
 	NETVAR( flags_t, flags, "DT_BasePlayer->m_fFlags" );
 	NETVAR( bool, has_defuser, "DT_CSPlayer->m_bHasDefuser" );
 	NETVAR( bool, immune, "DT_CSPlayer->m_bGunGameImmunity" );

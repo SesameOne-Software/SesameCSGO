@@ -1345,8 +1345,9 @@ void features::esp::render( ) {
 				draw_esp_widget ( esp_rect, visuals.zoom_color, esp_type_text, visuals.value_text, visuals.zoom_flag_placement, esp_data [ idx ].m_dormant, 0.0, 0.0, _ ( "Zoom" ) );
 
 			const auto& anim_info = anims::anim_info [ idx ];
-			if ( !anim_info.empty( ) && anim_info.front( ).m_resolved )
-				draw_esp_widget ( esp_rect, visuals.zoom_color, esp_type_text, visuals.value_text, visuals.zoom_flag_placement, esp_data [ idx ].m_dormant, 0.0, 0.0, _ ( "Anims" ) );
+
+			if ( g::local->is_enemy ( e ) && !anim_info.empty( ) && anim_info.front( ).m_lby_update )
+				draw_esp_widget ( esp_rect, { 0.0f, 1.0f, 0.0f, 1.0f }, esp_type_text, visuals.value_text, visuals.zoom_flag_placement, esp_data [ idx ].m_dormant, 0.0, 0.0, _ ( "LBY" ) );
 			
 			//if ( anims::resolver::is_spotted(g::local, e) )
 			//	dbg_print ( _("SPOTTED!! %d\n"), cs::i::globals->m_tickcount );
@@ -1369,20 +1370,46 @@ void features::esp::render( ) {
 			//if ( e == g::local && g::local )
 			//	dbg_print ( _("desync_amount: %.2f\n"), g::local->desync_amount() );
 
+			if ( e != g::local && g::local->is_enemy ( e ) ) {
+				draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ idx ].m_dormant, 0.0, 0.0, anims::resolver_mode_names [ anims::resolver_mode [ idx - 1 ] ] );
+			}
+
 			//if ( e != g::local && g::local->is_enemy(e) ) {
-			//	for ( auto i = 0; i < 13; i++ ) {
-			//		if ( i != 6 && i != 7 && i != 11 && i != 12 )
-			//			continue;
+			//	std::string output = "animlayer 3:\n";
+			//	output.append ( "weight: " + std::to_string ( anims::layer3 [ idx - 1 ].m_weight ) + ":\n" );
+			//	output.append ( "cycle: " + std::to_string ( anims::layer3 [ idx - 1 ].m_cycle ) + ":\n" );
+			//	output.append ( "rate: " + std::to_string ( anims::layer3 [ idx - 1 ].m_playback_rate ) + ":\n" );
 			//
-			//		std::string output = "animlayer ";
-			//		output.append ( std::to_string ( i ) + ":\n" );
-			//		output.append ( "weight: " + std::to_string ( anims::resolver::rdata::latest_layers [ idx ][ i ].m_weight ) + ":\n" );
-			//		output.append ( "cycle: " + std::to_string ( anims::resolver::rdata::latest_layers [ idx ][ i ].m_cycle ) + ":\n" );
-			//		output.append ( "rate: " + std::to_string ( anims::resolver::rdata::latest_layers [ idx ][ i ].m_playback_rate ) + ":\n" );
-			//
-			//		draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ idx ].m_dormant, 0.0, 0.0, output );
-			//	}
+			//	draw_esp_widget ( esp_rect, visuals.weapon_color, esp_type_text, visuals.value_text, esp_placement_right, esp_data [ idx ].m_dormant, 0.0, 0.0, output );
 			//}
+
+			// Angle indicators
+			auto angle_to_dir = [ ] ( float angle_deg ) {
+				float s, c;
+				cs::sin_cos ( cs::deg2rad ( angle_deg ), &s, &c );
+				return vec3_t ( c, s, 0.0f );
+			};
+
+			if ( g::local->is_enemy ( e ) && anims::last_moving_lby_time [ idx - 1 ] != std::numeric_limits<float>::max ( ) ) {
+				vec3_t v0, v1, v2, v3;
+				auto last_moving_lby = abs_origin + angle_to_dir ( anims::last_moving_lby [ idx - 1 ] ) * 35.0f;
+				auto lby = abs_origin + angle_to_dir ( anims::last_lby [ idx - 1 ] ) * 35.0f;
+				auto last_freestanding = abs_origin + angle_to_dir ( anims::last_freestanding [ idx - 1 ] ) * 35.0f;
+
+				if ( cs::render::world_to_screen ( v0, abs_origin )
+					&& cs::render::world_to_screen ( v1, last_moving_lby )
+					&& cs::render::world_to_screen ( v2, lby )
+					&& cs::render::world_to_screen ( v3, last_freestanding ) ) {
+					render::line ( v0.x, v0.y, v1.x, v1.y, 0xFF0000FF, 2.0f );
+					render::text ( v1.x, v1.y, "move", "esp_font", 0xFFFFFFFF, true );
+
+					render::line ( v0.x, v0.y, v2.x, v2.y, 0xFF00FFFF, 2.0f );
+					render::text ( v2.x, v2.y, "lby", "esp_font", 0xFFFFFFFF, true );
+
+					render::line ( v0.x, v0.y, v3.x, v3.y, 0xFFFF0000, 2.0f );
+					render::text ( v3.x, v3.y, "edge", "esp_font", 0xFFFFFFFF, true );
+				}
+			}
 		}
 	}
 	VMP_END ( );

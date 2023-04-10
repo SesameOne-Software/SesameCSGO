@@ -80,7 +80,7 @@ public:
 class c_clientstate {
 public:
 	net_channel_t* net_channel ( ) {
-		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x94 );
+		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x9C );
 	}
 
 	uint32_t& choked( ) {

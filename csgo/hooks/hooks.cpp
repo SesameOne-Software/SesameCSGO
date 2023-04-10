@@ -88,6 +88,9 @@ void hooks::init( ) {
 	r_jiggle_bones->no_callback ( );
 	r_jiggle_bones->set_value ( 0 );
 
+	cs::i::engine->client_cmd_unrestricted ( _ ( "developer 1" ) );
+	cs::i::engine->client_cmd_unrestricted ( _ ( "con_filter_enable 2" ) );
+
 	features::skinchanger::init ( );
 
 	/* load default config */
@@ -219,18 +222,18 @@ void hooks::init( ) {
 	dbg_hook( _send_datagram, send_datagram, ( void** )&old::send_datagram );
 	dbg_hook( _should_skip_anim_frame, should_skip_anim_frame, ( void** )&old::should_skip_anim_frame );
 	//dbg_hook( _emit_sound, emit_sound, ( void** )&old::emit_sound );
-	dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
-	dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
+	//dbg_hook( _cs_blood_spray_callback, cs_blood_spray_callback, ( void** )&old::cs_blood_spray_callback );
+	//dbg_hook( _modify_eye_pos, modify_eye_pos, ( void** )&old::modify_eye_pos );
 	dbg_hook( _setup_bones, setup_bones, ( void** )&old::setup_bones );
 	dbg_hook( _run_simulation, run_simulation, ( void** )&old::run_simulation );
-	//dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
+	dbg_hook( _build_transformations, build_transformations, ( void** )&old::build_transformations );
 	dbg_hook ( _base_interpolate_part1, base_interpolate_part1, ( void** ) &old::base_interpolate_part1 );
 	//dbg_hook ( _temp_entities, temp_entities, ( void** ) &old::temp_entities );
 	dbg_hook ( _update_clientside_animations, update_clientside_animations, ( void** ) &old::update_clientside_animations );
 	//dbg_hook( _netmsg_tick , netmsg_tick , ( void** ) &old::netmsg_tick );
 	dbg_hook( _process_interp_list , process_interp_list , ( void** ) &old::process_interp_list );
 	//dbg_hook( _run_command , run_command , ( void** ) &old::run_command );
-	//dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
+	dbg_hook( _accumulate_layers , accumulate_layers , ( void** ) &old::accumulate_layers );
 	dbg_hook( _notify_on_layer_change_cycle , notify_on_layer_change_cycle , ( void** ) &old::notify_on_layer_change_cycle );
 	dbg_hook( _notify_on_layer_change_weight , notify_on_layer_change_weight , ( void** ) &old::notify_on_layer_change_weight );
 	//dbg_hook ( _is_connected, is_connected, ( void** ) &old::is_connected );
@@ -242,7 +245,7 @@ void hooks::init( ) {
 	dbg_hook ( _post_network_data_received, post_network_data_received, ( void** ) &old::post_network_data_received );
 	//dbg_hook ( _packet_start, packet_start, ( void** ) &old::packet_start );
 	//dbg_hook ( _get_client_interp_amount, get_client_interp_amount, ( void** ) &old::get_client_interp_amount );
-	dbg_hook ( _svc_msg_voice_data, svc_msg_voice_data, ( void** ) &old::svc_msg_voice_data );
+	//dbg_hook ( _svc_msg_voice_data, svc_msg_voice_data, ( void** ) &old::svc_msg_voice_data );
 	dbg_hook ( _get_client_model_renderable, get_client_model_renderable, ( void** ) &old::get_client_model_renderable );
 
 	event_handler = std::make_unique< c_event_handler > ( );

@@ -46,7 +46,7 @@ void __fastcall hooks::modify_eye_pos( REG, vec3_t& pos ) {
 	//
 	//return old::modify_eye_pos ( REG_OUT, pos );
 
-	if ( !anim_state->m_hit_ground || anim_state->m_duck_amount == 0.0f || !cs::i::ent_list->get<void*> ( player->ground_entity_handle ( ) ) )
+	if ( !anim_state->m_hit_ground || anim_state->m_duck_amount == 0.0f /*|| !cs::i::ent_list->get<void*> ( player->ground_entity_handle ( ) )*/ )
 		return;
 
 	int bone_index = lookup_bone ( player, _ ( "head_0" ));

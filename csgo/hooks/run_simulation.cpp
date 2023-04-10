@@ -63,8 +63,8 @@ int __fastcall hooks::run_simulation ( REG, int current_command, ucmd_t* cmd, pl
 	
 	/* local anims */
 	if ( cmd->m_cmdnum > last_cmd_num ) {
-		if ( localplayer && localplayer->alive ( ) )
-			anims::update_anims ( localplayer, lby::in_update ? g::sent_cmd.m_angs : g::angles );
+		if ( g::send_packet )
+			anims::update_anims ( localplayer, g::sent_cmd.m_angs );
 		else
 			anims::manage_fake ( );
 

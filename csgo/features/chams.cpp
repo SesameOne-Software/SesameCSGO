@@ -207,10 +207,10 @@ void features::chams::add_shot ( player_t* player, const anims::anim_info_t& ani
 
 	anims::resolver::hit_matrix_rec_t rec {};
 
-	rec.m_bones = anim_info.m_aim_bones [ anim_info.m_side ];
+	rec.m_bones = anim_info.m_aim_bones;
 
 	rec.m_render_info.m_origin = anim_info.m_origin;
-	rec.m_render_info.m_angles = anim_info.m_abs_angles [ anim_info.m_side ];
+	rec.m_render_info.m_angles = anim_info.m_abs_angles;
 	rec.m_render_info.m_renderable = renderable;
 	rec.m_render_info.m_model = model;
 	rec.m_render_info.m_lighting_offset = nullptr;
