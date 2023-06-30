@@ -495,7 +495,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	auto weapon_data = weapon->data ( );
 	auto weapon_id = weapon->item_definition_index ( );
 
-	const auto round_acc = [ ] ( const float accuracy ) { return roundf ( accuracy * 1000.0f ) / 1000.0f; };
+	const auto round_acc = [ ] ( const float accuracy ) { return static_cast<float>( accuracy * 1000.0f ); };
 	const auto sniper = weapon_id == weapons_t::awp || weapon_id == weapons_t::g3sg1 || weapon_id == weapons_t::scar20 || weapon_id == weapons_t::ssg08;
 	const auto crouched = !!( g::local->flags ( ) & flags_t::ducking );
 
@@ -525,7 +525,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		}
 	}
 
-	auto src = g::local->eyes( );
+	auto src = anims::get_server_shoot_position ( point );
 
 	ang = cs::calc_angle( src, point );
 	cs::clamp( ang );
@@ -1245,7 +1245,7 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 	if ( !best.m_ent )
 		return;
 		
-	auto angle_to = cs::calc_angle( g::local->eyes( ), best.m_point );
+	auto angle_to = cs::calc_angle( anims::get_server_shoot_position ( best.m_point ), best.m_point );
 	cs::clamp( angle_to );
 
 	auto hc_out = -1.0f;

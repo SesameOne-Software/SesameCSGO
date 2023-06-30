@@ -175,6 +175,7 @@ namespace anims {
 
 	void reset_data ( int idx );
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
+	vec3_t get_server_shoot_position ( const vec3_t& wanted_view_angles );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
 	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
 	bool fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlayer_t, 13>& animlayers, const vec3_t& origin );

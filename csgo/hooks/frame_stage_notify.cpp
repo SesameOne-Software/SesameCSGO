@@ -180,10 +180,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			//	features::nade_prediction::draw_beam( );
 			//);
 
-			RUN_SAFE (
-				"run_preserve_death_notices",
-				run_preserve_death_notices ( );
-			);
+			//RUN_SAFE (
+			//	"run_preserve_death_notices",
+			//	run_preserve_death_notices ( );
+			//);
 
 			if ( g::local->alive( ) ) {
 				old_aimpunch = g::local->aim_punch( );

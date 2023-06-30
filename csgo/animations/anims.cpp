@@ -619,6 +619,77 @@ void anims::update_all_anims ( player_t* ent, vec3_t& angles, anim_info_t& to, s
 	VMP_END ( );
 }
 
+float head_height_from_origin_down_pitch = 0.0f;
+
+float get_predicted_head_z ( vec3_t view_angle ) {
+	// Get estimated head position when facing downwards
+	const auto predicted_head_position_down = g::local->abs_origin ( ).z + head_height_from_origin_down_pitch;
+
+	// Compensate pitch change for recoil
+	view_angle -= g::local->aim_punch ( ) * 2.0f;
+
+	cs::clamp ( view_angle );
+
+	// from Desmos quadratic regression
+	// pitch to head offset from down relation
+	// 
+	// Estimate head offset from pitch
+	// Use doubles for more accuracy calculation,
+	//	because we are dealing with multiplication of very small numbers here
+	double pitch = static_cast< double >( view_angle.x );
+
+	double head_offset_from_down_stand_still = ( -0.000454846 * ( pitch * pitch ) ) + ( -0.0451027 * pitch ) + 7.50845;
+	double head_offset_from_down_moving = ( -0.000208786 * ( pitch * pitch ) ) + ( -0.0183211 * pitch ) + 3.26285;
+	double head_offset_from_down_crouching = ( -0.000257951 * ( pitch * pitch ) ) + ( -0.0394547 * pitch ) + 5.10114;
+	double head_offset_from_down_crouching_moving = ( 0.0000570523 * ( pitch * pitch ) ) + ( -0.0527598 * pitch ) + 3.34832;
+
+	const float max_speed = g::local->weapon ( )->max_speed ( );
+	const float max_head_height_speed = std::lerp ( max_speed * 0.34f, max_speed * 0.52f, g::local->crouch_amount ( ) );
+	const float run_speed_fraction = std::clamp ( g::local->vel ( ).length_2d ( ), 0.0f, max_head_height_speed ) / max_head_height_speed;
+
+	//auto& records = game::lagcomp::get_track ( local_player );
+	//
+	//if ( !records.empty ( ) )
+	//	run_speed_fraction = records.back ( ).animstates [ game::lagcomp::DesyncSide::Middle ].speed_to_walk_fraction;
+
+	const float head_offset_from_down_still_lerped = std::lerp ( static_cast< float >( head_offset_from_down_stand_still ), static_cast< float >( head_offset_from_down_crouching ), g::local->crouch_amount ( ) );
+	const float head_offset_from_down_moving_lerped = std::lerp ( static_cast< float >( head_offset_from_down_moving ), static_cast< float >( head_offset_from_down_crouching_moving ), g::local->crouch_amount ( ) );
+
+	return predicted_head_position_down + std::clamp ( static_cast< float >( std::lerp ( head_offset_from_down_still_lerped, head_offset_from_down_moving_lerped, run_speed_fraction ) ), 0.0f, 9.0f );
+}
+
+void modify_eye_position ( vec3_t& eye_position, float head_position_z ) {
+	if ( !anims::last_local_animstate.m_hit_ground
+		&& g::local->crouch_amount() == 0.0f
+		&& cs::i::ent_list->get_by_handle<entity_t*> ( g::local->ground_entity_handle ( ) ) )
+		return;
+
+	head_position_z += 1.7f;
+
+	if ( eye_position.z <= head_position_z )
+		return;
+
+	const float delta = eye_position.z - head_position_z;
+
+	float some_factor = 0.0f;
+	float some_offset = ( delta - 4.0f ) / 6.0f;
+
+	if ( some_offset >= 0.0f )
+		some_factor = std::min ( some_offset, 1.0f );
+
+	eye_position.z += ( ( head_position_z - eye_position.z ) * ( ( ( some_factor * some_factor ) * 3.0f ) - ( ( ( some_factor * some_factor ) * 2.0f ) * some_factor ) ) );
+}
+
+vec3_t anims::get_server_shoot_position ( const vec3_t& wanted_view_angles ) {
+	vec3_t eye_position = g::local->abs_origin ( ) + g::local->view_offset ( );
+
+	vfunc< void ( __thiscall* )( player_t*, vec3_t& ) > ( g::local, 163 ) ( g::local, eye_position );
+
+	modify_eye_position ( eye_position, get_predicted_head_z ( wanted_view_angles ) );
+
+	return eye_position;
+}
+
 void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) {
 	static auto& invalidate_bone_cache = *pattern::search( _( "client.dll" ) , _( "C6 05 ? ? ? ? ? 89 47 70" ) ).add( 2 ).deref( ).get<bool*>( );
 	static auto invalidate_physics_recursive = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 0C 53 8B 5D 08 8B C3 56" ) ).get<void( __thiscall* )( player_t* , int )>( );
@@ -691,6 +762,22 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 		build_bones ( ent, real_matrix.data ( ), 0x7FF00, vec3_t( 0.0f, state->m_abs_yaw, 0.0f ), ent->origin ( ), cs::i::globals->m_curtime, ent->poses ( ) );
 		usable_origin_real_local = ent->origin ( );
 
+		std::array<matrix3x4_t, 128> down_pitch_bones;
+		const auto backup_poses = ent->poses ( );
+		ent->poses ( ) [ 11 ] = 0.0f;
+		ent->poses ( ) [ 12 ] = 0.9944f;
+		build_bones (
+			ent,
+			down_pitch_bones.data(),
+			0x7FF00,
+			vec3_t ( 0.0f, state->m_abs_yaw + 180.0f, 0.0f ),
+			ent->origin ( ),
+			cs::i::globals->m_curtime,
+			ent->poses ( )
+		);
+		ent->poses ( ) = backup_poses;
+		head_height_from_origin_down_pitch = down_pitch_bones [ 8 ].origin ( ).z - ent->origin ( ).z;
+
 		/* dont update on local until we send packet */
 		/*if ( g::send_packet )*/ {
 			/* set new animlayers (server data + ones maintained on client) */
@@ -726,7 +813,7 @@ void anims::update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw ) 
 				float flPitch = -10.0f;
 
 				if ( flPitch <= 0.0f )
-flPitch = ( flPitch / state->m_max_pitch ) * -90.0f;
+					flPitch = ( flPitch / state->m_max_pitch ) * -90.0f;
 				else
 				flPitch = ( flPitch / state->m_min_pitch ) * 90.0f;
 
@@ -982,8 +1069,8 @@ void anims::resolve_player ( player_t* player, bool& lby_updated_out ) {
 				fwd.normalize ( );
 
 				if ( fwd.is_valid ( ) ) {
-					const auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
-					const auto left_dir = -right_dir;
+					//const auto right_dir = fwd.cross_product ( vec3_t ( 0.0f, 0.0f, 1.0f ) );
+					//const auto left_dir = -right_dir;
 
 					const auto right_dir = angle_to_dir ( possible_resolver_angles [ ResolveMode::PositiveLBY ] );
 					const auto left_dir = angle_to_dir ( possible_resolver_angles [ ResolveMode::NegativeLBY ] );
