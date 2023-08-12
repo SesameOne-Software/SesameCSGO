@@ -37,8 +37,8 @@ c_mdl_cache_critical_section::~c_mdl_cache_critical_section( ) {
 }
 
 event_info_t* c_clientstate::events ( ) {
-	//static auto event_off = pattern::search ( _ ( "engine.dll" ), _ ( "81 C3 ? ? ? ? 8B CB E8" ) ).add ( 2 ).deref ( ).get<uint32_t> ( );
-	return *reinterpret_cast< event_info_t** >( reinterpret_cast< uintptr_t >( this ) + 0x4DEC );
+	static auto event_off = pattern::search ( _ ( "engine.dll" ), _ ( "81 C3 ? ? ? ? 8B CB E8" ) ).add ( 2 ).deref ( ).get<uint32_t> ( );
+	return *reinterpret_cast< event_info_t** >( reinterpret_cast< uintptr_t >( this ) + event_off );
 }
 
 bool cs::render::screen_transform( vec3_t& screen, vec3_t& origin ) {

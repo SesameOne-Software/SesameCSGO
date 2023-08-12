@@ -6,6 +6,7 @@
 struct mdlrender_info_t {
 	vec3_t m_origin;
 	vec3_t m_angles;
+	PAD( 4 );
 	void* m_renderable;
 	void* m_model;
 	matrix3x4_t* m_model_to_world;

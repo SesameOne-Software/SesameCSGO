@@ -6,43 +6,6 @@
 #include "../sdk/sdk.hpp"
 
 namespace anims {
-	inline std::array<animlayer_t, 64> layer3 = { };
-	inline std::array<float, 64> last_moving_lby = { };
-	inline std::array<float, 64> last_moving_time = { };
-	inline std::array<float, 64> last_moving_lby_time = { };
-	inline std::array<float, 64> last_lby = { };
-	inline std::array<float, 64> next_lby_update_time = { };
-	inline std::array<float, 64> last_freestanding = { };
-	inline std::array<float, 64> last_freestand_time = { };
-	inline std::array<bool, 64> triggered_balance_adjust = { };
-	inline std::array<bool, 64> has_real_jitter = { };
-
-	enum ResolveMode {
-		None = 0,
-		LBY,
-		PositiveLBY,
-		NegativeLBY,
-		LowLBY,
-		Freestand,
-		LastMovingLBY,
-		Backwards,
-	};
-
-	inline const char* resolver_mode_names [ ] = {
-		"None",
-		"LBY",
-		"PositiveLBY",
-		"NegativeLBY",
-		"LowLBY",
-		"Freestand",
-		"LastMovingLBY",
-		"Backwards",
-	};
-
-	inline std::array<int, 64> resolver_mode = { };
-	inline std::array<float, 64> last_last_moving_lby = { };
-	inline std::array<int, 64> lby_updates_within_jitter_range = { };
-
 	/* https://github.com/perilouswithadollarsign/cstrike15_src/blob/f82112a2388b841d72cb62ca48ab1846dfcc11c8/game/client/cdll_bounded_cvars.cpp#L112 */
 	inline float lerp_time ( ) {
 		int ud_rate = g::cvars::cl_updaterate->get_int();
@@ -83,13 +46,21 @@ namespace anims {
 		death_yaw
 	};
 
+	enum desync_side_t : int {
+		desync_left_max = 0, 
+		desync_left_half,
+		desync_middle,
+		desync_right_half,
+		desync_right_max,
+		desync_max
+	};
+
 	struct anim_info_t {
 		bool m_shot, m_invalid;
 		bool m_forward_track;
 		bool m_resolved;
 		bool m_has_vel;
 		bool m_shifted;
-		bool m_lby_update;
 		vec3_t m_angles;
 		vec3_t m_origin;
 		vec3_t m_mins;
@@ -101,11 +72,12 @@ namespace anims {
 		int m_choked_commands;
 		flags_t m_flags;
 		vec3_t m_vel;
-		std::array<animlayer_t, 13> m_anim_layers;
-		std::array<float, 24> m_poses;
-		vec3_t m_abs_angles;
-		animstate_t m_anim_state;
-		std::array< matrix3x4_t, 128 > m_aim_bones;
+		std::array<std::array<animlayer_t , 13> , desync_side_t::desync_max + 1> m_anim_layers;
+		std::array<std::array<float , 24> , desync_side_t::desync_max + 1> m_poses;
+		std::array<vec3_t , desync_side_t::desync_max + 1> m_abs_angles;
+		std::array<animstate_t , desync_side_t::desync_max + 1> m_anim_state;
+		std::array<std::array< matrix3x4_t , 128 > , desync_side_t::desync_max + 1> m_aim_bones;
+		desync_side_t m_side;
 
 		bool valid ( );
 
@@ -126,7 +98,6 @@ namespace anims {
 	inline std::array< matrix3x4_t, 128 > fake_matrix { {} };
 	inline animstate_t last_local_animstate { };
 
-	void resolve_player ( player_t* player, bool& lby_updated_out );
 	void recalc_poses ( std::array<float, 24>& poses, float ladder_yaw, float move_yaw, float eye_yaw, float feet_yaw );
 
 	void on_net_update_end ( int idx );
@@ -137,14 +108,14 @@ namespace anims {
 	bool build_bones( player_t* target , matrix3x4_t* mat , int mask , vec3_t rotation , vec3_t origin , float time , std::array<float , 24>& poses );
 	
 	inline std::deque<anim_info_t*> get_lagcomp_records( player_t* ent ) {
-		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) )
+		if ( !ent->valid( ) || !ent->idx() || ent->idx() > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) || !lagcomp_track [ ent->idx ( ) ].front ( )->valid ( ) )
 			return {};
 
 		//return { lagcomp_track [ ent->idx ( ) ].front ( ) };
 		std::deque<anim_info_t*> records {};
 		
 		for ( auto& rec : lagcomp_track [ ent->idx( ) ] )
-			if ( rec->valid( ) && !rec->m_forward_track )
+			if ( rec->valid( ) )
 				records.push_back( rec );
 		
 		return records;
@@ -153,6 +124,8 @@ namespace anims {
 	inline std::optional<anim_info_t*> get_simulated_record( player_t* ent ) {
 		if ( !ent->valid( ) || !ent->idx( ) || ent->idx( ) > cs::i::globals->m_max_clients || lagcomp_track [ ent->idx( ) ].empty( ) )
 			return std::nullopt;
+
+		return std::nullopt;
 
 		/* change later, this is a placeholder */
 		return lagcomp_track [ ent->idx( ) ].front( );
@@ -175,9 +148,8 @@ namespace anims {
 
 	void reset_data ( int idx );
 	void copy_client_layers ( player_t* ent, std::array<animlayer_t, 13>& to, std::array<animlayer_t, 13>& from );
-	vec3_t get_server_shoot_position ( const vec3_t& wanted_view_angles );
 	void update_anims ( player_t* ent, vec3_t& angles, bool force_feet_yaw = false );
-	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
+	void update_all_anims( player_t* ent , vec3_t& angles, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers, bool should_desync, bool build_matrix );
 	bool fix_velocity ( player_t* ent, vec3_t& vel, const std::array<animlayer_t, 13>& animlayers, const vec3_t& origin );
 	void update_from ( player_t* ent, anim_info_t& from, anim_info_t& to, std::array<animlayer_t, 13>& cur_layers );
 	void apply_anims ( player_t* ent );

@@ -20,14 +20,14 @@ bool features::chams::in_model = false;
 
 bool create_materials( ) {
 	auto ikv = [ ] ( void* kv , const char* name ) {
-		static auto ikv_fn = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 33 C0 C7 45" ) ).get< void ( __thiscall* )( void*, const char* ) >( );
-		ikv_fn( kv , name );
+		static auto ikv_fn = pattern::search( _( "client.dll" ) , _( "55 8B EC 51 33 C0 C7 45" ) ).get< void ( __thiscall* )( void*, const char*, void*, void* ) >( );
+		ikv_fn( kv , name, nullptr, nullptr );
 	};
 
 	auto lfb = [ ] ( void* kv , const char* name , const char* buf ) {
-		using lfb_fn = void( __thiscall* )( void* , const char* , const char* , void* , const char* , void* );
+		using lfb_fn = void( __thiscall* )( void* , const char* , const char* , void* , const char* , void* , void* );
 		static auto lfb = pattern::search( _( "client.dll" ) , _( "55 8B EC 83 E4 F8 83 EC 34 53 8B 5D 0C 89" ) ).get< lfb_fn >( );
-		lfb( kv , name , buf , nullptr , nullptr , nullptr  );
+		lfb( kv , name , buf , nullptr , nullptr , nullptr , nullptr );
 	};
 
 	auto find_key = [ ] ( void* kv , const char* name , bool create ) {
@@ -207,10 +207,10 @@ void features::chams::add_shot ( player_t* player, const anims::anim_info_t& ani
 
 	anims::resolver::hit_matrix_rec_t rec {};
 
-	rec.m_bones = anim_info.m_aim_bones;
+	rec.m_bones = anim_info.m_aim_bones [ anim_info.m_side ];
 
 	rec.m_render_info.m_origin = anim_info.m_origin;
-	rec.m_render_info.m_angles = anim_info.m_abs_angles;
+	rec.m_render_info.m_angles = anim_info.m_abs_angles [ anim_info.m_side ];
 	rec.m_render_info.m_renderable = renderable;
 	rec.m_render_info.m_model = model;
 	rec.m_render_info.m_lighting_offset = nullptr;

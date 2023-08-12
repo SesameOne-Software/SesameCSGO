@@ -29,7 +29,7 @@ void* find_hud_element( const char* name ) {
 
 void run_preserve_death_notices( ) {
 	static auto& removals = options::vars [ _( "visuals.other.removals" ) ].val.l;
-	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "E8 ? ? ? ? 68 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? 8B F0 85 F6 74 19" ) ).resolve_rip().get< void ( __thiscall* )( void* ) > ( );
+	static auto clear_death_notices = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 53 56 8B 71 58" ) ).get< void ( __thiscall* )( void* ) > ( );
 
 	const auto death_notice = find_hud_element ( _ ( "CCSGO_HudDeathNotice" ) );
 
@@ -114,6 +114,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 		anims::resolver::rdata::last_bad_weight.fill ( false );
 		anims::resolver::rdata::resolved_jitter.fill ( false );
 		anims::resolver::rdata::jitter_sync.fill ( 0 );
+		anims::resolver::rdata::resolved_side.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_run.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_jitter1.fill ( anims::desync_side_t::desync_middle );
+		anims::resolver::rdata::resolved_side_jitter2.fill ( anims::desync_side_t::desync_middle );
 
 		/* reset fake ping */
 		exploits::last_incoming_seq_num = 0;
@@ -180,10 +184,10 @@ void __fastcall hooks::frame_stage_notify( REG, int stage ) {
 			//	features::nade_prediction::draw_beam( );
 			//);
 
-			//RUN_SAFE (
-			//	"run_preserve_death_notices",
-			//	run_preserve_death_notices ( );
-			//);
+			RUN_SAFE (
+				"run_preserve_death_notices",
+				run_preserve_death_notices ( );
+			);
 
 			if ( g::local->alive( ) ) {
 				old_aimpunch = g::local->aim_punch( );

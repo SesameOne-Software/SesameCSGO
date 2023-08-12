@@ -160,42 +160,42 @@ bool handle_bullet_penetration ( const vec3_t& dir, vec3_t& src, weapon_info_t* 
 
 	auto max_trace_to_exit_dist = 90.0f;
 
-	//if ( dmg_fail > 10.0f ) {
-	//	auto enter_penetration_modifier = 3.0f;
-	//	auto enter_dmg_lost_percent = 0.16f;
-	//
-	//	switch ( enter_material ) {
-	//	case 'G':
-	//	case 'Y':
-	//		enter_penetration_modifier = 3.0f;
-	//		enter_dmg_lost_percent = 0.05f;
-	//		break;
-	//	case 'U':
-	//	case 'W':
-	//		enter_penetration_modifier = 3.0f;
-	//		enter_dmg_lost_percent = 0.16f;
-	//		break;
-	//	case 'L':
-	//		enter_penetration_modifier = 2.0f;
-	//		enter_dmg_lost_percent = 0.16f;
-	//		break;
-	//	default:
-	//		if ( is_nodraw || hit_grate ) {
-	//			enter_dmg_lost_percent = 0.16f;
-	//			enter_penetration_modifier = 1.0f;
-	//		}
-	//		else {
-	//			enter_dmg_lost_percent = 0.16f;
-	//			enter_penetration_modifier = ( surface_data->m_game.m_penetration_modifier + 1.0f ) * 0.5f;
-	//		}
-	//		break;
-	//	}
-	//
-	//	const auto enter_pen_mod = std::max ( 0.0f, 1.0f / enter_penetration_modifier );
-	//	const auto enter_pen_wep_mod = std::max ( 0.0f, ( 3.0f / weapon_data->m_penetration ) * 1.25f ) * ( enter_pen_mod * 3.0f ) + ( cur_dmg * enter_dmg_lost_percent );
-	//
-	//	max_trace_to_exit_dist = std::min ( ( abs ( sqrt ( ( cur_dmg - ( dmg_fail - 1.0f ) ) - enter_pen_wep_mod ) * 4.8989797f ) / sqrt ( enter_pen_mod ) + 4.0f ) + 1.0f, 90.0f );
-	//}
+	if ( dmg_fail > 10.0f ) {
+		auto enter_penetration_modifier = 3.0f;
+		auto enter_dmg_lost_percent = 0.16f;
+	
+		switch ( enter_material ) {
+		case 'G':
+		case 'Y':
+			enter_penetration_modifier = 3.0f;
+			enter_dmg_lost_percent = 0.05f;
+			break;
+		case 'U':
+		case 'W':
+			enter_penetration_modifier = 3.0f;
+			enter_dmg_lost_percent = 0.16f;
+			break;
+		case 'L':
+			enter_penetration_modifier = 2.0f;
+			enter_dmg_lost_percent = 0.16f;
+			break;
+		default:
+			if ( is_nodraw || hit_grate ) {
+				enter_dmg_lost_percent = 0.16f;
+				enter_penetration_modifier = 1.0f;
+			}
+			else {
+				enter_dmg_lost_percent = 0.16f;
+				enter_penetration_modifier = ( surface_data->m_game.m_penetration_modifier + 1.0f ) * 0.5f;
+			}
+			break;
+		}
+	
+		const auto enter_pen_mod = std::max ( 0.0f, 1.0f / enter_penetration_modifier );
+		const auto enter_pen_wep_mod = std::max ( 0.0f, ( 3.0f / weapon_data->m_penetration ) * 1.25f ) * ( enter_pen_mod * 3.0f ) + ( cur_dmg * enter_dmg_lost_percent );
+	
+		max_trace_to_exit_dist = std::min ( ( abs ( sqrt ( ( cur_dmg - ( dmg_fail - 1.0f ) ) - enter_pen_wep_mod ) * 4.8989797f ) / sqrt ( enter_pen_mod ) + 4.0f ) + 1.0f, 90.0f );
+	}
 
 	if ( !trace_to_exit ( tr.m_endpos, dir, exit_end, tr, exit_trace, 4.0f, max_trace_to_exit_dist )
 		&& ( cs::i::trace->get_point_contents ( tr.m_endpos, mask_shot_hull ) & mask_shot_hull ) == 0 )
@@ -332,7 +332,7 @@ bool awall_skeet::fire_bullet ( player_t* local, vec3_t src, const vec3_t& dir, 
 		else if ( data.enter_trace.m_hit_entity ) {
 			const auto as_player = reinterpret_cast< player_t* >( data.enter_trace.m_hit_entity );
 
-			if ( as_player->is_player ( ) && data.enter_trace.m_hitgroup > hitgroup_generic && data.enter_trace.m_hitgroup <= 8 /*&& !as_player->is_ghost ( )*/ ) {
+			if ( as_player->is_player ( ) && data.enter_trace.m_hitgroup > hitgroup_generic && data.enter_trace.m_hitgroup <= 8 && !as_player->is_ghost ( ) ) {
 				const auto is_enemy = local->is_enemy ( as_player );
 
 				if ( !is_enemy && g::cvars::mp_friendlyfire->get_bool ( ) )

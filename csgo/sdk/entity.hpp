@@ -8,7 +8,7 @@ struct client_class_t;
 class entity_t {
 public:
 	OFFSET( uint32_t, idx, 0x64 );
-	OFFSET( bool, dormant, 0xE9 );
+	OFFSET( bool, dormant, 0xED );
 	POFFSET( void*, renderable, 0x4 );
 	POFFSET( void*, networkable, 0x8 );
 	NETVAR( vec3_t, origin, "DT_BaseEntity->m_vecOrigin" );
@@ -63,7 +63,7 @@ public:
 	}
 
 	bool is_player ( ) {
-		return vfunc< bool ( __thiscall* )( entity_t* ) > ( this, 152 )( this );
+		return vfunc< bool ( __thiscall* )( entity_t* ) > ( this, 158 )( this );
 	}
 };
 

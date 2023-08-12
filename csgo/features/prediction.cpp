@@ -31,8 +31,8 @@ namespace prediction_util {
 			prediction_player = pattern::search ( _ ( "client.dll" ), _ ( "0F 5B C0 89 35" ) ).add ( 5 ).deref ( ).get< uintptr_t > ( );
 		}
 
-		*reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3314 ) ) = reinterpret_cast< uintptr_t >( ucmd );
-		*reinterpret_cast< ucmd_t* >( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x326C ) ) = *ucmd;
+		*reinterpret_cast< uintptr_t* >( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3348 ) ) = reinterpret_cast< uintptr_t >( ucmd );
+		//*reinterpret_cast< ucmd_t* >( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3298 ) ) = *ucmd;
 
 		*reinterpret_cast< int* >( prediction_seed ) = ucmd ? ucmd->m_randseed : -1;
 		*reinterpret_cast< uintptr_t* >( prediction_player ) = reinterpret_cast< uintptr_t >( g::local );
@@ -55,10 +55,9 @@ namespace prediction_util {
 		cs::i::globals->m_frametime = *reinterpret_cast< bool* >( reinterpret_cast< uintptr_t >( cs::i::pred ) + 10 ) ? 0.0f : cs::i::globals->m_ipt;
 
 		/* forced buttons */
-		ucmd->m_buttons |= *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3310 ) );
-		//ucmd->m_buttons &= ~*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3340 ) );
-		
-		cs::i::move_helper->set_host ( g::local );
+		ucmd->m_buttons |= *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3344 ) );
+		ucmd->m_buttons &= ~*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + N ( 0x3340 ) );
+
 		cs::i::move->start_track_prediction_errors ( g::local );
 
 		/* weapon selection */
@@ -78,31 +77,31 @@ namespace prediction_util {
 				auto v10 = ( *( int ( __thiscall** )( weapon_t* ) )( *( DWORD* ) weapon + 28 ) )( weapon );
 				if ( v10 )
 				{
-					auto v11 = ( *( int ( __thiscall** )( int ) )( *( DWORD* ) v10 + 0x284 ) )( v10 );
+					auto v11 = ( *( int ( __thiscall** )( int ) )( *( DWORD* ) v10 + 668 ) )( v10 );
 					auto v12 = v11;
 					if ( v11 )
 					{
-						if ( ( *( int ( __thiscall** )( int ) )( *( DWORD* ) v11 + 0x448 ) )( v11 ) == *( DWORD* ) ( reinterpret_cast< uintptr_t >( ucmd ) + 60 ) )
-							( *( void ( __thiscall** )( player_t*, int ) )( *( DWORD* ) g::local + 0x4F8 ) )( g::local, v12 );
+						if ( ( *( int ( __thiscall** )( int ) )( *( DWORD* ) v11 + 1128 ) )( v11 ) == *( DWORD* ) ( reinterpret_cast< uintptr_t >( ucmd ) + 60 ) )
+							( *( void ( __thiscall** )( player_t*, int ) )( *( DWORD* ) g::local + 1316 ) )( g::local, v12 );
 					}
 				}
 			}
 		}
 
-		//const auto vehicle = g::local->vehicle( );
-		//
-		///* Vehicle impulse */
-		//if ( ucmd->m_impulse && ( !vehicle || using_standard_weapons_in_vehicle(g::local) ) )
-		//	*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31EC ) = ucmd->m_impulse;
+		const auto vehicle = g::local->vehicle( );
+
+		/* Vehicle impulse */
+		if ( ucmd->m_impulse && ( !vehicle || using_standard_weapons_in_vehicle(g::local) ) )
+			*reinterpret_cast< uint32_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x320C ) = ucmd->m_impulse;
 
 		/* UpdateButtonState */
 		const auto v16 = ucmd->m_buttons;
-		const auto v17 = v16 ^ *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31E8 );
+		const auto v17 = v16 ^ *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 );
 
-		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31DC ) = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31E8 );
-		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31E8 ) = v16;
-		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31E0 ) = v16 & v17;
-		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31E4 ) = v17 & ~v16;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x31FC ) = *reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 );
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3208 ) = v16;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3200 ) = v16 & v17;
+		*reinterpret_cast< buttons_t* > ( reinterpret_cast< uintptr_t >( g::local ) + 0x3204 ) = v17 & ~v16;
 
 		cs::i::pred->check_moving_ground ( g::local, cs::i::globals->m_frametime );
 		
@@ -123,10 +122,10 @@ namespace prediction_util {
 		cs::i::pred->setup_move ( g::local, ucmd, cs::i::move_helper, movedata );
 
 		/* process movement */
-		//if ( !vehicle )
+		if ( !vehicle )
 			cs::i::move->process_movement ( g::local, movedata );
-		//else
-		//	vfunc< void ( __thiscall* )( entity_t*, player_t*, void* ) > ( vehicle, 5 ) ( vehicle, g::local, movedata );
+		else
+			vfunc< void ( __thiscall* )( entity_t*, player_t*, void* ) > ( vehicle, 5 ) ( vehicle, g::local, movedata );
 
 		cs::i::pred->finish_move ( g::local, ucmd, movedata );
 
@@ -151,7 +150,7 @@ namespace prediction_util {
 
 		cs::i::move_helper->set_host ( nullptr );
 
-		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + 0x3314 ) = 0;
+		*reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( g::local ) + 0x3348 ) = 0;
 
 		*reinterpret_cast< int* >( prediction_seed ) = -1;
 		*reinterpret_cast< int* >( prediction_player ) = 0;

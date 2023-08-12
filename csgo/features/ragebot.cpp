@@ -495,7 +495,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	auto weapon_data = weapon->data ( );
 	auto weapon_id = weapon->item_definition_index ( );
 
-	const auto round_acc = [ ] ( const float accuracy ) { return static_cast<float>( accuracy * 1000.0f ); };
+	const auto round_acc = [ ] ( const float accuracy ) { return roundf ( accuracy * 1000.0f ) / 1000.0f; };
 	const auto sniper = weapon_id == weapons_t::awp || weapon_id == weapons_t::g3sg1 || weapon_id == weapons_t::scar20 || weapon_id == weapons_t::ssg08;
 	const auto crouched = !!( g::local->flags ( ) & flags_t::ducking );
 
@@ -525,7 +525,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 		}
 	}
 
-	auto src = anims::get_server_shoot_position ( point );
+	auto src = g::local->eyes( );
 
 	ang = cs::calc_angle( src, point );
 	cs::clamp( ang );
@@ -549,7 +549,7 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 	const auto innacuracy = weapon->inaccuracy ( );
 	const auto spread = weapon->spread ( );
 
-	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones [ rec.m_side ];
 
 	static bool rand_table = false;
 	static std::array< std::array<float, 6>, 256> rand_components { };
@@ -624,17 +624,17 @@ bool features::ragebot::hitchance( vec3_t ang, player_t* pl, vec3_t point, int r
 			forward.z + right.z * spread_dir.x + up.z * spread_dir.y
 		);
 
-		//trace_t tr;
-		//ray_t ray;
-		//
-		//ray.init ( src, src + direction * weapon_range );
-		//cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
-		//
-		//if ( tr.m_hit_entity == pl && tr.m_hitgroup == static_cast<int>( hitbox ) )
-		//	hits++;
-
-		if ( autowall::trace_ray ( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+		trace_t tr;
+		ray_t ray;
+		
+		ray.init ( src, src + direction * weapon_range );
+		cs::i::trace->clip_ray_to_entity ( ray, mask_shot | contents_grate, pl, &tr );
+		
+		if ( tr.m_hit_entity == pl && tr.m_hitbox == static_cast<int>( hitbox ) )
 			hits++;
+
+		//if ( autowall::trace_ray ( vmin, vmax, bone_matrix [ hhitbox->m_bone ], hhitbox->m_radius, src, src + direction * weapon_range ) )
+		//	hits++;
 	}
 
 	hc_out = static_cast< float >( hits ) / static_cast< float > ( rays ) * 100.0f;
@@ -770,7 +770,7 @@ float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* playe
 		if ( weapon ) {
 			if ( auto data = weapon->data ( ) )
 				max_speed = g::local->scoped ( ) ? data->m_max_speed_alt : data->m_max_speed;
-			zoom_levels = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( weapon ) + 0x3340 );
+			zoom_levels = *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( weapon ) + 0x33E0 );
 		}
 
 		slowed_by_scope = ( zoom_levels > 0 && zoom_levels > 1 && ( max_speed * 0.52f ) < 110.0f );
@@ -805,6 +805,8 @@ float features::ragebot::skeet_accelerate_rebuilt ( ucmd_t* cmd, player_t* playe
 
 void features::ragebot::skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& old_angs ) {
 	VMP_BEGINMUTATION ( );
+	static auto deployable_limited_max_speed = pattern::search ( _ ( "client.dll" ), _ ( "55 8B EC 83 EC 0C 56 8B F1 80 BE ? ? ? ? ? 75" ) ).get<float ( __thiscall* )( player_t* )> ( );
+
 	if ( !g::local || !g::local->alive ( ) )
 		return;
 
@@ -863,7 +865,7 @@ void features::ragebot::skeet_slow ( ucmd_t* cmd, float wanted_speed, vec3_t& ol
 				const auto accel = skeet_accelerate_rebuilt ( cmd, g::local, move_dir, max_stop_speed_vec, ducking );
 
 				const auto currentspeed = max_stop_speed_vec.dot_product ( move_dir );
-				const auto addspeed = std::clamp ( std::min( g::local->max_speed( ), 260.0f ) - currentspeed, 0.0f, accel );
+				const auto addspeed = std::clamp ( std::min( g::local->max_speed( ), deployable_limited_max_speed ( g::local ) ) - currentspeed, 0.0f, accel );
 
 				if ( addspeed > delta_target_speed + 0.5f ) {
 					auto move_length = currentspeed + delta_target_speed;
@@ -1007,7 +1009,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 		if ( !hitbox )
 			return;
 
-		const std::array< matrix3x4_t, 128>& bone_matrix = rec->m_aim_bones;
+		const std::array< matrix3x4_t, 128>& bone_matrix = rec->m_aim_bones[ rec->m_side ];
 
 		auto vmin = hitbox->m_bbmin;
 		auto vmax = hitbox->m_bbmax;
@@ -1065,7 +1067,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 			g::local->eyes ( ),
 			best_point ,
 			-1.0f,
-			cs::normalize ( cs::normalize ( best_rec->m_anim_state.m_abs_yaw ) - cs::normalize ( best_rec->m_anim_state.m_eye_yaw ) ),
+			cs::normalize ( cs::normalize ( best_rec->m_anim_state [ best_rec->m_side ].m_abs_yaw ) - cs::normalize ( best_rec->m_anim_state [ best_rec->m_side ].m_eye_yaw ) ),
 			-1,
 			g::local->velocity_modifier( ),
 			vec3_t ( ),
@@ -1112,7 +1114,7 @@ void features::ragebot::run_meleebot ( ucmd_t* ucmd ) {
 			g::local->eyes ( ),
 			best_point ,
 			-1.0f,
-			cs::normalize ( cs::normalize ( best_rec->m_anim_state .m_abs_yaw ) - cs::normalize ( best_rec->m_anim_state.m_eye_yaw ) ),
+			cs::normalize ( cs::normalize ( best_rec->m_anim_state [ best_rec->m_side ].m_abs_yaw ) - cs::normalize ( best_rec->m_anim_state [ best_rec->m_side ].m_eye_yaw ) ),
 			100,
 			g::local->velocity_modifier ( ),
 			vec3_t ( ),
@@ -1193,59 +1195,59 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 
 	const auto stop_to_speed = max_speed * 0.33f;
 
-	if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
-		const auto vel_norm = g::local->vel().normalized ( );
-	
-		auto speed = cur_speed;
-		auto move_dir = -vel_norm;
-		auto move_dir_max_speed = move_dir * speed;
-		auto predicted_eyes = g::local->eyes ( );
-	
-		auto ticks_until_slow = 0;
-	
-		while ( speed > stop_to_speed ) {
-			auto ducking = false;
-	
-			const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
-	
-			speed -= accel;
-			move_dir_max_speed = move_dir * speed;
-			predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
-	
-			ticks_until_slow++;
-	
-			if ( ticks_until_slow >= 16 )
-				break;
-		}
-	
-		player_t* at_target = nullptr;
-	
-		for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
-			const auto ent = cs::i::ent_list->get<player_t*> ( i );
-	
-			if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
-				const auto min_dmg = get_scaled_min_dmg ( ent );
-	
-				const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
-				const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
-	
-				if ( dmg >= min_dmg ) {
-					at_target = ent;
-					break;
-				}
-			}
-		}
-	
-		if ( at_target ) {
-			slow ( ucmd );
-			pre_autostop_working = true;
-		}
-	}
+	//if ( active_config.auto_slow && cur_speed > 0.0f && !!( g::local->flags ( ) & flags_t::on_ground ) ) {
+	//	const auto vel_norm = g::local->vel().normalized ( );
+	//
+	//	auto speed = cur_speed;
+	//	auto move_dir = -vel_norm;
+	//	auto move_dir_max_speed = move_dir * speed;
+	//	auto predicted_eyes = g::local->eyes ( );
+	//
+	//	auto ticks_until_slow = 0;
+	//
+	//	while ( speed > stop_to_speed ) {
+	//		auto ducking = false;
+	//
+	//		const auto accel = skeet_accelerate_rebuilt ( ucmd, g::local, move_dir, move_dir_max_speed, ducking );
+	//
+	//		speed -= accel;
+	//		move_dir_max_speed = move_dir * speed;
+	//		predicted_eyes += vel_norm * ( speed * cs::ticks2time ( 1 ) );
+	//
+	//		ticks_until_slow++;
+	//
+	//		if ( ticks_until_slow >= 16 )
+	//			break;
+	//	}
+	//
+	//	player_t* at_target = nullptr;
+	//
+	//	for ( auto i = 1; i < cs::i::globals->m_max_clients; i++ ) {
+	//		const auto ent = cs::i::ent_list->get<player_t*> ( i );
+	//
+	//		if ( ent->valid ( ) && !ent->immune() && g::local->is_enemy ( ent ) ) {
+	//			const auto min_dmg = get_scaled_min_dmg ( ent );
+	//
+	//			const auto pred_ent_pos = ent->origin ( ) + ent->view_offset ( ) + ent->vel ( ) * std::clamp ( ent->simtime ( ) - ent->old_simtime ( ), cs::ticks2time ( 1 ), cs::ticks2time ( 16 ) );
+	//			const auto dmg = awall_skeet::dmg ( g::local, predicted_eyes, pred_ent_pos, g::local->weapon ( ), ent, min_dmg, true );
+	//
+	//			if ( dmg >= min_dmg ) {
+	//				at_target = ent;
+	//				break;
+	//			}
+	//		}
+	//	}
+	//
+	//	if ( at_target ) {
+	//		slow ( ucmd );
+	//		pre_autostop_working = true;
+	//	}
+	//}
 
 	if ( !best.m_ent )
 		return;
 		
-	auto angle_to = cs::calc_angle( anims::get_server_shoot_position ( best.m_point ), best.m_point );
+	auto angle_to = cs::calc_angle( g::local->eyes( ), best.m_point );
 	cs::clamp( angle_to );
 
 	auto hc_out = -1.0f;
@@ -1289,7 +1291,7 @@ void features::ragebot::run ( ucmd_t* ucmd, vec3_t& old_angs ) {
 			g::local->eyes ( ),
 			best.m_point ,
 			hc_out,
-			cs::normalize ( cs::normalize ( best.m_record.m_anim_state.m_abs_yaw ) - cs::normalize ( best.m_record.m_anim_state.m_eye_yaw ) ),
+			cs::normalize ( cs::normalize ( best.m_record.m_anim_state [ best.m_record.m_side ].m_abs_yaw ) - cs::normalize ( best.m_record.m_anim_state [ best.m_record.m_side ].m_eye_yaw ) ),
 			static_cast<int>( best.m_dmg ),
 			g::local->velocity_modifier ( ),
 			vec3_t ( ),
@@ -1387,17 +1389,11 @@ bool features::ragebot::create_points( player_t* ent, anims::anim_info_t& rec, h
 	if ( !!(multipoint_mask & multipoint_mode_t::right) )
 		points.push_back( hitbox_pos + vec3_t( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale );
 
-	vec3_t top_offset = vec3_t ( 0.0f, 0.0f, hitbox_zrad ) * pointscale;
-
 	if ( !!(multipoint_mask & multipoint_mode_t::bottom ))
-		points.push_back( hitbox_pos - top_offset * pointscale );
+		points.push_back( hitbox_pos - vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
 
-	if ( !!( multipoint_mask & multipoint_mode_t::top ) ) {
-		points.push_back ( hitbox_pos + top_offset * pointscale );
-
-		points.push_back ( hitbox_pos + side_vec * hitbox_rad * pointscale + top_offset );
-		points.push_back ( hitbox_pos + vec3_t ( -side_vec.x, -side_vec.y, side_vec.z ) * hitbox_rad * pointscale + top_offset );
-	}
+	if ( !!(multipoint_mask & multipoint_mode_t::top ))
+		points.push_back( hitbox_pos + vec3_t( 0.0f, 0.0f, hitbox_zrad ) * pointscale );
 
 	for ( auto& point : points )
 		scan_points.emplace( point );
@@ -1432,7 +1428,7 @@ bool features::ragebot::get_hitbox( player_t* ent, anims::anim_info_t& rec, hitb
 	if ( !hitbox )
 		return false;
 
-	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones;
+	std::array< matrix3x4_t, 128>& bone_matrix = rec.m_aim_bones[ rec.m_side ];
 
 	vec3_t vmin, vmax;
 	VEC_TRANSFORM ( hitbox->m_bbmin, bone_matrix [ hitbox->m_bone ], vmin );
@@ -1584,28 +1580,23 @@ bool features::ragebot::hitscan( player_t* ent, anims::anim_info_t& rec, vec3_t&
 	/* use other matrix with same points, trying to find alignments in the two matricies */
 	/* shift over by 1 entry in our records */
 	// SAFE POINT BONE MATRIX DOESN'T WORK RIGHT NOW
-	//auto opposite_side_max = anims::desync_side_t::desync_middle;
-	//
-	//switch ( rec.m_side ) {
-	//case anims::desync_side_t::desync_left_max:
-	//case anims::desync_side_t::desync_left_half:
-	//	opposite_side_max = anims::desync_side_t::desync_right_max;
-	//	break;
-	//case anims::desync_side_t::desync_middle:
-	//	opposite_side_max = anims::desync_side_t::desync_left_max;
-	//	break;
-	//case anims::desync_side_t::desync_right_max:
-	//case anims::desync_side_t::desync_right_half:
-	//	opposite_side_max = anims::desync_side_t::desync_left_max;
-	//	break;
-	//}
+	auto opposite_side_max = anims::desync_side_t::desync_middle;
 
-	bool force_disable_safepoint = false;
+	switch ( rec.m_side ) {
+	case anims::desync_side_t::desync_left_max:
+	case anims::desync_side_t::desync_left_half:
+		opposite_side_max = anims::desync_side_t::desync_right_max;
+		break;
+	case anims::desync_side_t::desync_middle:
+		opposite_side_max = anims::desync_side_t::desync_left_max;
+		break;
+	case anims::desync_side_t::desync_right_max:
+	case anims::desync_side_t::desync_right_half:
+		opposite_side_max = anims::desync_side_t::desync_left_max;
+		break;
+	}
 
-retry_hitscan:
-
-	std::array< matrix3x4_t, 128>& dmg_scan_matrix_unsafe = rec.m_aim_bones;
-	std::array< matrix3x4_t, 128>& dmg_scan_matrix = ( safe_point_active && !force_disable_safepoint ) ? rec.m_aim_bones : rec.m_aim_bones;
+	std::array< matrix3x4_t, 128>& dmg_scan_matrix = safe_point_active ? rec.m_aim_bones[ opposite_side_max ] : rec.m_aim_bones[ rec.m_side ];
 
 	const auto backup_origin = pl->origin ( );
 	auto backup_abs_origin = pl->abs_origin ( );
@@ -1639,7 +1630,7 @@ retry_hitscan:
 		/* select best point on hitbox */
 		/* scan all selected points and take first one we find, there's no point in scanning for more */
 		for ( auto& point : points ) {
-			auto dmg = autowall::dmg ( g::local, pl, src, point, hitbox_t::invalid ); /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
+			auto dmg = awall_skeet::dmg ( g::local, src, point, weapon, pl, min_dmg, false, autowall::hitbox_to_hitgroup ( hitbox ) ); /** ( ( hitbox == hitbox_pelvis || hitbox == hitbox_upper_chest ) ? damage_scalar : 1.0f )*/;
 			//dbg_print ( _("calculated damage: %.1f"), dmg );
 
 			if ( dmg > best_points_damage ) {
@@ -1703,11 +1694,7 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 
 	/* extrapolation */
 	/* TODO: BODYAIM ONLY ON THESE RECORDS */
-	//if ( !recs.empty ( ) && extrap_amount > 0 && active_config.fix_fakelag ) {
-	//	const auto net = cs::i::engine->get_net_channel_info ( );
-	//	int next_tick = cs::i::client_state->server_tickcount ( ) + 1;
-	//	const int cmd_arrival_tick = cs::i::client_state->server_tickcount ( ) + cs::time2ticks ( net->get_latency ( 0 ) );
-	//
+	//if ( !recs.empty ( ) && extrap_amount > 0 ) {
 	//	anims::anim_info_t* newest_non_onshot_rec = nullptr;
 	//	float newest_time = 0.0f;
 	//
@@ -1723,38 +1710,47 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 	//	auto newest_rec_for_bones = newest_non_onshot_rec ? newest_non_onshot_rec : recs.front ( );
 	//	auto newest_rec = recs.front ( );
 	//
-	//	auto hit_tick = cs::time2ticks ( newest_rec->m_simtime );
+	//	if ( newest_rec->m_choked_commands <= extrap_amount ) {
+	//		auto net = cs::i::engine->get_net_channel_info ( );
+	//		auto choked_ticks = newest_rec->m_choked_commands;
+	//		auto hit_tick = cs::time2ticks ( newest_rec->m_simtime );
+	//		auto lat_ticks = cs::time2ticks ( net->get_latency ( 0 ) );
 	//
-	//	if ( next_tick + newest_rec->m_choked_commands < cmd_arrival_tick ) {
-	//		while ( true ) {
-	//			next_tick += newest_rec->m_choked_commands;
+	//		auto arrival_tick = g::server_tick + 1 + lat_ticks;
+	//		auto next = g::server_tick + 1;
 	//
-	//			if ( next_tick >= cmd_arrival_tick )
-	//				break;
+	//		if ( next + choked_ticks < arrival_tick ) {
+	//			auto extrap_ticks = 0;
 	//
-	//			auto extrap_rec = new anims::anim_info_t { *newest_rec };
+	//			for ( ; next < arrival_tick; arrival_tick += choked_ticks ) {
+	//				extrap_ticks++;
 	//
-	//			extrap_rec->m_aim_bones = newest_rec_for_bones->m_aim_bones;
+	//				auto extrap_rec = new anims::anim_info_t { *newest_rec };
+	//				
+	//				extrap_rec->m_aim_bones = newest_rec_for_bones->m_aim_bones;
 	//
-	//			/* simulate player movement (do this properly later) */
-	//			for ( int sim = 0; sim < newest_rec->m_choked_commands; sim++ ) {
-	//				extrap_rec->m_origin = newest_rec->m_origin + newest_rec->m_vel * cs::ticks2time ( sim );
-	//				hit_tick++;
+	//				/* simulate player movement (do this properly later) */
+	//				for ( int sim = 0; sim < choked_ticks; sim++ ) {
+	//					extrap_rec->m_origin = newest_rec->m_origin + newest_rec->m_vel * cs::ticks2time ( extrap_ticks );
+	//					hit_tick++;
+	//				}
+	//
+	//				/* we also need to update animations for the choked commands */
+	//
+	//				/* move bone matrix */
+	//				for ( auto& mat : extrap_rec->m_aim_bones [ extrap_rec->m_side ] )
+	//					mat.set_origin ( mat.origin ( ) - newest_rec_for_bones->m_origin + extrap_rec->m_origin );
+	//
+	//				/* set new player simtime */
+	//				extrap_rec->m_simtime = cs::ticks2time ( hit_tick );
+	//				extrap_rec->m_forward_track = true;
+	//
+	//				best_recs.push_back ( extrap_rec );
+	//
+	//				/* only add 4 records max */
+	//				if ( best_recs.size ( ) > extrap_amount )
+	//					break;
 	//			}
-	//
-	//			/* move bone matrix */
-	//			for ( auto& mat : extrap_rec->m_aim_bones )
-	//				mat.set_origin ( mat.origin ( ) - newest_rec_for_bones->m_origin + extrap_rec->m_origin );
-	//
-	//			/* set new player simtime */
-	//			extrap_rec->m_simtime = cs::ticks2time ( hit_tick );
-	//			extrap_rec->m_forward_track = true;
-	//
-	//			best_recs.push_back ( extrap_rec );
-	//
-	//			/* only add 4 records max */
-	//			if ( best_recs.size ( ) > extrap_amount )
-	//				break;
 	//		}
 	//	}
 	//}
@@ -1787,15 +1783,11 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 			const auto at_target_yaw = cs::normalize ( cs::calc_angle ( g::local->eyes ( ), ent->eyes ( ) ).y );
 
 			for ( auto& rec : recs ) {
-				/* only aim at records that arent newest */
-				//if ( rec->m_simtime == ent->simtime ( ) )
-				//	continue;
-
 				const auto speed2d = rec->m_vel.length_2d ( );
 
-				if ( !!( rec->m_flags & flags_t::on_ground ) && rec->m_lby_update ) {
+				if ( !!( rec->m_flags & flags_t::on_ground ) && speed2d > highest_speed ) {
 					speed_rec = rec;
-					//highest_speed = speed2d;
+					highest_speed = speed2d;
 				}
 
 				const auto ang_diff = abs ( cs::normalize ( at_target_yaw - cs::normalize ( rec->m_angles.y ) ) );
@@ -1805,10 +1797,10 @@ void features::ragebot::idealize_shot( player_t* ent, vec3_t& pos_out, hitbox_t&
 					highest_sideways_amount = ang_diff;
 				}
 
-				//if ( rec->m_simtime > highest_resolved && rec->m_resolved ) {
-				//	resolved_rec = rec;
-				//	highest_resolved = rec->m_simtime;
-				//}
+				if ( rec->m_simtime > highest_resolved && rec->m_resolved ) {
+					resolved_rec = rec;
+					highest_resolved = rec->m_simtime;
+				}
 			}
 
 			/* eliminate similar records */

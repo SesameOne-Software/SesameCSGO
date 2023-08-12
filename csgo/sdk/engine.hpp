@@ -45,10 +45,7 @@ public:
 
 class net_channel_t {
 public:
-	PAD ( 0x14 );
-	bool m_processing_messages;		// 0x0014
-	bool m_should_delete;			// 0x0015
-	PAD ( 0x2 );
+	PAD ( 24 );
 	int out_seq_nr;
 	int in_seq_nr;
 	int out_seq_nr_ack;
@@ -58,7 +55,7 @@ public:
 
 	int send_datagram ( void* datagram ) {
 		using send_datagram_fn = int ( __thiscall* )( void*, void* );
-		return vfunc< send_datagram_fn > ( this, 48 )( this, datagram );
+		return vfunc< send_datagram_fn > ( this, g::is_legacy ? 48 : 46 )( this, datagram );
 	}
 };
 
@@ -67,48 +64,52 @@ class client_class_t;
 class event_info_t {
 public:
 	uint16_t class_id;
+	PAD ( 2 );
 	float fire_delay;
 	const void* send_table;
 	const client_class_t* client_class;
 	void* packed;
-	void* packed1;
 	uint32_t flags;
-	PAD ( 0x18 );
+	PAD ( 28 );
 	event_info_t* next;
 };
 
 class c_clientstate {
 public:
 	net_channel_t* net_channel ( ) {
-		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x9C );
+		return *reinterpret_cast< net_channel_t** >( reinterpret_cast< uintptr_t >( this ) + 0x94 );
 	}
 
 	uint32_t& choked( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4CB0 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CB0 : 0x4D30 ) );
 	}
 
 	uint32_t& last_command_ack( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4CB4 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CB4 : 0x4D34 ) );
 	}
 
 	uint32_t& last_outgoing_cmd( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4CAC );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CAC : 0x4D2C ) );
 	}
 
 	uint32_t& server_tickcount( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x0118 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x110 );
 	}
 
 	int& delta_tick( ) {
-		return *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( this ) + 0x174 );
+		return *reinterpret_cast< int* >( reinterpret_cast< uintptr_t >( this ) + 0x16C );
+	}
+
+	uint32_t& cur_seq ( ) {
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x114 );
 	}
 
 	float& next_cmd_time( ) {
-		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x0114 );
+		return *reinterpret_cast< float* >( reinterpret_cast< uintptr_t >( this ) + 0x108 );
 	}
 
 	uint32_t& out_seq_num( ) {
-		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + 0x4CA4 );
+		return *reinterpret_cast< uint32_t* >( reinterpret_cast< uintptr_t >( this ) + ( g::is_legacy ? 0x4CA4 : 0x4D24 ) );
 	}
 
 	event_info_t* events ( );
